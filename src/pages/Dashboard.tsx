@@ -8,42 +8,49 @@ import { computeProjectCostRaw } from '@/lib/manifest';
 
 export const Dashboard: React.FC = () => {
   const { projects } = useProjectStore();
-  const { crew } = useCrewStore();
+  const { crew, getAvailableToday } = useCrewStore();
   const { equipment } = useEquipmentStore();
   const { materials } = useMaterialStore();
 
-  // Calculate KPIs
+  // Project KPIs
   const activeProjects = projects.filter(p => p.zones && p.zones.length > 0).length;
-  const totalProjectValue = projects.reduce((sum, p) => {
-    const cost = computeProjectCostRaw(p, materials);
-    return sum + cost;
-  }, 0);
+  const planningProjects = projects.filter(p => !p.zones || p.zones.length === 0).length;
+  const totalProjectValue = projects.reduce((sum, p) => sum + computeProjectCostRaw(p, materials), 0);
+
+  // Crew KPIs — real availability from store, assigned from project zones
   const teamSize = crew.length;
+  const availableToday = getAvailableToday();
+  const availableTodayIds = new Set(availableToday.map(m => m.id));
+  const assignedCrewIds = new Set(
+    projects.flatMap(p => p.zones.map(z => z.crew)).filter(Boolean)
+  );
+
+  // Fleet KPIs
   const fleetSize = equipment.filter(e => e.status !== 'out-of-service').length;
-
-  // Get alerts
-  const alerts = getAllAlerts({ projects, crew, equipment, materials });
-  const criticalAlerts = alerts.slice(0, 5);
-
-  // Crew utilization
-  const crewUtilization = crew.map(m => ({
-    id: m.id,
-    name: m.name,
-    hoursThisWeek: Math.floor(Math.random() * 40) + 10,
-  }));
-
-  // Equipment status distribution
-  const equipmentStatus = equipment.map(e => ({
-    id: e.id,
-    name: e.name,
-    status: e.status,
-  }));
-
   const statByStatus = {
     available: equipment.filter(e => e.status === 'available').length,
     inUse: equipment.filter(e => e.status === 'in-use').length,
     maintenance: equipment.filter(e => e.status === 'maintenance').length,
   };
+
+  // Alerts — combined from all 4 stores, sorted by severity
+  const alerts = getAllAlerts({ projects, crew, equipment, materials });
+  const topAlerts = alerts.slice(0, 5);
+
+  // Crew rows for utilization widget
+  const crewRows = crew.map(m => ({
+    id: m.id,
+    name: m.name,
+    availableToday: availableTodayIds.has(m.id),
+    assigned: assignedCrewIds.has(m.id),
+  }));
+
+  // Equipment rows for fleet widget
+  const equipmentRows = equipment.slice(0, 5).map(e => ({
+    id: e.id,
+    name: e.name,
+    status: e.status,
+  }));
 
   return (
     <div className="grid grid-cols-[320px_1fr] gap-[16px] items-start">
@@ -58,6 +65,11 @@ export const Dashboard: React.FC = () => {
             <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
               {activeProjects}
             </div>
+            {planningProjects > 0 && (
+              <div className="text-[10px] text-[var(--text-4)] mt-[4px]">
+                +{planningProjects} in planning
+              </div>
+            )}
           </div>
 
           <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
@@ -75,6 +87,9 @@ export const Dashboard: React.FC = () => {
             </div>
             <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
               {teamSize}
+            </div>
+            <div className="text-[10px] text-[var(--text-4)] mt-[4px]">
+              {availableToday.length} available today
             </div>
           </div>
 
@@ -94,11 +109,11 @@ export const Dashboard: React.FC = () => {
             <div className="text-[12px] font-[700] text-[var(--text)]">Alerts ({alerts.length})</div>
           </div>
           <div className="max-h-[260px] overflow-y-auto p-[10px_14px]">
-            {criticalAlerts.length === 0 ? (
+            {topAlerts.length === 0 ? (
               <div className="text-[12px] text-[var(--text-3)]">No alerts</div>
             ) : (
               <div className="space-y-[8px]">
-                {criticalAlerts.map((alert, idx) => (
+                {topAlerts.map((alert, idx) => (
                   <div
                     key={idx}
                     className={`px-[10px] py-[8px] rounded-[6px] text-[11px] ${
@@ -109,7 +124,7 @@ export const Dashboard: React.FC = () => {
                         : 'bg-[rgba(59,130,246,.1)] border border-[rgba(59,130,246,.3)] text-[#3B82F6]'
                     }`}
                   >
-                    <div className="font-[600]">{alert.title}</div>
+                    <div className="font-[600]">{alert.icon} {alert.title}</div>
                     <div className="text-[10px] mt-[2px]">{alert.msg}</div>
                   </div>
                 ))}
@@ -145,25 +160,35 @@ export const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 gap-[12px]">
           {/* Crew utilization */}
           <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
-            <div className="px-[16px] py-[12px] border-b border-[var(--border)]">
+            <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
               <div className="text-[12px] font-[700] text-[var(--text)]">
                 Crew Utilization
               </div>
+              <span className="text-[10px] text-[var(--text-4)]">
+                {availableToday.length}/{teamSize} today
+              </span>
             </div>
             <div className="px-[14px] py-[10px] max-h-[180px] overflow-y-auto">
-              {crewUtilization.length === 0 ? (
+              {crewRows.length === 0 ? (
                 <div className="text-[12px] text-[var(--text-3)]">No crew assigned</div>
               ) : (
                 <div className="space-y-[8px]">
-                  {crewUtilization.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between text-[12px]"
-                    >
+                  {crewRows.map((member) => (
+                    <div key={member.id} className="flex items-center justify-between text-[12px]">
                       <span className="text-[var(--text-2)]">{member.name}</span>
-                      <span className="inline-flex bg-[var(--green-l)] text-white px-[8px] py-[2px] rounded-[4px] font-[600] text-[10px]">
-                        {member.hoursThisWeek}h
-                      </span>
+                      {member.assigned ? (
+                        <span className="inline-flex bg-[#60A5FA] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
+                          On Job
+                        </span>
+                      ) : member.availableToday ? (
+                        <span className="inline-flex bg-[var(--green-l)] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
+                          Available
+                        </span>
+                      ) : (
+                        <span className="inline-flex bg-[var(--surface3)] text-[var(--text-4)] px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
+                          Off
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -195,11 +220,11 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
             <div className="px-[14px] pb-[10px] max-h-[100px] overflow-y-auto">
-              {equipmentStatus.length === 0 ? (
+              {equipmentRows.length === 0 ? (
                 <div className="text-[12px] text-[var(--text-3)]">No equipment</div>
               ) : (
                 <div className="space-y-[4px]">
-                  {equipmentStatus.slice(0, 5).map((equip) => (
+                  {equipmentRows.map((equip) => (
                     <div key={equip.id} className="flex items-center justify-between text-[11px]">
                       <span className="text-[var(--text-2)] truncate">{equip.name}</span>
                       <span className={`text-[10px] px-[6px] py-[1px] rounded-[3px] font-[600] ${
