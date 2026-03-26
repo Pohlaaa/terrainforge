@@ -1,0 +1,32 @@
+import React from 'react';
+
+interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string;
+  error?: string;
+  hint?: string;
+}
+
+export const TextArea: React.FC<TextAreaProps> = ({
+  label,
+  error,
+  hint,
+  className = '',
+  ...props
+}) => {
+  return (
+    <div className="flex flex-col gap-[5px]">
+      {label && (
+        <label className="text-[11px] font-[700] text-[var(--text-3)] uppercase tracking-[0.04em]">
+          {label}
+          {props.required && <span className="text-[var(--red-l)] ml-[2px]">*</span>}
+        </label>
+      )}
+      <textarea
+        className={`bg-[var(--surface3)] border border-[var(--border)] rounded-[7px] text-[var(--text)] px-[12px] py-[9px] text-[13px] outline-none transition-colors duration-200 focus:border-[var(--green-l)] w-full resize-vertical ${className}`}
+        {...props}
+      />
+      {hint && <div className="text-[11px] text-[var(--text-4)] mt-[3px]">{hint}</div>}
+      {error && <div className="text-[11px] text-[var(--red-l)] mt-[3px]">{error}</div>}
+    </div>
+  );
+};

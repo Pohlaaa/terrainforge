@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TerrainForge — Project Dashboard</title>
+<style>
+  :root {
+    --green: #2D6A4F;
+    --green-l: #74C69D;
+    --surface: #111810;
+    --surface2: #161E14;
+    --surface3: #1E2B1A;
+    --border: #2A3D26;
+    --text: #F0F4EE;
+    --text-2: #A8BAA3;
+    --text-3: #6B7E67;
+    --red: #E05C5C;
+    --red-l: #F4A0A0;
+    --amber: #D4A44C;
+    --amber-l: #F0CC7A;
+    --blue: #4A8DB5;
+    --blue-l: #89C4E1;
+    --purple: #7B68B5;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--surface);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text); }
+  h3 { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-2); margin-bottom: 0.75rem; }
+  .subtitle { color: var(--text-2); font-size: 0.85rem; }
+  .updated { color: var(--text-3); font-size: 0.75rem; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+  .header-left { display: flex; flex-direction: column; gap: 0.25rem; }
+
+  /* KPI Row */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .kpi-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+  .kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin-bottom: 0.25rem; }
+  .kpi-value { font-size: 1.75rem; font-weight: 700; }
+  .kpi-sub { font-size: 0.75rem; color: var(--text-2); margin-top: 0.25rem; }
+
+  .card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+
+  /* Progress bar */
+  .progress-track { width: 100%; height: 8px; background: var(--surface3); border-radius: 4px; overflow: hidden; margin: 0.5rem 0; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .progress-fill.green { background: var(--green-l); }
+  .progress-fill.blue { background: var(--blue-l); }
+  .progress-fill.amber { background: var(--amber-l); }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-2); }
+
+  /* Phase timeline */
+  .phase-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .phase-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; cursor: pointer; transition: border-color 0.2s; }
+  .phase-card:hover { border-color: var(--green); }
+  .phase-card.active { border-color: var(--green-l); border-width: 2px; }
+  .phase-card.future { opacity: 0.5; }
+  .phase-number { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+  .phase-name { font-size: 0.9rem; font-weight: 600; margin: 0.25rem 0; }
+  .phase-status-badge { display: inline-block; font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 10px; font-weight: 500; margin-top: 0.5rem; }
+  .badge-active { background: rgba(45, 106, 79, 0.3); color: var(--green-l); }
+  .badge-future { background: rgba(107, 126, 103, 0.2); color: var(--text-3); }
+
+  /* Sprint tasks */
+  .task-list { list-style: none; }
+  .task-item { display: grid; grid-template-columns: 28px 60px 1fr 50px auto; align-items: center; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .task-item:last-child { border-bottom: none; }
+  .task-check { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .task-check.done { background: var(--green); border-color: var(--green); }
+  .task-check.done::after { content: "✓"; color: white; font-size: 0.7rem; font-weight: 700; }
+  .task-check.in-progress { border-color: var(--blue); background: rgba(74, 141, 181, 0.15); }
+  .task-check.in-progress::after { content: "→"; color: var(--blue-l); font-size: 0.7rem; }
+  .task-id { font-family: monospace; font-size: 0.7rem; color: var(--text-3); }
+  .task-name { color: var(--text); }
+  .task-name.done { text-decoration: line-through; color: var(--text-3); }
+  .task-effort { font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 4px; text-align: center; font-weight: 600; }
+  .effort-S { background: rgba(116, 198, 157, 0.15); color: var(--green-l); }
+  .effort-M { background: rgba(212, 164, 76, 0.15); color: var(--amber-l); }
+  .effort-L { background: rgba(224, 92, 92, 0.15); color: var(--red-l); }
+  .task-notes { font-size: 0.7rem; color: var(--text-3); max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Milestones */
+  .milestone-list { list-style: none; }
+  .milestone-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; font-size: 0.82rem; }
+  .milestone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot-complete { background: var(--green-l); }
+  .dot-not-started { background: var(--text-3); opacity: 0.4; }
+  .dot-in-progress { background: var(--blue-l); }
+  .milestone-text.complete { color: var(--text-2); }
+  .milestone-text.not-started { color: var(--text-3); }
+  .milestone-date { font-size: 0.7rem; color: var(--text-3); margin-left: auto; }
+  .milestone-sprint { font-size: 0.65rem; color: var(--text-3); background: var(--surface3); padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: auto; }
+
+  /* Gate checklist */
+  .gate-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; font-size: 0.82rem; }
+  .gate-icon { font-size: 0.9rem; }
+  .gate-text.met { color: var(--green-l); }
+  .gate-text.unmet { color: var(--text-3); }
+
+  /* Completed work log */
+  .work-log { list-style: none; }
+  .work-log-item { display: flex; gap: 0.75rem; padding: 0.35rem 0; font-size: 0.8rem; border-bottom: 1px solid rgba(42, 61, 38, 0.4); }
+  .work-log-item:last-child { border-bottom: none; }
+  .work-log-date { color: var(--text-3); font-size: 0.7rem; min-width: 72px; font-family: monospace; }
+  .work-log-text { color: var(--text-2); }
+  .work-log-tag { font-size: 0.6rem; padding: 0.1rem 0.35rem; border-radius: 3px; font-weight: 600; margin-left: auto; flex-shrink: 0; }
+  .tag-arch { background: rgba(123, 104, 181, 0.2); color: #B8ADE0; }
+  .tag-feat { background: rgba(74, 141, 181, 0.2); color: var(--blue-l); }
+  .tag-infra { background: rgba(212, 164, 76, 0.2); color: var(--amber-l); }
+  .tag-docs { background: rgba(116, 198, 157, 0.2); color: var(--green-l); }
+
+  .two-col { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.5rem; }
+  .sprint-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .sprint-meta { font-size: 0.75rem; color: var(--text-3); }
+  .sprint-goal { font-size: 0.85rem; color: var(--text-2); margin-bottom: 0.75rem; padding: 0.75rem; background: var(--surface3); border-radius: 6px; border-left: 3px solid var(--green); }
+  .sprint-risk { font-size: 0.8rem; color: var(--amber-l); padding: 0.5rem 0.75rem; background: rgba(212, 164, 76, 0.08); border-radius: 6px; border-left: 3px solid var(--amber); margin-bottom: 1rem; }
+
+  .section-divider { border: none; border-top: 1px solid var(--border); margin: 0.5rem 0 1.5rem; }
+
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .phase-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .task-item { grid-template-columns: 28px 1fr 50px; }
+    .task-id, .task-notes { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>TerrainForge</h1>
+    <div class="subtitle">Project Dashboard</div>
+  </div>
+  <div class="updated" id="lastUpdated"></div>
+</div>
+<div class="kpi-row" id="kpiRow"></div>
+<h3>Phase Timeline</h3>
+<div class="phase-grid" id="phaseGrid"></div>
+<div class="two-col">
+  <div>
+    <div class="card" id="sprintCard"></div>
+    <div class="card" id="workLogCard"></div>
+  </div>
+  <div>
+    <div class="card" id="milestonesCard"></div>
+    <div class="card" id="gateCard"></div>
+  </div>
+</div>
+
+<script>
+/*
+ ╔══════════════════════════════════════════════════════════════════════╗
+ ║  PROJECT DATA — Edit this section to update the dashboard          ║
+ ║  To update: change statuses, add tasks, mark gates as met          ║
+ ║  Then refresh the browser                                          ║
+ ╚══════════════════════════════════════════════════════════════════════╝
+*/
+const PROJECT_DATA = {
+  project: "TerrainForge",
+  lastUpdated: "2026-03-26",
+  currentPhase: 1,
+
+  // ── Completed work before sprints started ──
+  completedWork: [
+    { date: "2026-03-24", text: "Prototyped full contractor MVP as single HTML file (250KB)", tag: "feat" },
+    { date: "2026-03-24", text: "Prototyped 3D landscape editor in Three.js (Phase 2 artifact)", tag: "feat" },
+    { date: "2026-03-24", text: "Created product roadmap with 4-phase plan", tag: "docs" },
+    { date: "2026-03-25", text: "Scaffolded React 18 + Vite + TypeScript project (50+ files)", tag: "arch" },
+    { date: "2026-03-25", text: "Built 20+ reusable UI components (Modal, Badge, DataTable, KPICard, etc.)", tag: "feat" },
+    { date: "2026-03-25", text: "Created all 8 page routes with real UI layouts", tag: "feat" },
+    { date: "2026-03-25", text: "Built 5 Zustand stores with seed data + localStorage persistence", tag: "arch" },
+    { date: "2026-03-25", text: "Extracted business logic to src/lib/ (manifest, workorders, alerts)", tag: "arch" },
+    { date: "2026-03-25", text: "Wrote Supabase schema: 15 tables, 55 RLS policies, multi-tenant", tag: "infra" },
+    { date: "2026-03-25", text: "Implemented Supabase auth flow (signup, login, session, protected routes)", tag: "feat" },
+    { date: "2026-03-25", text: "Built snake_case ↔ camelCase data mapping layer", tag: "arch" },
+    { date: "2026-03-25", text: "Configured Tailwind + CSS custom properties (dark theme)", tag: "feat" },
+    { date: "2026-03-26", text: "Created CLAUDE.md + 8 domain instruction files (.claude/)", tag: "docs" },
+    { date: "2026-03-26", text: "Secured Anthropic API key in .env.local", tag: "infra" },
+    { date: "2026-03-26", text: "Built project progress dashboard", tag: "docs" },
+    { date: "2026-03-26", text: "Defined Sprint 1 backlog and staging plan", tag: "docs" },
+  ],
+
+  // ── Current Sprint ──
+  currentSprint: {
+    number: 1,
+    name: "Store Wiring & Data Flow",
+    dateRange: "2026-03-27 → 2026-04-09",
+    goal: "All 8 pages pulling live data from Zustand stores, Supabase migration run and tested",
+    doneWhen: "Every page renders real store data and CRUD operations persist to Supabase",
+    risk: "Type mismatches between store shape and page props — budget time for debugging",
+    tasks: [
+      { id: "S1-1",  name: "Run Supabase migration SQL in dashboard",              effort: "S", status: "pending", notes: "001_initial_schema.sql → Supabase SQL Editor" },
+      { id: "S1-2",  name: "Wire Dashboard page to all 4 stores",                  effort: "M", status: "pending", notes: "KPIs, alerts, crew utilization, fleet status" },
+      { id: "S1-3",  name: "Wire Projects page to projectStore",                   effort: "M", status: "pending", notes: "CRUD, zone management, status updates" },
+      { id: "S1-4",  name: "Wire MaterialLibrary to materialStore",                effort: "M", status: "pending", notes: "Inventory, suppliers, search/filter" },
+      { id: "S1-5",  name: "Wire ManifestEngine to projectStore + materialStore",  effort: "L", status: "pending", notes: "Manifest generation uses lib/manifest.ts" },
+      { id: "S1-6",  name: "Wire WorkOrders to projectStore",                      effort: "M", status: "pending", notes: "Uses lib/workorders.ts for step generation" },
+      { id: "S1-7",  name: "Wire CrewManager to crewStore",                        effort: "M", status: "pending", notes: "CRUD, skill tracking, availability" },
+      { id: "S1-8",  name: "Wire EquipmentManager to equipmentStore",              effort: "M", status: "pending", notes: "CRUD, maintenance logs, alerts" },
+      { id: "S1-9",  name: "Wire PriceResearch page (placeholder data)",           effort: "S", status: "pending", notes: "AI integration is Sprint 3 — just wire UI shell" },
+      { id: "S1-10", name: "Test end-to-end Supabase data persistence",            effort: "M", status: "pending", notes: "Create, edit, delete each store → verify in Supabase" },
+      { id: "S1-11", name: "Add error boundaries + loading states",                effort: "S", status: "pending", notes: "Wrap each page, show skeletons during fetch" },
+    ]
+  },
+
+  // ── Phase Definitions ──
+  phases: [
+    {
+      number: 1,
+      name: "Foundation & MVP",
+      status: "in_progress",
+      milestones: [
+        { name: "HTML prototype complete",                          status: "complete",    completedDate: "2026-03-24" },
+        { name: "Product roadmap defined (4 phases)",               status: "complete",    completedDate: "2026-03-24" },
+        { name: "React + Vite + TypeScript scaffold",               status: "complete",    completedDate: "2026-03-25" },
+        { name: "Reusable component library (20+ components)",      status: "complete",    completedDate: "2026-03-25" },
+        { name: "All 8 page routes with real UI",                   status: "complete",    completedDate: "2026-03-25" },
+        { name: "Zustand stores with seed data + persistence",      status: "complete",    completedDate: "2026-03-25" },
+        { name: "Supabase auth (signup/login/protected routes)",    status: "complete",    completedDate: "2026-03-25" },
+        { name: "Database schema (15 tables, 55 RLS policies)",     status: "complete",    completedDate: "2026-03-25" },
+        { name: "Business logic extracted to src/lib/",             status: "complete",    completedDate: "2026-03-25" },
+        { name: "Project instructions + domain files",              status: "complete",    completedDate: "2026-03-26" },
+        { name: "API key secured + env config",                     status: "complete",    completedDate: "2026-03-26" },
+        { name: "All pages wired to Zustand stores",                status: "not_started", sprint: 1 },
+        { name: "Supabase migration run + data persistence tested", status: "not_started", sprint: 1 },
+        { name: "Error boundaries + loading states",                status: "not_started", sprint: 1 },
+        { name: "PDF manifest export",                              status: "not_started", sprint: 2 },
+        { name: "Claude API integration (price research, crew AI)", status: "not_started", sprint: 3 },
+        { name: "Stripe billing (subscription tiers)",              status: "not_started", sprint: 3 },
+        { name: "Multi-tenancy tested with 2+ accounts",            status: "not_started", sprint: 3 },
+        { name: "Pilot user onboarding (first real contractor)",    status: "not_started", sprint: 4 },
+      ],
+      gateChecklist: [
+        { item: "All 8 pages pulling live data from Zustand stores",   met: false },
+        { item: "Supabase migration run, data persisting end-to-end",  met: false },
+        { item: "PDF manifest export working",                         met: false },
+        { item: "Stripe billing collecting subscription payments",     met: false },
+        { item: "At least 1 real contractor using the app",            met: false },
+        { item: "Auth + multi-tenancy tested with 2+ accounts",        met: false },
+      ]
+    },
+    {
+      number: 2,
+      name: "3D Design Studio",
+      status: "future",
+      milestones: [
+        { name: "Three.js editor integrated with manifest engine", status: "not_started" },
+        { name: "3D terrain/plant/hardscape library",              status: "not_started" },
+        { name: "Client presentation mode",                        status: "not_started" },
+        { name: "Export to PDF/image",                             status: "not_started" },
+      ],
+      gateChecklist: [
+        { item: "5+ paying customers on Phase 1 features",    met: false },
+        { item: "3D editor integrated with manifest engine",   met: false },
+      ]
+    },
+    {
+      number: 3,
+      name: "Operations & Integrations",
+      status: "future",
+      milestones: [
+        { name: "Scheduling + time tracking",  status: "not_started" },
+        { name: "Client portal",               status: "not_started" },
+        { name: "QuickBooks integration",       status: "not_started" },
+        { name: "Stripe payouts",              status: "not_started" },
+      ],
+      gateChecklist: []
+    },
+    {
+      number: 4,
+      name: "Scale & Marketplace",
+      status: "future",
+      milestones: [
+        { name: "Supplier marketplace",    status: "not_started" },
+        { name: "Subcontractor network",   status: "not_started" },
+        { name: "White-label option",      status: "not_started" },
+      ],
+      gateChecklist: []
+    }
+  ]
+};
+
+// ── Render Functions ──
+
+function render(d) {
+  document.getElementById('lastUpdated').textContent = 'Last updated: ' + d.lastUpdated;
+
+  const phase1 = d.phases.find(p => p.number === 1);
+  const totalMs = phase1.milestones.length;
+  const doneMs = phase1.milestones.filter(m => m.status === 'complete').length;
+  const phasePct = Math.round((doneMs / totalMs) * 100);
+
+  const sprint = d.currentSprint;
+  const totalT = sprint.tasks.length;
+  const doneT = sprint.tasks.filter(t => t.status === 'complete').length;
+  const activeT = sprint.tasks.filter(t => t.status === 'in_progress').length;
+  const sprintPct = totalT > 0 ? Math.round((doneT / totalT) * 100) : 0;
+
+  const gatesMet = phase1.gateChecklist.filter(g => g.met).length;
+  const totalG = phase1.gateChecklist.length;
+
+  // KPI Row
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Phase 1 Progress</div>
+      <div class="kpi-value" style="color:var(--green-l)">${phasePct}%</div>
+      <div class="progress-track"><div class="progress-fill green" style="width:${phasePct}%"></div></div>
+      <div class="kpi-sub">${doneMs} of ${totalMs} milestones</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Sprint ${sprint.number}</div>
+      <div class="kpi-value" style="color:var(--blue-l)">${sprintPct}%</div>
+      <div class="progress-track"><div class="progress-fill blue" style="width:${sprintPct}%"></div></div>
+      <div class="kpi-sub">${doneT} done · ${activeT} active · ${totalT - doneT - activeT} pending</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Gate Criteria</div>
+      <div class="kpi-value" style="color:var(--amber-l)">${gatesMet}/${totalG}</div>
+      <div class="progress-track"><div class="progress-fill amber" style="width:${totalG > 0 ? (gatesMet/totalG)*100 : 0}%"></div></div>
+      <div class="kpi-sub">Phase 1 exit requirements</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Current Sprint</div>
+      <div class="kpi-value" style="font-size:1.1rem;color:var(--text)">${sprint.name}</div>
+      <div class="kpi-sub" style="margin-top:0.5rem">${sprint.dateRange}</div>
+    </div>`;
+
+  // Phase Grid
+  document.getElementById('phaseGrid').innerHTML = d.phases.map(p => {
+    const isActive = p.number === d.currentPhase;
+    const isFuture = p.status === 'future';
+    const cls = isActive ? 'active' : (isFuture ? 'future' : '');
+    const badgeCls = isActive ? 'badge-active' : 'badge-future';
+    const label = isActive ? 'In Progress' : 'Upcoming';
+    const mc = p.milestones ? p.milestones.length : 0;
+    const dc = p.milestones ? p.milestones.filter(m => m.status === 'complete').length : 0;
+    return `<div class="phase-card ${cls}">
+      <div class="phase-number">Phase ${p.number}</div>
+      <div class="phase-name">${p.name}</div>
+      ${mc > 0 ? `<div class="progress-track"><div class="progress-fill green" style="width:${Math.round((dc/mc)*100)}%"></div></div>
+      <div style="font-size:0.7rem;color:var(--text-3)">${dc}/${mc} milestones</div>` : ''}
+      <span class="phase-status-badge ${badgeCls}">${label}</span>
+    </div>`;
+  }).join('');
+
+  // Sprint Card
+  document.getElementById('sprintCard').innerHTML = `
+    <div class="sprint-header">
+      <h2>Sprint ${sprint.number} — ${sprint.name}</h2>
+      <div class="sprint-meta">${sprint.dateRange}</div>
+    </div>
+    <div class="sprint-goal"><strong>Goal:</strong> ${sprint.goal}</div>
+    <div class="sprint-risk"><strong>Risk:</strong> ${sprint.risk}</div>
+    <h3>Tasks</h3>
+    <ul class="task-list">
+      ${sprint.tasks.map(t => {
+        const chk = t.status === 'complete' ? 'done' : (t.status === 'in_progress' ? 'in-progress' : '');
+        const nm = t.status === 'complete' ? 'done' : '';
+        return `<li class="task-item">
+          <div class="task-check ${chk}" onclick="toggleTask('${t.id}')"></div>
+          <span class="task-id">${t.id}</span>
+          <span class="task-name ${nm}">${t.name}</span>
+          <span class="task-effort effort-${t.effort}">${t.effort}</span>
+          <span class="task-notes" title="${t.notes || ''}">${t.notes || ''}</span>
+        </li>`;
+      }).join('')}
+    </ul>
+    <div style="margin-top:1rem">
+      <div class="progress-label"><span>Sprint progress</span><span>${sprintPct}%</span></div>
+      <div class="progress-track"><div class="progress-fill blue" style="width:${sprintPct}%"></div></div>
+    </div>`;
+
+  // Completed Work Log
+  document.getElementById('workLogCard').innerHTML = `
+    <h2>Completed Work Log</h2>
+    <ul class="work-log">
+      ${d.completedWork.slice().reverse().map(w => `
+        <li class="work-log-item">
+          <span class="work-log-date">${w.date}</span>
+          <span class="work-log-text">${w.text}</span>
+          <span class="work-log-tag tag-${w.tag}">${w.tag}</span>
+        </li>`).join('')}
+    </ul>`;
+
+  // Milestones
+  document.getElementById('milestonesCard').innerHTML = `
+    <h2>Phase 1 Milestones</h2>
+    <ul class="milestone-list">
+      ${phase1.milestones.map(m => {
+        const dot = m.status === 'complete' ? 'dot-complete' : (m.status === 'in_progress' ? 'dot-in-progress' : 'dot-not-started');
+        const txt = m.status === 'complete' ? 'complete' : 'not-started';
+        const meta = m.completedDate ? `<span class="milestone-date">${m.completedDate}</span>` : (m.sprint ? `<span class="milestone-sprint">Sprint ${m.sprint}</span>` : '');
+        return `<li class="milestone-item">
+          <div class="milestone-dot ${dot}"></div>
+          <span class="milestone-text ${txt}">${m.name}</span>
+          ${meta}
+        </li>`;
+      }).join('')}
+    </ul>`;
+
+  // Gate
+  document.getElementById('gateCard').innerHTML = `
+    <h2>Phase 1 Gate</h2>
+    ${phase1.gateChecklist.map(g => `
+      <div class="gate-item">
+        <span class="gate-icon">${g.met ? '✅' : '⬜'}</span>
+        <span class="gate-text ${g.met ? 'met' : 'unmet'}">${g.item}</span>
+      </div>`).join('')}`;
+}
+
+function toggleTask(taskId) {
+  const task = PROJECT_DATA.currentSprint.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const cycle = { pending: 'in_progress', in_progress: 'complete', complete: 'pending' };
+  task.status = cycle[task.status] || 'pending';
+  render(PROJECT_DATA);
+}
+
+render(PROJECT_DATA);
+</script>
+</body>
+</html>

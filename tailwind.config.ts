@@ -1,0 +1,39 @@
+import type { Config } from 'tailwindcss'
+
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        green: '#2D6A4F',
+        'green-l': '#74C69D',
+        'green-xl': '#B7E4C7',
+        'green-bg': '#0E1A12',
+        blue: '#2563EB',
+        'blue-l': '#60A5FA',
+        purple: '#7C3AED',
+        'purple-l': '#A78BFA',
+        amber: '#D97706',
+        'amber-l': '#FCD34D',
+        red: '#DC2626',
+        'red-l': '#F87171',
+        teal: '#0D9488',
+        'teal-l': '#5EEAD4',
+        surface: '#111810',
+        'surface-2': '#161E14',
+        border: '#1E3A2A',
+        'border-2': '#2A4A38',
+        text: '#CDE8D8',
+        'text-2': '#7A9A88',
+        'text-3': '#4A6A58',
+        'text-4': '#2D4A38',
+      },
+      fontFamily: {
+        sans: ['DM Sans', 'sans-serif'],
+        serif: ['DM Serif Display', 'serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+    },
+  },
+  plugins: [],
+} satisfies Config
