@@ -9,6 +9,7 @@ import {
   computeProjectCostRaw,
 } from '@/lib/manifest';
 import type { ManifestItem } from '@/types';
+import { AlertBanner } from '@/components/shared/AlertBanner';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ function fmtQty(n: number): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const ManifestEngine: React.FC = () => {
-  const { projects, activeProjectId, setActiveProject } = useProjectStore();
+  const { projects, activeProjectId, setActiveProject, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
 
   const [view, setView] = useState<'zone' | 'consolidated'>('zone');
@@ -143,6 +144,17 @@ export const ManifestEngine: React.FC = () => {
     </tr>
   );
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-[64px]">
+        <div className="text-center">
+          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
+          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Empty / no-project state ─────────────────────────────────────────────────
   if (!project) {
     return (
@@ -183,6 +195,11 @@ export const ManifestEngine: React.FC = () => {
 
   return (
     <div>
+      {error && (
+        <div className="mb-[16px]">
+          <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
+        </div>
+      )}
       {/* ── Top bar: selector + view toggle ──────────────────────────────── */}
       <div className="flex items-end gap-[16px] mb-[20px] flex-wrap">
         <div className="flex-1 min-w-[260px]">

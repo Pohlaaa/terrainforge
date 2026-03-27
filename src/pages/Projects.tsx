@@ -11,6 +11,7 @@ import { Badge } from '@/components/shared/Badge';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { AlertBanner } from '@/components/shared/AlertBanner';
 
 type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
 
@@ -39,7 +40,7 @@ const EMPTY_FORM: NewProjectForm = {
 };
 
 export const Projects: React.FC = () => {
-  const { projects, addProject, deleteProject, toggleChecklist, setActiveProject, activeProjectId } =
+  const { projects, addProject, deleteProject, toggleChecklist, setActiveProject, activeProjectId, isLoading, error } =
     useProjectStore();
   const { materials } = useMaterialStore();
 
@@ -267,9 +268,25 @@ export const Projects: React.FC = () => {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-[64px]">
+        <div className="text-center">
+          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
+          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   // ── List view ──────────────────────────────────────────────────────────────
   return (
     <div>
+      {error && (
+        <div className="mb-[16px]">
+          <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
+        </div>
+      )}
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-[20px]">
         <div className="text-[13px] text-[var(--text-3)]">

@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/shared/Badge';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { AlertBanner } from '@/components/shared/AlertBanner';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ function formToMember(f: CrewForm): Omit<CrewMember, 'id'> {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const CrewManager: React.FC = () => {
-  const { crew, addCrewMember, updateCrewMember, deleteCrewMember } = useCrewStore();
+  const { crew, addCrewMember, updateCrewMember, deleteCrewMember, isLoading, error } = useCrewStore();
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -185,10 +186,26 @@ export const CrewManager: React.FC = () => {
     }));
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-[64px]">
+        <div className="text-center">
+          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
+          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div>
+      {error && (
+        <div className="mb-[16px]">
+          <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
+        </div>
+      )}
       {/* ── Callout banner ───────────────────────────────────────────────── */}
       <div className="border border-[var(--teal-l)] bg-gradient-to-br from-[rgba(13,148,136,.12)] to-[rgba(10,15,10,.9)] rounded-[10px] px-[20px] py-[16px] mb-[16px]">
         <div className="text-[9px] font-[700] uppercase tracking-[0.12em] text-[var(--teal-l)] mb-[6px]">

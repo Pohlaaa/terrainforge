@@ -4,11 +4,12 @@ import { useMaterialStore } from '@/stores/materialStore';
 import { generateSteps } from '@/lib/workorders';
 import { Badge } from '@/components/shared/Badge';
 import { ProgressBar } from '@/components/shared/ProgressBar';
+import { AlertBanner } from '@/components/shared/AlertBanner';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const WorkOrders: React.FC = () => {
-  const { projects, activeProjectId, setActiveProject } = useProjectStore();
+  const { projects, activeProjectId, setActiveProject, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
 
   // completedSteps[zoneId] = Set of step numbers (1-based) marked done
@@ -59,6 +60,17 @@ export const WorkOrders: React.FC = () => {
     }));
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-[64px]">
+        <div className="text-center">
+          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
+          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Empty / no-project state ──────────────────────────────────────────────
   if (!project) {
     return (
@@ -100,6 +112,11 @@ export const WorkOrders: React.FC = () => {
 
   return (
     <div>
+      {error && (
+        <div className="mb-[16px]">
+          <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
+        </div>
+      )}
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <div className="flex items-end gap-[16px] mb-[20px] flex-wrap">
         <div className="flex-1 min-w-[260px]">
