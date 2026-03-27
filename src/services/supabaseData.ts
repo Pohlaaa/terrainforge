@@ -55,15 +55,15 @@ export async function fetchProjects(): Promise<Project[]> {
       .from('projects')
       .select(`
         *,
-        zones!inner (
+        zones (
           *,
-          zone_materials!inner (
+          zone_materials (
             material_id,
-            materials!inner (name)
+            materials (name)
           ),
-          zone_equipment!inner (
+          zone_equipment (
             equipment_id,
-            equipment!inner (name)
+            equipment (name)
           )
         )
       `)
@@ -379,7 +379,7 @@ export async function fetchCrew(): Promise<CrewMember[]> {
       .from('crew_members')
       .select(`
         *,
-        crew_certifications!inner (
+        crew_certifications (
           id,
           label,
           expiry_date
@@ -548,7 +548,7 @@ export async function fetchEquipment(): Promise<Equipment[]> {
       .from('equipment')
       .select(`
         *,
-        maintenance_log!inner (
+        maintenance_log (
           id,
           service_date,
           service_type,

@@ -18,7 +18,7 @@ interface ProjectStore {
   addZone: (projectId: string, zone: Omit<Zone, 'id' | 'createdAt'>) => Promise<void>
   updateZone: (projectId: string, zoneId: string, updates: Partial<Zone>) => Promise<void>
   deleteZone: (projectId: string, zoneId: string) => Promise<void>
-  toggleChecklist: (projectId: string, key: keyof Project['checklist']) => void
+  toggleChecklist: (projectId: string, key: keyof Project['checklist']) => Promise<void>
   fetchProjects: () => Promise<void>
   getActiveProject: () => Project | null
   getProjectCost: (projectId: string) => number
@@ -275,20 +275,21 @@ export const useProjectStore = create<ProjectStore>()(
           set((state) => ({ error: err.message }))
         }
       },
-      toggleChecklist: (projectId, key) =>
+      toggleChecklist: async (projectId, key) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) return
+        const newChecklist = { ...project.checklist, [key]: !project.checklist[key] }
         set((state) => ({
           projects: state.projects.map((p) =>
-            p.id === projectId
-              ? {
-                  ...p,
-                  checklist: {
-                    ...p.checklist,
-                    [key]: !p.checklist[key],
-                  },
-                }
-              : p
+            p.id === projectId ? { ...p, checklist: newChecklist } : p
           ),
-        })),
+        }))
+        try {
+          await db.updateProject(projectId, { checklist: newChecklist })
+        } catch (err: any) {
+          set({ error: err.message })
+        }
+      },
       getActiveProject: () => {
         const state = get()
         return state.activeProjectId
