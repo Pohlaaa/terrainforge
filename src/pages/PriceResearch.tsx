@@ -4,9 +4,10 @@ import { useMaterialStore } from '@/stores/materialStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { AlertBanner } from '@/components/shared/AlertBanner';
 
 export const PriceResearch: React.FC = () => {
-  const { projects } = useProjectStore();
+  const { projects, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
 
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -34,8 +35,24 @@ export const PriceResearch: React.FC = () => {
     setHasSearched(true);
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-[64px]">
+        <div className="text-center">
+          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
+          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
+      {error && (
+        <div className="mb-[16px]">
+          <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
+        </div>
+      )}
       {/* ── Coming soon banner ────────────────────────────────────────────── */}
       <div className="border border-[var(--purple-l)] bg-gradient-to-br from-[rgba(124,58,237,.1)] to-[rgba(10,15,10,.9)] rounded-[10px] px-[20px] py-[16px] mb-[16px]">
         <div className="text-[9px] font-[700] uppercase tracking-[0.12em] text-[var(--purple-l)] mb-[6px]">

@@ -5,12 +5,24 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { getAllAlerts } from '@/lib/alerts';
 import { computeProjectCostRaw } from '@/lib/manifest';
+import { AlertBanner } from '@/components/shared/AlertBanner';
 
 export const Dashboard: React.FC = () => {
-  const { projects } = useProjectStore();
+  const { projects, isLoading, error } = useProjectStore();
   const { crew, getAvailableToday } = useCrewStore();
   const { equipment } = useEquipmentStore();
   const { materials } = useMaterialStore();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-[64px]">
+        <div className="text-center">
+          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
+          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   // Project KPIs
   const activeProjects = projects.filter(p => p.zones && p.zones.length > 0).length;
@@ -53,7 +65,13 @@ export const Dashboard: React.FC = () => {
   }));
 
   return (
-    <div className="grid grid-cols-[320px_1fr] gap-[16px] items-start">
+    <div>
+      {error && (
+        <div className="mb-[16px]">
+          <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
+        </div>
+      )}
+      <div className="grid grid-cols-[320px_1fr] gap-[16px] items-start">
       {/* LEFT COLUMN: KPIs + Alerts */}
       <div className="flex flex-col gap-[12px]">
         {/* KPI cards */}
@@ -243,6 +261,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

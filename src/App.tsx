@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/shared/ProtectedRoute'
+import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import Sidebar from '@/components/layout/Sidebar'
 import Dashboard from '@/pages/Dashboard'
 import Projects from '@/pages/Projects'
@@ -33,14 +34,14 @@ function App() {
                   <Sidebar />
                   <main className="flex-1 overflow-auto p-6">
                     <Routes>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/projects" element={<Projects />} />
-                      <Route path="/materials" element={<MaterialLibrary />} />
-                      <Route path="/manifest" element={<ManifestEngine />} />
-                      <Route path="/work-orders" element={<WorkOrders />} />
-                      <Route path="/price-research" element={<PriceResearch />} />
-                      <Route path="/crew" element={<CrewManager />} />
-                      <Route path="/equipment" element={<EquipmentManager />} />
+                      <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+                      <Route path="/projects" element={<ErrorBoundary><Projects /></ErrorBoundary>} />
+                      <Route path="/materials" element={<ErrorBoundary><MaterialLibrary /></ErrorBoundary>} />
+                      <Route path="/manifest" element={<ErrorBoundary><ManifestEngine /></ErrorBoundary>} />
+                      <Route path="/work-orders" element={<ErrorBoundary><WorkOrders /></ErrorBoundary>} />
+                      <Route path="/price-research" element={<ErrorBoundary><PriceResearch /></ErrorBoundary>} />
+                      <Route path="/crew" element={<ErrorBoundary><CrewManager /></ErrorBoundary>} />
+                      <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
                     </Routes>
                   </main>
                 </div>

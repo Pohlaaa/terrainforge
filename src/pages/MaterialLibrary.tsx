@@ -11,6 +11,7 @@ import { TabPanel } from '@/components/shared/TabPanel';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SearchFilter } from '@/components/shared/SearchFilter';
+import { AlertBanner } from '@/components/shared/AlertBanner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ const UNIT_OPTIONS = UNIT_TYPES.map(u => ({ value: u.id, label: u.label }));
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const MaterialLibrary: React.FC = () => {
-  const { materials, addMaterial, updateMaterial, deleteMaterial, adjustStock } = useMaterialStore();
+  const { materials, addMaterial, updateMaterial, deleteMaterial, adjustStock, isLoading, error } = useMaterialStore();
 
   // UI state
   const [searchTerm, setSearchTerm] = useState('');
@@ -262,9 +263,25 @@ export const MaterialLibrary: React.FC = () => {
   const adjustingMaterial = adjustMaterialId ? materials.find(m => m.id === adjustMaterialId) : null;
   const deletingMaterial = deleteMaterialId ? materials.find(m => m.id === deleteMaterialId) : null;
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-[64px]">
+        <div className="text-center">
+          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
+          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div>
+      {error && (
+        <div className="mb-[16px]">
+          <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
+        </div>
+      )}
       <TabPanel tabs={tabs} defaultTab="library">
 
         {/* ── Library Tab ──────────────────────────────────────────────────── */}
