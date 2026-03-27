@@ -118,7 +118,7 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>):
     return {
       ...toCamelCase(data),
       zones: []
-    } as Project
+    } as unknown as Project
   } catch (err: any) {
     console.error('createProject error:', err.message)
     return null
@@ -187,7 +187,7 @@ export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'cre
       ...toCamelCase(data),
       materials: [],
       equipment: []
-    } as Zone
+    } as unknown as Zone
   } catch (err: any) {
     console.error('createZone error:', err.message)
     return null
@@ -215,7 +215,7 @@ export async function updateZone(zoneId: string, updates: Partial<Zone>): Promis
       ...toCamelCase(data),
       materials: [],
       equipment: []
-    } as Zone
+    } as unknown as Zone
   } catch (err: any) {
     console.error('updateZone error:', err.message)
     return null
@@ -607,7 +607,7 @@ export async function createEquipment(equip: Omit<Equipment, 'id'>): Promise<Equ
     return {
       ...toCamelCase(data),
       maintenanceLog: []
-    } as Equipment
+    } as unknown as Equipment
   } catch (err: any) {
     console.error('createEquipment error:', err.message)
     return null
@@ -634,7 +634,7 @@ export async function updateEquipment(id: string, updates: Partial<Equipment>): 
     return {
       ...toCamelCase(data),
       maintenanceLog: []
-    } as Equipment
+    } as unknown as Equipment
   } catch (err: any) {
     console.error('updateEquipment error:', err.message)
     return null
