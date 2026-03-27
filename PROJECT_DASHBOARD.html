@@ -168,7 +168,7 @@
 */
 const PROJECT_DATA = {
   project: "TerrainForge",
-  lastUpdated: "2026-03-27",
+  lastUpdated: "2026-03-28",
   currentPhase: 1,
 
   // ── Completed work before sprints started ──
@@ -192,30 +192,31 @@ const PROJECT_DATA = {
     { date: "2026-03-27", text: "S1-3: Wired Projects page — CRUD, zone view, checklist, cost via computeProjectCostRaw()", tag: "feat" },
     { date: "2026-03-27", text: "S1-4: Wired Material Library — inventory, search/filter, stock adjustment", tag: "feat" },
     { date: "2026-03-27", text: "S1-5: Wired Manifest Engine — zone/consolidated views, cost rollup, missing material warnings", tag: "feat" },
+    { date: "2026-03-27", text: "S1-6: Wired Work Orders — zone step generation, step completion tracking", tag: "feat" },
+    { date: "2026-03-27", text: "S1-7: Wired Crew Manager — CRUD, availability toggle, skills; fixed non-functional Add button", tag: "feat" },
+    { date: "2026-03-27", text: "S1-8: Wired Equipment Manager — CRUD, maintenance logs, cert expiry alerts", tag: "feat" },
+    { date: "2026-03-27", text: "S1-9: Wired Price Research UI shell — project selector, inputs, placeholder state", tag: "feat" },
+    { date: "2026-03-27", text: "S1-10: Fixed 4 persistence bugs — toggleChecklist sync + 3 silent !inner data loss bugs in Supabase queries", tag: "infra" },
+    { date: "2026-03-28", text: "S1-11: Error boundaries + loading states across all 8 pages — Sprint 1 complete", tag: "feat" },
     { date: "2026-03-26", text: "Built project progress dashboard", tag: "docs" },
     { date: "2026-03-26", text: "Defined Sprint 1 backlog and staging plan", tag: "docs" },
   ],
 
   // ── Current Sprint ──
   currentSprint: {
-    number: 1,
-    name: "Store Wiring & Data Flow",
-    dateRange: "2026-03-27 → 2026-04-09",
-    goal: "All 8 pages pulling live data from Zustand stores, Supabase migration run and tested",
-    doneWhen: "Every page renders real store data and CRUD operations persist to Supabase",
-    risk: "Type mismatches between store shape and page props — budget time for debugging",
+    number: 2,
+    name: "PDF Export & Pilot Readiness",
+    dateRange: "2026-03-28 → 2026-04-10",
+    goal: "PDF manifest export working and app stable enough to put in front of a real contractor",
+    doneWhen: "A contractor can generate a project, build a manifest, and export a professional PDF",
+    risk: "@react-pdf/renderer bundle size and rendering complexity — test early with real data",
     tasks: [
-      { id: "S1-1",  name: "Run Supabase migration SQL in dashboard",              effort: "S", status: "complete", notes: "001_initial_schema.sql → Supabase SQL Editor" },
-      { id: "S1-2",  name: "Wire Dashboard page to all 4 stores",                  effort: "M", status: "complete", notes: "KPIs, alerts, crew utilization, fleet status" },
-      { id: "S1-3",  name: "Wire Projects page to projectStore",                   effort: "M", status: "complete", notes: "CRUD, zone management, status updates" },
-      { id: "S1-4",  name: "Wire MaterialLibrary to materialStore",                effort: "M", status: "complete", notes: "Inventory, suppliers, search/filter" },
-      { id: "S1-5",  name: "Wire ManifestEngine to projectStore + materialStore",  effort: "L", status: "complete", notes: "Manifest generation uses lib/manifest.ts" },
-      { id: "S1-6",  name: "Wire WorkOrders to projectStore",                      effort: "M", status: "pending", notes: "Uses lib/workorders.ts for step generation" },
-      { id: "S1-7",  name: "Wire CrewManager to crewStore",                        effort: "M", status: "pending", notes: "CRUD, skill tracking, availability" },
-      { id: "S1-8",  name: "Wire EquipmentManager to equipmentStore",              effort: "M", status: "pending", notes: "CRUD, maintenance logs, alerts" },
-      { id: "S1-9",  name: "Wire PriceResearch page (placeholder data)",           effort: "S", status: "pending", notes: "AI integration is Sprint 3 — just wire UI shell" },
-      { id: "S1-10", name: "Test end-to-end Supabase data persistence",            effort: "M", status: "pending", notes: "Create, edit, delete each store → verify in Supabase" },
-      { id: "S1-11", name: "Add error boundaries + loading states",                effort: "S", status: "pending", notes: "Wrap each page, show skeletons during fetch" },
+      { id: "S2-1", name: "Install and configure @react-pdf/renderer",                    effort: "S", status: "pending", notes: "Verify it builds cleanly in the Vite environment" },
+      { id: "S2-2", name: "Build PDF manifest template (materials, quantities, costs)",   effort: "L", status: "pending", notes: "Matches the ManifestEngine layout, branded header" },
+      { id: "S2-3", name: "Build PDF crew packet template (assignments, work order steps)", effort: "M", status: "pending", notes: "One page per zone, crew + equipment assignments" },
+      { id: "S2-4", name: "Add export buttons to ManifestEngine and WorkOrders pages",    effort: "S", status: "pending", notes: "Download triggers PDF generation client-side" },
+      { id: "S2-5", name: "Full app smoke test — create project end-to-end",              effort: "M", status: "pending", notes: "New project → zones → manifest → work order → PDF export" },
+      { id: "S2-6", name: "Fix any bugs found in smoke test",                             effort: "M", status: "pending", notes: "Triage and fix before pilot" },
     ]
   },
 
@@ -237,9 +238,9 @@ const PROJECT_DATA = {
         { name: "Business logic extracted to src/lib/",             status: "complete",    completedDate: "2026-03-25" },
         { name: "Project instructions + domain files",              status: "complete",    completedDate: "2026-03-26" },
         { name: "API key secured + env config",                     status: "complete",    completedDate: "2026-03-26" },
-        { name: "All pages wired to Zustand stores",                status: "in_progress", sprint: 1 },
+        { name: "All pages wired to Zustand stores",                status: "complete",    completedDate: "2026-03-27" },
         { name: "Supabase migration run + data persistence tested", status: "complete",    completedDate: "2026-03-27" },
-        { name: "Error boundaries + loading states",                status: "not_started", sprint: 1 },
+        { name: "Error boundaries + loading states",                status: "complete",    completedDate: "2026-03-28" },
         { name: "PDF manifest export",                              status: "not_started", sprint: 2 },
         { name: "Claude API integration (price research, crew AI)", status: "not_started", sprint: 3 },
         { name: "Stripe billing (subscription tiers)",              status: "not_started", sprint: 3 },
@@ -247,7 +248,7 @@ const PROJECT_DATA = {
         { name: "Pilot user onboarding (first real contractor)",    status: "not_started", sprint: 4 },
       ],
       gateChecklist: [
-        { item: "All 8 pages pulling live data from Zustand stores",   met: false },
+        { item: "All 8 pages pulling live data from Zustand stores",   met: true },
         { item: "Supabase migration run, data persisting end-to-end",  met: true },
         { item: "PDF manifest export working",                         met: false },
         { item: "Stripe billing collecting subscription payments",     met: false },
