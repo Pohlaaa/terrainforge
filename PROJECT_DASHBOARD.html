@@ -168,7 +168,7 @@
 */
 const PROJECT_DATA = {
   project: "TerrainForge",
-  lastUpdated: "2026-03-26",
+  lastUpdated: "2026-03-27",
   currentPhase: 1,
 
   // ── Completed work before sprints started ──
@@ -187,6 +187,8 @@ const PROJECT_DATA = {
     { date: "2026-03-25", text: "Configured Tailwind + CSS custom properties (dark theme)", tag: "feat" },
     { date: "2026-03-26", text: "Created CLAUDE.md + 8 domain instruction files (.claude/)", tag: "docs" },
     { date: "2026-03-26", text: "Secured Anthropic API key in .env.local", tag: "infra" },
+    { date: "2026-03-27", text: "S1-1: Ran Supabase migration SQL — 15 tables live in production", tag: "infra" },
+    { date: "2026-03-27", text: "S1-2: Wired Dashboard page to all 4 Zustand stores + alerts", tag: "feat" },
     { date: "2026-03-26", text: "Built project progress dashboard", tag: "docs" },
     { date: "2026-03-26", text: "Defined Sprint 1 backlog and staging plan", tag: "docs" },
   ],
@@ -200,8 +202,8 @@ const PROJECT_DATA = {
     doneWhen: "Every page renders real store data and CRUD operations persist to Supabase",
     risk: "Type mismatches between store shape and page props — budget time for debugging",
     tasks: [
-      { id: "S1-1",  name: "Run Supabase migration SQL in dashboard",              effort: "S", status: "pending", notes: "001_initial_schema.sql → Supabase SQL Editor" },
-      { id: "S1-2",  name: "Wire Dashboard page to all 4 stores",                  effort: "M", status: "pending", notes: "KPIs, alerts, crew utilization, fleet status" },
+      { id: "S1-1",  name: "Run Supabase migration SQL in dashboard",              effort: "S", status: "complete", notes: "001_initial_schema.sql → Supabase SQL Editor" },
+      { id: "S1-2",  name: "Wire Dashboard page to all 4 stores",                  effort: "M", status: "complete", notes: "KPIs, alerts, crew utilization, fleet status" },
       { id: "S1-3",  name: "Wire Projects page to projectStore",                   effort: "M", status: "pending", notes: "CRUD, zone management, status updates" },
       { id: "S1-4",  name: "Wire MaterialLibrary to materialStore",                effort: "M", status: "pending", notes: "Inventory, suppliers, search/filter" },
       { id: "S1-5",  name: "Wire ManifestEngine to projectStore + materialStore",  effort: "L", status: "pending", notes: "Manifest generation uses lib/manifest.ts" },
@@ -232,8 +234,8 @@ const PROJECT_DATA = {
         { name: "Business logic extracted to src/lib/",             status: "complete",    completedDate: "2026-03-25" },
         { name: "Project instructions + domain files",              status: "complete",    completedDate: "2026-03-26" },
         { name: "API key secured + env config",                     status: "complete",    completedDate: "2026-03-26" },
-        { name: "All pages wired to Zustand stores",                status: "not_started", sprint: 1 },
-        { name: "Supabase migration run + data persistence tested", status: "not_started", sprint: 1 },
+        { name: "All pages wired to Zustand stores",                status: "in_progress", sprint: 1 },
+        { name: "Supabase migration run + data persistence tested", status: "complete",    completedDate: "2026-03-27" },
         { name: "Error boundaries + loading states",                status: "not_started", sprint: 1 },
         { name: "PDF manifest export",                              status: "not_started", sprint: 2 },
         { name: "Claude API integration (price research, crew AI)", status: "not_started", sprint: 3 },
@@ -243,7 +245,7 @@ const PROJECT_DATA = {
       ],
       gateChecklist: [
         { item: "All 8 pages pulling live data from Zustand stores",   met: false },
-        { item: "Supabase migration run, data persisting end-to-end",  met: false },
+        { item: "Supabase migration run, data persisting end-to-end",  met: true },
         { item: "PDF manifest export working",                         met: false },
         { item: "Stripe billing collecting subscription payments",     met: false },
         { item: "At least 1 real contractor using the app",            met: false },
