@@ -1,154 +1,154 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useProjectStore } from '@/stores/projectStore';
+import { useMaterialStore } from '@/stores/materialStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Badge } from '@/components/shared/Badge';
-import type { Project, Material, PriceResult } from '@/types';
 
-interface PriceResearchProps {
-  projects?: Project[];
-  materials?: Material[];
-  priceResults?: PriceResult[];
-  onSelectProject?: (projectId: string) => void;
-  onBatchResearch?: (projectId: string, location: string) => void;
-  onSingleResearch?: (materialId: string, location: string, query?: string) => void;
-}
+export const PriceResearch: React.FC = () => {
+  const { projects } = useProjectStore();
+  const { materials } = useMaterialStore();
 
-export const PriceResearch: React.FC<PriceResearchProps> = ({
-  projects = [],
-  materials = [],
-  priceResults = [],
-  onSelectProject,
-  onBatchResearch,
-  onSingleResearch,
-}) => {
-  // TODO: Connect to useProjectStore(), useMaterialStore()
-  const [selectedProject, setSelectedProject] = useState<string>('');
-  const [location, setLocation] = useState<string>('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [location, setLocation] = useState('');
+  const [materialType, setMaterialType] = useState('');
   const [showSinglePanel, setShowSinglePanel] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState<string>('');
-  const [customQuery, setCustomQuery] = useState<string>('');
-  const [isResearching, setIsResearching] = useState(false);
+  const [selectedMaterialId, setSelectedMaterialId] = useState('');
+  const [customQuery, setCustomQuery] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const activeProject = projects.find((p) => p.id === selectedProject);
-  const projectMaterialIds: string[] = [];
+  const activeProject = useMemo(
+    () => projects.find(p => p.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId]
+  );
 
-  const handleBatchResearch = async () => {
-    if (!selectedProject || !location) return;
-    setIsResearching(true);
-    await onBatchResearch?.(selectedProject, location);
-    setIsResearching(false);
-  };
+  // Unique material IDs across all zones in the selected project
+  const projectMaterialIds = useMemo(() => {
+    if (!activeProject) return [];
+    const ids = new Set<string>();
+    activeProject.zones.forEach(z => z.materials.forEach(m => ids.add(m.materialId)));
+    return Array.from(ids);
+  }, [activeProject]);
 
-  const handleSingleResearch = async () => {
-    if (!selectedMaterial || !location) return;
-    await onSingleResearch?.(selectedMaterial, location, customQuery || undefined);
-  };
+  function handleSearch() {
+    setHasSearched(true);
+  }
 
   return (
     <div>
-      {/* Setup card */}
+      {/* ── Coming soon banner ────────────────────────────────────────────── */}
+      <div className="border border-[var(--purple-l)] bg-gradient-to-br from-[rgba(124,58,237,.1)] to-[rgba(10,15,10,.9)] rounded-[10px] px-[20px] py-[16px] mb-[16px]">
+        <div className="text-[9px] font-[700] uppercase tracking-[0.12em] text-[var(--purple-l)] mb-[6px]">
+          AI Feature — Sprint 3
+        </div>
+        <div className="text-[13px] text-[var(--text-2)] leading-[1.7]">
+          Price Research uses the <strong>Claude AI</strong> to search for real supplier
+          prices near your location. Select a project to preview its materials — live
+          pricing search will be activated in Sprint 3.
+        </div>
+      </div>
+
+      {/* ── Setup card ───────────────────────────────────────────────────── */}
       <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[20px] mb-[16px]">
-        <div className="flex items-start justify-between mb-[18px]">
-          <div>
-            <h2 className="text-[14px] font-[700] text-[var(--text)]">
-              Supplier Price Research
-            </h2>
-            <p className="text-[12px] text-[var(--text-3)] mt-[4px]">
-              Load a project's materials and find the best local prices in one batch
-            </p>
-          </div>
+        <div className="mb-[18px]">
+          <h2 className="text-[14px] font-[700] text-[var(--text)]">Supplier Price Research</h2>
+          <p className="text-[12px] text-[var(--text-3)] mt-[4px]">
+            Load a project's materials and find the best local prices in one batch
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-[14px] mb-[14px]">
           <Select
             label="Project to Research"
+            required
+            value={selectedProjectId}
             options={[
               { value: '', label: '— Select a project —' },
-              ...projects.map((p) => ({ value: p.id, label: p.name })),
+              ...projects.map(p => ({ value: p.id, label: `${p.name} · ${p.client}` })),
             ]}
-            value={selectedProject}
-            onChange={(e) => {
-              setSelectedProject(e.target.value);
-              onSelectProject?.(e.target.value);
+            onChange={e => {
+              setSelectedProjectId(e.target.value);
+              setHasSearched(false);
             }}
-            required
           />
           <Input
             label="Your Location"
-            placeholder="e.g. Omaha, NE or 68102"
+            placeholder="e.g. Austin, TX or 78701"
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            onChange={e => setLocation(e.target.value)}
             hint="City, state or zip — used to find nearby suppliers"
             required
           />
         </div>
 
+        <div className="mb-[14px]">
+          <Input
+            label="Material Type (optional)"
+            placeholder="e.g. concrete pavers, decomposed granite, sod…"
+            value={materialType}
+            onChange={e => setMaterialType(e.target.value)}
+            hint="Narrow the search to a specific material type"
+          />
+        </div>
+
+        {/* Project materials preview */}
         {activeProject && (
           <>
-            <div className="h-px bg-[var(--border)] my-[14px]"></div>
-
+            <div className="h-px bg-[var(--border)] my-[14px]" />
             <div className="text-[10px] font-[700] uppercase tracking-[0.1em] text-[var(--text-3)] mb-[10px]">
-              Materials in This Project
+              Materials in this project ({projectMaterialIds.length})
             </div>
 
             {projectMaterialIds.length === 0 ? (
-              <div className="text-[12px] text-[var(--text-3)] py-[12px]">
-                No materials assigned to this project
+              <div className="text-[12px] text-[var(--text-3)] py-[8px]">
+                No materials assigned to this project's zones yet
               </div>
             ) : (
-              <>
-                <div className="flex flex-wrap gap-[6px] mb-[14px]">
-                  {projectMaterialIds.map((matId: string) => {
-                    const mat = materials.find((m) => m.id === matId);
-                    return (
-                      <span
-                        key={matId}
-                        className="inline-flex items-center gap-[5px] bg-[var(--surface3)] border border-[var(--border)] rounded-[5px] px-[8px] py-[3px] text-[11px] text-[var(--text-2)]"
-                      >
-                        {mat?.name || `Material ${matId.slice(0, 8)}`}
-                      </span>
-                    );
-                  })}
-                </div>
-
-                <div className="flex gap-[8px] items-center">
-                  <Button
-                    variant="primary"
-                    onClick={handleBatchResearch}
-                    disabled={!location}
-                  >
-                    Research All Prices
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowSinglePanel(!showSinglePanel)}
-                  >
-                    Research One Material
-                  </Button>
-                  {isResearching && (
-                    <span className="text-[12px] text-[var(--text-3)] ml-[8px]">
-                      Researching...
+              <div className="flex flex-wrap gap-[6px] mb-[14px]">
+                {projectMaterialIds.map(matId => {
+                  const mat = materials.find(m => m.id === matId);
+                  return (
+                    <span
+                      key={matId}
+                      className="inline-flex items-center bg-[var(--surface3)] border border-[var(--border)] rounded-[5px] px-[8px] py-[3px] text-[11px] text-[var(--text-2)]"
+                    >
+                      {mat?.name ?? matId.slice(0, 12)}
                     </span>
-                  )}
-                </div>
-              </>
+                  );
+                })}
+              </div>
             )}
           </>
         )}
+
+        {/* Action buttons */}
+        <div className="flex gap-[8px] items-center flex-wrap">
+          <Button
+            variant="primary"
+            onClick={handleSearch}
+            disabled={!location.trim()}
+            title={!location.trim() ? 'Enter a location first' : 'Search for prices (Sprint 3)'}
+          >
+            🔍 Research All Prices
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setShowSinglePanel(!showSinglePanel); setHasSearched(false); }}
+          >
+            Research One Material
+          </Button>
+        </div>
       </div>
 
-      {/* Single material research panel */}
+      {/* ── Single material panel ─────────────────────────────────────────── */}
       {showSinglePanel && (
         <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[20px] mb-[16px]">
           <div className="flex items-center justify-between mb-[14px]">
-            <h3 className="text-[13px] font-[700] text-[var(--text)]">
-              Single Material Research
-            </h3>
+            <h3 className="text-[13px] font-[700] text-[var(--text)]">Single Material Research</h3>
             <button
               onClick={() => setShowSinglePanel(false)}
-              className="bg-none border-none text-[var(--text-3)] text-[16px] cursor-pointer hover:text-[var(--text)]"
+              className="bg-transparent border-none text-[var(--text-3)] text-[16px] cursor-pointer hover:text-[var(--text)]"
             >
               ✕
             </button>
@@ -157,103 +157,64 @@ export const PriceResearch: React.FC<PriceResearchProps> = ({
           <div className="grid grid-cols-2 gap-[14px] mb-[12px]">
             <Select
               label="Material"
+              value={selectedMaterialId}
               options={[
                 { value: '', label: '— Select from your library —' },
-                ...materials.map((m) => ({ value: m.id, label: m.name })),
+                ...materials.map(m => ({ value: m.id, label: m.name })),
               ]}
-              value={selectedMaterial}
-              onChange={(e) => setSelectedMaterial(e.target.value)}
+              onChange={e => setSelectedMaterialId(e.target.value)}
             />
             <Input
               label="Custom Search Query (optional)"
               placeholder="e.g. bulk bluestone pavers wholesale"
               value={customQuery}
-              onChange={(e) => setCustomQuery(e.target.value)}
+              onChange={e => setCustomQuery(e.target.value)}
             />
           </div>
 
-          <Button variant="primary" size="sm" onClick={handleSingleResearch}>
+          <Button variant="primary" size="sm" onClick={handleSearch}>
             Research
           </Button>
         </div>
       )}
 
-      {/* Results */}
-      {priceResults.length > 0 && (
-        <div className="space-y-[16px]">
-          <h3 className="text-[14px] font-[700] text-[var(--text)] mt-[20px]">
-            Research Results
-          </h3>
-
-          {priceResults.map((result) => {
-            const material = materials.find((m) => m.id === result.materialId);
-            return (
-              <div
-                key={result.id}
-                className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]"
-              >
-                <div className="flex items-center justify-between mb-[12px]">
-                  <div>
-                    <h4 className="text-[13px] font-[700] text-[var(--text)]">
-                      {material?.name || `Material ${result.materialId.slice(0, 8)}`}
-                    </h4>
-                    <p className="text-[11px] text-[var(--text-3)] mt-[2px]">
-                      {result.supplier}
-                    </p>
-                  </div>
-                  {1 && (
-                    <Badge variant="green">{Math.round(1 * 100)}%</Badge>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-3 gap-[12px] mb-[12px]">
-                  <div>
-                    <div className="text-[10px] text-[var(--text-4)] uppercase font-[700] mb-[4px]">
-                      Price
-                    </div>
-                    <div className="text-[16px] font-serif text-[var(--green-l)]">
-                      ${result.price.toFixed(2)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-[var(--text-4)] uppercase font-[700] mb-[4px]">
-                      Quantity
-                    </div>
-                    <div className="text-[14px] text-[var(--text)]">
-                      {1} {result.unit}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-[var(--text-4)] uppercase font-[700] mb-[4px]">
-                      Updated
-                    </div>
-                    <div className="text-[12px] text-[var(--text-2)]">
-                      {new Date(result.date).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-
-                {true && (
-                  <a
-                    href="#"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[12px] text-[var(--blue-l)] hover:underline"
-                  >
-                    View Supplier →
-                  </a>
-                )}
-              </div>
-            );
-          })}
+      {/* ── Coming soon results state ─────────────────────────────────────── */}
+      {hasSearched && (
+        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[32px] text-center">
+          <div className="text-[32px] mb-[12px] opacity-40">🔍</div>
+          <div className="text-[14px] font-[700] text-[var(--text)] mb-[6px]">
+            AI Price Search — Coming in Sprint 3
+          </div>
+          <div className="text-[12px] text-[var(--text-3)] leading-[1.7] max-w-[460px] mx-auto">
+            When activated, Claude will search supplier websites for real-time pricing
+            near <strong className="text-[var(--text-2)]">{location || 'your location'}</strong>
+            {activeProject ? ` for ${projectMaterialIds.length} material${projectMaterialIds.length !== 1 ? 's' : ''} in ${activeProject.name}` : ''}.
+            Results will include supplier name, price, unit, and a direct link.
+          </div>
+          <div className="mt-[16px] flex gap-[8px] justify-center flex-wrap">
+            <span className="inline-flex items-center gap-[6px] bg-[var(--surface3)] border border-[var(--border)] rounded-[6px] px-[10px] py-[5px] text-[11px] text-[var(--text-3)]">
+              ✓ Project selector — ready
+            </span>
+            <span className="inline-flex items-center gap-[6px] bg-[var(--surface3)] border border-[var(--border)] rounded-[6px] px-[10px] py-[5px] text-[11px] text-[var(--text-3)]">
+              ✓ Location input — ready
+            </span>
+            <span className="inline-flex items-center gap-[6px] bg-[var(--surface3)] border border-[var(--border)] rounded-[6px] px-[10px] py-[5px] text-[11px] text-[var(--text-3)]">
+              ✓ Material list — ready
+            </span>
+            <span className="inline-flex items-center gap-[6px] bg-[rgba(124,58,237,.15)] border border-[var(--purple-l)] rounded-[6px] px-[10px] py-[5px] text-[11px] text-[var(--purple-l)]">
+              ⏳ Claude API call — Sprint 3
+            </span>
+          </div>
         </div>
       )}
 
-      {priceResults.length === 0 && !showSinglePanel && (
+      {/* ── Default empty state ───────────────────────────────────────────── */}
+      {!hasSearched && !showSinglePanel && (
         <div className="text-center py-[48px] px-[24px] text-[var(--text-3)]">
-          <div className="text-[14px]">No research results yet</div>
-          <div className="text-[12px] mt-[8px]">
-            Select a project and location to start researching prices
+          <div className="text-[40px] mb-[12px] opacity-30">📊</div>
+          <div className="text-[14px] font-[600] text-[var(--text-2)] mb-[6px]">No results yet</div>
+          <div className="text-[12px]">
+            Select a project and enter your location, then click Research All Prices
           </div>
         </div>
       )}
