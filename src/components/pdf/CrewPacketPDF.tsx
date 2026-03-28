@@ -459,6 +459,11 @@ export const CrewPacketPDF: React.FC<CrewPacketPDFProps> = ({
     year: 'numeric', month: 'long', day: 'numeric',
   });
 
+  // Build zone ID → name map so dependency IDs render as human-readable names
+  const zoneNameMap: Record<string, string> = Object.fromEntries(
+    zonePackets.map(({ zone }) => [zone.id, zone.name])
+  );
+
   return (
     <Document
       title={`Crew Packet — ${project.name}`}
@@ -596,7 +601,7 @@ export const CrewPacketPDF: React.FC<CrewPacketPDFProps> = ({
           {zone.dependencies && zone.dependencies.length > 0 && (
             <View style={s.depsRow}>
               <Text style={s.depsLabel}>⚠ WAIT FOR:</Text>
-              <Text style={s.depsText}>{zone.dependencies.join(', ')}</Text>
+              <Text style={s.depsText}>{zone.dependencies.map(id => zoneNameMap[id] ?? id).join(', ')}</Text>
             </View>
           )}
 

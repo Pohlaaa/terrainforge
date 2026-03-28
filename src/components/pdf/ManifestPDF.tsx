@@ -22,6 +22,8 @@ export interface ManifestPDFProps {
   consolidatedManifest: ManifestItem[];
   totalCost: number;
   generatedAt?: string;
+  /** Map of crew member ID → display name for resolving zone.crew */
+  crewLookup?: Record<string, string>;
 }
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -398,6 +400,7 @@ export const ManifestPDF: React.FC<ManifestPDFProps> = ({
   consolidatedManifest,
   totalCost,
   generatedAt,
+  crewLookup = {},
 }) => {
   const dateStr = generatedAt ?? new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -488,7 +491,7 @@ export const ManifestPDF: React.FC<ManifestPDFProps> = ({
               </Text>
               <Text style={s.zoneMeta}>
                 {zone.area.toLocaleString()} sqft  ·  {(zone.perimeter || 0).toLocaleString()} lnft perimeter
-                {zone.crew ? `  ·  Crew: ${zone.crew}` : ''}
+                {zone.crew ? `  ·  Crew: ${crewLookup[zone.crew] ?? zone.crew}` : ''}
               </Text>
             </View>
 
