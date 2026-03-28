@@ -8,10 +8,14 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    dedupe: ['react', 'react-dom'],
   },
   server: {
     port: 3000,
     open: true,
+  },
+  optimizeDeps: {
+    include: ['@react-pdf/renderer'],
   },
   build: {
     outDir: 'dist',
