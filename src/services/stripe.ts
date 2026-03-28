@@ -66,6 +66,34 @@ export async function createCheckoutSession(
   window.location.href = data.url;
 }
 
+// ── Customer Portal ───────────────────────────────────────────────────────────
+
+/**
+ * Open the Stripe Customer Portal for the given org. The portal lets the
+ * customer update their payment method, view invoices, and cancel/change plans.
+ *
+ * Requires a `create-portal-session` Supabase Edge Function that creates a
+ * Stripe Billing Portal session and returns { url }.
+ *
+ * @param orgId  The org's UUID.
+ */
+export async function createPortalSession(orgId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke<{ url: string }>(
+    'create-portal-session',
+    { body: { org_id: orgId } }
+  );
+
+  if (error) {
+    throw new Error(`Failed to create portal session: ${error.message}`);
+  }
+
+  if (!data?.url) {
+    throw new Error('No portal URL returned from Edge Function');
+  }
+
+  window.location.href = data.url;
+}
+
 // ── Subscription status ───────────────────────────────────────────────────────
 
 /**
