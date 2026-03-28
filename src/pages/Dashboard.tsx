@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
@@ -62,6 +63,14 @@ export const Dashboard: React.FC = () => {
     assigned: assignedCrewIds.has(m.id),
     bookedToday: bookedTodayIds.has(m.id),
   }));
+
+  // Active projects list for summary widget (not fully complete, up to 5)
+  const activeProjectList = projects
+    .filter(p => {
+      const checks = Object.values(p.checklist);
+      return checks.filter(Boolean).length < checks.length;
+    })
+    .slice(0, 5);
 
   // Equipment rows for fleet widget
   const equipmentRows = equipment.slice(0, 5).map(e => ({
@@ -160,23 +169,55 @@ export const Dashboard: React.FC = () => {
 
       {/* RIGHT COLUMN: Map + Crew + Fleet */}
       <div className="flex flex-col gap-[12px]">
-        {/* Map widget */}
+        {/* Active Projects Summary widget */}
         <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
           <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
-            <div>
-              <div className="text-[12px] font-[700] text-[var(--text)]">
-                Active Projects — Map View
-              </div>
-              <div className="text-[10px] text-[var(--text-4)] mt-[1px]">
-                Leaflet integration coming soon
-              </div>
-            </div>
-            <span className="text-[11px] text-[var(--text-3)]">
-              {activeProjects} projects
-            </span>
+            <div className="text-[12px] font-[700] text-[var(--text)]">Active Projects</div>
+            <Link
+              to="/projects"
+              className="text-[11px] text-[var(--green-l)] hover:underline"
+            >
+              View all →
+            </Link>
           </div>
-          <div className="h-[320px] bg-[var(--surface3)] flex items-center justify-center text-[var(--text-3)]">
-            Map placeholder
+          <div className="p-[14px]">
+            {activeProjectList.length === 0 ? (
+              <div className="text-center py-[40px] text-[var(--text-3)]">
+                <div className="text-[32px] mb-[10px] opacity-30">⊞</div>
+                <div className="text-[13px] mb-[8px]">No active projects</div>
+                <Link to="/projects" className="text-[12px] text-[var(--green-l)] hover:underline">
+                  Create your first project →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-[8px]">
+                {activeProjectList.map((project) => {
+                  const checks = Object.values(project.checklist);
+                  const completedCount = checks.filter(Boolean).length;
+                  return (
+                    <div
+                      key={project.id}
+                      className="bg-[var(--surface3)] border border-[var(--border)] rounded-[8px] px-[14px] py-[10px]"
+                    >
+                      <div className="flex items-center justify-between mb-[4px]">
+                        <span className="text-[13px] font-[600] text-[var(--text)] truncate">
+                          {project.name}
+                        </span>
+                        <span className="text-[12px] text-[var(--green-l)] font-[600] ml-[8px] flex-shrink-0">
+                          ${(project.budget / 1000).toFixed(1)}k
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-[var(--text-3)]">
+                        <span className="truncate">{project.client}</span>
+                        <span className="ml-[8px] flex-shrink-0 text-[var(--text-4)]">
+                          {completedCount}/8 checklist
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
