@@ -93,6 +93,24 @@ export const Sidebar: React.FC = () => {
           ))}
       </div>
 
+      {/* Account group */}
+      <div className="border-t border-[var(--border)]">
+        <div className="px-[12px] py-[14px] text-[9px] font-[700] uppercase tracking-[0.14em] text-[var(--text-4)]">
+          Account
+        </div>
+        <Link
+          to="/billing"
+          className={`w-full text-left px-[14px] py-[9px] text-[13px] border-l-[3px] flex items-center gap-[10px] transition-all duration-180 block ${
+            location.pathname === '/billing'
+              ? 'text-[var(--green-l)] bg-[rgba(45,106,79,.15)] border-l-[var(--green-l)]'
+              : 'text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[rgba(45,106,79,.1)] border-l-transparent'
+          }`}
+        >
+          <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: '#A78BFA' }}></span>
+          Billing
+        </Link>
+      </div>
+
       {/* User Section & Active Project */}
       <div className="px-[16px] py-[16px] border-t border-[var(--border)] space-y-3">
         {/* User Info */}

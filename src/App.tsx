@@ -11,6 +11,7 @@ import WorkOrders from '@/pages/WorkOrders'
 import PriceResearch from '@/pages/PriceResearch'
 import CrewManager from '@/pages/CrewManager'
 import EquipmentManager from '@/pages/EquipmentManager'
+import Billing from '@/pages/Billing'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
 import ForgotPassword from '@/pages/ForgotPassword'
@@ -42,6 +43,7 @@ function App() {
                       <Route path="/price-research" element={<ErrorBoundary><PriceResearch /></ErrorBoundary>} />
                       <Route path="/crew" element={<ErrorBoundary><CrewManager /></ErrorBoundary>} />
                       <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
+                      <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
                     </Routes>
                   </main>
                 </div>
