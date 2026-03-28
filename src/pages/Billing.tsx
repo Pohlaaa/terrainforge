@@ -7,7 +7,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrgStore } from '@/stores/orgStore';
 import { supabase } from '@/services/supabase';
 import {
   createCheckoutSession,
@@ -97,6 +99,8 @@ const TIER_RANK: Record<SubscriptionTier, number> = {
 
 const Billing: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fetchOrg = useOrgStore((s) => s.fetchOrg);
 
   // Subscription data from the organizations table
   const [subStatus, setSubStatus] = useState<SubscriptionStatus>('trialing');
@@ -108,12 +112,27 @@ const Billing: React.FC = () => {
   const [checkingOut, setCheckingOut] = useState<SubscriptionTier | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   /**
    * Phase 1 MVP: user.id doubles as the org ID — every new sign-up creates
    * one org. Will be replaced with an explicit org lookup in Phase 3.
    */
   const orgId = user?.id ?? '';
+
+  // ── Handle post-Stripe redirect ────────────────────────────────────────────
+
+  useEffect(() => {
+    const session = searchParams.get('session');
+    if (session === 'success') {
+      setCheckoutSuccess(true);
+      // Strip the param from the URL so a hard-refresh doesn't re-show it
+      setSearchParams({}, { replace: true });
+      // Re-fetch org so orgStore (and AppLayout banners) reflect the new status
+      if (orgId) fetchOrg(orgId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Fetch billing data ─────────────────────────────────────────────────────
 
@@ -127,7 +146,7 @@ const Billing: React.FC = () => {
       const { data, error } = await supabase
         .from('organizations')
         .select('subscription_status, subscription_tier, trial_ends_at')
-        .eq('id', orgId)
+        .eq('owner_id', orgId)
         .single();
 
       if (!error && data) {
@@ -229,6 +248,28 @@ const Billing: React.FC = () => {
       />
 
       {/* ── Banners ─────────────────────────────────────────────────────────── */}
+
+      {/* Checkout success */}
+      {checkoutSuccess && (
+        <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[rgba(116,198,157,.1)] border border-[rgba(116,198,157,.4)] flex items-center justify-between gap-[12px]">
+          <div className="flex items-center gap-[12px]">
+            <span className="text-[18px] flex-shrink-0">✅</span>
+            <div>
+              <div className="text-[13px] font-[600] text-[var(--green-l)]">Subscription activated!</div>
+              <div className="text-[11px] text-[var(--text-3)] mt-[2px]">
+                You now have full access. Your plan details are updated below.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setCheckoutSuccess(false)}
+            aria-label="Dismiss"
+            className="flex-shrink-0 text-[var(--green-l)] hover:text-[var(--text)] text-[16px] leading-none transition-colors bg-transparent border-none cursor-pointer p-[2px]"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Trial ending soon */}
       {showUrgentBanner && (

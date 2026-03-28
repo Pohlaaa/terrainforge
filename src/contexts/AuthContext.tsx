@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabase'
+import { useOrgStore } from '@/stores/orgStore'
 
 interface AuthContextType {
   user: User | null
@@ -77,6 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+    // Clear cached org/billing data so the next user starts fresh
+    useOrgStore.getState().clearOrg()
   }
 
   const resetPassword = async (email: string) => {
