@@ -265,6 +265,28 @@ export interface WorkOrderStep {
   text: string;
 }
 
+// ── AI / Price Research ───────────────────────────────────────────────────────
+
+/**
+ * One row in the structured price estimate returned by Claude.
+ * Mirrors the JSON schema specified in the price research prompt.
+ */
+export interface PriceEstimate {
+  supplierType: string;
+  unit: string;
+  priceLow: number;
+  priceHigh: number;
+  notes: string;
+}
+
+/**
+ * A cached price research result stored in localStorage.
+ */
+export interface PriceCacheEntry {
+  timestamp: number;
+  results: PriceEstimate[];
+}
+
 // ── Billing ───────────────────────────────────────────────────────────────────
 
 /** Mirrors the subscription_status column on the organizations table. */
