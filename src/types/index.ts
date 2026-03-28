@@ -287,6 +287,24 @@ export interface PriceCacheEntry {
   results: PriceEstimate[];
 }
 
+// ── Organisation ─────────────────────────────────────────────────────────────
+
+/**
+ * Row shape for the `organizations` table after snake_case → camelCase mapping.
+ * Subscription columns are added by migration 002_stripe_billing.sql.
+ */
+export interface Organization {
+  id: string;
+  name: string;
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionTier: SubscriptionTier;
+  /** ISO timestamp — when the 14-day free trial expires. */
+  trialEndsAt: string | null;
+  /** ISO timestamp — when paid access expires after cancellation. */
+  subscriptionEndsAt: string | null;
+  stripeCustomerId: string | null;
+}
+
 // ── Billing ───────────────────────────────────────────────────────────────────
 
 /** Mirrors the subscription_status column on the organizations table. */

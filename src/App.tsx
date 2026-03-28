@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/shared/ProtectedRoute'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
-import Sidebar from '@/components/layout/Sidebar'
+import AppLayout from '@/components/layout/AppLayout'
 import Dashboard from '@/pages/Dashboard'
 import Projects from '@/pages/Projects'
 import MaterialLibrary from '@/pages/MaterialLibrary'
@@ -26,27 +26,24 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* Protected routes - with sidebar */}
+          {/* Protected routes — wrapped in AppLayout (sidebar + trial banner) */}
           <Route
             path="/*"
             element={
               <ProtectedRoute>
-                <div className="flex h-screen bg-[var(--surface)]">
-                  <Sidebar />
-                  <main className="flex-1 overflow-auto p-6">
-                    <Routes>
-                      <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
-                      <Route path="/projects" element={<ErrorBoundary><Projects /></ErrorBoundary>} />
-                      <Route path="/materials" element={<ErrorBoundary><MaterialLibrary /></ErrorBoundary>} />
-                      <Route path="/manifest" element={<ErrorBoundary><ManifestEngine /></ErrorBoundary>} />
-                      <Route path="/work-orders" element={<ErrorBoundary><WorkOrders /></ErrorBoundary>} />
-                      <Route path="/price-research" element={<ErrorBoundary><PriceResearch /></ErrorBoundary>} />
-                      <Route path="/crew" element={<ErrorBoundary><CrewManager /></ErrorBoundary>} />
-                      <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
-                      <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
-                    </Routes>
-                  </main>
-                </div>
+                <AppLayout>
+                  <Routes>
+                    <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+                    <Route path="/projects" element={<ErrorBoundary><Projects /></ErrorBoundary>} />
+                    <Route path="/materials" element={<ErrorBoundary><MaterialLibrary /></ErrorBoundary>} />
+                    <Route path="/manifest" element={<ErrorBoundary><ManifestEngine /></ErrorBoundary>} />
+                    <Route path="/work-orders" element={<ErrorBoundary><WorkOrders /></ErrorBoundary>} />
+                    <Route path="/price-research" element={<ErrorBoundary><PriceResearch /></ErrorBoundary>} />
+                    <Route path="/crew" element={<ErrorBoundary><CrewManager /></ErrorBoundary>} />
+                    <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
+                    <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
+                  </Routes>
+                </AppLayout>
               </ProtectedRoute>
             }
           />
