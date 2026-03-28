@@ -4,17 +4,23 @@
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2–25 employees).
 
 ## The Four Phases
-- **Phase 1 (NOW):** Contractor-facing MVP — project tracking, material library, manifest engine, work orders, crew/equipment management, price research, billing
-- **Phase 2:** 3D Design Studio — landscape-editor.html prototype becomes an integrated Three.js design tool tied to the manifest engine
-- **Phase 3:** Operations & Integrations — scheduling, time tracking, client portal, QuickBooks/Stripe payouts
+- **Phase 1 (NOW):** Contractor-facing MVP — project tracking, material library, manifest engine, work orders, crew/equipment management, price research, Stripe billing
+- **Phase 2 (NEXT):** Operations & Integrations — scheduling, time tracking, client portal, QuickBooks/Stripe payouts, mobile field access
+- **Phase 3 (LATER):** 3D Design Studio — landscape-editor.html prototype becomes an integrated Three.js design tool tied to the manifest engine
 - **Phase 4:** Scale & Marketplace — supplier marketplace, subcontractor network, white-label
 
-## Current Status (2026-03-26)
+**Phase rationale:** Phase 2 (Operations) was reprioritized over the 3D Design Studio because it delivers direct operational value to the contractor's daily workflow — scheduling, time tracking, and client invoicing are what keeps customers retained and drives word-of-mouth. The 3D studio is a differentiator but is not a retention driver at the current stage.
+
+## Current Status (2026-03-28)
 - Auth: Working (Supabase email/password, protected routes, session persistence)
-- UI: All 8 pages scaffolded with real components, awaiting Zustand store wiring
-- Database: Schema written (supabase/migrations/001_initial_schema.sql), needs to be run in Supabase SQL Editor
-- Business logic: Extracted to src/lib/ (manifest, work orders, alerts, constants)
-- Services: Supabase configured, Stripe + Claude API are placeholders
+- All 8 pages: Fully wired to Zustand stores with real data from Supabase
+- Database: 15 tables live, 55 RLS policies, data persisting end-to-end
+- PDF Export: ManifestPDF.tsx and CrewPacketPDF.tsx built, export buttons wired
+- Stripe Billing: Live — Billing page, checkout session, customer portal, webhook handler (3 Edge Functions)
+- Claude API: Wired to Price Research with 24hr localStorage cache
+- Trial banner + billing gate: Active in AppLayout and ProtectedRoute
+- Sprints 1, 2, 3 complete (23 tasks total). Phase 1 gate: 4/6 criteria met
+- Remaining Phase 1: Zone creation UI (Sprint 4), pilot user + multi-tenancy test (Sprint 5)
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features)
@@ -25,6 +31,7 @@ React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase
 - `src/pages/` — One component per route, named to match the route
 - `src/components/layout/` — App shell (Sidebar, AppLayout, PageHeader)
 - `src/components/shared/` — Reusable UI blocks (Modal, Badge, DataTable, KPICard, etc.)
+- `src/components/pdf/` — @react-pdf/renderer PDF templates (ManifestPDF, CrewPacketPDF)
 - `src/components/ui/` — Atomic form elements (Button, Input, Select, Checkbox, Textarea)
 - `src/stores/` — Zustand stores, one per data domain (project, material, crew, equipment, ui)
 - `src/services/` — External API clients (supabase, stripe, anthropic)
@@ -92,10 +99,24 @@ React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase
 ## Specialized Instruction Files
 Reference these when working in a specific mode:
 - `.claude/PROJECT_MANAGEMENT.md` — sprint planning, phase tracking, PM advisory behavior
-- `.claude/DEVELOPMENT.md` — expanded code standards and patterns
+- `.claude/DEVELOPMENT.md` — expanded code standards and patterns (includes PDF component patterns)
 - `.claude/AI_PRODUCT.md` — AI integration strategy and feature patterns
 - `.claude/CODEBASE_MANAGEMENT.md` — refactoring discipline, feature integration, tech debt
 - `.claude/DESIGN.md` — design system, UI iteration process
 - `.claude/DEPLOYMENT.md` — Netlify/Supabase, environments, scaling triggers
-- `.claude/BUSINESS.md` — operations, pricing, KPIs, financial model
+- `.claude/BUSINESS.md` — pricing model, Stripe integration, unit economics, legal
 - `.claude/MARKETING.md` — ICP, value props, demo playbook, materials
+- `.claude/OPERATIONS.md` — Phase 2 scope: scheduling, time tracking, client portal, integrations
+- `.claude/SPRINT_1_PROMPTS.md` — all Sprint 1 prompts (complete)
+- `.claude/SPRINT_2_PROMPTS.md` — all Sprint 2 prompts (complete)
+- `.claude/SPRINT_3_PROMPTS.md` — Sprint 3 prompts: Stripe billing + Claude API wiring
+- `.claude/SPRINT_4_PROMPTS.md` — Sprint 4 prompts: Self-test & workflow polish
+- `.claude/CONSIDERATIONS.md` — Running backlog of UX improvements, feature gaps, and strategic items (not sprint-ready)
+
+## Dashboard Update Requirement
+**After every sprint task, update `PROJECT_DASHBOARD.html`:**
+1. Move completed task from `currentSprint.tasks` to `completedWork` array
+2. Update `lastUpdated` to today's date
+3. If all sprint tasks complete, update `currentSprint` to the next sprint
+4. If a Phase gate criterion is newly met, check it in the relevant phase's `gateChecklist`
+This must be part of every commit — do not skip it.
