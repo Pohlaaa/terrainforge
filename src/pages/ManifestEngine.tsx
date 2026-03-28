@@ -12,6 +12,7 @@ import type { ManifestItem } from '@/types';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { pdf } from '@react-pdf/renderer';
 import { ManifestPDF } from '@/components/pdf/ManifestPDF';
+import { useCrewStore } from '@/stores/crewStore';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ function fmtQty(n: number): string {
 export const ManifestEngine: React.FC = () => {
   const { projects, activeProjectId, setActiveProject, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
+  const { crew } = useCrewStore();
 
   const [view, setView] = useState<'zone' | 'consolidated'>('zone');
   const [exporting, setExporting] = useState(false);
@@ -86,6 +88,12 @@ export const ManifestEngine: React.FC = () => {
   const budgetDelta = project ? totalCostRaw - project.budget : 0;
   const budgetOver = budgetDelta > 0;
 
+  // Build crew ID → name lookup for PDF export
+  const crewLookup = useMemo(
+    () => Object.fromEntries(crew.map(m => [m.id, m.name])),
+    [crew]
+  );
+
   async function handleExportManifest() {
     if (!project) return;
     setExporting(true);
@@ -96,6 +104,7 @@ export const ManifestEngine: React.FC = () => {
           zoneManifests={zoneManifests}
           consolidatedManifest={consolidatedManifest}
           totalCost={totalCostRaw}
+          crewLookup={crewLookup}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);

@@ -221,7 +221,7 @@ export const CrewManager: React.FC = () => {
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-[8px] mb-[16px] flex-wrap">
         <Button variant="primary" onClick={openAdd}>+ Add Crew Member</Button>
-        <Button variant="outline">⚡ Recommend Crew for Active Project</Button>
+        <Button variant="outline" disabled title="AI crew recommendations coming in Phase 3">⚡ Recommend Crew for Active Project</Button>
         <div className="ml-auto flex gap-[16px] text-[12px] text-[var(--text-3)]">
           <span>
             <span className="font-[700] text-[var(--text)]">{crew.length}</span> total

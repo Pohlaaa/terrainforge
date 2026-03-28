@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProjectStore } from '@/stores/projectStore';
 
 interface NavItem {
   path: string;
@@ -25,6 +26,8 @@ export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [signingOut, setSigningOut] = React.useState(false);
+  const { projects, activeProjectId } = useProjectStore();
+  const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -116,7 +119,18 @@ export const Sidebar: React.FC = () => {
           <div className="text-[9px] text-[var(--text-4)] font-mono tracking-[0.06em] mb-[4px]">
             ACTIVE PROJECT
           </div>
-          <div className="text-[13px] text-[var(--text)] font-[600]">None selected</div>
+          {activeProject ? (
+            <>
+              <div className="text-[12px] text-[var(--text)] font-[600] truncate leading-snug">
+                {activeProject.name}
+              </div>
+              <div className="text-[10px] text-[var(--text-3)] truncate mt-[2px]">
+                {activeProject.client}
+              </div>
+            </>
+          ) : (
+            <div className="text-[12px] text-[var(--text-4)] font-[500]">None selected</div>
+          )}
         </div>
       </div>
     </aside>

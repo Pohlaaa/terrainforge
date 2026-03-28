@@ -176,7 +176,7 @@ const seedMaterials: Material[] = [
   {
     id: 'mat_008',
     name: 'Landscape Timbers',
-    category: 'timber',
+    category: 'lumber',
     unit: 'each',
     cost: 8.50,
     reserveOverride: null,
@@ -330,7 +330,7 @@ const seedMaterials: Material[] = [
   {
     id: 'mat_015',
     name: 'Paver Base (Class II)',
-    category: 'base',
+    category: 'gravel',
     unit: 'ton',
     cost: 38.00,
     reserveOverride: null,
