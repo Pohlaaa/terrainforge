@@ -7,6 +7,7 @@ interface EquipmentStore {
   equipment: Equipment[]
   isLoading: boolean
   error: string | null
+  reset: () => void
   addEquipment: (equip: Omit<Equipment, 'id'>) => Promise<void>
   updateEquipment: (id: string, updates: Partial<Equipment>) => Promise<void>
   deleteEquipment: (id: string) => Promise<void>
@@ -255,6 +256,7 @@ export const useEquipmentStore = create<EquipmentStore>()(
       equipment: seedEquipment,
       isLoading: false,
       error: null,
+      reset: () => set({ equipment: [], isLoading: false, error: null }),
       setEquipment: (equipment) => set({ equipment }),
       fetchEquipment: async () => {
         set({ isLoading: true, error: null })

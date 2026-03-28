@@ -10,6 +10,7 @@ interface ProjectStore {
   activeProjectId: string | null
   isLoading: boolean
   error: string | null
+  reset: () => void
   setProjects: (projects: Project[]) => void
   setActiveProject: (id: string | null) => void
   addProject: (project: Omit<Project, 'id' | 'createdAt'>) => Promise<void>
@@ -171,6 +172,7 @@ export const useProjectStore = create<ProjectStore>()(
       activeProjectId: null,
       isLoading: false,
       error: null,
+      reset: () => set({ projects: [], activeProjectId: null, isLoading: false, error: null }),
       setProjects: (projects) => set({ projects }),
       setActiveProject: (id) => set({ activeProjectId: id }),
       fetchProjects: async () => {

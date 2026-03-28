@@ -7,6 +7,7 @@ interface MaterialStore {
   materials: Material[]
   isLoading: boolean
   error: string | null
+  reset: () => void
   addMaterial: (material: Omit<Material, 'id'>) => Promise<void>
   updateMaterial: (id: string, updates: Partial<Material>) => Promise<void>
   deleteMaterial: (id: string) => Promise<void>
@@ -379,6 +380,7 @@ export const useMaterialStore = create<MaterialStore>()(
       materials: seedMaterials,
       isLoading: false,
       error: null,
+      reset: () => set({ materials: [], isLoading: false, error: null }),
       setMaterials: (materials) => set({ materials }),
       fetchMaterials: async () => {
         set({ isLoading: true, error: null })
