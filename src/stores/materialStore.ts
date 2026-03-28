@@ -384,11 +384,7 @@ export const useMaterialStore = create<MaterialStore>()(
         set({ isLoading: true, error: null })
         try {
           const materials = await db.fetchMaterials()
-          if (materials.length > 0) {
-            set({ materials, isLoading: false })
-          } else {
-            set({ isLoading: false })
-          }
+          set({ materials, isLoading: false })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })
         }

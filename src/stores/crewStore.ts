@@ -98,11 +98,7 @@ export const useCrewStore = create<CrewStore>()(
         set({ isLoading: true, error: null })
         try {
           const crew = await db.fetchCrew()
-          if (crew.length > 0) {
-            set({ crew, isLoading: false })
-          } else {
-            set({ isLoading: false })
-          }
+          set({ crew, isLoading: false })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })
         }

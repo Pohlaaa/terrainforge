@@ -260,11 +260,7 @@ export const useEquipmentStore = create<EquipmentStore>()(
         set({ isLoading: true, error: null })
         try {
           const equipment = await db.fetchEquipment()
-          if (equipment.length > 0) {
-            set({ equipment, isLoading: false })
-          } else {
-            set({ isLoading: false })
-          }
+          set({ equipment, isLoading: false })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })
         }

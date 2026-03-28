@@ -2,6 +2,10 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabase'
 import { useOrgStore } from '@/stores/orgStore'
+import { useProjectStore } from '@/stores/projectStore'
+import { useCrewStore } from '@/stores/crewStore'
+import { useMaterialStore } from '@/stores/materialStore'
+import { useEquipmentStore } from '@/stores/equipmentStore'
 
 interface AuthContextType {
   user: User | null
@@ -39,6 +43,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        if (_event === 'SIGNED_OUT') {
+          useProjectStore.persist.clearStorage()
+          useCrewStore.persist.clearStorage()
+          useMaterialStore.persist.clearStorage()
+          useEquipmentStore.persist.clearStorage()
+        }
         setSession(session)
         setUser(session?.user || null)
         setLoading(false)
@@ -78,7 +88,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
-    // Clear cached org/billing data so the next user starts fresh
+    // Clear all persisted store data so the next user starts with a clean slate
+    useProjectStore.persist.clearStorage()
+    useCrewStore.persist.clearStorage()
+    useMaterialStore.persist.clearStorage()
+    useEquipmentStore.persist.clearStorage()
     useOrgStore.getState().clearOrg()
   }
 
