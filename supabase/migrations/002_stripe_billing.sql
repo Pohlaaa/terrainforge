@@ -9,13 +9,19 @@
 --  • subscription_status, trial_ends_at, subscription_ends_at are new.
 
 -- ── Step 1: Migrate subscription_tier from ENUM to TEXT ─────────────────────
--- Cast the existing column to text (preserves current values), then drop the
--- now-orphaned ENUM type.
+-- Drop the default first (it references the enum type), cast column to TEXT,
+-- then drop the orphaned enum, then restore a TEXT default.
+
+ALTER TABLE organizations
+  ALTER COLUMN subscription_tier DROP DEFAULT;
 
 ALTER TABLE organizations
   ALTER COLUMN subscription_tier TYPE TEXT USING subscription_tier::TEXT;
 
 DROP TYPE IF EXISTS subscription_tier;
+
+ALTER TABLE organizations
+  ALTER COLUMN subscription_tier SET DEFAULT 'starter';
 
 -- ── Step 2: Rename old ENUM values to the new naming convention ──────────────
 -- Old ENUM used 'professional' and 'enterprise'; app now uses 'pro'/'business'.
