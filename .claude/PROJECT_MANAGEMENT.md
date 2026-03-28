@@ -96,24 +96,31 @@ All 6 tasks complete: Stripe service layer + migration, Billing page with plan c
 Edge Functions live: create-checkout-session, create-portal-session, stripe-webhook.
 Phase 1 gate now 4/6 met.
 
+## Sprint History (continued)
+
+### Sprint 4 — Complete ✅
+Goal: Close workflow gaps so Charlie can complete a full end-to-end flow with his own data
+All 5 Code tasks complete (S4-1 through S4-5). S4-6 self-test completed — 2 P0/P1 bugs found.
+Key findings: Cross-account data leak (F-011, P0), demo data button never shows for real users (F-014, P2).
+Zone UI and dashboard widget blocked from validation by F-011. Sprint 4 not gated — Sprint 5 fixes blockers.
+
 ## Active Sprint
 
-Sprint 4 — Self-Test & Workflow Sprint
-Goal: Close the workflow gaps so Charlie can complete a full end-to-end flow with his own data
-Done when: A brand new project can be created, zones added, manifest generated, and PDF exported — all with custom data, no seed data required
-Risk: Zone creation UI touches Projects page, zone types, and projectStore — scope carefully before starting
+Sprint 5 — Stability & Pilot Prep
+Goal: Fix P0 data isolation bug, retest blocked Sprint 4 features, deploy to Netlify staging
+Done when: New account sees zero data from other accounts, zone CRUD confirmed working, staging URL live
+Risk: Data isolation fix touches all stores and AuthContext — regression test login/logout carefully after
 
 Tasks:
-1. Zone creation + editing UI in Projects page — L
-2. Remove map placeholder from Dashboard, replace with active project summary widget — S
-3. Remove TestPDF.tsx dev artifact from src/components/pdf/ — S
-4. Remove Leaflet + react-leaflet from dependencies (unused, bundle weight) — S
-5. Add "Clear demo data / Start fresh" option to reset seed data — M
-6. First-login empty state — when no projects exist, show guided prompt not blank widgets — M
+1. Fix cross-account data leak — clear all stores on signOut, remove fetch guards (P0 — F-011) — S
+2. Fix demo data detection + verify empty states — replace ID gate with isDemo flag (F-014, F-015) — S
+3. Charlie retests S4-1, S4-2, S4-4, S4-5 in incognito window (manual test — not a Code task) — M
+4. Production build prep for Netlify staging deploy — M
+5. Phase 1 gate review — Cowork session after staging is live — S
 
 Dependencies:
-- Sprint 3 fully merged to main ✅
-- Charlie self-tests after each task to validate workflow feel
+- Sprint 4 merged to main ✅
+- S5-1 must be merged and verified before S5-3 retest begins
 
 ## Phase 1 Remaining Backlog
 

@@ -5,6 +5,8 @@
 
 Copy each prompt in order into a new Code session. Complete and merge one before starting the next.
 
+**Each prompt ends with a `gh` CLI block. Code will commit, create the PR, and merge it automatically. After each task you only need to run `git pull origin main` in PowerShell.**
+
 ---
 
 ## S4-1 — Zone Creation + Editing UI in Projects Page
@@ -57,7 +59,33 @@ Before writing anything, read:
 2. `src/stores/projectStore.ts` — understand the project shape
 3. `src/components/shared/KPICard.tsx` — reference for card styling
 
-Run `npm run build` when done. No TypeScript errors.
+When `npm run build` passes with no errors, run:
+
+```bash
+git add -A
+git commit -m "S4-2: Replace map placeholder with active projects widget
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push origin HEAD
+gh pr create --title "S4-2: Replace map placeholder with active projects widget" --body "$(cat <<'EOF'
+## Summary
+- Removed map placeholder grey box from Dashboard
+- Added Active Projects Summary widget showing top 3–5 active projects
+- Each project shows name, client, budget, and checklist progress
+- Empty state shown when no active projects exist with link to /projects
+
+## Test plan
+- [ ] No map placeholder visible on Dashboard
+- [ ] Active projects widget renders with real project data
+- [ ] Empty state shows when projects.length === 0
+- [ ] View all projects link navigates to /projects
+- [ ] npm run build passes with no errors
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+gh pr merge --merge --delete-branch
+```
 
 ---
 
@@ -84,6 +112,33 @@ Sprint 4, task S4-3. Dashboard widget is complete.
 Both of these are dead weight. Leaflet is a medium-sized mapping library — removing it reduces the bundle and removes a dependency that isn't being used.
 
 Run `npm run build` after each removal to confirm no errors before proceeding to the next.
+
+When both removals are confirmed clean, run:
+
+```bash
+git add -A
+git commit -m "S4-3: Remove TestPDF dev artifact and Leaflet unused dependency
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push origin HEAD
+gh pr create --title "S4-3: Remove TestPDF dev artifact and Leaflet unused dependency" --body "$(cat <<'EOF'
+## Summary
+- Deleted src/components/pdf/TestPDF.tsx (dev artifact, not for production)
+- Removed leaflet and react-leaflet from dependencies (unused, dead bundle weight)
+- Removed any associated imports and type definitions
+- Bundle size reduced
+
+## Test plan
+- [ ] TestPDF.tsx no longer exists in src/components/pdf/
+- [ ] No leaflet or react-leaflet in package.json
+- [ ] npm run build passes with no errors
+- [ ] No console errors about missing imports on any page
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+gh pr merge --merge --delete-branch
+```
 
 ---
 
@@ -113,7 +168,37 @@ Before writing anything, read:
 4. `src/stores/equipmentStore.ts`
 5. `src/components/shared/ConfirmDialog.tsx`
 
-Run `npm run build` when done. No TypeScript errors.
+When `npm run build` passes with no errors, run:
+
+```bash
+git add -A
+git commit -m "S4-4: Add seed data reset / Start Fresh option
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push origin HEAD
+gh pr create --title "S4-4: Add seed data reset / Start Fresh option" --body "$(cat <<'EOF'
+## Summary
+- Added Clear Demo Data button (sidebar footer or Dashboard banner)
+- Confirmation dialog warns user before clearing
+- On confirm: clears projectStore, materialStore, crewStore, equipmentStore to empty state
+- Supabase data is NOT affected — local store only
+- Button only visible when seed/demo data is detected
+- Redirects to Dashboard after clearing
+
+## Test plan
+- [ ] Clear Demo Data button visible with seed data present
+- [ ] Confirmation dialog appears with correct warning text
+- [ ] Cancel does nothing — data remains
+- [ ] Confirm clears all store data from view
+- [ ] Billing and account info unaffected
+- [ ] App does not crash or throw errors after clearing
+- [ ] npm run build passes with no errors
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+gh pr merge --merge --delete-branch
+```
 
 ---
 
@@ -144,7 +229,34 @@ Before writing anything, read:
 2. `src/pages/Projects.tsx`
 3. `src/components/shared/KPICard.tsx`
 
-Run `npm run build` when done. No TypeScript errors.
+When `npm run build` passes with no errors, run:
+
+```bash
+git add -A
+git commit -m "S4-5: Add first-login empty states to Dashboard and Projects
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push origin HEAD
+gh pr create --title "S4-5: Add first-login empty states to Dashboard and Projects" --body "$(cat <<'EOF'
+## Summary
+- Dashboard: when projects.length === 0, replaces KPI widgets with welcome card and Create Project CTA
+- Projects page: when projects.length === 0, shows centered empty state with Create your first project button that opens the new project modal directly
+- Both states disappear automatically once first project is created
+- Green brand color used on CTAs, consistent with design system
+
+## Test plan
+- [ ] Clear demo data (S4-4) → Dashboard shows welcome card not blank widgets
+- [ ] Create Project CTA navigates to /projects or opens modal
+- [ ] Projects page with no data shows empty state with button
+- [ ] Button opens new project modal directly
+- [ ] After creating first project both empty states disappear
+- [ ] npm run build passes with no errors
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+gh pr merge --merge --delete-branch
+```
 
 ---
 
@@ -154,7 +266,7 @@ This task is for Charlie, not Code.
 
 With all 5 code tasks complete, run through the following workflow yourself:
 
-1. Open the app at `localhost:5173` (or your Netlify staging URL)
+1. Open the app (`npm run dev` → usually localhost:3000 or whichever port Vite assigns)
 2. Click "Clear Demo Data" if the option is visible — confirm seed data is gone
 3. Confirm the Dashboard empty state appears with a "Create Project" prompt
 4. Create a brand new project with your own name, client, and address
