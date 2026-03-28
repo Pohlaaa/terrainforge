@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Equipment, MaintenanceEntry } from '@/types'
+import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
 
 interface EquipmentStore {
@@ -268,13 +269,18 @@ export const useEquipmentStore = create<EquipmentStore>()(
         }
       },
       addEquipment: async (equipData) => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) {
+          console.error('addEquipment: no org_id available')
+          return
+        }
         const newEquipment: Equipment = {
           ...equipData,
           id: crypto.randomUUID(),
         }
         set((state) => ({ equipment: [...state.equipment, newEquipment] }))
         try {
-          await db.createEquipment(equipData)
+          await db.createEquipment(equipData, newEquipment.id, orgId)
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }
