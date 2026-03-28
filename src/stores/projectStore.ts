@@ -29,6 +29,7 @@ interface ProjectStore {
 const DEFAULT_PROJECTS: Project[] = [
   {
     id: 'proj_001',
+    isDemo: true,
     name: 'Henderson Backyard Redesign',
     client: 'Sarah Henderson',
     address: '1247 Maple Ridge Dr, Austin TX',
@@ -105,6 +106,7 @@ const DEFAULT_PROJECTS: Project[] = [
   },
   {
     id: 'proj_002',
+    isDemo: true,
     name: 'Oakwood Commercial Entrance',
     client: 'Oakwood Properties LLC',
     address: '500 Commerce Blvd, Round Rock TX',
