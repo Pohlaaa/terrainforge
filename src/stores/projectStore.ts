@@ -177,11 +177,7 @@ export const useProjectStore = create<ProjectStore>()(
         set({ isLoading: true, error: null })
         try {
           const projects = await db.fetchProjects()
-          if (projects.length > 0) {
-            set({ projects, isLoading: false })
-          } else {
-            set({ isLoading: false })
-          }
+          set({ projects, isLoading: false })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })
         }
