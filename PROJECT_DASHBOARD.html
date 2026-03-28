@@ -168,7 +168,7 @@
 */
 const PROJECT_DATA = {
   project: "TerrainForge",
-  lastUpdated: "2026-03-28", // S5-1b complete
+  lastUpdated: "2026-03-28",
   currentPhase: 1,
 
   // ── Completed work before sprints started ──
@@ -198,8 +198,21 @@ const PROJECT_DATA = {
     { date: "2026-03-27", text: "S1-9: Wired Price Research UI shell — project selector, inputs, placeholder state", tag: "feat" },
     { date: "2026-03-27", text: "S1-10: Fixed 4 persistence bugs — toggleChecklist sync + 3 silent !inner data loss bugs in Supabase queries", tag: "infra" },
     { date: "2026-03-28", text: "S1-11: Error boundaries + loading states across all 8 pages — Sprint 1 complete", tag: "feat" },
+    { date: "2026-03-28", text: "S2-1: Installed @react-pdf/renderer, verified Vite build compatibility", tag: "infra" },
+    { date: "2026-03-28", text: "S2-2: Built ManifestPDF.tsx — branded manifest with zone tables and cost rollup", tag: "feat" },
+    { date: "2026-03-28", text: "S2-3: Built CrewPacketPDF.tsx — field crew packet with installation steps and checkboxes", tag: "feat" },
+    { date: "2026-03-28", text: "S2-4: Wired PDF export buttons to ManifestEngine and WorkOrders pages", tag: "feat" },
+    { date: "2026-03-28", text: "S2-5/S2-6: Full smoke test passed, bugs fixed — Sprint 2 complete", tag: "feat" },
+    { date: "2026-03-28", text: "S3-1: Stripe service layer + organizations billing migration (stripe_customer_id, subscription_status, trial_ends_at)", tag: "infra" },
+    { date: "2026-03-28", text: "S3-2: Built /billing page — Starter/Pro/Business plan cards, trial status, Stripe Checkout redirect", tag: "feat" },
+    { date: "2026-03-28", text: "S3-3: Stripe webhook Edge Function — handles subscription.created/updated/deleted, invoice.payment_failed", tag: "infra" },
+    { date: "2026-03-28", text: "S3-4: Claude API wired to Price Research — real pricing lookups, 24hr localStorage cache, clickable material chips", tag: "feat" },
+    { date: "2026-03-28", text: "S3-5: Trial banner + billing gate — 7-day warning, past_due banner, ProtectedRoute billing redirect", tag: "feat" },
+    { date: "2026-03-28", text: "S3-6: End-to-end billing smoke test + fixes — Sprint 3 complete. Phase 1 gate 4/6 met", tag: "feat" },
+    { date: "2026-03-27", text: "Phase restructure: Operations & Integrations moved to Phase 2, 3D Studio to Phase 3", tag: "docs" },
     { date: "2026-03-26", text: "Built project progress dashboard", tag: "docs" },
     { date: "2026-03-26", text: "Defined Sprint 1 backlog and staging plan", tag: "docs" },
+
     { date: "2026-03-28", text: "S2-1: Install and configure @react-pdf/renderer", tag: "infra" },
     { date: "2026-03-28", text: "S2-2: Build PDF manifest template (materials, quantities, costs, branded header)", tag: "feat" },
     { date: "2026-03-28", text: "S2-3: Build PDF crew packet template (zone assignments, work order steps)", tag: "feat" },
@@ -220,21 +233,25 @@ const PROJECT_DATA = {
     { date: "2026-03-28", text: "S5-1: Fix cross-account data leak — clearStorage on signOut, remove stale fetch guards", tag: "fix" },
     { date: "2026-03-28", text: "S5-1b: Fix cross-account data leak (revised) — reset() on all stores, bootstrap fetches on SIGNED_IN", tag: "fix" },
     { date: "2026-03-28", text: "S5-1c: Fix Supabase write layer — inject org_id in all creates, sync local/remote UUIDs, create org on first login", tag: "fix" },
+
+
   ],
 
   // ── Current Sprint ──
   currentSprint: {
-    number: 5,
-    name: "Multi-Tenancy Hardening & Pilot Readiness",
-    dateRange: "2026-03-28 → 2026-04-10",
-    goal: "Verify the app is safe and stable enough for a real pilot contractor",
-    doneWhen: "Auth + multi-tenancy tested with 2 accounts, app deployed to staging, Phase 1 gate review complete",
-    risk: "Cross-account data isolation — must be verified with real sign-in switching before any pilot invite",
+    number: 4,
+    name: "Self-Test & Workflow",
+    dateRange: "2026-03-28 → 2026-04-11",
+    goal: "Close the workflow gaps so Charlie can complete a full end-to-end flow with his own data",
+    doneWhen: "A brand new project can be created, zones added, manifest generated, and PDF exported — with custom data, no seed data required",
+    risk: "Zone creation UI touches Projects page, zone types, and projectStore — scope carefully to avoid regressions",
     tasks: [
-      { id: "S5-2", name: "Fix demo data detection + empty states (F-014, F-015)",           effort: "M", status: "pending", notes: "Detect seed data vs real data; show correct empty states per account" },
-      { id: "S5-3", name: "Retest zone UI and dashboard widget",                              effort: "S", status: "pending", notes: "Smoke test S4-1 and S4-2 are working correctly post-fix" },
-      { id: "S5-4", name: "Netlify staging deploy",                                          effort: "M", status: "pending", notes: "Full env vars, Supabase prod, Stripe test mode, Claude API key" },
-      { id: "S5-5", name: "Phase 1 gate review",                                             effort: "S", status: "pending", notes: "Verify all 6 Phase 1 gate criteria; document what remains" },
+      { id: "S4-1", name: "Zone creation + editing UI in Projects page",                  effort: "L", status: "pending", notes: "Add/edit/delete zones on any project — currently blocked with seed data only" },
+      { id: "S4-2", name: "Replace map placeholder with active project summary widget",   effort: "S", status: "pending", notes: "Remove 'Map placeholder' grey box — show top active projects or recent activity instead" },
+      { id: "S4-3", name: "Remove TestPDF.tsx dev artifact",                              effort: "S", status: "pending", notes: "Development artifact in src/components/pdf/ — should not exist in production" },
+      { id: "S4-4", name: "Remove Leaflet + react-leaflet from dependencies",             effort: "S", status: "pending", notes: "Unused, dead bundle weight — remove until map feature is actually built" },
+      { id: "S4-5", name: "Add seed data reset option",                                   effort: "M", status: "pending", notes: "'Start fresh / Clear demo data' to onboard real contractor without Henderson Backyard cluttering the view" },
+      { id: "S4-6", name: "First-login empty state",                                     effort: "M", status: "pending", notes: "When no projects exist, show guided 'Create your first project' prompt instead of blank KPI widgets" },
     ]
   },
 
@@ -262,6 +279,7 @@ const PROJECT_DATA = {
         { name: "PDF manifest export",                              status: "complete",    completedDate: "2026-03-28" },
         { name: "Claude API integration (price research)",          status: "complete",    completedDate: "2026-03-28" },
         { name: "Stripe billing (subscription tiers)",              status: "complete",    completedDate: "2026-03-28" },
+        { name: "Zone creation UI + workflow polish",               status: "not_started", sprint: 4 },
         { name: "Multi-tenancy tested with 2+ accounts",            status: "not_started", sprint: 5 },
         { name: "Pilot user onboarding (first real contractor)",    status: "not_started", sprint: 5 },
       ],
@@ -276,6 +294,24 @@ const PROJECT_DATA = {
     },
     {
       number: 2,
+      name: "Operations & Integrations",
+      status: "future",
+      milestones: [
+        { name: "Scheduling + crew calendar",              status: "not_started" },
+        { name: "Time tracking + labor cost rollup",       status: "not_started" },
+        { name: "Client portal (project status view)",     status: "not_started" },
+        { name: "Invoice generation + email",              status: "not_started" },
+        { name: "QuickBooks Online integration",           status: "not_started" },
+        { name: "Progressive Web App (mobile field use)",  status: "not_started" },
+      ],
+      gateChecklist: [
+        { item: "5+ paying customers on Phase 1 features",          met: false },
+        { item: "Stripe billing live and stable",                    met: false },
+        { item: "Pilot user feedback on operations priorities",      met: false },
+      ]
+    },
+    {
+      number: 3,
       name: "3D Design Studio",
       status: "future",
       milestones: [
@@ -285,21 +321,9 @@ const PROJECT_DATA = {
         { name: "Export to PDF/image",                             status: "not_started" },
       ],
       gateChecklist: [
-        { item: "5+ paying customers on Phase 1 features",    met: false },
-        { item: "3D editor integrated with manifest engine",   met: false },
+        { item: "20+ paying customers on Phase 2 features",          met: false },
+        { item: "3+ customers explicitly requesting 3D design",      met: false },
       ]
-    },
-    {
-      number: 3,
-      name: "Operations & Integrations",
-      status: "future",
-      milestones: [
-        { name: "Scheduling + time tracking",  status: "not_started" },
-        { name: "Client portal",               status: "not_started" },
-        { name: "QuickBooks integration",       status: "not_started" },
-        { name: "Stripe payouts",              status: "not_started" },
-      ],
-      gateChecklist: []
     },
     {
       number: 4,
