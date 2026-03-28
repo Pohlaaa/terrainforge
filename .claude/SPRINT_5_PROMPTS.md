@@ -6,61 +6,63 @@ Each prompt ends with a `gh` CLI block. Code will commit, create the PR, and mer
 
 ---
 
-## S5-1: Fix Cross-Account Data Leak (P0 — F-011)
+## S5-1b: Fix Cross-Account Data Leak — Revised (P0 — F-011)
 
-**Context:** During self-testing, signing into a new account in the same browser showed data from the previous user's account. Two root causes identified:
+**Context:** A first attempt at this fix (already merged) addressed localStorage persistence and fetch guards but missed the deeper root cause. After investigation, two additional issues were identified:
 
-1. `signOut()` in `AuthContext.tsx` only clears `orgStore` — the other four Zustand stores (`tf_projects`, `tf_crew`, `tf_materials`, `tf_equipment`) remain in localStorage untouched when a user signs out.
-2. All four data stores have an `if (data.length > 0)` guard in their fetch functions that prevents overwriting cached data when a new account returns zero results from Supabase. A new user signs in → Supabase returns empty → guard fires → old localStorage data stays visible.
+1. **Fetch functions are never called from the UI.** `fetchProjects`, `fetchCrew`, `fetchMaterials`, and `fetchEquipment` exist in the stores but no component calls them. The app runs entirely on in-memory Zustand state — Supabase data is only loaded when the user explicitly triggers an action. This means signing in never replaces the previous user's in-memory data.
+2. **In-memory state is never reset on sign out.** `clearStorage()` removes localStorage but leaves the Zustand store state in memory. When a new user signs in in the same browser session, they inherit the previous user's live store state.
 
 **Changes required:**
 
-**`src/contexts/AuthContext.tsx`**
-- Import all four stores at the top: `useProjectStore`, `useCrewStore`, `useMaterialStore`, `useEquipmentStore`
-- In the `signOut()` function, after `supabase.auth.signOut()`, clear all store localStorage keys before `clearOrg()`:
-  ```ts
-  useProjectStore.persist.clearStorage()
-  useCrewStore.persist.clearStorage()
-  useMaterialStore.persist.clearStorage()
-  useEquipmentStore.persist.clearStorage()
-  ```
-- In the `onAuthStateChange` callback, when `_event === 'SIGNED_OUT'`, also call those four `clearStorage()` methods as a safety net.
-
 **`src/stores/projectStore.ts`**
-- In `fetchProjects`, remove the `if (projects.length > 0)` guard. Always call `set({ projects, isLoading: false })` regardless of how many records Supabase returns. An empty array is valid — it means the user has no projects yet.
+- Add a `reset()` action that sets state to a clean slate: `set({ projects: [], activeProjectId: null, isLoading: false, error: null })`
+- Do NOT use DEFAULT_PROJECTS in reset — an empty array is the correct initial state for a real user account.
 
 **`src/stores/crewStore.ts`**
-- Same fix: in `fetchCrew`, remove the `if (crew.length > 0)` guard. Always set.
+- Add a `reset()` action: `set({ crew: [], isLoading: false, error: null })`
 
 **`src/stores/materialStore.ts`**
-- Same fix: in the materials fetch function, remove the `if (materials.length > 0)` guard. Always set.
+- Add a `reset()` action: `set({ materials: [], isLoading: false, error: null })`
 
 **`src/stores/equipmentStore.ts`**
-- Same fix: in the equipment fetch function, remove the `if (equipment.length > 0)` guard. Always set.
+- Add a `reset()` action: `set({ equipment: [], isLoading: false, error: null })`
+
+**`src/contexts/AuthContext.tsx`**
+- Import all four stores.
+- In the `onAuthStateChange` callback:
+  - When `_event === 'SIGNED_OUT'`: call `reset()` on all four stores AND `clearStorage()` on all four (already done in prior fix — keep it).
+  - When `_event === 'SIGNED_IN'` and session is present: call `fetchProjects()`, `fetchCrew()`, `fetchMaterials()`, `fetchEquipment()` on all four stores so Supabase data loads immediately on login.
+- In the `signOut()` function: call `reset()` on all four stores (in addition to the existing `clearStorage()` calls) before redirecting.
+
+**`src/components/layout/AppLayout.tsx`**
+- In the existing `useEffect` that depends on `user?.id`: after `fetchOrg(user.id)`, also call `fetchProjects()`, `fetchCrew()`, `fetchMaterials()`, `fetchEquipment()` as a secondary bootstrap in case the `onAuthStateChange` SIGNED_IN event already fired before AppLayout mounted. Import all four store hooks.
 
 **Validation:** `npm run build` must pass with zero TypeScript errors.
 
 ```bash
 git add -A
-git commit -m "S5-1: Fix cross-account data leak — clear all stores on signOut, remove fetch guards
+git commit -m "S5-1b: Fix cross-account data leak — reset in-memory state, bootstrap fetches on login
 
-Fixes F-011: Zustand persist stores now cleared on signOut and auth state change.
-Fetch guards removed so empty Supabase results correctly replace cached data.
+Root cause: fetch functions were never called from UI; in-memory store state persisted
+across account switches. Fix: reset() action on all stores called on signOut,
+all four fetch functions called on SIGNED_IN and in AppLayout user effect.
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 git push origin HEAD
-gh pr create --title "S5-1: Fix cross-account data isolation (P0)" --body "$(cat <<'EOF'
+gh pr create --title "S5-1b: Fix cross-account data leak (revised)" --body "$(cat <<'EOF'
 ## Summary
-- Clear all Zustand persist stores on signOut (projectStore, crewStore, materialStore, equipmentStore)
-- Add clearStorage() calls to onAuthStateChange SIGNED_OUT event as safety net
-- Remove if (length > 0) fetch guards in all four stores — empty array is now a valid result
-- Fixes F-011: new user in same browser no longer sees previous user's data
+- Add reset() action to projectStore, crewStore, materialStore, equipmentStore
+- Call reset() + clearStorage() on all stores on SIGNED_OUT (not just clearStorage)
+- Call all four fetch functions on SIGNED_IN in onAuthStateChange
+- Call all four fetch functions in AppLayout user effect as secondary bootstrap
+- Fixes F-011: new user in same browser now sees only their own Supabase data
 
 ## Test plan
-- [ ] Sign in as User A, create a project
-- [ ] Sign out
-- [ ] Sign in as User B (new account) — should see zero projects, not User A's data
-- [ ] Sign back in as User A — original data should reload from Supabase correctly
+- [ ] Sign in as User A, create a project, verify it appears
+- [ ] Sign out — store should clear immediately (projects list goes empty)
+- [ ] Sign in as User B (new account) — should see zero projects
+- [ ] Sign back in as User A — original project reloads from Supabase
 - [ ] npm run build passes with zero TypeScript errors
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
