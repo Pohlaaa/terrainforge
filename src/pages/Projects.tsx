@@ -3,7 +3,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { computeProjectCostRaw } from '@/lib/manifest';
 import { CHECKLIST_ITEMS } from '@/lib/constants';
-import type { Project } from '@/types';
+import type { Project, Zone } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TextArea } from '@/components/ui/Textarea';
@@ -39,15 +39,31 @@ const EMPTY_FORM: NewProjectForm = {
   startDate: '', targetDate: '', budget: '', notes: '',
 };
 
+interface ZoneForm {
+  name: string;
+  area: string;
+  perimeter: string;
+  notes: string;
+}
+
+const EMPTY_ZONE_FORM: ZoneForm = { name: '', area: '', perimeter: '', notes: '' };
+
 export const Projects: React.FC = () => {
-  const { projects, addProject, deleteProject, toggleChecklist, setActiveProject, activeProjectId, isLoading, error } =
-    useProjectStore();
+  const { projects, addProject, deleteProject, toggleChecklist, setActiveProject, activeProjectId, isLoading, error,
+    addZone, updateZone, deleteZone } = useProjectStore();
   const { materials } = useMaterialStore();
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<NewProjectForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Partial<NewProjectForm>>({});
+
+  // Zone CRUD state
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
+  const [zoneForm, setZoneForm] = useState<ZoneForm>(EMPTY_ZONE_FORM);
+  const [zoneFormErrors, setZoneFormErrors] = useState<Partial<ZoneForm>>({});
+  const [deleteZoneId, setDeleteZoneId] = useState<string | null>(null);
 
   const selectedProject = useMemo(
     () => projects.find(p => p.id === activeProjectId) ?? null,
@@ -107,6 +123,70 @@ export const Projects: React.FC = () => {
     setDeleteId(null);
   }
 
+  // ── Zone handlers ──────────────────────────────────────────────────────────
+  function openAddZone() {
+    setEditingZoneId(null);
+    setZoneForm(EMPTY_ZONE_FORM);
+    setZoneFormErrors({});
+    setShowZoneModal(true);
+  }
+
+  function openEditZone(zone: Zone) {
+    setEditingZoneId(zone.id);
+    setZoneForm({ name: zone.name, area: String(zone.area), perimeter: String(zone.perimeter), notes: zone.notes });
+    setZoneFormErrors({});
+    setShowZoneModal(true);
+  }
+
+  function closeZoneModal() {
+    setShowZoneModal(false);
+    setEditingZoneId(null);
+    setZoneForm(EMPTY_ZONE_FORM);
+    setZoneFormErrors({});
+  }
+
+  function validateZoneForm(): boolean {
+    const errors: Partial<ZoneForm> = {};
+    if (!zoneForm.name.trim()) errors.name = 'Required';
+    if (zoneForm.area === '' || isNaN(Number(zoneForm.area)) || Number(zoneForm.area) < 0)
+      errors.area = 'Enter a valid area';
+    if (zoneForm.perimeter === '' || isNaN(Number(zoneForm.perimeter)) || Number(zoneForm.perimeter) < 0)
+      errors.perimeter = 'Enter a valid perimeter';
+    setZoneFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleZoneSave() {
+    if (!selectedProject || !validateZoneForm()) return;
+    if (editingZoneId) {
+      await updateZone(selectedProject.id, editingZoneId, {
+        name: zoneForm.name.trim(),
+        area: Number(zoneForm.area),
+        perimeter: Number(zoneForm.perimeter),
+        notes: zoneForm.notes.trim(),
+      });
+    } else {
+      await addZone(selectedProject.id, {
+        name: zoneForm.name.trim(),
+        area: Number(zoneForm.area),
+        perimeter: Number(zoneForm.perimeter),
+        sequence: selectedProject.zones.length + 1,
+        crew: '',
+        dependencies: [],
+        notes: zoneForm.notes.trim(),
+        materials: [],
+        equipment: [],
+      });
+    }
+    closeZoneModal();
+  }
+
+  async function handleZoneDelete() {
+    if (!selectedProject || !deleteZoneId) return;
+    await deleteZone(selectedProject.id, deleteZoneId);
+    setDeleteZoneId(null);
+  }
+
   // ── Detail view ────────────────────────────────────────────────────────────
   if (selectedProject) {
     const checkEntries = CHECKLIST_ITEMS.map(({ key, label }) => ({
@@ -144,15 +224,21 @@ export const Projects: React.FC = () => {
               <div className="text-[12px] font-[700] text-[var(--text)]">
                 Zones ({selectedProject.zones.length})
               </div>
-              <span className="text-[11px] text-[var(--text-4)]">
-                {selectedProject.totalArea.toLocaleString()} sq ft total
-              </span>
+              <div className="flex items-center gap-[10px]">
+                <span className="text-[11px] text-[var(--text-4)]">
+                  {selectedProject.totalArea.toLocaleString()} sq ft total
+                </span>
+                <Button variant="primary" size="sm" onClick={openAddZone}>
+                  + Add Zone
+                </Button>
+              </div>
             </div>
             <div className="p-[14px]">
               {selectedProject.zones.length === 0 ? (
                 <div className="text-center py-[32px] text-[var(--text-3)]">
                   <div className="text-[28px] mb-[8px] opacity-30">⊞</div>
-                  <div className="text-[13px]">No zones yet — add zones in the project editor</div>
+                  <div className="text-[13px] mb-[12px]">No zones yet — add a zone to start building your manifest</div>
+                  <Button variant="primary" size="sm" onClick={openAddZone}>+ Add Zone</Button>
                 </div>
               ) : (
                 <div className="space-y-[8px]">
@@ -163,17 +249,22 @@ export const Projects: React.FC = () => {
                     >
                       <div className="flex items-center justify-between mb-[4px]">
                         <span className="text-[13px] font-[600] text-[var(--text)]">{zone.name}</span>
-                        <span className="text-[10px] text-[var(--text-4)] font-[600] uppercase tracking-[0.05em]">
-                          Seq {zone.sequence}
-                        </span>
+                        <div className="flex items-center gap-[6px]">
+                          <span className="text-[10px] text-[var(--text-4)] font-[600] uppercase tracking-[0.05em]">
+                            Seq {zone.sequence}
+                          </span>
+                          <Button variant="ghost" size="sm" onClick={() => openEditZone(zone)}>Edit</Button>
+                          <Button variant="danger" size="sm" onClick={() => setDeleteZoneId(zone.id)}>Delete</Button>
+                        </div>
                       </div>
                       <div className="flex gap-[16px] text-[11px] text-[var(--text-3)]">
                         <span>{zone.area.toLocaleString()} sq ft</span>
+                        <span>{zone.perimeter.toLocaleString()} ft perimeter</span>
                         <span>{zone.materials.length} material{zone.materials.length !== 1 ? 's' : ''}</span>
-                        {zone.dependencies.length > 0 && (
-                          <span>{zone.dependencies.length} dep{zone.dependencies.length !== 1 ? 's' : ''}</span>
-                        )}
                       </div>
+                      {zone.notes && (
+                        <div className="mt-[4px] text-[11px] text-[var(--text-4)] italic truncate">{zone.notes}</div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -269,6 +360,67 @@ export const Projects: React.FC = () => {
           confirmVariant="danger"
           onConfirm={handleDelete}
           onCancel={() => setDeleteId(null)}
+        />
+
+        {/* Zone create/edit modal */}
+        <Modal
+          isOpen={showZoneModal}
+          title={editingZoneId ? 'Edit Zone' : 'Add Zone'}
+          onClose={closeZoneModal}
+          onConfirm={handleZoneSave}
+          confirmText={editingZoneId ? 'Save Changes' : 'Add Zone'}
+          maxWidth="480px"
+        >
+          <div className="flex flex-col gap-[14px]">
+            <Input
+              label="Zone Name"
+              required
+              value={zoneForm.name}
+              error={zoneFormErrors.name}
+              onChange={e => setZoneForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Patio, Garden Beds, Lawn..."
+            />
+            <div className="grid grid-cols-2 gap-[12px]">
+              <Input
+                label="Area (sq ft)"
+                type="number"
+                min="0"
+                required
+                value={zoneForm.area}
+                error={zoneFormErrors.area}
+                onChange={e => setZoneForm(f => ({ ...f, area: e.target.value }))}
+                placeholder="800"
+              />
+              <Input
+                label="Perimeter (ft)"
+                type="number"
+                min="0"
+                required
+                value={zoneForm.perimeter}
+                error={zoneFormErrors.perimeter}
+                onChange={e => setZoneForm(f => ({ ...f, perimeter: e.target.value }))}
+                placeholder="120"
+              />
+            </div>
+            <TextArea
+              label="Notes"
+              rows={3}
+              value={zoneForm.notes}
+              onChange={e => setZoneForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="Zone description, special considerations..."
+            />
+          </div>
+        </Modal>
+
+        {/* Zone delete confirmation */}
+        <ConfirmDialog
+          isOpen={deleteZoneId !== null}
+          title="Delete Zone"
+          message={`Are you sure you want to delete this zone? Materials assigned to it will be removed from the manifest.`}
+          confirmText="Delete Zone"
+          confirmVariant="danger"
+          onConfirm={handleZoneDelete}
+          onCancel={() => setDeleteZoneId(null)}
         />
       </div>
     );
