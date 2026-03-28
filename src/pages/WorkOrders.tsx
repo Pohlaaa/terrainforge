@@ -5,17 +5,22 @@ import { generateSteps } from '@/lib/workorders';
 import { Badge } from '@/components/shared/Badge';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { pdf } from '@react-pdf/renderer';
+import { CrewPacketPDF } from '@/components/pdf/CrewPacketPDF';
+import { useCrewStore } from '@/stores/crewStore';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const WorkOrders: React.FC = () => {
   const { projects, activeProjectId, setActiveProject, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
+  const { crew } = useCrewStore();
 
   // completedSteps[zoneId] = Set of step numbers (1-based) marked done
   const [completedSteps, setCompletedSteps] = useState<Record<string, Set<number>>>({});
   // collapsedZones: zones the user has manually collapsed
   const [collapsedZones, setCollapsedZones] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
 
   const project = useMemo(
     () => projects.find(p => p.id === activeProjectId) ?? null,
@@ -58,6 +63,40 @@ export const WorkOrders: React.FC = () => {
       ...prev,
       [zoneId]: done ? new Set(steps.map(s => s.n)) : new Set(),
     }));
+  }
+
+  async function handleExportCrewPacket() {
+    if (!project) return;
+    setExporting(true);
+    try {
+      const zonePackets = project.zones.map(zone => {
+        const crewMember = crew.find(m => m.id === zone.crew);
+        return {
+          zone,
+          steps: zoneSteps.get(zone.id) ?? [],
+          crewName: crewMember?.name ?? '',
+          equipmentNames: zone.equipment.map(ze => ze.name),
+        };
+      });
+      const foreman = crew.find(m =>
+        m.role === 'foreman' && project.zones.some(z => z.crew === m.id)
+      );
+      const blob = await pdf(
+        <CrewPacketPDF
+          project={project}
+          zonePackets={zonePackets}
+          foremanName={foreman?.name}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-crew-packet.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
   }
 
   if (isLoading) {
@@ -134,9 +173,13 @@ export const WorkOrders: React.FC = () => {
             ))}
           </select>
         </div>
-        <div className="text-[11px] text-[var(--text-4)] flex-shrink-0 pb-[10px]">
-          Ctrl+P to print for field use
-        </div>
+        <button
+          onClick={handleExportCrewPacket}
+          disabled={exporting || !project || project.zones.length === 0}
+          className="px-[14px] py-[9px] text-[12px] font-[600] bg-[var(--green)] text-white rounded-[8px] border-none cursor-pointer hover:bg-[var(--green-d)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 flex-shrink-0"
+        >
+          {exporting ? 'Generating…' : '⬇ Export Crew Packet'}
+        </button>
       </div>
 
       {/* ── Project header ────────────────────────────────────────────────── */}

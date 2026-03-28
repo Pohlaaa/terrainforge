@@ -10,6 +10,8 @@ import {
 } from '@/lib/manifest';
 import type { ManifestItem } from '@/types';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { pdf } from '@react-pdf/renderer';
+import { ManifestPDF } from '@/components/pdf/ManifestPDF';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +30,7 @@ export const ManifestEngine: React.FC = () => {
   const { materials } = useMaterialStore();
 
   const [view, setView] = useState<'zone' | 'consolidated'>('zone');
+  const [exporting, setExporting] = useState(false);
 
   const project = useMemo(
     () => projects.find(p => p.id === activeProjectId) ?? null,
@@ -82,6 +85,29 @@ export const ManifestEngine: React.FC = () => {
 
   const budgetDelta = project ? totalCostRaw - project.budget : 0;
   const budgetOver = budgetDelta > 0;
+
+  async function handleExportManifest() {
+    if (!project) return;
+    setExporting(true);
+    try {
+      const blob = await pdf(
+        <ManifestPDF
+          project={project}
+          zoneManifests={zoneManifests}
+          consolidatedManifest={consolidatedManifest}
+          totalCost={totalCostRaw}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-manifest.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   // ── Table header ────────────────────────────────────────────────────────────
   const TableHead = ({ showZone }: { showZone?: boolean }) => (
@@ -235,10 +261,13 @@ export const ManifestEngine: React.FC = () => {
           ))}
         </div>
 
-        {/* Print hint */}
-        <div className="text-[11px] text-[var(--text-4)] flex-shrink-0">
-          Ctrl+P to print / save as PDF
-        </div>
+        <button
+          onClick={handleExportManifest}
+          disabled={exporting || !project || project.zones.length === 0}
+          className="px-[14px] py-[9px] text-[12px] font-[600] bg-[var(--green)] text-white rounded-[8px] border-none cursor-pointer hover:bg-[var(--green-d)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 flex-shrink-0"
+        >
+          {exporting ? 'Generating…' : '⬇ Export PDF'}
+        </button>
       </div>
 
       {/* ── Project header ────────────────────────────────────────────────── */}
