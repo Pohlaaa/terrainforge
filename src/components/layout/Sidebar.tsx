@@ -25,8 +25,6 @@ const navItems: NavItem[] = [
   { path: '/equipment', label: 'Equipment', icon: '⚙', dotColor: '#D97706' },
 ];
 
-const SEED_PROJECT_IDS = new Set(['proj_001', 'proj_002']);
-
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,10 +37,10 @@ export const Sidebar: React.FC = () => {
   const { setEquipment } = useEquipmentStore();
   const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
 
-  const hasDemoData = projects.some(p => SEED_PROJECT_IDS.has(p.id));
+  const hasDemoData = projects.some(p => p.isDemo === true);
 
   function handleClearDemoData() {
-    setProjects([]);
+    setProjects(projects.filter(p => !p.isDemo));
     setActiveProject(null);
     setMaterials([]);
     setCrew([]);

@@ -22,6 +22,7 @@ export interface Project {
   budget: number;
   notes: string;
   createdAt: string;
+  isDemo?: boolean;
   checklist: {
     permit: boolean;
     utility: boolean;
