@@ -50,7 +50,7 @@ Use Stripe Billing with Products and Prices (not Payment Intents — subscriptio
 - [ ] Organization created in Supabase, org_id assigned
 - [ ] Admin user invited
 - [ ] Stripe subscription active
-- [ ] Welcome email sent (manual for now, automated in Phase 3)
+- [ ] Welcome email sent (manual for now, automated in Phase 2)
 - [ ] Optional: 20-min onboarding call for Business tier
 
 ## Financial Basics
@@ -65,6 +65,17 @@ Use Stripe Billing with Products and Prices (not Payment Intents — subscriptio
 - [ ] Privacy Policy (required by Stripe, Supabase, and most app stores)
 - [ ] Cookie/data consent banner (required for GDPR if any EU customers)
 - [ ] Data processing agreement for any EU B2B customers
+
+## Phase Progression and Revenue Targets
+- **Phase 1 → Phase 2 trigger:** $5K MRR (~50 Pro customers). Don't start building Phase 2 (Operations) features until Phase 1 is stable and billing is live.
+- **Phase 2 → Phase 3 trigger:** $15K+ MRR (~150 Pro customers). Phase 3 (3D Design Studio) is a differentiator for larger contractors — wait until customer feedback confirms demand.
+- **Phase 4 trigger:** $30K+ MRR and dedicated team capacity.
+
+Phase 2 (Operations & Integrations) will expand the revenue ceiling per customer:
+- Scheduling module → justify Pro/Business upsell
+- QuickBooks integration → sticky for Business tier
+- Client portal → enables clients to login and approve proposals (new value prop)
+- Mobile field access → foremen use it daily (high retention driver)
 
 ## When to Hire
 - First contractor: when you're spending >10hrs/week on customer support → hire part-time support

@@ -57,7 +57,7 @@ Variables are set in:
 4. Apply to production during low-traffic window
 5. Update `supabase/README.md` with schema changes
 
-Current migration: `001_initial_schema.sql` — not yet run in any environment.
+Current migration: `001_initial_schema.sql` — run and live in dev Supabase project (15 tables, 55 RLS policies active). Staging and production not yet deployed.
 
 ## Scaling Triggers
 Take action when these thresholds are hit (not before):
@@ -76,7 +76,7 @@ Before any production deploy:
 - [ ] All new env vars added to Netlify dashboard
 - [ ] Supabase migrations run on staging first
 - [ ] RLS policies tested with 2+ accounts (tenant isolation confirmed)
-- [ ] Stripe webhook endpoints updated if billing changed
+- [ ] Stripe webhook endpoints updated if billing changed (Sprint 3 adds webhook handlers)
 - [ ] No API keys or secrets in the codebase (`git grep -i "sk-ant\|supabase\|stripe_sk"`)
 
 ## Rollback Strategy

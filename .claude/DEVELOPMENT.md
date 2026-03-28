@@ -72,6 +72,55 @@ Use `useForm` hook from `src/hooks/useForm.ts`. Validate with `src/utils/validat
 - Components: test user interactions, not implementation details
 - No snapshot tests
 
+## PDF Component Patterns (src/components/pdf/)
+
+All PDF components use `@react-pdf/renderer`. Follow these conventions:
+
+### Structure
+```tsx
+import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
+
+const styles = StyleSheet.create({
+  page: { padding: 40, fontFamily: 'Helvetica' },
+  header: { backgroundColor: '#2D6A4F', color: 'white', padding: 16 },
+});
+
+export const ManifestPDF = ({ project, ... }: Props) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      ...
+    </Page>
+  </Document>
+);
+```
+
+### Export Pattern
+Use `pdf().toBlob()` + manual anchor click for downloads (not `PDFDownloadLink` — it causes blank-tab UX issues):
+```tsx
+const handleExport = async () => {
+  setExporting(true);
+  const blob = await pdf(<ManifestPDF {...props} />).toBlob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${project.name}-manifest.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+  setExporting(false);
+};
+```
+
+### PDF-Specific Rules
+- Never use Tailwind or CSS custom properties inside PDF components — `StyleSheet.create()` only
+- Brand green for PDF headers: `#2D6A4F`
+- Keep PDF component props typed — no `any` even in PDF templates
+- PDF components live in `src/components/pdf/`, never in pages
+- Test PDF output by generating and opening the file — TypeScript alone isn't sufficient
+
+### Existing PDF Templates
+- `src/components/pdf/ManifestPDF.tsx` — material manifest with zone tables and cost rollup
+- `src/components/pdf/CrewPacketPDF.tsx` — field crew packet with installation steps and checkboxes
+
 ## Code Review Checklist
 Before marking any feature complete:
 - [ ] TypeScript compiles with no errors (`npm run build`)
@@ -80,3 +129,4 @@ Before marking any feature complete:
 - [ ] Mobile layout is not broken
 - [ ] New types added to `src/types/index.ts`
 - [ ] New constants added to `src/lib/constants.ts`
+- [ ] PDF exports (if touched): tested by generating actual PDF, not just checking TypeScript
