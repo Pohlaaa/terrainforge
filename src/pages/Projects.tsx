@@ -457,11 +457,22 @@ export const Projects: React.FC = () => {
 
       {/* Empty state */}
       {projects.length === 0 ? (
-        <div className="text-center py-[64px] px-[24px] text-[var(--text-3)]">
-          <div className="text-[40px] mb-[12px] opacity-30">⊞</div>
-          <div className="text-[16px] font-[600] text-[var(--text-2)] mb-[6px]">No projects yet</div>
-          <div className="text-[13px] mb-[20px]">Create your first project to get started</div>
-          <Button variant="primary" onClick={() => setShowNewModal(true)}>+ New Project</Button>
+        <div className="flex items-center justify-center py-[80px] px-[24px]">
+          <div className="text-center max-w-[400px]">
+            <div className="text-[48px] mb-[16px] opacity-20">⊞</div>
+            <div className="font-serif text-[22px] text-[var(--text)] mb-[10px]">
+              No projects yet
+            </div>
+            <div className="text-[13px] text-[var(--text-3)] mb-[8px] leading-relaxed">
+              Projects are the foundation of TerrainForge. Each project holds your zones, materials manifest, work orders, and crew assignments.
+            </div>
+            <div className="text-[12px] text-[var(--text-4)] mb-[28px]">
+              Create your first project to start building a manifest.
+            </div>
+            <Button variant="primary" onClick={() => setShowNewModal(true)}>
+              + Create Your First Project
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-[16px]">

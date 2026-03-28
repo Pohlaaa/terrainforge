@@ -89,52 +89,70 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-[320px_1fr] gap-[16px] items-start">
       {/* LEFT COLUMN: KPIs + Alerts */}
       <div className="flex flex-col gap-[12px]">
-        {/* KPI cards */}
-        <div className="flex flex-col gap-[8px]">
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-            <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
-              Active Projects
+        {/* KPI cards — replaced by welcome card when no projects exist */}
+        {projects.length === 0 ? (
+          <div className="bg-[var(--surface2)] border border-[var(--green-l)] rounded-[10px] p-[24px] text-center">
+            <div className="text-[32px] mb-[12px]">⬡</div>
+            <div className="font-serif text-[18px] text-[var(--text)] mb-[8px]">
+              Welcome to TerrainForge
             </div>
-            <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
-              {activeProjects}
+            <div className="text-[12px] text-[var(--text-3)] mb-[20px] leading-relaxed">
+              Manage projects, materials, crew, and equipment — all in one place. Start by creating your first project.
             </div>
-            {planningProjects > 0 && (
-              <div className="text-[10px] text-[var(--text-4)] mt-[4px]">
-                +{planningProjects} in planning
+            <Link
+              to="/projects"
+              className="inline-block px-[20px] py-[10px] bg-[var(--green-l)] text-[var(--surface)] text-[13px] font-[700] rounded-[8px] hover:opacity-90 transition-opacity"
+            >
+              Create First Project
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-[8px]">
+            <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
+              <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
+                Active Projects
               </div>
-            )}
-          </div>
+              <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
+                {activeProjects}
+              </div>
+              {planningProjects > 0 && (
+                <div className="text-[10px] text-[var(--text-4)] mt-[4px]">
+                  +{planningProjects} in planning
+                </div>
+              )}
+            </div>
 
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-            <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
-              Total Project Value
+            <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
+              <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
+                Total Project Value
+              </div>
+              <div className="font-serif text-[28px] text-[var(--green-l)] leading-[1]">
+                ${(totalProjectValue / 1000).toFixed(1)}k
+              </div>
             </div>
-            <div className="font-serif text-[28px] text-[var(--green-l)] leading-[1]">
-              ${(totalProjectValue / 1000).toFixed(1)}k
-            </div>
-          </div>
 
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-            <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
-              Team Size
+            <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
+              <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
+                Team Size
+              </div>
+              <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
+                {teamSize}
+              </div>
+              <div className="text-[10px] text-[var(--text-4)] mt-[4px]">
+                {availableToday.length} available today
+              </div>
             </div>
-            <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
-              {teamSize}
-            </div>
-            <div className="text-[10px] text-[var(--text-4)] mt-[4px]">
-              {availableToday.length} available today
-            </div>
-          </div>
 
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-            <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
-              Fleet Size
-            </div>
-            <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
-              {fleetSize}
+            <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
+              <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
+                Fleet Size
+              </div>
+              <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
+                {fleetSize}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Alerts widget */}
         <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
