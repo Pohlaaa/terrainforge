@@ -73,6 +73,74 @@ gh pr merge --merge --delete-branch
 
 ---
 
+## S5-1c: Fix Supabase Write Layer — org_id Injection + ID Consistency (P0)
+
+**Context:** After S5-1b correctly cleared in-memory state on sign-out, data no longer persists through sign-out/sign-in cycles. Investigation reveals the Supabase write layer has been silently failing since Sprint 1 — the app has been running on in-memory + localStorage state only. Two root causes:
+
+1. **`org_id` is never included in create operations.** The `createProject` call in `projectStore.ts` passes `projectData` from the UI form, which has no `org_id`. Supabase RLS requires `org_id` on every insert — without it, inserts are rejected. `createProject` catches the error and returns null silently. Same pattern in `crewStore`, `materialStore`, and `equipmentStore`.
+
+2. **Local UUID and Supabase ID never match.** `addProject` generates a `crypto.randomUUID()` for the local optimistic update, then calls `db.createProject(projectData)` which does NOT pass that UUID — Supabase auto-generates a different ID. After sign-out/sign-in, `fetchProjects` returns the Supabase ID (if the insert succeeded), which doesn't match any ID in local state.
+
+**Changes required:**
+
+**`src/stores/projectStore.ts`**
+- In `addProject`: before the Supabase call, get `org_id` from `useOrgStore.getState().org?.id`. If no org_id is available, log an error and return early rather than silently failing.
+- Pass the locally generated `newProject.id` to `db.createProject` so the Supabase record uses the same UUID as the local optimistic update. Update the `createProject` call signature accordingly.
+- Include `org_id` in `newProject` and in the data sent to `db.createProject`.
+
+**`src/stores/crewStore.ts`**
+- Same pattern: inject `org_id` from `useOrgStore.getState().org?.id` in `addCrewMember` (or equivalent create action) before the Supabase call.
+
+**`src/stores/materialStore.ts`**
+- Same pattern: inject `org_id` in the material create action.
+
+**`src/stores/equipmentStore.ts`**
+- Same pattern: inject `org_id` in the equipment create action.
+
+**`src/services/supabaseData.ts`**
+- Update `createProject` to accept an `id` parameter and include it in the insert payload so Supabase uses the client-generated UUID.
+- Verify the insert payload includes `org_id` passed from the store.
+- Do the same for `createCrewMember`, `createMaterial`, `createEquipment` if they have the same gap.
+
+**`src/stores/orgStore.ts`**
+- Verify `fetchOrg` inserts a new org record into Supabase if none is found for this user (not just creates one in memory with `makeDefaultOrg`). If a new user has no org, an org must be created in the database on first login — otherwise all RLS-protected writes will fail.
+
+**Validation:**
+- `npm run build` passes with zero TypeScript errors
+- Sign in → create a project → sign out → sign back in → project reloads from Supabase ✓
+
+```bash
+git add -A
+git commit -m "S5-1c: Fix Supabase write layer — inject org_id, sync local/remote IDs
+
+Silent write failures since Sprint 1: org_id not included in create operations,
+local UUID not passed to Supabase so IDs mismatched on fetch.
+Also ensures new users get an org record in Supabase on first login.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push origin HEAD
+gh pr create --title "S5-1c: Fix Supabase write layer (org_id injection, ID consistency)" --body "$(cat <<'EOF'
+## Summary
+- Inject org_id from orgStore into all create operations (project, crew, material, equipment)
+- Pass client-generated UUID to Supabase createProject so local/remote IDs match
+- Ensure new users get a real org record in Supabase on first login (not just in-memory default)
+- Fixes silent write failures that have existed since Sprint 1
+
+## Test plan
+- [ ] Sign in → create a project → sign out → sign back in → project is present
+- [ ] Create crew member → sign out → sign back in → crew member is present
+- [ ] Create material → sign out → sign back in → material is present
+- [ ] No console errors during create operations
+- [ ] npm run build passes with zero TypeScript errors
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+gh pr merge --merge --delete-branch
+```
+
+---
+
 ## S5-2: Fix Demo Data Detection + Empty States (F-014, F-015)
 
 **Context:** The "Clear Demo Data" button in Sidebar.tsx checks for hardcoded project IDs (`proj_001`, `proj_002`). Real Supabase accounts get UUIDs, so the button never appears for any actual user. Additionally, S4-5 empty states couldn't be tested because of this.
@@ -217,7 +285,4 @@ After staging is live, review Phase 1 gate criteria:
 | All 8 pages wired to real Supabase data | ✅ Done |
 | PDF export functional (Manifest + Crew Packet) | ✅ Done |
 | Stripe billing live (checkout, portal, webhook) | ✅ Done |
-| Multi-tenancy: data isolated between orgs | 🔄 Retest after S5-1 |
-| Pilot user can complete full workflow unassisted | 🔄 Requires staging deploy |
-
-Phase 1 is complete when all 6 are checked. Phase 2 (Operations) begins after first pilot user completes a real project in the app.
+| Multi-tenancy: data isolated between orgs | 🔄 Retest after S5-1 
