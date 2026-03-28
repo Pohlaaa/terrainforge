@@ -2,6 +2,10 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProjectStore } from '@/stores/projectStore';
+import { useMaterialStore } from '@/stores/materialStore';
+import { useCrewStore } from '@/stores/crewStore';
+import { useEquipmentStore } from '@/stores/equipmentStore';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 interface NavItem {
   path: string;
@@ -21,13 +25,31 @@ const navItems: NavItem[] = [
   { path: '/equipment', label: 'Equipment', icon: '⚙', dotColor: '#D97706' },
 ];
 
+const SEED_PROJECT_IDS = new Set(['proj_001', 'proj_002']);
+
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [signingOut, setSigningOut] = React.useState(false);
-  const { projects, activeProjectId } = useProjectStore();
+  const [showClearConfirm, setShowClearConfirm] = React.useState(false);
+  const { projects, activeProjectId, setProjects, setActiveProject } = useProjectStore();
+  const { setMaterials } = useMaterialStore();
+  const { setCrew } = useCrewStore();
+  const { setEquipment } = useEquipmentStore();
   const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
+
+  const hasDemoData = projects.some(p => SEED_PROJECT_IDS.has(p.id));
+
+  function handleClearDemoData() {
+    setProjects([]);
+    setActiveProject(null);
+    setMaterials([]);
+    setCrew([]);
+    setEquipment([]);
+    setShowClearConfirm(false);
+    navigate('/');
+  }
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -150,7 +172,27 @@ export const Sidebar: React.FC = () => {
             <div className="text-[12px] text-[var(--text-4)] font-[500]">None selected</div>
           )}
         </div>
+
+        {/* Clear Demo Data — only shown while seed data is present */}
+        {hasDemoData && (
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="w-full text-left px-[12px] py-[9px] rounded-[8px] text-[11px] text-[#FB923C] bg-[rgba(251,146,60,.08)] border border-[rgba(251,146,60,.2)] hover:bg-[rgba(251,146,60,.15)] transition-colors cursor-pointer"
+          >
+            ⚠ Clear Demo Data
+          </button>
+        )}
       </div>
+
+      <ConfirmDialog
+        isOpen={showClearConfirm}
+        title="Clear Demo Data"
+        message="This will remove all demo projects, materials, crew, and equipment. Your account settings and billing will not be affected. This cannot be undone."
+        confirmText="Start Fresh"
+        confirmVariant="danger"
+        onConfirm={handleClearDemoData}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </aside>
   );
 };
