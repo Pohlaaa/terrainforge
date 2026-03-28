@@ -64,6 +64,12 @@ export const Projects: React.FC = () => {
     const errors: Partial<NewProjectForm> = {};
     if (!form.name.trim()) errors.name = 'Required';
     if (!form.client.trim()) errors.client = 'Required';
+    if (!form.address.trim()) errors.address = 'Required';
+    const budgetVal = parseFloat(form.budget);
+    if (!form.budget || isNaN(budgetVal) || budgetVal <= 0) errors.budget = 'Enter a budget greater than $0';
+    if (form.startDate && form.targetDate && form.targetDate < form.startDate) {
+      errors.targetDate = 'Target date must be after start date';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -443,7 +449,9 @@ export const Projects: React.FC = () => {
           </div>
           <Input
             label="Address"
+            required
             value={form.address}
+            error={formErrors.address}
             onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
             placeholder="1247 Maple Ridge Dr, Austin TX"
           />
@@ -459,8 +467,10 @@ export const Projects: React.FC = () => {
             <Input
               label="Budget ($)"
               type="number"
-              min="0"
+              required
+              min="1"
               value={form.budget}
+              error={formErrors.budget}
               onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
               placeholder="45000"
             />
@@ -476,6 +486,7 @@ export const Projects: React.FC = () => {
               label="Target Date"
               type="date"
               value={form.targetDate}
+              error={formErrors.targetDate}
               onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))}
             />
           </div>

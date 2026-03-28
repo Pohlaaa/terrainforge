@@ -258,6 +258,15 @@ export const WorkOrders: React.FC = () => {
                     </div>
                     <div className="text-[11px] text-[var(--text-3)] mt-[2px]">
                       {zone.area.toLocaleString()} sq ft · {zone.materials.length} material{zone.materials.length !== 1 ? 's' : ''} · {steps.length} steps
+                      {zone.crew
+                        ? (() => {
+                            const member = crew.find(m => m.id === zone.crew);
+                            return member
+                              ? <span className="text-[var(--text-4)]"> · 👤 {member.name}</span>
+                              : <span className="text-[#F87171]"> · ⚠ No crew assigned</span>;
+                          })()
+                        : <span className="text-[#F87171]"> · ⚠ No crew assigned</span>
+                      }
                     </div>
                   </div>
 
@@ -282,11 +291,12 @@ export const WorkOrders: React.FC = () => {
 
                     <div className="px-[16px] py-[14px] flex flex-col gap-[16px]">
                       {/* Material pull list */}
-                      {zone.materials.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[8px]">
+                          Material Pull List
+                        </div>
+                      {zone.materials.length > 0 ? (
                         <div>
-                          <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[8px]">
-                            Material Pull List
-                          </div>
                           <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-[4px]">
                             {zone.materials.map(zm => {
                               const mat = materials.find(m => m.id === zm.materialId);
@@ -309,7 +319,12 @@ export const WorkOrders: React.FC = () => {
                             })}
                           </div>
                         </div>
+                      ) : (
+                        <div className="text-[11px] text-[var(--text-4)] italic px-[2px]">
+                          No materials assigned — add materials to this zone in the Projects page.
+                        </div>
                       )}
+                      </div>
 
                       {/* Installation steps */}
                       <div>
