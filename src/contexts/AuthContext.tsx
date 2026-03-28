@@ -44,10 +44,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (_event === 'SIGNED_OUT') {
+          useProjectStore.getState().reset()
+          useCrewStore.getState().reset()
+          useMaterialStore.getState().reset()
+          useEquipmentStore.getState().reset()
           useProjectStore.persist.clearStorage()
           useCrewStore.persist.clearStorage()
           useMaterialStore.persist.clearStorage()
           useEquipmentStore.persist.clearStorage()
+        }
+        if (_event === 'SIGNED_IN' && session) {
+          useProjectStore.getState().fetchProjects()
+          useCrewStore.getState().fetchCrew()
+          useMaterialStore.getState().fetchMaterials()
+          useEquipmentStore.getState().fetchEquipment()
         }
         setSession(session)
         setUser(session?.user || null)
@@ -88,7 +98,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
-    // Clear all persisted store data so the next user starts with a clean slate
+    // Reset in-memory state and clear persisted store data
+    useProjectStore.getState().reset()
+    useCrewStore.getState().reset()
+    useMaterialStore.getState().reset()
+    useEquipmentStore.getState().reset()
     useProjectStore.persist.clearStorage()
     useCrewStore.persist.clearStorage()
     useMaterialStore.persist.clearStorage()

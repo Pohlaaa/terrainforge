@@ -16,6 +16,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgStore } from '@/stores/orgStore';
+import { useProjectStore } from '@/stores/projectStore';
+import { useCrewStore } from '@/stores/crewStore';
+import { useMaterialStore } from '@/stores/materialStore';
+import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useBillingGate } from '@/hooks/useBillingGate';
 
 interface AppLayoutProps {
@@ -25,6 +29,10 @@ interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { user } = useAuth();
   const fetchOrg = useOrgStore((s) => s.fetchOrg);
+  const fetchProjects = useProjectStore((s) => s.fetchProjects);
+  const fetchCrew = useCrewStore((s) => s.fetchCrew);
+  const fetchMaterials = useMaterialStore((s) => s.fetchMaterials);
+  const fetchEquipment = useEquipmentStore((s) => s.fetchEquipment);
   const { showUrgentBanner, daysLeft, isPastDue } = useBillingGate();
   const location = useLocation();
 
@@ -37,8 +45,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   useEffect(() => {
     if (user?.id) {
       fetchOrg(user.id);
+      fetchProjects();
+      fetchCrew();
+      fetchMaterials();
+      fetchEquipment();
     }
-  }, [user?.id, fetchOrg]);
+  }, [user?.id, fetchOrg, fetchProjects, fetchCrew, fetchMaterials, fetchEquipment]);
 
   // Suppress banners on the billing page itself — user is already looking at it
   const isOnBillingPage = location.pathname === '/billing';

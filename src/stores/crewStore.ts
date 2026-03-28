@@ -7,6 +7,7 @@ interface CrewStore {
   crew: CrewMember[]
   isLoading: boolean
   error: string | null
+  reset: () => void
   addCrewMember: (member: Omit<CrewMember, 'id'>) => Promise<void>
   updateCrewMember: (id: string, updates: Partial<CrewMember>) => Promise<void>
   deleteCrewMember: (id: string) => Promise<void>
@@ -93,6 +94,7 @@ export const useCrewStore = create<CrewStore>()(
       crew: seedCrew,
       isLoading: false,
       error: null,
+      reset: () => set({ crew: [], isLoading: false, error: null }),
       setCrew: (crew) => set({ crew }),
       fetchCrew: async () => {
         set({ isLoading: true, error: null })
