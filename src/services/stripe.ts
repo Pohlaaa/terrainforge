@@ -112,7 +112,7 @@ export async function getSubscriptionStatus(
   const { data, error } = await supabase
     .from('organizations')
     .select('subscription_status')
-    .eq('id', orgId)
+    .eq('owner_id', orgId)
     .single();
 
   if (error || !data) return 'none';

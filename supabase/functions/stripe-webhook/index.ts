@@ -179,7 +179,7 @@ async function handleCheckoutSessionCompleted(
   const { error } = await supabase
     .from('organizations')
     .update(update)
-    .eq('id', orgId);
+    .eq('owner_id', orgId);
 
   if (error) {
     console.error('checkout.session.completed: DB update failed', error, { orgId });

@@ -87,7 +87,7 @@ export const useOrgStore = create<OrgStore>()(
             .select(
               'id, name, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id'
             )
-            .eq('id', orgId)
+            .eq('owner_id', orgId)
             .single();
 
           if (error) {
