@@ -101,10 +101,12 @@ export async function fetchProjects(): Promise<Project[]> {
   }
 }
 
-export async function createProject(project: Omit<Project, 'id' | 'createdAt'>): Promise<Project | null> {
+export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, id: string, orgId: string): Promise<Project | null> {
   try {
     const { zones, ...projectData } = project
     const snakeData = toSnakeCase(projectData) as any
+    snakeData.id = id
+    snakeData.org_id = orgId
     snakeData.checklist = project.checklist // Keep as object, Supabase will handle JSONB
 
     const { data, error } = await supabase
@@ -317,9 +319,11 @@ export async function fetchMaterials(): Promise<Material[]> {
   }
 }
 
-export async function createMaterial(material: Omit<Material, 'id'>): Promise<Material | null> {
+export async function createMaterial(material: Omit<Material, 'id'>, id: string, orgId: string): Promise<Material | null> {
   try {
     const snakeData = toSnakeCase(material) as any
+    snakeData.id = id
+    snakeData.org_id = orgId
 
     const { data, error } = await supabase
       .from('materials')
@@ -418,10 +422,12 @@ export async function fetchCrew(): Promise<CrewMember[]> {
   }
 }
 
-export async function createCrewMember(member: Omit<CrewMember, 'id'>): Promise<CrewMember | null> {
+export async function createCrewMember(member: Omit<CrewMember, 'id'>, id: string, orgId: string): Promise<CrewMember | null> {
   try {
     const { certs, ...memberData } = member
     const snakeData = toSnakeCase(memberData) as any
+    snakeData.id = id
+    snakeData.org_id = orgId
     snakeData.skills = memberData.skills // Keep as array
     snakeData.availability = memberData.availability // Keep as object
     snakeData.booked_dates = memberData.bookedDates // Convert to snake_case
@@ -590,10 +596,12 @@ export async function fetchEquipment(): Promise<Equipment[]> {
   }
 }
 
-export async function createEquipment(equip: Omit<Equipment, 'id'>): Promise<Equipment | null> {
+export async function createEquipment(equip: Omit<Equipment, 'id'>, id: string, orgId: string): Promise<Equipment | null> {
   try {
     const { maintenanceLog, ...equipData } = equip
     const snakeData = toSnakeCase(equipData) as any
+    snakeData.id = id
+    snakeData.org_id = orgId
     snakeData.capabilities = equipData.capabilities // Keep as array
 
     const { data, error } = await supabase

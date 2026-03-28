@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Material } from '@/types'
+import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
 
 interface MaterialStore {
@@ -392,13 +393,18 @@ export const useMaterialStore = create<MaterialStore>()(
         }
       },
       addMaterial: async (materialData) => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) {
+          console.error('addMaterial: no org_id available')
+          return
+        }
         const newMaterial: Material = {
           ...materialData,
           id: crypto.randomUUID(),
         }
         set((state) => ({ materials: [...state.materials, newMaterial] }))
         try {
-          await db.createMaterial(materialData)
+          await db.createMaterial(materialData, newMaterial.id, orgId)
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }

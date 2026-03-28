@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { Project, Zone } from '@/types'
 import { computeProjectCostRaw } from '@/lib/manifest'
 import { useMaterialStore } from './materialStore'
+import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
 
 interface ProjectStore {
@@ -185,6 +186,11 @@ export const useProjectStore = create<ProjectStore>()(
         }
       },
       addProject: async (projectData) => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) {
+          console.error('addProject: no org_id available')
+          return
+        }
         const newProject: Project = {
           ...projectData,
           id: crypto.randomUUID(),
@@ -193,7 +199,7 @@ export const useProjectStore = create<ProjectStore>()(
         }
         set((state) => ({ projects: [...state.projects, newProject] }))
         try {
-          await db.createProject(projectData)
+          await db.createProject(projectData, newProject.id, orgId)
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }

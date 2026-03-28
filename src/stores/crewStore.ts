@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { CrewMember } from '@/types'
+import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
 
 interface CrewStore {
@@ -106,13 +107,18 @@ export const useCrewStore = create<CrewStore>()(
         }
       },
       addCrewMember: async (memberData) => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) {
+          console.error('addCrewMember: no org_id available')
+          return
+        }
         const newMember: CrewMember = {
           ...memberData,
           id: crypto.randomUUID(),
         }
         set((state) => ({ crew: [...state.crew, newMember] }))
         try {
-          await db.createCrewMember(memberData)
+          await db.createCrewMember(memberData, newMember.id, orgId)
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }

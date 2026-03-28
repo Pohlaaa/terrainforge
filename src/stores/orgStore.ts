@@ -91,9 +91,28 @@ export const useOrgStore = create<OrgStore>()(
             .single();
 
           if (error) {
-            // PGRST116 = row not found — use safe defaults, don't surface as error
             if (error.code === 'PGRST116') {
-              set({ org: makeDefaultOrg(orgId), isLoading: false });
+              // New user — create an org record in Supabase so all RLS-protected writes succeed
+              const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+              const { data: newOrg, error: insertError } = await supabase
+                .from('organizations')
+                .insert([{
+                  id: orgId,
+                  owner_id: orgId,
+                  name: '',
+                  subscription_status: 'trialing',
+                  subscription_tier: 'starter',
+                  trial_ends_at: trialEndsAt,
+                }])
+                .select('id, name, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id')
+                .single()
+
+              if (insertError) {
+                // Row may have been created by a concurrent trigger — fall back to safe defaults
+                set({ org: makeDefaultOrg(orgId), isLoading: false })
+              } else {
+                set({ org: mapOrgRow(newOrg as OrgRow), isLoading: false })
+              }
             } else {
               // Network or other error — keep any cached org, surface error
               set({ isLoading: false, error: error.message });
