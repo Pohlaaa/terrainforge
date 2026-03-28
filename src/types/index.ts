@@ -264,3 +264,11 @@ export interface WorkOrderStep {
   n: number;
   text: string;
 }
+
+// ── Billing ───────────────────────────────────────────────────────────────────
+
+/** Mirrors the subscription_status column on the organizations table. */
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'none';
+
+/** Mirrors the subscription_tier column on the organizations table. */
+export type SubscriptionTier = 'starter' | 'pro' | 'business';
