@@ -142,12 +142,17 @@ export const useCrewStore = create<CrewStore>()(
         }
       },
       getAvailableToday: () => {
-        const today = new Date().getDay()
+        const today = new Date()
         const dayKeys: (keyof CrewMember['availability'])[] = [
           'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat',
         ]
-        const todayKey = dayKeys[today]
-        return get().crew.filter((m) => m.availability[todayKey])
+        const todayKey = dayKeys[today.getDay()]
+        // ISO date string for today e.g. "2026-04-01"
+        const todayISO = today.toISOString().split('T')[0]
+        return get().crew.filter((m) =>
+          m.availability[todayKey] &&
+          !(m.bookedDates ?? []).includes(todayISO)
+        )
       },
       getBySkill: (skill) => {
         return get().crew.filter((m) => m.skills.includes(skill))

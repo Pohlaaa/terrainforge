@@ -36,6 +36,11 @@ export const Dashboard: React.FC = () => {
   const assignedCrewIds = new Set(
     projects.flatMap(p => p.zones.map(z => z.crew)).filter(Boolean)
   );
+  // Crew who have a specific booking entry for today
+  const todayISO = new Date().toISOString().split('T')[0];
+  const bookedTodayIds = new Set(
+    crew.filter(m => (m.bookedDates ?? []).includes(todayISO)).map(m => m.id)
+  );
 
   // Fleet KPIs
   const fleetSize = equipment.filter(e => e.status !== 'out-of-service').length;
@@ -55,6 +60,7 @@ export const Dashboard: React.FC = () => {
     name: m.name,
     availableToday: availableTodayIds.has(m.id),
     assigned: assignedCrewIds.has(m.id),
+    bookedToday: bookedTodayIds.has(m.id),
   }));
 
   // Equipment rows for fleet widget
@@ -197,6 +203,10 @@ export const Dashboard: React.FC = () => {
                       {member.assigned ? (
                         <span className="inline-flex bg-[#60A5FA] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
                           On Job
+                        </span>
+                      ) : member.bookedToday ? (
+                        <span className="inline-flex bg-[#FB923C] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
+                          Booked
                         </span>
                       ) : member.availableToday ? (
                         <span className="inline-flex bg-[var(--green-l)] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">

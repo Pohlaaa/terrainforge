@@ -227,6 +227,10 @@ export const ManifestEngine: React.FC = () => {
   // ── Loaded state ─────────────────────────────────────────────────────────────
   const totalZoneItems = zoneManifests.reduce((s, z) => s + z.items.length, 0);
   const totalMissingMats = zoneManifests.reduce((s, z) => s + z.missing.length, 0);
+  // Zones that have at least one unresolved material
+  const zonesWithMissingMats = zoneManifests
+    .filter(z => z.missing.length > 0)
+    .map(z => z.zone.name);
 
   return (
     <div>
@@ -308,7 +312,9 @@ export const ManifestEngine: React.FC = () => {
 
         {totalMissingMats > 0 && (
           <div className="mt-[12px] pt-[12px] border-t border-[var(--border)] text-[12px] text-[var(--amber-l)]">
-            ⚠ {totalMissingMats} material{totalMissingMats !== 1 ? 's' : ''} referenced in zones but not found in the material library — add them to Material Library to include in cost calculations.
+            ⚠ {totalMissingMats} material{totalMissingMats !== 1 ? 's' : ''} referenced in zone{zonesWithMissingMats.length !== 1 ? 's' : ''}{' '}
+            <span className="font-[600]">{zonesWithMissingMats.join(', ')}</span>{' '}
+            not found in the material library — add them to Material Library to include in cost calculations.
           </div>
         )}
       </div>
