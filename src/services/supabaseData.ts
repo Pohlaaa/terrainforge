@@ -837,3 +837,43 @@ export async function addMaintenanceEntry(equipId: string, entry: Omit<Maintenan
     return null
   }
 }
+
+// ===== DIAGNOSTICS =====
+
+export async function diagnoseUserRole(): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.warn('[TF-DIAG] No authenticated user');
+      return;
+    }
+
+    const { data: memberships, error } = await supabase
+      .from('organization_members')
+      .select('org_id, role')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.warn('[TF-DIAG] Could not fetch memberships:', error.message);
+      return;
+    }
+
+    console.log('[TF-DIAG] User roles:', memberships);
+
+    if (memberships && memberships.length > 0) {
+      const hasAdmin = memberships.some((m: any) => m.role === 'admin');
+      const hasForeman = memberships.some((m: any) => m.role === 'foreman');
+
+      if (!hasAdmin && !hasForeman) {
+        console.warn('[TF-DIAG] ⚠️  User has no admin or foreman role. Zone and crew operations will be blocked by RLS.');
+        console.warn('[TF-DIAG] Current roles:', memberships.map((m: any) => m.role).join(', '));
+        console.warn('[TF-DIAG] Fix: Run in Supabase SQL Editor:');
+        console.warn(`[TF-DIAG]   UPDATE organization_members SET role = 'admin' WHERE user_id = '${user.id}';`);
+      }
+    } else {
+      console.warn('[TF-DIAG] ⚠️  User has NO organization memberships. All RLS checks will fail.');
+    }
+  } catch (err: any) {
+    console.warn('[TF-DIAG] Role check failed:', err.message);
+  }
+}

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabase'
+import { diagnoseUserRole } from '@/services/supabaseData'
 import { useOrgStore } from '@/stores/orgStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useCrewStore } from '@/stores/crewStore'
@@ -59,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           useCrewStore.getState().fetchCrew()
           useMaterialStore.getState().fetchMaterials()
           useEquipmentStore.getState().fetchEquipment()
+          diagnoseUserRole()
         }
         setSession(session)
         setUser(session?.user || null)
