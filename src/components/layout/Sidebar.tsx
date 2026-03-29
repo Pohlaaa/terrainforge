@@ -171,6 +171,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, mobileOpen 
             </div>
           )}
           <Link
+            to="/settings"
+            title="Settings"
+            onClick={handleNavClick}
+            className={`w-full text-left py-[9px] text-[13px] border-l-[3px] flex items-center gap-[10px] transition-all duration-180 block min-h-[44px] ${
+              collapsed ? 'px-[14px] justify-center' : 'px-[14px]'
+            } ${
+              location.pathname === '/settings'
+                ? 'border-l-[var(--green-l)] bg-[rgba(45,106,79,.2)]'
+                : 'border-l-transparent hover:bg-[rgba(255,255,255,.06)]'
+            }`}
+            style={{ color: location.pathname === '/settings' ? 'var(--green-l)' : 'var(--sidebar-text-2)' }}
+          >
+            <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: '#94A3B8' }}></span>
+            {!collapsed && 'Settings'}
+          </Link>
+          <Link
             to="/billing"
             title="Billing"
             onClick={handleNavClick}
