@@ -225,15 +225,33 @@ export const useProjectStore = create<ProjectStore>()(
         }
       },
       updateProject: async (id, updates) => {
+        const previous = get().projects.find((p) => p.id === id)
         set((state) => ({
           projects: state.projects.map((p) =>
             p.id === id ? { ...p, ...updates } : p
           ),
         }))
         try {
-          await db.updateProject(id, updates)
+          const result = await db.updateProject(id, updates)
+          if (!result) {
+            console.error('[TF-DEBUG] updateProject: Supabase write failed, rolling back', id)
+            if (previous) {
+              set((state) => ({
+                projects: state.projects.map((p) => p.id === id ? previous : p),
+                error: 'Failed to update project. Please try again.',
+              }))
+            }
+            return
+          }
+          await get().fetchProjects()
         } catch (err: any) {
-          set((state) => ({ error: err.message }))
+          console.error('[TF-DEBUG] updateProject error:', err)
+          if (previous) {
+            set((state) => ({
+              projects: state.projects.map((p) => p.id === id ? previous : p),
+              error: err.message,
+            }))
+          }
         }
       },
       deleteProject: async (id) => {
