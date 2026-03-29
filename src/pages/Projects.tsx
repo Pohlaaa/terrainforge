@@ -100,6 +100,10 @@ export const Projects: React.FC = () => {
   const [aiSkipped, setAiSkipped] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AIProjectSuggestion | null>(null);
 
+  // Zone builder state (for new project creation)
+  const [newProjectZones, setNewProjectZones] = useState<Array<{name: string; area: string; color: string}>>([]);
+  const ZONE_COLORS = ['#2D6A4F', '#2563EB', '#F59E0B', '#DC2626', '#7C3AED', '#0D9488'];
+
   // Edit project state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<EditProjectForm>({ name: '', notes: '', startDate: '', targetDate: '', budget: '' });
@@ -159,6 +163,7 @@ export const Projects: React.FC = () => {
     setAiError('');
     setAiSkipped(false);
     setAiSuggestion(null);
+    setNewProjectZones([]);
   }
 
   async function handleAiGenerate() {
@@ -200,6 +205,21 @@ export const Projects: React.FC = () => {
       const ok = window.confirm('This start date is in the past. Are you sure you want to backdate this project?');
       if (!ok) return;
     }
+    const builtZones = newProjectZones
+      .filter(z => z.name.trim())
+      .map((z, i) => ({
+        id: crypto.randomUUID(),
+        name: z.name.trim(),
+        area: parseFloat(z.area) || 0,
+        perimeter: 0,
+        sequence: i + 1,
+        crew: '',
+        dependencies: [] as string[],
+        notes: '',
+        materials: [] as import('@/types').ZoneMaterial[],
+        equipment: [] as import('@/types').ZoneEquipment[],
+        createdAt: new Date().toISOString(),
+      }));
     await addProject({
       name: form.name.trim(),
       client: form.client.trim(),
@@ -213,7 +233,7 @@ export const Projects: React.FC = () => {
         permit: false, utility: false, deposit: false, design: false,
         access: false, materials: false, crew: false, equipment: false,
       },
-      zones: [],
+      zones: builtZones,
     });
     closeNewModal();
   }
@@ -1054,146 +1074,166 @@ export const Projects: React.FC = () => {
         </div>
       )}
 
-      {/* New Project Modal */}
-      <Modal
-        isOpen={showNewModal}
-        title="New Project"
-        onClose={closeNewModal}
-        onConfirm={aiSkipped ? handleCreate : undefined}
-        confirmText="Create Project"
-        maxWidth="580px"
-      >
-        <div className="flex flex-col gap-[14px]">
-          {/* ── AI description step ────────────────────────────────────────── */}
-          {!aiSkipped && (
-            <div>
-              <div className="flex items-center justify-between mb-[8px]">
-                <label className="text-[12px] font-[600] text-[var(--text-2)]">
-                  Describe your project
-                </label>
-                <button
-                  type="button"
-                  className="text-[11px] text-[var(--text-3)] hover:text-[var(--text-2)] underline transition-colors"
-                  onClick={() => setAiSkipped(true)}
-                >
-                  Skip — fill manually
-                </button>
-              </div>
-              <TextArea
-                rows={3}
-                value={aiDescription}
-                onChange={e => setAiDescription(e.target.value)}
-                placeholder="New sod installation, 2500 sqft backyard at 123 Oak Street, budget around $5,000..."
-              />
-              {aiError && (
-                <div className="mt-[6px] text-[11px] text-[var(--color-error)]">{aiError}</div>
-              )}
-              <div className="mt-[10px] flex items-center gap-[10px]">
+      {/* New Project Modal — redesigned with AI Quick Create + Zone Builder */}
+      {showNewModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+          onClick={e => { if (e.target === e.currentTarget) closeNewModal(); }}
+        >
+          <div className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto rounded-xl bg-[var(--surface-card)] shadow-[var(--shadow-panel)]">
+
+            {/* Sticky header */}
+            <div className="sticky top-0 z-10 px-6 py-4 border-b border-[var(--border-default)] bg-[var(--surface-card)] flex items-center justify-between">
+              <span className="text-[20px] font-[600] text-[var(--text-primary)]">New Project</span>
+              <button
+                onClick={closeNewModal}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)] transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* AI Quick Create */}
+            <div className="px-6 py-5 border-b border-[var(--border-light)] bg-[var(--surface-bg)]">
+              <div className="text-[14px] font-[600] text-[var(--text-primary)] mb-2">Describe your project</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="flex-1 h-[44px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-primary)] text-[14px] outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+                  placeholder="e.g., 3000 sqft paver patio with retaining wall"
+                  value={aiDescription}
+                  onChange={e => setAiDescription(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAiGenerate(); }}
+                />
                 <Button
                   variant="primary"
-                  size="sm"
-                  onClick={handleAiGenerate}
+                  className="h-[44px] px-5"
                   disabled={aiLoading || !aiDescription.trim()}
+                  onClick={handleAiGenerate}
                 >
-                  {aiLoading ? (
-                    <span className="flex items-center gap-[6px]">
-                      <span className="animate-spin inline-block">⌛</span> Generating...
-                    </span>
-                  ) : '✦ Generate from description'}
+                  {aiLoading ? <span className="animate-spin inline-block">⌛</span> : 'Create with AI'}
                 </Button>
               </div>
-            </div>
-          )}
-
-          {/* ── Manual form (shown after AI generate or skip) ──────────────── */}
-          {aiSkipped && (
-            <>
+              {aiError && <div className="mt-2 text-[12px] text-[var(--status-red)]">{aiError}</div>}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {[
+                  '2500 sqft backyard patio with firepit',
+                  'Front yard sod replacement, 4000 sqft',
+                  'Retaining wall with drainage, 80 linear ft',
+                  'Commercial parking lot landscape, 10000 sqft',
+                ].map(chip => (
+                  <button
+                    key={chip}
+                    onClick={() => {
+                      setAiDescription(chip);
+                      handleAiGenerate();
+                    }}
+                    className="text-[12px] px-3 py-1.5 rounded-full bg-[var(--surface-hover)] text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--brand-primary-bg)] hover:text-[var(--brand-primary)] transition-colors"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
               {aiSuggestion && (
-                <div className="rounded-[8px] px-[12px] py-[10px] text-[11px]" style={{ backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                  ✦ AI pre-filled {aiSuggestion.suggestedMaterials.length} material suggestion{aiSuggestion.suggestedMaterials.length !== 1 ? 's' : ''} ready — review and adjust below.
+                <div className="mt-3 flex items-center gap-2 text-[12px] text-[var(--brand-primary)] bg-[var(--brand-primary-bg)] px-3 py-2 rounded-lg">
+                  ✦ AI filled in the form below — review and adjust before saving.
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+            </div>
+
+            {/* Divider */}
+            <div className="relative py-4 px-6">
+              <div className="border-t border-[var(--border-default)]" />
+              <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 bg-[var(--surface-card)] text-[12px] text-[var(--text-tertiary)]">
+                or fill in manually
+              </span>
+            </div>
+
+            {/* Manual form */}
+            <div className="px-6 pb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <Input
+                    label="Project name"
+                    required
+                    value={form.name}
+                    error={formErrors.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g., Oak St Patio"
+                  />
+                </div>
                 <Input
-                  label="Project Name"
-                  required
-                  value={form.name}
-                  error={formErrors.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Henderson Backyard"
-                />
-                <Input
-                  label="Client Name"
+                  label="Client"
                   required
                   value={form.client}
                   error={formErrors.client}
                   onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
-                  placeholder="Sarah Henderson"
+                  placeholder="Client name"
                 />
-              </div>
-              <Input
-                label="Address"
-                required
-                value={form.address}
-                error={formErrors.address}
-                onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                placeholder="1247 Maple Ridge Dr, Austin TX"
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
                 <Input
-                  label="Total Area (sq ft)"
+                  label="Address"
+                  required
+                  value={form.address}
+                  error={formErrors.address}
+                  onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                  placeholder="123 Main St"
+                />
+                <div className="relative">
+                  <Input
+                    label="Budget"
+                    type="number"
+                    required
+                    value={form.budget}
+                    error={formErrors.budget}
+                    onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
+                    placeholder="0"
+                    className="pl-6"
+                  />
+                  <span className="absolute left-3 bottom-[9px] text-[13px] text-[var(--text-tertiary)]">$</span>
+                </div>
+                <Input
+                  label="Total area (sqft)"
                   type="number"
-                  min="0"
                   value={form.totalArea}
                   onChange={e => setForm(f => ({ ...f, totalArea: e.target.value }))}
-                  placeholder="3200"
+                  placeholder="0"
                 />
                 <Input
-                  label="Budget ($)"
-                  type="number"
-                  required
-                  min="1"
-                  value={form.budget}
-                  error={formErrors.budget}
-                  onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
-                  placeholder="45000"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
-                <Input
-                  label="Start Date"
+                  label="Start date"
                   type="date"
                   value={form.startDate}
                   onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                 />
                 <Input
-                  label="Target Date"
+                  label="Target date"
                   type="date"
                   value={form.targetDate}
                   error={formErrors.targetDate}
                   onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))}
                 />
+                <div className="sm:col-span-2">
+                  <TextArea
+                    label="Description"
+                    rows={3}
+                    value={form.notes}
+                    onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Project overview, special requirements, access notes..."
+                  />
+                </div>
               </div>
-              <TextArea
-                label="Notes"
-                rows={3}
-                value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="Project overview, special requirements, access notes..."
-              />
 
               {/* Suggested materials from AI */}
               {aiSuggestion && aiSuggestion.suggestedMaterials.length > 0 && (
-                <div>
-                  <div className="text-[11px] font-[600] text-[var(--text-3)] uppercase tracking-[0.06em] mb-[6px]">
+                <div className="mt-4">
+                  <div className="text-[11px] font-[600] text-[var(--text-tertiary)] uppercase tracking-[0.06em] mb-2">
                     AI Suggested Materials
                   </div>
-                  <div className="flex flex-wrap gap-[6px]">
+                  <div className="flex flex-wrap gap-2">
                     {aiSuggestion.suggestedMaterials.map((m, i) => (
                       <span
                         key={i}
-                        className="px-[10px] py-[4px] rounded-full text-[11px] border"
-                        style={{ backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)', borderColor: 'var(--color-primary-light)' }}
+                        className="px-3 py-1 rounded-full text-[12px] bg-[var(--brand-primary-bg)] text-[var(--brand-primary)]"
                       >
                         {m.name} · {m.estimatedQuantity} {m.unit}
                       </span>
@@ -1201,10 +1241,82 @@ export const Projects: React.FC = () => {
                   </div>
                 </div>
               )}
-            </>
-          )}
+            </div>
+
+            {/* Zone Builder */}
+            <div className="px-6 py-5 border-t border-[var(--border-light)]">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[14px] font-[600] text-[var(--text-primary)]">Work Zones</span>
+                <button
+                  onClick={() => setNewProjectZones(prev => [...prev, { name: '', area: '', color: ZONE_COLORS[0] }])}
+                  className="w-9 h-9 rounded-full border border-[var(--border-default)] bg-[var(--surface-card)] hover:bg-[var(--surface-hover)] flex items-center justify-center text-[18px] text-[var(--text-secondary)] transition-colors"
+                >
+                  +
+                </button>
+              </div>
+              {newProjectZones.length === 0 ? (
+                <div
+                  className="rounded-lg border-2 border-dashed border-[var(--border-default)] flex flex-col items-center justify-center py-8 cursor-pointer hover:border-[var(--brand-primary)] transition-colors"
+                  onClick={() => setNewProjectZones([{ name: '', area: '', color: ZONE_COLORS[0] }])}
+                >
+                  <span className="text-[24px] mb-2 opacity-40">+</span>
+                  <span className="text-[13px] text-[var(--text-tertiary)]">Add zones to break the project into sections</span>
+                </div>
+              ) : (
+                newProjectZones.map((z, i) => (
+                  <div key={i} className="p-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-bg)] mb-3">
+                    <div className="grid grid-cols-[1fr_100px_auto] gap-3 items-center">
+                      <input
+                        type="text"
+                        placeholder="e.g., Front Patio"
+                        value={z.name}
+                        onChange={e => setNewProjectZones(prev => prev.map((zone, idx) => idx === i ? { ...zone, name: e.target.value } : zone))}
+                        className="h-[36px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
+                      />
+                      <input
+                        type="number"
+                        placeholder="sqft"
+                        value={z.area}
+                        onChange={e => setNewProjectZones(prev => prev.map((zone, idx) => idx === i ? { ...zone, area: e.target.value } : zone))}
+                        className="h-[36px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
+                      />
+                      <button
+                        onClick={() => setNewProjectZones(prev => prev.filter((_, idx) => idx !== i))}
+                        className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)] transition-colors text-[12px]"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      {ZONE_COLORS.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setNewProjectZones(prev => prev.map((zone, idx) => idx === i ? { ...zone, color: c } : zone))}
+                          className="w-5 h-5 rounded-full transition-all"
+                          style={{
+                            backgroundColor: c,
+                            border: z.color === c ? `2px solid var(--text-primary)` : '2px solid transparent',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Sticky footer */}
+            <div className="sticky bottom-0 px-6 py-4 border-t border-[var(--border-default)] bg-[var(--surface-card)] flex justify-between">
+              <Button variant="ghost" className="h-[44px]" onClick={closeNewModal}>
+                Cancel
+              </Button>
+              <Button variant="primary" className="h-[44px]" onClick={handleCreate}>
+                Create Project
+              </Button>
+            </div>
+          </div>
         </div>
-      </Modal>
+      )}
 
       {/* Delete confirmation */}
       <ConfirmDialog

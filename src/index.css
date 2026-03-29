@@ -1,9 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* ── Brand accent colors (unchanged) ─────────────────────────────────── */
+  /* ── Surfaces ──────────────────────────────────────────────────────────── */
+  --surface-bg: #FAFAFA;
+  --surface-card: #FFFFFF;
+  --surface-hover: #F3F4F6;
+  --surface-active: #E5E7EB;
+  --surface-selected: #D1FAE5;
+
+  /* ── Text ───────────────────────────────────────────────────────────────── */
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-disabled: #D1D5DB;
+
+  /* ── Brand ──────────────────────────────────────────────────────────────── */
+  --brand-primary: #2D6A4F;
+  --brand-primary-hover: #245A42;
+  --brand-primary-bg: #D1FAE5;
+  --brand-secondary: #D4A843;
+
+  /* ── Borders ────────────────────────────────────────────────────────────── */
+  --border-light: #F3F4F6;
+  --border-default: #E5E7EB;
+  --border-strong: #D1D5DB;
+
+  /* ── Shadows ────────────────────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-hover: 0 4px 8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-panel: 0 8px 24px rgba(0,0,0,0.12);
+
+  /* ── Status colors ──────────────────────────────────────────────────────── */
+  --status-green: #16A34A;
+  --status-green-bg: #DCFCE7;
+  --status-amber: #F59E0B;
+  --status-amber-bg: #FEF3C7;
+  --status-red: #DC2626;
+  --status-red-bg: #FEE2E2;
+  --status-blue: #2563EB;
+  --status-blue-bg: #DBEAFE;
+  --status-gray: #9CA3AF;
+  --status-gray-bg: #F3F4F6;
+
+  /* ── Sidebar (always dark in both themes) ───────────────────────────────── */
+  --sidebar-bg: #0F172A;
+  --sidebar-hover: #1E293B;
+  --sidebar-active: #334155;
+  --sidebar-text: #E2E8F0;
+  --sidebar-text-muted: #94A3B8;
+  --sidebar-border: #1E293B;
+  --sidebar-accent: #34D399;
+
+  /* ── Brand accent colors (legacy — kept for components not yet migrated) ── */
   --green: #2D6A4F;
   --green-l: #74C69D;
   --green-xl: #B7E4C7;
@@ -19,52 +72,84 @@
   --teal: #0D9488;
   --teal-l: #14B8A6;
 
-  /* ── Light theme surfaces ─────────────────────────────────────────────── */
-  --surface: #FAFAFA;
-  --surface2: #FFFFFF;
-  --surface3: #F3F4F6;
-
-  /* ── Light theme borders ──────────────────────────────────────────────── */
-  --border: #E5E7EB;
-  --border2: #D1D5DB;
-
-  /* ── Dark text hierarchy (on light backgrounds) ───────────────────────── */
-  --text: #1A1A2E;
-  --text-2: #4B5563;
-  --text-3: #9CA3AF;
-  --text-4: #6B7280;
-
-  /* ── Sidebar — stays dark for visual contrast ─────────────────────────── */
-  --bg-sidebar: #1A1A2E;
-  --sidebar-text: #E2E8F0;
-  --sidebar-text-2: #94A3B8;
-  --sidebar-text-3: #64748B;
-  --sidebar-text-4: #475569;
-  --sidebar-border: #2D3748;
-  --sidebar-surface2: #252D3D;
-
-  /* ── Semantic tokens (sprint spec) ───────────────────────────────────── */
-  --bg-primary: #FAFAFA;
-  --bg-secondary: #FFFFFF;
-  --bg-surface: #FFFFFF;
-  --text-primary: #1A1A2E;
-  --text-secondary: #4B5563;
-  --text-muted: #9CA3AF;
+  /* ── Legacy aliases (backward compat — DO NOT use in new code) ──────────── */
+  --surface: var(--surface-bg);
+  --surface2: var(--surface-card);
+  --surface3: var(--surface-hover);
+  --border: var(--border-default);
+  --border2: var(--border-strong);
+  --text: var(--text-primary);
+  --text-2: var(--text-secondary);
+  --text-3: var(--text-tertiary);
+  --text-4: var(--text-secondary);
+  --bg-primary: var(--surface-bg);
+  --bg-secondary: var(--surface-card);
+  --bg-surface: var(--surface-card);
+  --color-primary: var(--brand-primary);
+  --color-primary-hover: var(--brand-primary-hover);
+  --color-primary-light: var(--brand-primary-bg);
+  --color-secondary: var(--brand-secondary);
+  --color-secondary-hover: #C49A3A;
+  --border-color: var(--border-default);
+  --shadow-md: var(--shadow-card);
+  --shadow-lg: var(--shadow-panel);
+  --color-error: var(--status-red);
+  --color-success: var(--status-green);
+  --color-warning: var(--status-amber);
+  --color-info: var(--status-blue);
+  --bg-sidebar: var(--sidebar-bg);
+  --sidebar-text-2: var(--sidebar-text-muted);
+  --sidebar-text-3: var(--sidebar-text-muted);
+  --sidebar-text-4: var(--sidebar-text-muted);
+  --sidebar-surface2: var(--sidebar-hover);
+  --text-primary-fallback: #1A1A2E;
+  --text-secondary-fallback: #4B5563;
+  --text-muted: var(--text-tertiary);
   --text-on-dark: #FFFFFF;
   --text-on-primary: #FFFFFF;
-  --color-primary: #2D6A4F;
-  --color-primary-hover: #245A42;
-  --color-primary-light: #D1FAE5;
-  --color-secondary: #D4A843;
-  --color-secondary-hover: #C49A3A;
-  --border-color: #E5E7EB;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --color-error: #DC2626;
-  --color-success: #16A34A;
-  --color-warning: #F59E0B;
-  --color-info: #2563EB;
+}
+
+[data-theme="dark"] {
+  --surface-bg: #0F172A;
+  --surface-card: #1E293B;
+  --surface-hover: #334155;
+  --surface-active: #475569;
+  --surface-selected: #064E3B;
+
+  --text-primary: #F1F5F9;
+  --text-secondary: #CBD5E1;
+  --text-tertiary: #64748B;
+  --text-disabled: #475569;
+
+  --brand-primary: #34D399;
+  --brand-primary-hover: #6EE7B7;
+  --brand-primary-bg: #064E3B;
+
+  --border-light: #1E293B;
+  --border-default: #334155;
+  --border-strong: #475569;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 8px rgba(0,0,0,0.3);
+  --shadow-panel: 0 8px 24px rgba(0,0,0,0.4);
+
+  --status-green-bg: #064E3B;
+  --status-amber-bg: #78350F;
+  --status-red-bg: #7F1D1D;
+  --status-blue-bg: #1E3A5F;
+  --status-gray-bg: #1E293B;
+
+  /* Legacy dark overrides */
+  --text: var(--text-primary);
+  --text-2: var(--text-secondary);
+  --text-3: var(--text-tertiary);
+  --text-4: var(--text-secondary);
+  --text-muted: var(--text-tertiary);
+  --text-on-dark: #FFFFFF;
+  --text-on-primary: #0F172A;
+  --text-primary-fallback: #F1F5F9;
+  --text-secondary-fallback: #CBD5E1;
 }
 
 * {
@@ -78,9 +163,11 @@ body,
 }
 
 body {
-  background-color: var(--bg-primary);
+  background-color: var(--surface-bg);
   color: var(--text-primary);
-  @apply font-sans;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  @apply h-full w-full;
 }
 
 ::placeholder {
@@ -90,14 +177,14 @@ body {
 input,
 textarea,
 select {
-  background-color: var(--bg-surface);
+  background-color: var(--surface-card);
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-default);
   @apply rounded;
 }
 
 select option {
-  background-color: var(--bg-surface);
+  background-color: var(--surface-card);
   color: var(--text-primary);
 }
 
