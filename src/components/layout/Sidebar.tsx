@@ -25,7 +25,13 @@ const navItems: NavItem[] = [
   { path: '/equipment', label: 'Equipment', icon: '⚙', dotColor: '#D97706' },
 ];
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  collapsed?: boolean;
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, mobileOpen = false, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -60,127 +66,183 @@ export const Sidebar: React.FC = () => {
     }
   };
 
+  const handleNavClick = () => {
+    if (onClose) onClose();
+  };
+
+  const sidebarWidth = collapsed ? '56px' : '240px';
+
   return (
-    <aside className="bg-[var(--surface)] border-r border-[var(--border)] flex flex-col sticky top-0 h-screen overflow-y-auto w-[240px]">
-      {/* Brand */}
-      <div className="px-[16px] py-[20px] border-b border-[var(--border)] flex items-center gap-[10px]">
-        <span className="text-[20px] text-[var(--green-l)]">⬡</span>
-        <div>
-          <div className="font-serif text-[16px] text-[var(--text)]">TerrainForge</div>
-          <div className="text-[9px] text-[var(--text-4)] font-mono tracking-[0.05em]">
-            PHASE 1 · MVP
-          </div>
-        </div>
-      </div>
+    <>
+      {/* Mobile overlay backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          onClick={onClose}
+        />
+      )}
 
-      {/* Navigation Groups */}
-      <div className="flex-1">
-        {/* Overview group */}
-        <div className="px-[12px] py-[14px] text-[9px] font-[700] uppercase tracking-[0.14em] text-[var(--text-4)]">
-          Overview
-        </div>
-        <Link
-          to="/"
-          className={`w-full text-left px-[14px] py-[9px] text-[13px] border-l-[3px] flex items-center gap-[10px] transition-all duration-180 block ${
-            location.pathname === '/'
-              ? 'text-[var(--green-l)] bg-[rgba(45,106,79,.15)] border-l-[var(--green-l)]'
-              : 'text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[rgba(45,106,79,.1)] border-l-transparent'
-          }`}
+      <aside
+        className={`
+          flex flex-col sticky top-0 h-screen overflow-y-auto overflow-x-hidden
+          border-r transition-all duration-200
+          lg:relative lg:translate-x-0
+          ${mobileOpen ? 'fixed left-0 top-0 z-30 w-[240px]' : 'hidden lg:flex'}
+        `}
+        style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--sidebar-border)', width: sidebarWidth, minWidth: sidebarWidth }}
+      >
+        {/* Brand */}
+        <div
+          className="px-[16px] py-[20px] flex items-center gap-[10px] flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--sidebar-border)' }}
         >
-          <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: '#E2E8D5' }}></span>
-          Dashboard
-        </Link>
-
-        {/* Workflow group */}
-        <div className="px-[12px] py-[14px] mt-[4px] text-[9px] font-[700] uppercase tracking-[0.14em] text-[var(--text-4)]">
-          Workflow
-        </div>
-        {navItems
-          .filter((item) => item.path !== '/')
-          .map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`w-full text-left px-[14px] py-[9px] text-[13px] border-l-[3px] flex items-center gap-[10px] transition-all duration-180 block ${
-                location.pathname === item.path
-                  ? 'text-[var(--green-l)] bg-[rgba(45,106,79,.15)] border-l-[var(--green-l)]'
-                  : 'text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[rgba(45,106,79,.1)] border-l-transparent'
-              }`}
-            >
-              <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: item.dotColor }}></span>
-              {item.label}
-            </Link>
-          ))}
-      </div>
-
-      {/* Account group */}
-      <div className="border-t border-[var(--border)]">
-        <div className="px-[12px] py-[14px] text-[9px] font-[700] uppercase tracking-[0.14em] text-[var(--text-4)]">
-          Account
-        </div>
-        <Link
-          to="/billing"
-          className={`w-full text-left px-[14px] py-[9px] text-[13px] border-l-[3px] flex items-center gap-[10px] transition-all duration-180 block ${
-            location.pathname === '/billing'
-              ? 'text-[var(--green-l)] bg-[rgba(45,106,79,.15)] border-l-[var(--green-l)]'
-              : 'text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[rgba(45,106,79,.1)] border-l-transparent'
-          }`}
-        >
-          <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: '#A78BFA' }}></span>
-          Billing
-        </Link>
-      </div>
-
-      {/* User Section & Active Project */}
-      <div className="px-[16px] py-[16px] border-t border-[var(--border)] space-y-3">
-        {/* User Info */}
-        {user && (
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] px-[12px] py-[10px]">
-            <div className="text-[9px] text-[var(--text-4)] font-mono tracking-[0.06em] mb-[4px]">
-              ACCOUNT
-            </div>
-            <div className="text-[11px] text-[var(--text)] font-[500] truncate mb-2">
-              {user.email}
-            </div>
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="w-full px-2 py-1 text-[11px] bg-[var(--surface)] hover:bg-[rgba(45,106,79,.2)] border border-[var(--border)] rounded text-[var(--text-2)] hover:text-[var(--text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {signingOut ? 'Signing out...' : 'Sign Out'}
-            </button>
-          </div>
-        )}
-
-        {/* Active Project Pill */}
-        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] px-[12px] py-[10px]">
-          <div className="text-[9px] text-[var(--text-4)] font-mono tracking-[0.06em] mb-[4px]">
-            ACTIVE PROJECT
-          </div>
-          {activeProject ? (
-            <>
-              <div className="text-[12px] text-[var(--text)] font-[600] truncate leading-snug">
-                {activeProject.name}
+          <span className="text-[20px] flex-shrink-0" style={{ color: 'var(--green-l)' }}>⬡</span>
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="font-serif text-[16px]" style={{ color: 'var(--sidebar-text)' }}>TerrainForge</div>
+              <div className="text-[9px] font-mono tracking-[0.05em]" style={{ color: 'var(--sidebar-text-4)' }}>
+                PHASE 1 · MVP
               </div>
-              <div className="text-[10px] text-[var(--text-3)] truncate mt-[2px]">
-                {activeProject.client}
-              </div>
-            </>
-          ) : (
-            <div className="text-[12px] text-[var(--text-4)] font-[500]">None selected</div>
+            </div>
           )}
         </div>
 
-        {/* Clear Demo Data — only shown while seed data is present */}
-        {hasDemoData && (
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            className="w-full text-left px-[12px] py-[9px] rounded-[8px] text-[11px] text-[#FB923C] bg-[rgba(251,146,60,.08)] border border-[rgba(251,146,60,.2)] hover:bg-[rgba(251,146,60,.15)] transition-colors cursor-pointer"
+        {/* Navigation Groups */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Overview group */}
+          {!collapsed && (
+            <div className="px-[12px] py-[14px] text-[9px] font-[700] uppercase tracking-[0.14em]" style={{ color: 'var(--sidebar-text-4)' }}>
+              Overview
+            </div>
+          )}
+          {collapsed && <div className="py-[10px]" />}
+          <Link
+            to="/"
+            title="Dashboard"
+            onClick={handleNavClick}
+            className={`w-full text-left py-[9px] text-[13px] border-l-[3px] flex items-center gap-[10px] transition-all duration-180 block ${
+              collapsed ? 'px-[14px] justify-center' : 'px-[14px]'
+            } ${
+              location.pathname === '/'
+                ? 'border-l-[var(--green-l)] bg-[rgba(45,106,79,.2)]'
+                : 'border-l-transparent hover:bg-[rgba(255,255,255,.06)]'
+            }`}
+            style={{ color: location.pathname === '/' ? 'var(--green-l)' : 'var(--sidebar-text-2)' }}
           >
-            ⚠ Clear Demo Data
-          </button>
+            <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: '#E2E8D5' }}></span>
+            {!collapsed && 'Dashboard'}
+          </Link>
+
+          {/* Workflow group */}
+          {!collapsed && (
+            <div className="px-[12px] py-[14px] mt-[4px] text-[9px] font-[700] uppercase tracking-[0.14em]" style={{ color: 'var(--sidebar-text-4)' }}>
+              Workflow
+            </div>
+          )}
+          {collapsed && <div className="py-[6px]" />}
+          {navItems
+            .filter((item) => item.path !== '/')
+            .map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                title={item.label}
+                onClick={handleNavClick}
+                className={`w-full text-left py-[9px] text-[13px] border-l-[3px] flex items-center gap-[10px] transition-all duration-180 block min-h-[44px] ${
+                  collapsed ? 'px-[14px] justify-center' : 'px-[14px]'
+                } ${
+                  location.pathname === item.path
+                    ? 'border-l-[var(--green-l)] bg-[rgba(45,106,79,.2)]'
+                    : 'border-l-transparent hover:bg-[rgba(255,255,255,.06)]'
+                }`}
+                style={{ color: location.pathname === item.path ? 'var(--green-l)' : 'var(--sidebar-text-2)' }}
+              >
+                <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: item.dotColor }}></span>
+                {!collapsed && item.label}
+              </Link>
+            ))}
+        </div>
+
+        {/* Account group */}
+        <div style={{ borderTop: '1px solid var(--sidebar-border)' }}>
+          {!collapsed && (
+            <div className="px-[12px] py-[14px] text-[9px] font-[700] uppercase tracking-[0.14em]" style={{ color: 'var(--sidebar-text-4)' }}>
+              Account
+            </div>
+          )}
+          <Link
+            to="/billing"
+            title="Billing"
+            onClick={handleNavClick}
+            className={`w-full text-left py-[9px] text-[13px] border-l-[3px] flex items-center gap-[10px] transition-all duration-180 block min-h-[44px] ${
+              collapsed ? 'px-[14px] justify-center' : 'px-[14px]'
+            } ${
+              location.pathname === '/billing'
+                ? 'border-l-[var(--green-l)] bg-[rgba(45,106,79,.2)]'
+                : 'border-l-transparent hover:bg-[rgba(255,255,255,.06)]'
+            }`}
+            style={{ color: location.pathname === '/billing' ? 'var(--green-l)' : 'var(--sidebar-text-2)' }}
+          >
+            <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: '#A78BFA' }}></span>
+            {!collapsed && 'Billing'}
+          </Link>
+        </div>
+
+        {/* User Section & Active Project — hidden when collapsed */}
+        {!collapsed && (
+          <div className="px-[16px] py-[16px] space-y-3 flex-shrink-0" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
+            {/* User Info */}
+            {user && (
+              <div className="rounded-[8px] px-[12px] py-[10px]" style={{ backgroundColor: 'var(--sidebar-surface2)', border: '1px solid var(--sidebar-border)' }}>
+                <div className="text-[9px] font-mono tracking-[0.06em] mb-[4px]" style={{ color: 'var(--sidebar-text-4)' }}>
+                  ACCOUNT
+                </div>
+                <div className="text-[11px] font-[500] truncate mb-2" style={{ color: 'var(--sidebar-text)' }}>
+                  {user.email}
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className="w-full px-2 py-1 text-[11px] rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[rgba(255,255,255,.1)]"
+                  style={{ backgroundColor: 'var(--bg-sidebar)', border: '1px solid var(--sidebar-border)', color: 'var(--sidebar-text-2)' }}
+                >
+                  {signingOut ? 'Signing out...' : 'Sign Out'}
+                </button>
+              </div>
+            )}
+
+            {/* Active Project Pill */}
+            <div className="rounded-[8px] px-[12px] py-[10px]" style={{ backgroundColor: 'var(--sidebar-surface2)', border: '1px solid var(--sidebar-border)' }}>
+              <div className="text-[9px] font-mono tracking-[0.06em] mb-[4px]" style={{ color: 'var(--sidebar-text-4)' }}>
+                ACTIVE PROJECT
+              </div>
+              {activeProject ? (
+                <>
+                  <div className="text-[12px] font-[600] truncate leading-snug" style={{ color: 'var(--sidebar-text)' }}>
+                    {activeProject.name}
+                  </div>
+                  <div className="text-[10px] truncate mt-[2px]" style={{ color: 'var(--sidebar-text-3)' }}>
+                    {activeProject.client}
+                  </div>
+                </>
+              ) : (
+                <div className="text-[12px] font-[500]" style={{ color: 'var(--sidebar-text-4)' }}>None selected</div>
+              )}
+            </div>
+
+            {/* Clear Demo Data */}
+            {hasDemoData && (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="w-full text-left px-[12px] py-[9px] rounded-[8px] text-[11px] transition-colors cursor-pointer"
+                style={{ color: '#FB923C', backgroundColor: 'rgba(251,146,60,.08)', border: '1px solid rgba(251,146,60,.2)' }}
+              >
+                ⚠ Clear Demo Data
+              </button>
+            )}
+          </div>
         )}
-      </div>
+      </aside>
 
       <ConfirmDialog
         isOpen={showClearConfirm}
@@ -191,7 +253,7 @@ export const Sidebar: React.FC = () => {
         onConfirm={handleClearDemoData}
         onCancel={() => setShowClearConfirm(false)}
       />
-    </aside>
+    </>
   );
 };
 

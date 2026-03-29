@@ -5,28 +5,43 @@ export default {
   theme: {
     extend: {
       colors: {
+        /* Brand accent colors */
         green: '#2D6A4F',
         'green-l': '#74C69D',
         'green-xl': '#B7E4C7',
-        'green-bg': '#0E1A12',
+        'green-bg': '#D1FAE5',
         blue: '#2563EB',
-        'blue-l': '#60A5FA',
+        'blue-l': '#3B82F6',
         purple: '#7C3AED',
         'purple-l': '#A78BFA',
         amber: '#D97706',
-        'amber-l': '#FCD34D',
+        'amber-l': '#F59E0B',
         red: '#DC2626',
-        'red-l': '#F87171',
+        'red-l': '#EF4444',
         teal: '#0D9488',
-        'teal-l': '#5EEAD4',
-        surface: '#111810',
-        'surface-2': '#161E14',
-        border: '#1E3A2A',
-        'border-2': '#2A4A38',
-        text: '#CDE8D8',
-        'text-2': '#7A9A88',
-        'text-3': '#4A6A58',
-        'text-4': '#2D4A38',
+        'teal-l': '#14B8A6',
+
+        /* Light theme surfaces */
+        surface: '#FAFAFA',
+        'surface-2': '#FFFFFF',
+        'surface-3': '#F3F4F6',
+        border: '#E5E7EB',
+        'border-2': '#D1D5DB',
+
+        /* Text hierarchy */
+        text: '#1A1A2E',
+        'text-2': '#4B5563',
+        'text-3': '#9CA3AF',
+        'text-4': '#6B7280',
+
+        /* Sidebar dark tokens */
+        sidebar: '#1A1A2E',
+
+        /* Semantic tokens */
+        primary: 'var(--color-primary)',
+        'primary-hover': 'var(--color-primary-hover)',
+        'primary-light': 'var(--color-primary-light)',
+        secondary: 'var(--color-secondary)',
       },
       fontFamily: {
         sans: ['DM Sans', 'sans-serif'],
