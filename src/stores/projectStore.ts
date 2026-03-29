@@ -5,6 +5,13 @@ import { computeProjectCostRaw } from '@/lib/manifest'
 import { useMaterialStore } from './materialStore'
 import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
+import toast from 'react-hot-toast'
+
+// Wire up Supabase error reporter — shows toasts and structured console logs
+db.setSupabaseErrorReporter((operation, table, error) => {
+  console.error(`[TF-SUPABASE] ${operation} on ${table} failed:`, error);
+  toast.error(`Database error on ${table}: ${error?.message || 'Unknown error'}. Check console.`);
+});
 
 interface ProjectStore {
   projects: Project[]

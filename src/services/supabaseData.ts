@@ -1,6 +1,17 @@
 import { supabase } from './supabase'
 import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert } from '@/types'
 
+// ===== ERROR REPORTING =====
+
+type ErrorReporter = (operation: string, table: string, error: any) => void;
+let onSupabaseError: ErrorReporter = (op, table, err) => {
+  console.error(`[TF-SUPABASE] ${op} on ${table} failed:`, err?.message || err, err?.details || '', err?.hint || '');
+};
+
+export function setSupabaseErrorReporter(reporter: ErrorReporter) {
+  onSupabaseError = reporter;
+}
+
 // ===== CASE CONVERSION HELPERS =====
 
 function toCamelCase(obj: Record<string, any>): Record<string, any> {
@@ -140,7 +151,10 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     // Write zones to the zones table now that the project row exists
     if (zones && zones.length > 0) {
       for (const { id: _zoneId, createdAt: _createdAt, ...zoneData } of zones) {
-        await createZone(id, zoneData, orgId)
+        const result = await createZone(id, zoneData, orgId)
+        if (!result) {
+          console.warn(`[TF-SUPABASE] Zone "${zoneData.name}" failed to persist for project ${id}`)
+        }
       }
     }
 
@@ -149,7 +163,7 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
       zones: []
     } as unknown as Project
   } catch (err: any) {
-    console.error('createProject error:', err)
+    onSupabaseError('INSERT', 'projects', err)
     return null
   }
 }
@@ -179,7 +193,7 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     project.zones = []
     return project
   } catch (err: any) {
-    console.error('updateProject error:', err.message)
+    onSupabaseError('UPDATE', 'projects', err)
     return null
   }
 }
@@ -199,7 +213,7 @@ export async function deleteProject(id: string): Promise<boolean> {
     console.log('[TF-DEBUG] deleteProject: success')
     return true
   } catch (err: any) {
-    console.error('[TF-DEBUG] deleteProject: failed —', err.message)
+    onSupabaseError('DELETE', 'projects', err)
     return false
   }
 }
@@ -236,7 +250,7 @@ export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'cre
       equipment: []
     } as unknown as Zone
   } catch (err: any) {
-    console.error('createZone error:', err.message)
+    onSupabaseError('INSERT', 'zones', err)
     return null
   }
 }
@@ -269,7 +283,7 @@ export async function updateZone(zoneId: string, updates: Partial<Zone>): Promis
       equipment: []
     } as unknown as Zone
   } catch (err: any) {
-    console.error('updateZone error:', err.message)
+    onSupabaseError('UPDATE', 'zones', err)
     return null
   }
 }
@@ -284,7 +298,7 @@ export async function deleteZone(zoneId: string): Promise<boolean> {
     if (error) throw error
     return true
   } catch (err: any) {
-    console.error('deleteZone error:', err.message)
+    onSupabaseError('DELETE', 'zones', err)
     return false
   }
 }
