@@ -230,6 +230,11 @@ export const useProjectStore = create<ProjectStore>()(
         }
       },
       addZone: async (projectId, zoneData) => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) {
+          console.error('addZone: no org_id available')
+          return
+        }
         const newZone: Zone = {
           ...zoneData,
           id: crypto.randomUUID(),
@@ -243,7 +248,7 @@ export const useProjectStore = create<ProjectStore>()(
           ),
         }))
         try {
-          await db.createZone(projectId, zoneData)
+          await db.createZone(projectId, zoneData, orgId)
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }
