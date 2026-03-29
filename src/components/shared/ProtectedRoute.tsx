@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBillingGate } from '@/hooks/useBillingGate'
@@ -20,15 +20,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isGated } = useBillingGate()
   const location = useLocation()
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null)
-  const checkedRef = useRef(false)
 
+  // Re-check onboarding status whenever the path changes so that completing
+  // the wizard and navigating to '/' picks up the freshly-written DB record.
   useEffect(() => {
-    if (!user || skipOnboardingCheck || checkedRef.current) return
-    checkedRef.current = true
+    if (!user || skipOnboardingCheck) return
+    setOnboardingDone(null)
     hasCompletedOnboarding(user.id).then(done => {
       setOnboardingDone(done)
     })
-  }, [user, skipOnboardingCheck])
+  }, [user, skipOnboardingCheck, location.pathname])
 
   // Wait for Supabase auth to resolve before making any routing decisions
   if (loading) {
