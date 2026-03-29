@@ -194,32 +194,35 @@ export const ManifestEngine: React.FC = () => {
   if (!project) {
     return (
       <div>
-        {/* Project selector shown even in empty state */}
-        <div className="mb-[20px]">
-          <label className="block text-[11px] font-[700] text-[var(--text-3)] uppercase tracking-[0.05em] mb-[6px]">
-            Select Project
-          </label>
-          <select
-            className="bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] text-[var(--text)] px-[14px] py-[10px] text-[13px] outline-none focus:border-[var(--green-l)] cursor-pointer w-full max-w-[420px]"
-            value=""
-            onChange={e => setActiveProject(e.target.value || null)}
-          >
-            <option value="">— Choose a project —</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name} · {p.client}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="text-center py-[64px] px-[24px] text-[var(--text-3)]">
-          <div className="text-[40px] mb-[12px] opacity-30">📋</div>
-          <div className="text-[16px] font-[600] text-[var(--text-2)] mb-[6px]">
-            No project selected
+        <div className="text-[22px] font-serif text-[var(--text)] mb-[6px]">Manifest Engine</div>
+        <p className="text-[13px] text-[var(--text-3)] mb-[24px]">Select a project to calculate material quantities, review costs, and export a PDF manifest.</p>
+        {projects.length === 0 ? (
+          <div className="text-center py-[64px] text-[var(--text-3)]">
+            <div className="text-[40px] mb-[12px] opacity-30">📋</div>
+            <div className="text-[16px] font-[600] text-[var(--text-2)] mb-[6px]">No projects yet</div>
+            <div className="text-[13px]">Create a project with zones and materials, then come back to generate a manifest.</div>
           </div>
-          <div className="text-[13px]">
-            Choose a project above to generate its material manifest
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[12px]">
+            {projects.map(p => {
+              const allMats = p.zones.flatMap(z => z.materials);
+              const cost = computeProjectCostRaw(p, materials);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setActiveProject(p.id)}
+                  className="text-left p-[16px] rounded-[10px] border border-[var(--border)] hover:border-[var(--color-primary)] bg-[var(--surface2)] transition-colors cursor-pointer"
+                >
+                  <div className="font-[600] text-[14px] text-[var(--text)] mb-[2px]">{p.name}</div>
+                  <div className="text-[12px] text-[var(--text-3)] mb-[8px]">{p.client}</div>
+                  <div className="text-[11px] text-[var(--text-4)]">
+                    {p.zones.length} zone{p.zones.length !== 1 ? 's' : ''} · {allMats.length} material{allMats.length !== 1 ? 's' : ''} · ${cost.toLocaleString()} est.
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
     );
   }
