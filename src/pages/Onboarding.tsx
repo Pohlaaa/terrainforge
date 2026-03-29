@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrgStore } from '@/stores/orgStore'
 import { callClaude } from '@/services/anthropic'
-import { upsertUserPreferences } from '@/services/preferences'
+import { fetchUserPreferences, upsertUserPreferences } from '@/services/preferences'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
@@ -62,6 +62,16 @@ const Onboarding: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { org } = useOrgStore()
+
+  // If the user already has a preferences row, they've completed onboarding — redirect immediately.
+  useEffect(() => {
+    if (!user) return
+    fetchUserPreferences(user.id).then(prefs => {
+      if (prefs?.onboardingCompletedAt) {
+        navigate('/', { replace: true })
+      }
+    })
+  }, [user, navigate])
 
   const [step, setStep] = useState(1)
   const [businessType, setBusinessType] = useState<string | null>(null)
