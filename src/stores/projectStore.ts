@@ -179,9 +179,11 @@ export const useProjectStore = create<ProjectStore>()(
       setProjects: (projects) => set({ projects }),
       setActiveProject: (id) => set({ activeProjectId: id }),
       fetchProjects: async () => {
+        console.log('[TF-DEBUG] fetchProjects called')
         set({ isLoading: true, error: null })
         try {
           const projects = await db.fetchProjects()
+          console.log('[TF-DEBUG] fetchProjects returned', projects.length, 'projects')
           set({ projects, isLoading: false })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })
@@ -189,6 +191,7 @@ export const useProjectStore = create<ProjectStore>()(
       },
       addProject: async (projectData) => {
         const orgId = useOrgStore.getState().org?.id
+        console.log('[TF-DEBUG] addProject called, orgId:', orgId)
         if (!orgId) {
           console.error('addProject: no org_id available')
           return
@@ -200,8 +203,10 @@ export const useProjectStore = create<ProjectStore>()(
           zones: []
         }
         set((state) => ({ projects: [...state.projects, newProject] }))
+        console.log('[TF-DEBUG] addProject sending to Supabase, project id:', newProject.id)
         try {
           const result = await db.createProject(projectData, newProject.id, orgId)
+          console.log('[TF-DEBUG] addProject Supabase result:', result)
           if (!result) console.error('addProject: createProject returned null — Supabase write failed')
         } catch (err: any) {
           set((state) => ({ error: err.message }))

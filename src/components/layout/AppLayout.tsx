@@ -44,6 +44,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // a sign-in without a full page reload).
   useEffect(() => {
     if (user?.id) {
+      console.log('[TF-DEBUG] AppLayout useEffect, user.id:', user?.id)
       fetchOrg(user.id);
       fetchProjects();
       fetchCrew();
