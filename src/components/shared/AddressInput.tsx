@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type { Map as MapboxMap } from 'mapbox-gl';
 import { useAddressAutocomplete, type AddressSuggestion } from '@/hooks/useAddressAutocomplete';
 
 interface AddressInputProps {
@@ -23,7 +24,10 @@ export const AddressInput: React.FC<AddressInputProps> = ({
   const [isVerified, setIsVerified] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [verifiedCoords, setVerifiedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const miniMapRef = useRef<HTMLDivElement>(null);
+  const miniMapInstanceRef = useRef<MapboxMap | null>(null);
   const { suggestions, isLoading } = useAddressAutocomplete(value);
 
   const hasToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN);
@@ -32,6 +36,7 @@ export const AddressInput: React.FC<AddressInputProps> = ({
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setIsVerified(false);
+    setVerifiedCoords(null);
     onChange(e.target.value);
     setShowDropdown(true);
   }, [onChange]);
@@ -41,7 +46,52 @@ export const AddressInput: React.FC<AddressInputProps> = ({
     onSelect(suggestion);
     setIsVerified(true);
     setShowDropdown(false);
+    setVerifiedCoords({ lat: suggestion.lat, lng: suggestion.lng });
   }, [onChange, onSelect]);
+
+  // Mini-map: initialize when verified coords are available
+  useEffect(() => {
+    if (!verifiedCoords || !miniMapRef.current) return;
+    const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+    if (!token) return;
+
+    let cancelled = false;
+    const init = async () => {
+      const mapboxgl = (await import('mapbox-gl')).default;
+      if (cancelled) return;
+      mapboxgl.accessToken = token;
+
+      if (miniMapInstanceRef.current) {
+        miniMapInstanceRef.current.remove();
+        miniMapInstanceRef.current = null;
+      }
+
+      const map = new mapboxgl.Map({
+        container: miniMapRef.current!,
+        style: 'mapbox://styles/mapbox/light-v11',
+        center: [verifiedCoords.lng, verifiedCoords.lat],
+        zoom: 14,
+        interactive: false,
+        attributionControl: false,
+      });
+      miniMapInstanceRef.current = map;
+      map.on('load', () => {
+        if (cancelled) return;
+        new mapboxgl.Marker({ color: '#2D6A4F' })
+          .setLngLat([verifiedCoords.lng, verifiedCoords.lat])
+          .addTo(map);
+      });
+    };
+    init();
+
+    return () => {
+      cancelled = true;
+      if (miniMapInstanceRef.current) {
+        miniMapInstanceRef.current.remove();
+        miniMapInstanceRef.current = null;
+      }
+    };
+  }, [verifiedCoords]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -138,6 +188,20 @@ export const AddressInput: React.FC<AddressInputProps> = ({
         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
           Address not verified — project won't appear on map
         </div>
+      )}
+
+      {/* Mini-map preview after verification */}
+      {isVerified && verifiedCoords && (
+        <div
+          ref={miniMapRef}
+          style={{
+            marginTop: '8px',
+            height: '120px',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            border: '1px solid var(--border-default)',
+          }}
+        />
       )}
 
       {/* Autocomplete dropdown */}
