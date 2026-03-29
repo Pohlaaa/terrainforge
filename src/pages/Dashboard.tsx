@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
@@ -99,6 +99,12 @@ const KPICard: React.FC<KPICardProps> = ({
 };
 
 export const Dashboard: React.FC = () => {
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
   const { projects, isLoading, error } = useProjectStore();
   const { crew } = useCrewStore();
   const { equipment } = useEquipmentStore();
@@ -171,7 +177,7 @@ export const Dashboard: React.FC = () => {
 
   const hiddenWidgets = widgetLayout.filter((w) => !w.visible);
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[16px] items-start">
         <div className="flex flex-col gap-[8px]">
