@@ -7,6 +7,7 @@ import { CHECKLIST_ITEMS } from '@/lib/constants';
 import type { Project, Zone } from '@/types';
 import { generateProjectFromDescription } from '@/services/anthropic';
 import type { AIProjectSuggestion } from '@/services/anthropic';
+import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TextArea } from '@/components/ui/Textarea';
@@ -68,8 +69,16 @@ const EMPTY_ZONE_FORM: ZoneForm = { name: '', area: '', perimeter: '', notes: ''
 
 export const Projects: React.FC = () => {
   const { projects, addProject, updateProject, deleteProject, toggleChecklist, setActiveProject, activeProjectId, isLoading, error,
-    addZone, updateZone, deleteZone } = useProjectStore();
+    addZone, updateZone, deleteZone, projectMaterials, addProjectMaterial, removeProjectMaterial } = useProjectStore();
   const { materials } = useMaterialStore();
+
+  // Detail view tab state
+  const [detailTab, setDetailTab] = useState<'zones' | 'materials'>('zones');
+
+  // Add material to project state
+  const [showAddMaterialModal, setShowAddMaterialModal] = useState(false);
+  const [matSearch, setMatSearch] = useState('');
+  const [matQty, setMatQty] = useState('1');
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -330,12 +339,17 @@ export const Projects: React.FC = () => {
     const completedCount = checkEntries.filter(c => c.checked).length;
     const status = getProjectStatus(selectedProject);
     const value = projectValues[selectedProject.id] ?? 0;
+    const assignedMaterials = projectMaterials[selectedProject.id] ?? [];
+    const materialTotal = assignedMaterials.reduce((sum, m) => sum + m.quantity * m.unitCost, 0);
+    const filteredMaterials = materials.filter(m =>
+      m.name.toLowerCase().includes(matSearch.toLowerCase())
+    );
 
     return (
       <div>
         {/* Detail header */}
-        <div className="flex items-center gap-[12px] mb-[20px]">
-          <Button variant="ghost" size="sm" onClick={() => setActiveProject(null)}>
+        <div className="flex items-center gap-[12px] mb-[20px] flex-wrap">
+          <Button variant="ghost" size="sm" onClick={() => { setActiveProject(null); setDetailTab('zones'); }}>
             ← Back
           </Button>
           <div className="flex-1 min-w-0">
@@ -353,8 +367,26 @@ export const Projects: React.FC = () => {
           </Button>
         </div>
 
+        {/* Tab bar */}
+        <div className="flex gap-0 mb-[16px] border-b border-[var(--border)]">
+          {(['zones', 'materials'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setDetailTab(tab)}
+              className={`px-[16px] py-[10px] text-[13px] font-[600] border-b-[2px] transition-colors capitalize ${
+                detailTab === tab
+                  ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+                  : 'border-transparent text-[var(--text-3)] hover:text-[var(--text-2)]'
+              }`}
+            >
+              {tab === 'zones' ? `Zones (${selectedProject.zones.length})` : `Materials (${assignedMaterials.length})`}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[16px] items-start">
-          {/* Zones panel */}
+          {/* Left panel — Zones or Materials tab */}
+          {detailTab === 'zones' ? (
           <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
             <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
               <div className="text-[12px] font-[700] text-[var(--text)]">
@@ -407,6 +439,60 @@ export const Projects: React.FC = () => {
               )}
             </div>
           </div>
+          ) : (
+          /* ── Materials tab ──────────────────────────────────────────────── */
+          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
+            <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
+              <div className="text-[12px] font-[700] text-[var(--text)]">
+                Project Materials
+                {assignedMaterials.length > 0 && (
+                  <span className="ml-[8px] text-[11px] text-[var(--green-l)] font-[600]">
+                    ${materialTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} total
+                  </span>
+                )}
+              </div>
+              <Button variant="primary" size="sm" onClick={() => { setMatSearch(''); setMatQty('1'); setShowAddMaterialModal(true); }}>
+                + Add Material
+              </Button>
+            </div>
+            <div className="p-[14px]">
+              {assignedMaterials.length === 0 ? (
+                <div className="text-center py-[32px] text-[var(--text-3)]">
+                  <div className="text-[28px] mb-[8px] opacity-30">📦</div>
+                  <div className="text-[13px] mb-[12px]">No materials assigned yet</div>
+                  <Button variant="primary" size="sm" onClick={() => { setMatSearch(''); setMatQty('1'); setShowAddMaterialModal(true); }}>
+                    + Add Material
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-[6px]">
+                  {assignedMaterials.map((entry) => (
+                    <div key={entry.id} className="flex items-center justify-between bg-[var(--surface3)] border border-[var(--border)] rounded-[8px] px-[12px] py-[8px]">
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-[600] text-[var(--text)] truncate">{entry.name}</div>
+                        <div className="text-[11px] text-[var(--text-3)]">
+                          {entry.quantity} {entry.unit} · ${entry.unitCost}/unit
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-[10px] flex-shrink-0">
+                        <div className="text-[13px] font-[700] text-[var(--text)]">
+                          ${(entry.quantity * entry.unitCost).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </div>
+                        <button
+                          onClick={() => removeProjectMaterial(selectedProject.id, entry.id)}
+                          className="text-[var(--text-3)] hover:text-[var(--color-error)] transition-colors text-[14px] w-[24px] h-[24px] flex items-center justify-center"
+                          aria-label="Remove material"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          )}
 
           {/* Right column: info + checklist */}
           <div className="flex flex-col gap-[12px]">
@@ -497,6 +583,69 @@ export const Projects: React.FC = () => {
           onConfirm={handleDelete}
           onCancel={() => setDeleteId(null)}
         />
+
+        {/* Add Material to Project modal */}
+        <Modal
+          isOpen={showAddMaterialModal}
+          title="Add Material to Project"
+          onClose={() => setShowAddMaterialModal(false)}
+          maxWidth="480px"
+        >
+          <div className="flex flex-col gap-[12px]">
+            <Input
+              label="Search materials"
+              value={matSearch}
+              onChange={e => setMatSearch(e.target.value)}
+              placeholder="Concrete Pavers, Sod..."
+            />
+            <div className="max-h-[240px] overflow-y-auto space-y-[4px]">
+              {filteredMaterials.length === 0 && (
+                <div className="text-center py-[16px] text-[12px] text-[var(--text-3)]">No materials found</div>
+              )}
+              {filteredMaterials.map((mat) => {
+                const alreadyAdded = assignedMaterials.some(e => e.materialId === mat.id);
+                return (
+                  <div key={mat.id} className={`flex items-center justify-between px-[12px] py-[8px] rounded-[6px] border transition-colors ${alreadyAdded ? 'opacity-50 bg-[var(--surface3)] border-[var(--border)]' : 'bg-[var(--surface3)] border-[var(--border)] hover:border-[var(--color-primary)] cursor-pointer'}`}
+                    onClick={() => {
+                      if (alreadyAdded) return;
+                      const qty = parseFloat(matQty) || 1;
+                      addProjectMaterial(selectedProject.id, {
+                        materialId: mat.id,
+                        name: mat.name,
+                        quantity: qty,
+                        unit: mat.unit,
+                        unitCost: mat.cost,
+                      });
+                      setMatSearch('');
+                      setMatQty('1');
+                      setShowAddMaterialModal(false);
+                    }}
+                  >
+                    <div>
+                      <div className="text-[12px] font-[600] text-[var(--text)]">{mat.name}</div>
+                      <div className="text-[10px] text-[var(--text-3)]">{mat.category} · ${mat.cost}/{mat.unit}</div>
+                    </div>
+                    {alreadyAdded ? (
+                      <span className="text-[10px] text-[var(--text-4)]">Added</span>
+                    ) : (
+                      <span className="text-[11px] font-[600] text-[var(--color-primary)]">+ Add</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-[8px]">
+              <Input
+                label="Quantity"
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={matQty}
+                onChange={e => setMatQty(e.target.value)}
+              />
+            </div>
+          </div>
+        </Modal>
 
         {/* Zone create/edit modal */}
         <Modal

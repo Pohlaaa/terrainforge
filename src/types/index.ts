@@ -217,6 +217,25 @@ export interface ProjectMaterial {
   subtotal: number;
 }
 
+/** Per-project material assignment (junction: project ↔ material with qty) */
+export interface ProjectMaterialEntry {
+  id: string;
+  materialId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+}
+
+/** Per-project crew assignment */
+export interface ProjectCrewEntry {
+  id: string;
+  crewMemberId: string;
+  name: string;
+  role: string;
+  roleOnProject: string;
+}
+
 export interface MaintenanceRecord {
   id: string;
   equipmentId: string;

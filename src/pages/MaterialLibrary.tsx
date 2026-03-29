@@ -145,6 +145,60 @@ export const MaterialLibrary: React.FC = () => {
   const [invSearch, setInvSearch] = useState('');
   const [invFilter, setInvFilter] = useState('');
 
+  // CSV import state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<Array<{ name: string; category: string; unit: string; cost: string }>>([]);
+  const [csvError, setCsvError] = useState('');
+  const [importSuccess, setImportSuccess] = useState('');
+  const csvInputRef = React.useRef<HTMLInputElement>(null);
+
+  function parseCSV(text: string) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
+    return lines.slice(1).map(line => {
+      const vals = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) ?? line.split(',');
+      const clean = vals.map(v => v.replace(/^"|"$/g, '').trim());
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => { obj[h] = clean[i] ?? ''; });
+      return { name: obj['name'] ?? '', category: obj['category'] ?? 'misc', unit: obj['unit'] ?? 'each', cost: obj['unit_cost'] ?? obj['cost'] ?? '0' };
+    }).filter(r => r.name);
+  }
+
+  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvError('');
+    setImportSuccess('');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const rows = parseCSV(text);
+      if (rows.length === 0) { setCsvError('No valid rows found. Columns needed: name, category, unit, unit_cost'); return; }
+      setCsvPreview(rows.slice(0, 50));
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleImportConfirm() {
+    let count = 0;
+    for (const row of csvPreview) {
+      await addMaterial({
+        name: row.name, category: row.category, unit: row.unit,
+        cost: parseFloat(row.cost) || 0, reserveOverride: null, coverage: null,
+        depthIn: null, notes: '', supplier_name: '', supplier_sku: '', supplier_phone: '',
+        supplier_contact: '', lead_time_days: null,
+        price_update_date: new Date().toISOString().split('T')[0],
+        supplier_notes: '', qtyOnHand: 0, minStockLevel: 0,
+        storageLocation: '', lastRestocked: '',
+      });
+      count++;
+    }
+    setImportSuccess(`Imported ${count} material${count !== 1 ? 's' : ''}`);
+    setCsvPreview([]);
+    if (csvInputRef.current) csvInputRef.current.value = '';
+  }
+
   // Derived data
   const filteredMaterials = useMemo(() => {
     const q = searchTerm.toLowerCase();
@@ -288,6 +342,7 @@ export const MaterialLibrary: React.FC = () => {
         <div>
           <div className="flex gap-[8px] mb-[16px] items-center flex-wrap">
             <Button variant="primary" onClick={openAddModal}>+ Add Material</Button>
+            <Button variant="outline" onClick={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}>↑ Import CSV</Button>
             <div className="ml-auto">
               <SearchFilter
                 searchValue={searchTerm}
@@ -531,6 +586,60 @@ export const MaterialLibrary: React.FC = () => {
           )}
         </div>
       </TabPanel>
+
+      {/* ── CSV Import Modal ──────────────────────────────────────────────────── */}
+      <Modal
+        isOpen={showImportModal}
+        title="Import Materials from CSV"
+        onClose={() => setShowImportModal(false)}
+        onConfirm={csvPreview.length > 0 ? handleImportConfirm : undefined}
+        confirmText={`Import ${csvPreview.length} Row${csvPreview.length !== 1 ? 's' : ''}`}
+        maxWidth="560px"
+      >
+        <div className="flex flex-col gap-[12px]">
+          <div className="text-[12px] text-[var(--text-2)]">
+            Upload a CSV with columns: <code className="bg-[var(--surface3)] px-[4px] rounded text-[11px]">name, category, unit, unit_cost</code>
+          </div>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleCsvFile}
+            className="text-[12px] text-[var(--text-2)]"
+          />
+          {csvError && <div className="text-[12px] text-[var(--color-error)]">{csvError}</div>}
+          {importSuccess && <div className="text-[12px] text-[var(--color-success)]">{importSuccess}</div>}
+          {csvPreview.length > 0 && (
+            <div>
+              <div className="text-[11px] font-[600] text-[var(--text-3)] uppercase tracking-[0.06em] mb-[6px]">
+                Preview ({csvPreview.length} rows)
+              </div>
+              <div className="max-h-[200px] overflow-y-auto border border-[var(--border)] rounded-[6px]">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="bg-[var(--surface3)] text-[var(--text-3)] text-left">
+                      <th className="px-[8px] py-[6px]">Name</th>
+                      <th className="px-[8px] py-[6px]">Category</th>
+                      <th className="px-[8px] py-[6px]">Unit</th>
+                      <th className="px-[8px] py-[6px]">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {csvPreview.map((row, i) => (
+                      <tr key={i} className="border-t border-[var(--border)]">
+                        <td className="px-[8px] py-[5px] text-[var(--text)]">{row.name}</td>
+                        <td className="px-[8px] py-[5px] text-[var(--text-3)]">{row.category}</td>
+                        <td className="px-[8px] py-[5px] text-[var(--text-3)]">{row.unit}</td>
+                        <td className="px-[8px] py-[5px] text-[var(--text-3)]">${row.cost}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* ── Add / Edit Material Modal ─────────────────────────────────────────── */}
       <Modal

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Project, Zone } from '@/types'
+import type { Project, Zone, ProjectMaterialEntry, ProjectCrewEntry } from '@/types'
 import { computeProjectCostRaw } from '@/lib/manifest'
 import { useMaterialStore } from './materialStore'
 import { useOrgStore } from './orgStore'
@@ -11,6 +11,10 @@ interface ProjectStore {
   activeProjectId: string | null
   isLoading: boolean
   error: string | null
+  /** Per-project material assignments — keyed by project ID */
+  projectMaterials: Record<string, ProjectMaterialEntry[]>
+  /** Per-project crew assignments — keyed by project ID */
+  projectCrew: Record<string, ProjectCrewEntry[]>
   reset: () => void
   setProjects: (projects: Project[]) => void
   setActiveProject: (id: string | null) => void
@@ -24,6 +28,13 @@ interface ProjectStore {
   fetchProjects: () => Promise<void>
   getActiveProject: () => Project | null
   getProjectCost: (projectId: string) => number
+  // Project material actions
+  addProjectMaterial: (projectId: string, entry: Omit<ProjectMaterialEntry, 'id'>) => void
+  updateProjectMaterial: (projectId: string, entryId: string, updates: Partial<ProjectMaterialEntry>) => void
+  removeProjectMaterial: (projectId: string, entryId: string) => void
+  // Project crew actions
+  addProjectCrew: (projectId: string, entry: Omit<ProjectCrewEntry, 'id'>) => void
+  removeProjectCrew: (projectId: string, entryId: string) => void
 }
 
 const DEFAULT_PROJECTS: Project[] = [
@@ -175,7 +186,9 @@ export const useProjectStore = create<ProjectStore>()(
       activeProjectId: null,
       isLoading: false,
       error: null,
-      reset: () => set({ projects: [], activeProjectId: null, isLoading: false, error: null }),
+      projectMaterials: {},
+      projectCrew: {},
+      reset: () => set({ projects: [], activeProjectId: null, isLoading: false, error: null, projectMaterials: {}, projectCrew: {} }),
       setProjects: (projects) => set({ projects }),
       setActiveProject: (id) => set({ activeProjectId: id }),
       fetchProjects: async () => {
@@ -355,6 +368,50 @@ export const useProjectStore = create<ProjectStore>()(
         if (!project) return 0
         const materials = useMaterialStore.getState().materials
         return computeProjectCostRaw(project, materials)
+      },
+      addProjectMaterial: (projectId, entry) => {
+        const newEntry: ProjectMaterialEntry = { ...entry, id: crypto.randomUUID() }
+        set((state) => ({
+          projectMaterials: {
+            ...state.projectMaterials,
+            [projectId]: [...(state.projectMaterials[projectId] ?? []), newEntry],
+          },
+        }))
+      },
+      updateProjectMaterial: (projectId, entryId, updates) => {
+        set((state) => ({
+          projectMaterials: {
+            ...state.projectMaterials,
+            [projectId]: (state.projectMaterials[projectId] ?? []).map((e) =>
+              e.id === entryId ? { ...e, ...updates } : e
+            ),
+          },
+        }))
+      },
+      removeProjectMaterial: (projectId, entryId) => {
+        set((state) => ({
+          projectMaterials: {
+            ...state.projectMaterials,
+            [projectId]: (state.projectMaterials[projectId] ?? []).filter((e) => e.id !== entryId),
+          },
+        }))
+      },
+      addProjectCrew: (projectId, entry) => {
+        const newEntry: ProjectCrewEntry = { ...entry, id: crypto.randomUUID() }
+        set((state) => ({
+          projectCrew: {
+            ...state.projectCrew,
+            [projectId]: [...(state.projectCrew[projectId] ?? []), newEntry],
+          },
+        }))
+      },
+      removeProjectCrew: (projectId, entryId) => {
+        set((state) => ({
+          projectCrew: {
+            ...state.projectCrew,
+            [projectId]: (state.projectCrew[projectId] ?? []).filter((e) => e.id !== entryId),
+          },
+        }))
       },
     }),
     {
