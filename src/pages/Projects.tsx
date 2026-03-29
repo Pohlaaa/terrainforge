@@ -5,6 +5,8 @@ import { useMaterialStore } from '@/stores/materialStore';
 import { computeProjectCostRaw } from '@/lib/manifest';
 import { CHECKLIST_ITEMS } from '@/lib/constants';
 import type { Project, Zone } from '@/types';
+import { generateProjectFromDescription } from '@/services/anthropic';
+import type { AIProjectSuggestion } from '@/services/anthropic';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TextArea } from '@/components/ui/Textarea';
@@ -76,6 +78,13 @@ export const Projects: React.FC = () => {
   const [form, setForm] = useState<NewProjectForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Partial<NewProjectForm>>({});
 
+  // AI project creation state
+  const [aiDescription, setAiDescription] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiSkipped, setAiSkipped] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AIProjectSuggestion | null>(null);
+
   // Edit project state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<EditProjectForm>({ name: '', notes: '', startDate: '', targetDate: '', budget: '' });
@@ -130,6 +139,43 @@ export const Projects: React.FC = () => {
     setShowNewModal(false);
     setForm(EMPTY_FORM);
     setFormErrors({});
+    setAiDescription('');
+    setAiLoading(false);
+    setAiError('');
+    setAiSkipped(false);
+    setAiSuggestion(null);
+  }
+
+  async function handleAiGenerate() {
+    if (!aiDescription.trim()) return;
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const suggestion = await generateProjectFromDescription(aiDescription.trim());
+      if (!suggestion) {
+        setAiError("Couldn't generate — please fill in manually");
+        setAiSkipped(true);
+        return;
+      }
+      setAiSuggestion(suggestion);
+      // Pre-fill form fields
+      setForm({
+        name: suggestion.name || '',
+        client: '',
+        address: suggestion.address || '',
+        totalArea: suggestion.totalAreaSqft > 0 ? String(suggestion.totalAreaSqft) : '',
+        startDate: suggestion.startDate || '',
+        targetDate: suggestion.targetDate || '',
+        budget: suggestion.budget > 0 ? String(suggestion.budget) : '',
+        notes: suggestion.notes || '',
+      });
+      setAiSkipped(true); // show the form now
+    } catch {
+      setAiError("Couldn't generate — please fill in manually");
+      setAiSkipped(true);
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   async function handleCreate() {
@@ -742,79 +788,150 @@ export const Projects: React.FC = () => {
         isOpen={showNewModal}
         title="New Project"
         onClose={closeNewModal}
-        onConfirm={handleCreate}
+        onConfirm={aiSkipped ? handleCreate : undefined}
         confirmText="Create Project"
-        maxWidth="560px"
+        maxWidth="580px"
       >
         <div className="flex flex-col gap-[14px]">
-          <div className="grid grid-cols-2 gap-[12px]">
-            <Input
-              label="Project Name"
-              required
-              value={form.name}
-              error={formErrors.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="Henderson Backyard"
-            />
-            <Input
-              label="Client Name"
-              required
-              value={form.client}
-              error={formErrors.client}
-              onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
-              placeholder="Sarah Henderson"
-            />
-          </div>
-          <Input
-            label="Address"
-            required
-            value={form.address}
-            error={formErrors.address}
-            onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-            placeholder="1247 Maple Ridge Dr, Austin TX"
-          />
-          <div className="grid grid-cols-2 gap-[12px]">
-            <Input
-              label="Total Area (sq ft)"
-              type="number"
-              min="0"
-              value={form.totalArea}
-              onChange={e => setForm(f => ({ ...f, totalArea: e.target.value }))}
-              placeholder="3200"
-            />
-            <Input
-              label="Budget ($)"
-              type="number"
-              required
-              min="1"
-              value={form.budget}
-              error={formErrors.budget}
-              onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
-              placeholder="45000"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-[12px]">
-            <Input
-              label="Start Date"
-              type="date"
-              value={form.startDate}
-              onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-            />
-            <Input
-              label="Target Date"
-              type="date"
-              value={form.targetDate}
-              error={formErrors.targetDate}
-              onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))}
-            />
-          </div>
-          <TextArea
-            label="Notes"
-            rows={3}
-            value={form.notes}
-            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-            placeholder="Project overview, special requirements, access notes..."
-          />
+          {/* ── AI description step ────────────────────────────────────────── */}
+          {!aiSkipped && (
+            <div>
+              <div className="flex items-center justify-between mb-[8px]">
+                <label className="text-[12px] font-[600] text-[var(--text-2)]">
+                  Describe your project
+                </label>
+                <button
+                  type="button"
+                  className="text-[11px] text-[var(--text-3)] hover:text-[var(--text-2)] underline transition-colors"
+                  onClick={() => setAiSkipped(true)}
+                >
+                  Skip — fill manually
+                </button>
+              </div>
+              <TextArea
+                rows={3}
+                value={aiDescription}
+                onChange={e => setAiDescription(e.target.value)}
+                placeholder="New sod installation, 2500 sqft backyard at 123 Oak Street, budget around $5,000..."
+              />
+              {aiError && (
+                <div className="mt-[6px] text-[11px] text-[var(--color-error)]">{aiError}</div>
+              )}
+              <div className="mt-[10px] flex items-center gap-[10px]">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAiGenerate}
+                  disabled={aiLoading || !aiDescription.trim()}
+                >
+                  {aiLoading ? (
+                    <span className="flex items-center gap-[6px]">
+                      <span className="animate-spin inline-block">⌛</span> Generating...
+                    </span>
+                  ) : '✦ Generate from description'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Manual form (shown after AI generate or skip) ──────────────── */}
+          {aiSkipped && (
+            <>
+              {aiSuggestion && (
+                <div className="rounded-[8px] px-[12px] py-[10px] text-[11px]" style={{ backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                  ✦ AI pre-filled {aiSuggestion.suggestedMaterials.length} material suggestion{aiSuggestion.suggestedMaterials.length !== 1 ? 's' : ''} ready — review and adjust below.
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+                <Input
+                  label="Project Name"
+                  required
+                  value={form.name}
+                  error={formErrors.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Henderson Backyard"
+                />
+                <Input
+                  label="Client Name"
+                  required
+                  value={form.client}
+                  error={formErrors.client}
+                  onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
+                  placeholder="Sarah Henderson"
+                />
+              </div>
+              <Input
+                label="Address"
+                required
+                value={form.address}
+                error={formErrors.address}
+                onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                placeholder="1247 Maple Ridge Dr, Austin TX"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+                <Input
+                  label="Total Area (sq ft)"
+                  type="number"
+                  min="0"
+                  value={form.totalArea}
+                  onChange={e => setForm(f => ({ ...f, totalArea: e.target.value }))}
+                  placeholder="3200"
+                />
+                <Input
+                  label="Budget ($)"
+                  type="number"
+                  required
+                  min="1"
+                  value={form.budget}
+                  error={formErrors.budget}
+                  onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
+                  placeholder="45000"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+                <Input
+                  label="Start Date"
+                  type="date"
+                  value={form.startDate}
+                  onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                />
+                <Input
+                  label="Target Date"
+                  type="date"
+                  value={form.targetDate}
+                  error={formErrors.targetDate}
+                  onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))}
+                />
+              </div>
+              <TextArea
+                label="Notes"
+                rows={3}
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Project overview, special requirements, access notes..."
+              />
+
+              {/* Suggested materials from AI */}
+              {aiSuggestion && aiSuggestion.suggestedMaterials.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-[600] text-[var(--text-3)] uppercase tracking-[0.06em] mb-[6px]">
+                    AI Suggested Materials
+                  </div>
+                  <div className="flex flex-wrap gap-[6px]">
+                    {aiSuggestion.suggestedMaterials.map((m, i) => (
+                      <span
+                        key={i}
+                        className="px-[10px] py-[4px] rounded-full text-[11px] border"
+                        style={{ backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)', borderColor: 'var(--color-primary-light)' }}
+                      >
+                        {m.name} · {m.estimatedQuantity} {m.unit}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </Modal>
 
