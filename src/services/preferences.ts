@@ -63,6 +63,31 @@ export async function upsertUserPreferences(
   }
 }
 
+export async function updateSelectedKpis(userId: string, kpis: string[]): Promise<void> {
+  try {
+    await supabase
+      .from('user_preferences')
+      .update({ selected_kpis: kpis })
+      .eq('user_id', userId)
+  } catch {
+    // silently fail — localStorage already updated
+  }
+}
+
+export async function updateWidgetLayout(
+  userId: string,
+  layout: Array<{ widgetId: string; type: string; position: number; config?: Record<string, unknown> }>,
+): Promise<void> {
+  try {
+    await supabase
+      .from('user_preferences')
+      .update({ widget_layout: layout })
+      .eq('user_id', userId)
+  } catch {
+    // silently fail — localStorage already updated
+  }
+}
+
 export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
   try {
     const { data, error } = await supabase

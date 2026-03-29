@@ -1,83 +1,195 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
-import { getAllAlerts } from '@/lib/alerts';
-import { computeProjectCostRaw } from '@/lib/manifest';
+import { useUIStore } from '@/stores/uiStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { SkeletonKPI, SkeletonWidget } from '@/components/shared/Skeleton';
+import { KPIDrawer } from '@/components/dashboard/KPIDrawer';
+import { WidgetGrid } from '@/components/dashboard/WidgetGrid';
+import { useCountUp } from '@/hooks/useCountUp';
+import { toast } from '@/hooks/useToast';
+import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiDefinitions';
+import { updateSelectedKpis, updateWidgetLayout } from '@/services/preferences';
+import type { AppState } from '@/types';
+
+// Debounce helper for Supabase layout writes
+function useDebouncedCallback<T extends unknown[]>(
+  fn: (...args: T) => void,
+  delay: number,
+): (...args: T) => void {
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  return useCallback(
+    (...args: T) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => fn(...args), delay);
+    },
+    [fn, delay],
+  );
+}
+
+// Single KPI card with count-up animation
+interface KPICardProps {
+  icon: string;
+  label: string;
+  value: number;
+  subtitle?: string;
+  prefix?: string;
+  suffix?: string;
+  decimals?: number;
+}
+
+const KPICard: React.FC<KPICardProps> = ({
+  icon,
+  label,
+  value,
+  subtitle,
+  prefix = '',
+  suffix = '',
+  decimals = 0,
+}) => {
+  const display = useCountUp({ end: value, prefix, suffix, decimals });
+  return (
+    <div
+      style={{
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: '10px',
+        padding: '16px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: '10px',
+          fontWeight: 700,
+          color: 'var(--text-tertiary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          marginBottom: '6px',
+        }}
+      >
+        {icon} {label}
+      </div>
+      <div
+        className="font-serif"
+        style={{
+          fontSize: '28px',
+          color: 'var(--text-primary)',
+          lineHeight: 1,
+        }}
+      >
+        {display}
+      </div>
+      {subtitle && (
+        <div
+          style={{
+            fontSize: '10px',
+            color: 'var(--text-tertiary)',
+            marginTop: '4px',
+          }}
+        >
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Dashboard: React.FC = () => {
-  const { projects, isLoading, error, setActiveProject } = useProjectStore();
-  const { crew, getAvailableToday } = useCrewStore();
+  const { projects, isLoading, error } = useProjectStore();
+  const { crew } = useCrewStore();
   const { equipment } = useEquipmentStore();
   const { materials } = useMaterialStore();
+  const { user } = useAuth();
+
+  const {
+    kpiDrawerOpen,
+    closeKpiDrawer,
+    toggleKpiDrawer,
+    selectedKpis,
+    setSelectedKpis,
+    editMode,
+    widgetLayout,
+    toggleEditMode,
+    reorderWidgets,
+    toggleWidgetVisibility,
+    toggleWidgetCollapsed,
+  } = useUIStore();
+
+  const appState: AppState = { projects, crew, equipment, materials };
+
+  // Debounced Supabase layout write
+  const debouncedSaveLayout = useDebouncedCallback(
+    async (userId: string, layout: typeof widgetLayout) => {
+      const serialized = layout.map((w) => ({
+        widgetId: w.id,
+        type: w.type,
+        position: w.order,
+      }));
+      try {
+        await updateWidgetLayout(userId, serialized);
+        toast.info('Dashboard layout saved');
+      } catch {
+        // silently ignore
+      }
+    },
+    1000,
+  );
+
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    reorderWidgets(fromIndex, toIndex);
+    if (user?.id) {
+      debouncedSaveLayout(user.id, widgetLayout);
+    }
+  };
+
+  const handleVisibilityToggle = (widgetId: string) => {
+    toggleWidgetVisibility(widgetId);
+    if (user?.id) {
+      debouncedSaveLayout(user.id, widgetLayout);
+    }
+  };
+
+  const handleKpiChange = async (ids: string[]) => {
+    setSelectedKpis(ids);
+    if (user?.id) {
+      try {
+        await updateSelectedKpis(user.id, ids);
+        toast.success('KPIs updated');
+      } catch {
+        toast.error('Failed to save KPI preferences');
+      }
+    }
+  };
+
+  const activeKpis = (selectedKpis ?? DEFAULT_SELECTED_KPIS)
+    .map((id) => KPI_LIBRARY.find((k) => k.id === id))
+    .filter((k): k is NonNullable<typeof k> => Boolean(k));
+
+  const hiddenWidgets = widgetLayout.filter((w) => !w.visible);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-[64px]">
-        <div className="text-center">
-          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
-          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[16px] items-start">
+        <div className="flex flex-col gap-[8px]">
+          <SkeletonKPI />
+          <SkeletonKPI />
+          <SkeletonKPI />
+          <SkeletonKPI />
+        </div>
+        <div className="flex flex-col gap-[12px]">
+          <SkeletonWidget />
+          <div className="grid grid-cols-2 gap-[12px]">
+            <SkeletonWidget />
+            <SkeletonWidget />
+          </div>
         </div>
       </div>
     );
   }
-
-  // Project KPIs
-  const activeProjects = projects.filter(p => p.zones && p.zones.length > 0).length;
-  const planningProjects = projects.filter(p => !p.zones || p.zones.length === 0).length;
-  const totalProjectValue = projects.reduce((sum, p) => sum + computeProjectCostRaw(p, materials), 0);
-
-  // Crew KPIs — real availability from store, assigned from project zones
-  const teamSize = crew.length;
-  const availableToday = getAvailableToday();
-  const availableTodayIds = new Set(availableToday.map(m => m.id));
-  const assignedCrewIds = new Set(
-    projects.flatMap(p => p.zones.map(z => z.crew)).filter(Boolean)
-  );
-  // Crew who have a specific booking entry for today
-  const todayISO = new Date().toISOString().split('T')[0];
-  const bookedTodayIds = new Set(
-    crew.filter(m => (m.bookedDates ?? []).includes(todayISO)).map(m => m.id)
-  );
-
-  // Fleet KPIs
-  const fleetSize = equipment.filter(e => e.status !== 'out-of-service').length;
-  const statByStatus = {
-    available: equipment.filter(e => e.status === 'available').length,
-    inUse: equipment.filter(e => e.status === 'in-use').length,
-    maintenance: equipment.filter(e => e.status === 'maintenance').length,
-  };
-
-  // Alerts — combined from all 4 stores, sorted by severity
-  const alerts = getAllAlerts({ projects, crew, equipment, materials });
-  const topAlerts = alerts.slice(0, 5);
-
-  // Crew rows for utilization widget
-  const crewRows = crew.map(m => ({
-    id: m.id,
-    name: m.name,
-    availableToday: availableTodayIds.has(m.id),
-    assigned: assignedCrewIds.has(m.id),
-    bookedToday: bookedTodayIds.has(m.id),
-  }));
-
-  // Active projects list for summary widget (not fully complete, up to 5)
-  const activeProjectList = projects
-    .filter(p => {
-      const checks = Object.values(p.checklist);
-      return checks.filter(Boolean).length < checks.length;
-    })
-    .slice(0, 5);
-
-  // Equipment rows for fleet widget
-  const equipmentRows = equipment.slice(0, 5).map(e => ({
-    id: e.id,
-    name: e.name,
-    status: e.status,
-  }));
 
   return (
     <div>
@@ -86,263 +198,180 @@ export const Dashboard: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[16px] items-start">
-      {/* LEFT COLUMN: KPIs + Alerts */}
-      <div className="flex flex-col gap-[12px]">
-        {/* KPI cards — replaced by welcome card when no projects exist */}
-        {projects.length === 0 ? (
-          <div className="bg-[var(--surface2)] border border-[var(--green-l)] rounded-[10px] p-[24px] text-center">
-            <div className="text-[32px] mb-[12px]">⬡</div>
-            <div className="font-serif text-[18px] text-[var(--text)] mb-[8px]">
-              Welcome to TerrainForge
-            </div>
-            <div className="text-[12px] text-[var(--text-3)] mb-[20px] leading-relaxed">
-              Manage projects, materials, crew, and equipment — all in one place. Start by creating your first project.
-            </div>
-            <Link
-              to="/projects"
-              className="inline-block px-[20px] py-[10px] bg-[var(--green-l)] text-[var(--surface)] text-[13px] font-[700] rounded-[8px] hover:opacity-90 transition-opacity"
+        {/* LEFT COLUMN: KPIs + Customize */}
+        <div className="flex flex-col gap-[12px]">
+          {projects.length === 0 ? (
+            <div
+              style={{
+                background: 'var(--surface-card)',
+                border: '1px solid var(--color-primary)',
+                borderRadius: '10px',
+                padding: '24px',
+                textAlign: 'center',
+              }}
             >
-              Create First Project
-            </Link>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-[8px]">
-            <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-              <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
-                Active Projects
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>⬡</div>
+              <div
+                className="font-serif"
+                style={{
+                  fontSize: '18px',
+                  color: 'var(--text-primary)',
+                  marginBottom: '8px',
+                }}
+              >
+                Welcome to TerrainForge
               </div>
-              <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
-                {activeProjects}
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--text-tertiary)',
+                  marginBottom: '20px',
+                  lineHeight: 1.5,
+                }}
+              >
+                Manage projects, materials, crew, and equipment — all in one place. Start by
+                creating your first project.
               </div>
-              {planningProjects > 0 && (
-                <div className="text-[10px] text-[var(--text-4)] mt-[4px]">
-                  +{planningProjects} in planning
-                </div>
-              )}
+              <Link
+                to="/projects"
+                style={{
+                  display: 'inline-block',
+                  padding: '10px 20px',
+                  background: 'var(--color-primary)',
+                  color: 'white',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                }}
+              >
+                Create First Project
+              </Link>
             </div>
+          ) : (
+            <div className="flex flex-col gap-[8px]">
+              {activeKpis.map((kpi) => {
+                const result = kpi.compute(appState);
+                return (
+                  <KPICard
+                    key={kpi.id}
+                    icon={kpi.icon}
+                    label={kpi.label}
+                    value={result.value}
+                    subtitle={result.subtitle}
+                    prefix={kpi.prefix}
+                    suffix={kpi.suffix}
+                    decimals={kpi.decimals}
+                  />
+                );
+              })}
 
-            <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-              <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
-                Total Project Value
-              </div>
-              <div className="font-serif text-[28px] text-[var(--green-l)] leading-[1]">
-                ${(totalProjectValue / 1000).toFixed(1)}k
-              </div>
+              <button
+                onClick={toggleKpiDrawer}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: '1px dashed var(--border-default)',
+                  background: 'transparent',
+                  fontSize: '12px',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  minHeight: '44px',
+                  transition: 'all 0.2s ease',
+                }}
+                className="hover:bg-[var(--surface-hover)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+              >
+                ✎ Customize KPIs
+              </button>
             </div>
+          )}
 
-            <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-              <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
-                Team Size
-              </div>
-              <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
-                {teamSize}
-              </div>
-              <div className="text-[10px] text-[var(--text-4)] mt-[4px]">
-                {availableToday.length} available today
-              </div>
-            </div>
-
-            <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-              <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
-                Fleet Size
-              </div>
-              <div className="font-serif text-[28px] text-[var(--text)] leading-[1]">
-                {fleetSize}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Alerts widget */}
-        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
-          <div className="px-[16px] py-[12px] border-b border-[var(--border)]">
-            <div className="text-[12px] font-[700] text-[var(--text)]">Alerts ({alerts.length})</div>
-          </div>
-          <div className="max-h-[260px] overflow-y-auto p-[10px_14px]">
-            {topAlerts.length === 0 ? (
-              <div className="text-[12px] text-[var(--text-3)]">No alerts</div>
-            ) : (
-              <div className="space-y-[8px]">
-                {topAlerts.map((alert, idx) => (
-                  <div
-                    key={idx}
-                    className={`px-[10px] py-[8px] rounded-[6px] text-[11px] ${
-                      alert.level === 'red'
-                        ? 'bg-[rgba(220,38,38,.1)] border border-[rgba(220,38,38,.3)] text-[#DC2626]'
-                        : alert.level === 'amber'
-                        ? 'bg-[rgba(251,146,60,.1)] border border-[rgba(251,146,60,.3)] text-[#FB923C]'
-                        : 'bg-[rgba(59,130,246,.1)] border border-[rgba(59,130,246,.3)] text-[#3B82F6]'
-                    }`}
-                  >
-                    <div className="font-[600]">{alert.icon} {alert.title}</div>
-                    <div className="text-[10px] mt-[2px]">{alert.msg}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {kpiDrawerOpen && (
+            <KPIDrawer
+              open={kpiDrawerOpen}
+              onClose={closeKpiDrawer}
+              selectedKpis={selectedKpis ?? DEFAULT_SELECTED_KPIS}
+              onSelectionChange={handleKpiChange}
+            />
+          )}
         </div>
-      </div>
 
-      {/* RIGHT COLUMN: Map + Crew + Fleet */}
-      <div className="flex flex-col gap-[12px]">
-        {/* Active Projects Summary widget */}
-        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
-          <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
-            <div className="text-[12px] font-[700] text-[var(--text)]">Projects in Progress</div>
-            <Link
-              to="/projects"
-              className="text-[11px] text-[var(--green-l)] hover:underline"
+        {/* RIGHT COLUMN: Widget Grid */}
+        <div className="flex flex-col gap-[12px]">
+          <div className="flex items-center justify-between">
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+              }}
             >
-              View all →
-            </Link>
-          </div>
-          <div className="p-[14px]">
-            {activeProjectList.length === 0 ? (
-              <div className="text-center py-[40px] text-[var(--text-3)]">
-                <div className="text-[32px] mb-[10px] opacity-30">⊞</div>
-                <div className="text-[13px] mb-[8px]">No active projects</div>
-                <Link to="/projects" className="text-[12px] text-[var(--green-l)] hover:underline">
-                  Create your first project →
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-[8px]">
-                {activeProjectList.map((p) => {
-                  const checks = Object.values(p.checklist);
-                  const completedCount = checks.filter(Boolean).length;
-                  const pct = Math.round((completedCount / checks.length) * 100);
-                  const cost = computeProjectCostRaw(p, materials);
-                  return (
-                    <div
-                      key={p.id}
-                      className="bg-[var(--surface3)] border border-[var(--border)] rounded-[8px] px-[14px] py-[10px]"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-[4px]">
-                        <div className="min-w-0">
-                          <div className="text-[13px] font-[600] text-[var(--text)] truncate">{p.name}</div>
-                          <div className="text-[11px] text-[var(--text-3)] truncate">{p.client}</div>
-                        </div>
-                        <Link
-                          to="/projects"
-                          onClick={() => setActiveProject(p.id)}
-                          className="text-[11px] text-[var(--color-primary)] hover:underline flex-shrink-0"
-                        >
-                          View →
-                        </Link>
-                      </div>
-                      <div className="flex gap-[12px] text-[11px] text-[var(--text-3)] mt-[6px] mb-[6px]">
-                        <span>{p.zones.length} zone{p.zones.length !== 1 ? 's' : ''}</span>
-                        <span>${cost.toLocaleString()} est.</span>
-                        <span>{completedCount}/{checks.length} checks</span>
-                      </div>
-                      <div className="w-full h-[4px] rounded-full bg-[var(--border)]">
-                        <div
-                          className="h-[4px] rounded-full"
-                          style={{ width: `${pct}%`, backgroundColor: 'var(--color-primary)' }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Crew + Fleet */}
-        <div className="grid grid-cols-2 gap-[12px]">
-          {/* Crew utilization */}
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
-            <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
-              <div className="text-[12px] font-[700] text-[var(--text)]">
-                Crew Utilization
-              </div>
-              <span className="text-[10px] text-[var(--text-4)]">
-                {availableToday.length}/{teamSize} today
-              </span>
+              Your Dashboard
             </div>
-            <div className="px-[14px] py-[10px] max-h-[180px] overflow-y-auto">
-              {crewRows.length === 0 ? (
-                <div className="text-[12px] text-[var(--text-3)]">No crew assigned</div>
-              ) : (
-                <div className="space-y-[8px]">
-                  {crewRows.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between text-[12px]">
-                      <span className="text-[var(--text-2)]">{member.name}</span>
-                      {member.assigned ? (
-                        <span className="inline-flex bg-[#60A5FA] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
-                          On Job
-                        </span>
-                      ) : member.bookedToday ? (
-                        <span className="inline-flex bg-[#FB923C] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
-                          Booked
-                        </span>
-                      ) : member.availableToday ? (
-                        <span className="inline-flex bg-[var(--green-l)] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
-                          Available
-                        </span>
-                      ) : (
-                        <span className="inline-flex bg-[var(--surface3)] text-[var(--text-4)] px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
-                          Off
-                        </span>
-                      )}
-                    </div>
+            <div className="flex items-center gap-[8px]">
+              {editMode && hiddenWidgets.length > 0 && (
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleVisibilityToggle(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  style={{
+                    background: 'var(--surface-card)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    minHeight: '44px',
+                  }}
+                  defaultValue=""
+                  aria-label="Add widget"
+                >
+                  <option value="" disabled>
+                    + Add Widget
+                  </option>
+                  {hiddenWidgets.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.title}
+                    </option>
                   ))}
-                </div>
+                </select>
               )}
+              <button
+                onClick={toggleEditMode}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  minHeight: '44px',
+                  cursor: 'pointer',
+                  border: editMode ? 'none' : '1px solid var(--border-default)',
+                  background: editMode ? 'var(--color-primary)' : 'var(--surface-card)',
+                  color: editMode ? 'white' : 'var(--text-secondary)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {editMode ? '✓ Done' : '✎ Edit Dashboard'}
+              </button>
             </div>
           </div>
 
-          {/* Equipment status */}
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
-            <div className="px-[16px] py-[12px] border-b border-[var(--border)]">
-              <div className="text-[12px] font-[700] text-[var(--text)]">
-                Fleet Status
-              </div>
-            </div>
-            <div className="px-[14px] py-[12px]">
-              <div className="grid grid-cols-3 gap-[8px] text-center text-[11px] mb-[10px]">
-                <div>
-                  <div className="text-[var(--green-l)] font-[700] text-[18px]">{statByStatus.available}</div>
-                  <div className="text-[var(--text-4)] text-[9px] uppercase font-[700]">Available</div>
-                </div>
-                <div>
-                  <div className="text-[#60A5FA] font-[700] text-[18px]">{statByStatus.inUse}</div>
-                  <div className="text-[var(--text-4)] text-[9px] uppercase font-[700]">In Use</div>
-                </div>
-                <div>
-                  <div className="text-[#FCD34D] font-[700] text-[18px]">{statByStatus.maintenance}</div>
-                  <div className="text-[var(--text-4)] text-[9px] uppercase font-[700]">Service</div>
-                </div>
-              </div>
-            </div>
-            <div className="px-[14px] pb-[10px] max-h-[100px] overflow-y-auto">
-              {equipmentRows.length === 0 ? (
-                <div className="text-[12px] text-[var(--text-3)]">No equipment</div>
-              ) : (
-                <div className="space-y-[4px]">
-                  {equipmentRows.map((equip) => (
-                    <div key={equip.id} className="flex items-center justify-between text-[11px]">
-                      <span className="text-[var(--text-2)] truncate">{equip.name}</span>
-                      <span className={`text-[10px] px-[6px] py-[1px] rounded-[3px] font-[600] ${
-                        equip.status === 'available'
-                          ? 'bg-[var(--green-l)] text-white'
-                          : equip.status === 'in-use'
-                          ? 'bg-[#60A5FA] text-white'
-                          : 'bg-[#FCD34D] text-[#1a1a1a]'
-                      }`}>
-                        {equip.status.charAt(0).toUpperCase() + equip.status.slice(1)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <WidgetGrid
+            widgets={widgetLayout}
+            editMode={editMode}
+            appState={appState}
+            onReorder={handleReorder}
+            onToggleCollapsed={toggleWidgetCollapsed}
+            onToggleVisibility={handleVisibilityToggle}
+          />
         </div>
-      </div>
       </div>
     </div>
   );

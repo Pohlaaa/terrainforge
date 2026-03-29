@@ -23,6 +23,8 @@ export interface Project {
   notes: string;
   createdAt: string;
   isDemo?: boolean;
+  lat?: number;
+  lng?: number;
   checklist: {
     permit: boolean;
     utility: boolean;
@@ -289,6 +291,31 @@ export interface WorkOrder {
   estimatedHours: number;
   actualHours?: number;
   createdAt: string;
+}
+
+// ── Dashboard customization types ─────────────────────────────────────────────
+
+export type WidgetType = 'projects' | 'crew' | 'fleet' | 'alerts' | 'map';
+
+export interface WidgetConfig {
+  id: string;
+  type: WidgetType;
+  title: string;
+  visible: boolean;
+  collapsed: boolean;
+  order: number;
+}
+
+export interface KPIDefinition {
+  id: string;
+  label: string;
+  category: 'projects' | 'financial' | 'crew' | 'equipment' | 'materials';
+  icon: string;
+  compute: (state: AppState) => { value: number; subtitle?: string };
+  colorVar: string;
+  prefix?: string;
+  suffix?: string;
+  decimals?: number;
 }
 
 // Type aliases for formatting and display

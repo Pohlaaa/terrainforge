@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { DashboardConfig } from '@/types'
+import type { DashboardConfig, WidgetConfig } from '@/types'
+import { DEFAULT_SELECTED_KPIS, DEFAULT_WIDGET_LAYOUT } from '@/lib/kpiDefinitions'
 
 interface UIStore {
   sidebarCollapsed: boolean
@@ -13,6 +14,23 @@ interface UIStore {
   closeModal: () => void
   updateDashboardConfig: (updates: Partial<DashboardConfig>) => void
   setSearchQuery: (query: string) => void
+
+  // KPI Customization Drawer (S10-1)
+  kpiDrawerOpen: boolean
+  selectedKpis: string[]
+  toggleKpiDrawer: () => void
+  openKpiDrawer: () => void
+  closeKpiDrawer: () => void
+  setSelectedKpis: (ids: string[]) => void
+
+  // Widget Dashboard (S10-2)
+  editMode: boolean
+  widgetLayout: WidgetConfig[]
+  toggleEditMode: () => void
+  reorderWidgets: (fromIndex: number, toIndex: number) => void
+  toggleWidgetVisibility: (widgetId: string) => void
+  toggleWidgetCollapsed: (widgetId: string) => void
+  resetWidgetLayout: () => void
 }
 
 const defaultDashboardConfig: DashboardConfig = {
@@ -43,9 +61,43 @@ export const useUIStore = create<UIStore>()(
           dashboardConfig: { ...state.dashboardConfig, ...updates },
         })),
       setSearchQuery: (query) => set({ searchQuery: query }),
+
+      // KPI Customization
+      kpiDrawerOpen: false,
+      selectedKpis: DEFAULT_SELECTED_KPIS,
+      toggleKpiDrawer: () => set((state) => ({ kpiDrawerOpen: !state.kpiDrawerOpen })),
+      openKpiDrawer: () => set({ kpiDrawerOpen: true }),
+      closeKpiDrawer: () => set({ kpiDrawerOpen: false }),
+      setSelectedKpis: (ids) => set({ selectedKpis: ids }),
+
+      // Widget Dashboard
+      editMode: false,
+      widgetLayout: DEFAULT_WIDGET_LAYOUT,
+      toggleEditMode: () => set((state) => ({ editMode: !state.editMode })),
+      reorderWidgets: (fromIndex, toIndex) =>
+        set((state) => {
+          const sorted = [...state.widgetLayout].sort((a, b) => a.order - b.order)
+          const [moved] = sorted.splice(fromIndex, 1)
+          sorted.splice(toIndex, 0, moved)
+          const reordered = sorted.map((w, i) => ({ ...w, order: i }))
+          return { widgetLayout: reordered }
+        }),
+      toggleWidgetVisibility: (widgetId) =>
+        set((state) => ({
+          widgetLayout: state.widgetLayout.map((w) =>
+            w.id === widgetId ? { ...w, visible: !w.visible } : w,
+          ),
+        })),
+      toggleWidgetCollapsed: (widgetId) =>
+        set((state) => ({
+          widgetLayout: state.widgetLayout.map((w) =>
+            w.id === widgetId ? { ...w, collapsed: !w.collapsed } : w,
+          ),
+        })),
+      resetWidgetLayout: () => set({ widgetLayout: DEFAULT_WIDGET_LAYOUT }),
     }),
     {
       name: 'tf_ui',
-    }
-  )
+    },
+  ),
 )
