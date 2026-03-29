@@ -73,6 +73,10 @@ export async function fetchProjects(): Promise<Project[]> {
     return (data || []).map(project => {
       const camelProject = toCamelCase(project) as any
 
+      // Map DB column names → frontend field names for project
+      camelProject.totalArea = camelProject.totalAreaSqft ?? camelProject.totalArea ?? 0
+      camelProject.client = camelProject.clientId ? '' : ''
+
       // Build zones with materials and equipment
       camelProject.zones = (camelProject.zones || []).map((zone: any) => {
         zone.materials = (zone.zoneMaterials || []).map((zm: any) => ({
@@ -85,6 +89,11 @@ export async function fetchProjects(): Promise<Project[]> {
         }))
         delete zone.zoneMaterials
         delete zone.zoneEquipment
+        // Map DB zone column names → frontend field names
+        zone.area = zone.areaSqft ?? zone.area ?? 0
+        zone.perimeter = zone.perimeterLnft ?? zone.perimeter ?? 0
+        zone.sequence = zone.sequenceNumber ?? zone.sequence ?? 0
+        zone.crew = zone.crewAssignment ?? zone.crew ?? ''
         return zone
       })
 
@@ -108,6 +117,10 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     snakeData.id = id
     snakeData.org_id = orgId
     snakeData.checklist = project.checklist // Keep as object, Supabase will handle JSONB
+    // Field fixups: frontend name → DB column name
+    delete snakeData.client       // string, DB expects client_id UUID FK (unused)
+    delete snakeData.is_demo      // frontend-only flag, no DB column
+    snakeData.total_area_sqft = snakeData.total_area; delete snakeData.total_area
 
     const { data, error } = await supabase
       .from('projects')
@@ -134,6 +147,10 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     if (updateData.checklist) {
       snakeData.checklist = updateData.checklist
     }
+    // Field fixups
+    if ('client' in snakeData) delete snakeData.client
+    if ('total_area' in snakeData) { snakeData.total_area_sqft = snakeData.total_area; delete snakeData.total_area }
+    if ('is_demo' in snakeData) delete snakeData.is_demo
 
     const { data, error } = await supabase
       .from('projects')
@@ -170,12 +187,18 @@ export async function deleteProject(id: string): Promise<boolean> {
 
 // ===== ZONES =====
 
-export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'createdAt'>): Promise<Zone | null> {
+export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'createdAt'>, orgId: string): Promise<Zone | null> {
   try {
     const { materials, equipment, ...zoneData } = zone
     const snakeData = toSnakeCase(zoneData) as any
     snakeData.project_id = projectId
+    snakeData.org_id = orgId
     snakeData.dependencies = zone.dependencies // Keep as array
+    // Field fixups: frontend name → DB column name
+    snakeData.area_sqft = snakeData.area; delete snakeData.area
+    snakeData.perimeter_lnft = snakeData.perimeter; delete snakeData.perimeter
+    snakeData.sequence_number = snakeData.sequence; delete snakeData.sequence
+    snakeData.crew_assignment = snakeData.crew; delete snakeData.crew
 
     const { data, error } = await supabase
       .from('zones')
@@ -203,6 +226,11 @@ export async function updateZone(zoneId: string, updates: Partial<Zone>): Promis
     if (updateData.dependencies) {
       snakeData.dependencies = updateData.dependencies
     }
+    // Field fixups
+    if ('area' in snakeData) { snakeData.area_sqft = snakeData.area; delete snakeData.area }
+    if ('perimeter' in snakeData) { snakeData.perimeter_lnft = snakeData.perimeter; delete snakeData.perimeter }
+    if ('sequence' in snakeData) { snakeData.sequence_number = snakeData.sequence; delete snakeData.sequence }
+    if ('crew' in snakeData) { snakeData.crew_assignment = snakeData.crew; delete snakeData.crew }
 
     const { data, error } = await supabase
       .from('zones')
@@ -312,7 +340,13 @@ export async function fetchMaterials(): Promise<Material[]> {
 
     if (error) throw error
 
-    return (data || []).map(material => toCamelCase(material)) as Material[]
+    return (data || []).map(material => {
+      const m = toCamelCase(material) as any
+      // Map DB column names → frontend field names
+      m.unit = m.unitType ?? m.unit
+      m.reserveOverride = m.reserveOverridePct ?? m.reserveOverride ?? null
+      return m as Material
+    })
   } catch (err: any) {
     console.error('fetchMaterials error:', err.message)
     return []
@@ -324,6 +358,9 @@ export async function createMaterial(material: Omit<Material, 'id'>, id: string,
     const snakeData = toSnakeCase(material) as any
     snakeData.id = id
     snakeData.org_id = orgId
+    // Field fixups: frontend name → DB column name
+    if ('unit' in snakeData) { snakeData.unit_type = snakeData.unit; delete snakeData.unit }
+    if ('reserve_override' in snakeData) { snakeData.reserve_override_pct = snakeData.reserve_override; delete snakeData.reserve_override }
 
     const { data, error } = await supabase
       .from('materials')
@@ -343,6 +380,9 @@ export async function createMaterial(material: Omit<Material, 'id'>, id: string,
 export async function updateMaterial(id: string, updates: Partial<Material>): Promise<Material | null> {
   try {
     const snakeData = toSnakeCase(updates) as any
+    // Field fixups
+    if ('unit' in snakeData) { snakeData.unit_type = snakeData.unit; delete snakeData.unit }
+    if ('reserve_override' in snakeData) { snakeData.reserve_override_pct = snakeData.reserve_override; delete snakeData.reserve_override }
 
     const { data, error } = await supabase
       .from('materials')
@@ -588,6 +628,18 @@ export async function fetchEquipment(): Promise<Equipment[]> {
         camelEquip.capabilities = JSON.parse(camelEquip.capabilities)
       }
 
+      // Map DB column names → frontend field names
+      camelEquip.serial = camelEquip.serialNumber ?? camelEquip.serial ?? ''
+      camelEquip.plate = camelEquip.licensePlate ?? camelEquip.plate ?? ''
+      camelEquip.lastService = camelEquip.lastServiceDate ?? camelEquip.lastService ?? ''
+      camelEquip.nextService = camelEquip.nextServiceDate ?? camelEquip.nextService ?? ''
+      camelEquip.value = camelEquip.equipmentValue ?? camelEquip.value ?? 0
+      camelEquip.insurance = camelEquip.insuranceProvider ?? camelEquip.insurance ?? ''
+      camelEquip.regExpiry = camelEquip.registrationExpiry ?? camelEquip.regExpiry ?? ''
+      camelEquip.inspectionDue = camelEquip.inspectionDueDate ?? camelEquip.inspectionDue ?? ''
+      camelEquip.assignedProject = camelEquip.assignedProjectId ?? camelEquip.assignedProject ?? ''
+      camelEquip.operator = camelEquip.operatorId ?? camelEquip.operator ?? ''
+
       return camelEquip as Equipment
     })
   } catch (err: any) {
@@ -603,6 +655,18 @@ export async function createEquipment(equip: Omit<Equipment, 'id'>, id: string, 
     snakeData.id = id
     snakeData.org_id = orgId
     snakeData.capabilities = equipData.capabilities // Keep as array
+    // Field fixups: frontend name → DB column name
+    if ('serial' in snakeData) { snakeData.serial_number = snakeData.serial; delete snakeData.serial }
+    if ('plate' in snakeData) { snakeData.license_plate = snakeData.plate; delete snakeData.plate }
+    if ('last_service' in snakeData) { snakeData.last_service_date = snakeData.last_service; delete snakeData.last_service }
+    if ('next_service' in snakeData) { snakeData.next_service_date = snakeData.next_service; delete snakeData.next_service }
+    if ('value' in snakeData) { snakeData.equipment_value = snakeData.value; delete snakeData.value }
+    if ('insurance' in snakeData) { snakeData.insurance_provider = snakeData.insurance; delete snakeData.insurance }
+    if ('reg_expiry' in snakeData) { snakeData.registration_expiry = snakeData.reg_expiry; delete snakeData.reg_expiry }
+    if ('inspection_due' in snakeData) { snakeData.inspection_due_date = snakeData.inspection_due; delete snakeData.inspection_due }
+    // Strip FK string fields — DB expects UUID, frontend stores string refs
+    delete snakeData.assigned_project
+    delete snakeData.operator
 
     const { data, error } = await supabase
       .from('equipment')
@@ -629,6 +693,17 @@ export async function updateEquipment(id: string, updates: Partial<Equipment>): 
     if (updateData.capabilities) {
       snakeData.capabilities = updateData.capabilities
     }
+    // Field fixups
+    if ('serial' in snakeData) { snakeData.serial_number = snakeData.serial; delete snakeData.serial }
+    if ('plate' in snakeData) { snakeData.license_plate = snakeData.plate; delete snakeData.plate }
+    if ('last_service' in snakeData) { snakeData.last_service_date = snakeData.last_service; delete snakeData.last_service }
+    if ('next_service' in snakeData) { snakeData.next_service_date = snakeData.next_service; delete snakeData.next_service }
+    if ('value' in snakeData) { snakeData.equipment_value = snakeData.value; delete snakeData.value }
+    if ('insurance' in snakeData) { snakeData.insurance_provider = snakeData.insurance; delete snakeData.insurance }
+    if ('reg_expiry' in snakeData) { snakeData.registration_expiry = snakeData.reg_expiry; delete snakeData.reg_expiry }
+    if ('inspection_due' in snakeData) { snakeData.inspection_due_date = snakeData.inspection_due; delete snakeData.inspection_due }
+    if ('assigned_project' in snakeData) delete snakeData.assigned_project
+    if ('operator' in snakeData) delete snakeData.operator
 
     const { data, error } = await supabase
       .from('equipment')
