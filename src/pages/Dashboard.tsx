@@ -9,7 +9,7 @@ import { computeProjectCostRaw } from '@/lib/manifest';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 
 export const Dashboard: React.FC = () => {
-  const { projects, isLoading, error } = useProjectStore();
+  const { projects, isLoading, error, setActiveProject } = useProjectStore();
   const { crew, getAvailableToday } = useCrewStore();
   const { equipment } = useEquipmentStore();
   const { materials } = useMaterialStore();
@@ -190,7 +190,7 @@ export const Dashboard: React.FC = () => {
         {/* Active Projects Summary widget */}
         <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
           <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
-            <div className="text-[12px] font-[700] text-[var(--text)]">Active Projects</div>
+            <div className="text-[12px] font-[700] text-[var(--text)]">Projects in Progress</div>
             <Link
               to="/projects"
               className="text-[11px] text-[var(--green-l)] hover:underline"
@@ -209,27 +209,39 @@ export const Dashboard: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-[8px]">
-                {activeProjectList.map((project) => {
-                  const checks = Object.values(project.checklist);
+                {activeProjectList.map((p) => {
+                  const checks = Object.values(p.checklist);
                   const completedCount = checks.filter(Boolean).length;
+                  const pct = Math.round((completedCount / checks.length) * 100);
+                  const cost = computeProjectCostRaw(p, materials);
                   return (
                     <div
-                      key={project.id}
+                      key={p.id}
                       className="bg-[var(--surface3)] border border-[var(--border)] rounded-[8px] px-[14px] py-[10px]"
                     >
-                      <div className="flex items-center justify-between mb-[4px]">
-                        <span className="text-[13px] font-[600] text-[var(--text)] truncate">
-                          {project.name}
-                        </span>
-                        <span className="text-[12px] text-[var(--green-l)] font-[600] ml-[8px] flex-shrink-0">
-                          ${(project.budget / 1000).toFixed(1)}k
-                        </span>
+                      <div className="flex items-start justify-between gap-2 mb-[4px]">
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-[600] text-[var(--text)] truncate">{p.name}</div>
+                          <div className="text-[11px] text-[var(--text-3)] truncate">{p.client}</div>
+                        </div>
+                        <Link
+                          to="/projects"
+                          onClick={() => setActiveProject(p.id)}
+                          className="text-[11px] text-[var(--color-primary)] hover:underline flex-shrink-0"
+                        >
+                          View →
+                        </Link>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-[var(--text-3)]">
-                        <span className="truncate">{project.client}</span>
-                        <span className="ml-[8px] flex-shrink-0 text-[var(--text-4)]">
-                          {completedCount}/8 checklist
-                        </span>
+                      <div className="flex gap-[12px] text-[11px] text-[var(--text-3)] mt-[6px] mb-[6px]">
+                        <span>{p.zones.length} zone{p.zones.length !== 1 ? 's' : ''}</span>
+                        <span>${cost.toLocaleString()} est.</span>
+                        <span>{completedCount}/{checks.length} checks</span>
+                      </div>
+                      <div className="w-full h-[4px] rounded-full bg-[var(--border)]">
+                        <div
+                          className="h-[4px] rounded-full"
+                          style={{ width: `${pct}%`, backgroundColor: 'var(--color-primary)' }}
+                        />
                       </div>
                     </div>
                   );
