@@ -162,7 +162,6 @@ export const MaterialLibrary: React.FC = () => {
   const [quickUnit, setQuickUnit] = useState('sqft');
   const [quickCost, setQuickCost] = useState('');
   const [quickQty, setQuickQty] = useState('');
-  const [quickAddToast, setQuickAddToast] = useState(''); // legacy — use toast() instead
 
   // CSV import state
   const [showImportModal, setShowImportModal] = useState(false);
@@ -412,12 +411,7 @@ export const MaterialLibrary: React.FC = () => {
         </div>
       )}
 
-      {/* Toast */}
-      {quickAddToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-[var(--brand-primary)] text-white text-[13px] font-[500] shadow-[var(--shadow-panel)]">
-          {quickAddToast}
-        </div>
-      )}
+      {/* Legacy inline toast removed — toasts now rendered by ToastContainer in AppLayout */}
 
       <div className="flex gap-0 flex-1 overflow-hidden">
         {/* Category sidebar — hidden on phone */}
@@ -604,7 +598,7 @@ export const MaterialLibrary: React.FC = () => {
                               title="Edit"
                             >✏️</button>
                             <button
-                              onClick={() => setQuickAddToast('Material ordering coming in Phase 2')}
+                              onClick={() => toast.info('Material ordering coming in Phase 2')}
                               className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] flex items-center justify-center transition-colors"
                               title="Order"
                             >📦</button>

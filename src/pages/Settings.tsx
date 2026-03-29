@@ -76,7 +76,6 @@ export const Settings: React.FC = () => {
     }
   })
 
-  const [inviteToast, setInviteToast] = useState('')
 
   useEffect(() => {
     setOrgName(org?.name ?? '')
@@ -334,16 +333,10 @@ export const Settings: React.FC = () => {
         </div>
         <Button
           variant="primary"
-          onClick={() => {
-            setInviteToast('Team invitations coming in Phase 2')
-            setTimeout(() => setInviteToast(''), 2500)
-          }}
+          onClick={() => toast.info('Team invitations coming in Phase 2')}
         >
           Invite Member
         </Button>
-        {inviteToast && (
-          <div className="mt-4 text-[13px] text-[var(--text-secondary)]">{inviteToast}</div>
-        )}
       </div>
     </div>
   )
