@@ -76,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string,
     metadata?: { full_name?: string; company_name?: string }
   ) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -85,6 +85,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     if (error) throw error
+
+    // identities.length === 0 means the email is already registered (Supabase
+    // silently accepts the request but creates no new identity when email
+    // confirmation is enabled and the address is already in use).
+    if (data.user?.identities?.length === 0) {
+      throw new Error('This email is already registered. Check your inbox for a confirmation link or try signing in.')
+    }
   }
 
   const signIn = async (email: string, password: string) => {

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Pencil } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { computeProjectCostRaw } from '@/lib/manifest';
@@ -39,6 +40,21 @@ const EMPTY_FORM: NewProjectForm = {
   startDate: '', targetDate: '', budget: '', notes: '',
 };
 
+interface EditProjectForm {
+  name: string;
+  notes: string;
+  startDate: string;
+  targetDate: string;
+  budget: string;
+}
+
+function isDateInPast(dateStr: string): boolean {
+  if (!dateStr) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(dateStr) < today;
+}
+
 interface ZoneForm {
   name: string;
   area: string;
@@ -49,7 +65,7 @@ interface ZoneForm {
 const EMPTY_ZONE_FORM: ZoneForm = { name: '', area: '', perimeter: '', notes: '' };
 
 export const Projects: React.FC = () => {
-  const { projects, addProject, deleteProject, toggleChecklist, setActiveProject, activeProjectId, isLoading, error,
+  const { projects, addProject, updateProject, deleteProject, toggleChecklist, setActiveProject, activeProjectId, isLoading, error,
     addZone, updateZone, deleteZone } = useProjectStore();
   const { materials } = useMaterialStore();
 
@@ -57,6 +73,11 @@ export const Projects: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<NewProjectForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Partial<NewProjectForm>>({});
+
+  // Edit project state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState<EditProjectForm>({ name: '', notes: '', startDate: '', targetDate: '', budget: '' });
+  const [editFormErrors, setEditFormErrors] = useState<Partial<EditProjectForm>>({});
 
   // Zone CRUD state
   const [showZoneModal, setShowZoneModal] = useState(false);
@@ -98,12 +119,17 @@ export const Projects: React.FC = () => {
 
   async function handleCreate() {
     if (!validate()) return;
+    const startDate = form.startDate || new Date().toISOString().split('T')[0];
+    if (isDateInPast(startDate)) {
+      const ok = window.confirm('This start date is in the past. Are you sure you want to backdate this project?');
+      if (!ok) return;
+    }
     await addProject({
       name: form.name.trim(),
       client: form.client.trim(),
       address: form.address.trim(),
       totalArea: parseFloat(form.totalArea) || 0,
-      startDate: form.startDate || new Date().toISOString().split('T')[0],
+      startDate,
       targetDate: form.targetDate || '',
       budget: parseFloat(form.budget) || 0,
       notes: form.notes.trim(),
@@ -121,6 +147,52 @@ export const Projects: React.FC = () => {
     if (activeProjectId === deleteId) setActiveProject(null);
     await deleteProject(deleteId);
     setDeleteId(null);
+  }
+
+  // ── Edit project handlers ───────────────────────────────────────────────────
+  function openEditProject(project: Project) {
+    setEditForm({
+      name: project.name,
+      notes: project.notes,
+      startDate: project.startDate,
+      targetDate: project.targetDate,
+      budget: String(project.budget),
+    });
+    setEditFormErrors({});
+    setShowEditModal(true);
+  }
+
+  function closeEditModal() {
+    setShowEditModal(false);
+    setEditFormErrors({});
+  }
+
+  function validateEditForm(): boolean {
+    const errors: Partial<EditProjectForm> = {};
+    if (!editForm.name.trim()) errors.name = 'Required';
+    const budgetVal = parseFloat(editForm.budget);
+    if (!editForm.budget || isNaN(budgetVal) || budgetVal <= 0) errors.budget = 'Enter a budget greater than $0';
+    if (editForm.startDate && editForm.targetDate && editForm.targetDate < editForm.startDate) {
+      errors.targetDate = 'Target date must be after start date';
+    }
+    setEditFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleEditSave() {
+    if (!selectedProject || !validateEditForm()) return;
+    if (isDateInPast(editForm.startDate)) {
+      const ok = window.confirm('This start date is in the past. Are you sure you want to backdate this project?');
+      if (!ok) return;
+    }
+    await updateProject(selectedProject.id, {
+      name: editForm.name.trim(),
+      notes: editForm.notes.trim(),
+      startDate: editForm.startDate,
+      targetDate: editForm.targetDate,
+      budget: parseFloat(editForm.budget) || 0,
+    });
+    closeEditModal();
   }
 
   // ── Zone handlers ──────────────────────────────────────────────────────────
@@ -212,6 +284,9 @@ export const Projects: React.FC = () => {
             </div>
             <div className="text-[12px] text-[var(--text-3)] mt-[2px] truncate">{selectedProject.address}</div>
           </div>
+          <Button variant="outline" size="sm" onClick={() => openEditProject(selectedProject)}>
+            <Pencil size={13} className="mr-[4px]" /> Edit
+          </Button>
           <Button variant="danger" size="sm" onClick={() => setDeleteId(selectedProject.id)}>
             Delete Project
           </Button>
@@ -422,6 +497,59 @@ export const Projects: React.FC = () => {
           onConfirm={handleZoneDelete}
           onCancel={() => setDeleteZoneId(null)}
         />
+
+        {/* Edit Project Modal */}
+        <Modal
+          isOpen={showEditModal}
+          title="Edit Project"
+          onClose={closeEditModal}
+          onConfirm={handleEditSave}
+          confirmText="Save Changes"
+          maxWidth="520px"
+        >
+          <div className="flex flex-col gap-[14px]">
+            <Input
+              label="Project Name"
+              required
+              value={editForm.name}
+              error={editFormErrors.name}
+              onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Henderson Backyard"
+            />
+            <div className="grid grid-cols-2 gap-[12px]">
+              <Input
+                label="Start Date"
+                type="date"
+                value={editForm.startDate}
+                onChange={e => setEditForm(f => ({ ...f, startDate: e.target.value }))}
+              />
+              <Input
+                label="Target Date"
+                type="date"
+                value={editForm.targetDate}
+                error={editFormErrors.targetDate}
+                onChange={e => setEditForm(f => ({ ...f, targetDate: e.target.value }))}
+              />
+            </div>
+            <Input
+              label="Budget ($)"
+              type="number"
+              required
+              min="1"
+              value={editForm.budget}
+              error={editFormErrors.budget}
+              onChange={e => setEditForm(f => ({ ...f, budget: e.target.value }))}
+              placeholder="45000"
+            />
+            <TextArea
+              label="Description / Notes"
+              rows={3}
+              value={editForm.notes}
+              onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="Project overview, special requirements..."
+            />
+          </div>
+        </Modal>
       </div>
     );
   }

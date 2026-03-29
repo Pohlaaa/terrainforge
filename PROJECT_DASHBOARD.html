@@ -239,6 +239,9 @@ const PROJECT_DATA = {
     { date: "2026-03-28", text: "S5-4b: Fix end-to-end Supabase persistence — slug+org_members in fetchOrg INSERT, query by id, date coercion, console.error breadcrumbs throughout write chain", tag: "fix" },
     { date: "2026-03-28", text: "S5-4c: Add [TF-DEBUG] instrumentation throughout org→project chain; add RLS INSERT policies for organizations + org_members; add /debug diagnostic route; migration 003_fix_rls_policies.sql", tag: "fix" },
     { date: "2026-03-29", text: "S6-1: Fix delete+create persistence regression (F-027) — confirm-first deletes, create rollback on failure, refetch after all mutations", tag: "fix" },
+    { date: "2026-03-29", text: "S6-2: Fix dropdown text readability in dark theme (F-030) — add select option dark background/color in global CSS", tag: "fix" },
+    { date: "2026-03-29", text: "S6-3: Add project edit capability (FR-002, F-029) — Edit button + modal on project detail, updateProject rollback+refetch, backdate confirmation on create and edit", tag: "feat" },
+    { date: "2026-03-29", text: "S6-4: Email confirmation check on signup (F-028) + disable equipment recommend button (F-031)", tag: "fix" },
   ],
 
   // ── Current Sprint ──
@@ -251,9 +254,9 @@ const PROJECT_DATA = {
     risk: "Delete confirm-first pattern changes UX timing — verify no double-delete or stale state issues",
     tasks: [
       { id: "S6-1", name: "Fix delete+create persistence regression (F-027)",            effort: "M", status: "complete", notes: "Confirm-first deletes, rollback on failed creates, refetch after all mutations" },
-      { id: "S6-2", name: "Fix text readability / dropdown styling (F-030)",             effort: "S", status: "pending",  notes: "Select elements showing white-on-white in some browsers — explicit dark theme styling needed" },
-      { id: "S6-3", name: "Add project edit capability (FR-002, F-029)",                 effort: "M", status: "pending",  notes: "Edit project name/description/dates/status after creation; backdate confirmation" },
-      { id: "S6-4", name: "Email confirmation + crew recommend button (F-028, F-031)",   effort: "S", status: "pending",  notes: "Enable Supabase email confirm; disable crew recommend button with 'coming soon'" },
+      { id: "S6-2", name: "Fix text readability / dropdown styling (F-030)",             effort: "S", status: "complete", notes: "Select elements showing white-on-white in some browsers — explicit dark theme styling needed" },
+      { id: "S6-3", name: "Add project edit capability (FR-002, F-029)",                 effort: "M", status: "complete", notes: "Edit project name/description/dates/status after creation; backdate confirmation" },
+      { id: "S6-4", name: "Email confirmation + crew recommend button (F-028, F-031)",   effort: "S", status: "complete", notes: "Enable Supabase email confirm; disable crew recommend button with 'coming soon'" },
       { id: "S6-5", name: "Smoke test + Phase 1 gate review",                            effort: "S", status: "pending",  notes: "Manual: create/delete/refresh cycle, dropdown check, edit persistence — if passes → 5/6 gate criteria met" },
     ]
   },

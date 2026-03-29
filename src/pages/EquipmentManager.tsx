@@ -361,7 +361,7 @@ export const EquipmentManager: React.FC = () => {
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
       <div className="flex gap-[8px] mb-[16px] items-center flex-wrap">
         <Button variant="primary" onClick={openAdd}>+ Add Equipment</Button>
-        <Button variant="outline">⚡ Recommend for Active Project</Button>
+        <Button variant="outline" disabled title="AI equipment recommendations coming soon">⚡ Recommend for Active Project</Button>
         <div className="ml-auto flex gap-[8px]">
           <select
             value={statusFilter}
