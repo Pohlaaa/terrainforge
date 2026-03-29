@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
@@ -14,6 +14,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { toast } from '@/hooks/useToast';
 import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiDefinitions';
 import { updateSelectedKpis, updateWidgetLayout } from '@/services/preferences';
+import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 import type { AppState } from '@/types';
 
 // Debounce helper for Supabase layout writes
@@ -424,52 +425,14 @@ export const Dashboard: React.FC = () => {
         {/* LEFT COLUMN: KPIs + Customize */}
         <div className="flex flex-col gap-[12px]">
           {projects.length === 0 ? (
-            <div
-              style={{
-                background: 'var(--surface-card)',
-                border: '1px solid var(--color-primary)',
-                borderRadius: '10px',
-                padding: '24px',
-                textAlign: 'center',
-              }}
-            >
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>⬡</div>
-              <div
-                className="font-serif"
-                style={{
-                  fontSize: '18px',
-                  color: 'var(--text-primary)',
-                  marginBottom: '8px',
-                }}
-              >
-                Welcome to TerrainForge
-              </div>
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--text-tertiary)',
-                  marginBottom: '20px',
-                  lineHeight: 1.5,
-                }}
-              >
-                Manage projects, materials, crew, and equipment — all in one place. Start by
-                creating your first project.
-              </div>
-              <Link
-                to="/projects"
-                style={{
-                  display: 'inline-block',
-                  padding: '10px 20px',
-                  background: 'var(--color-primary)',
-                  color: 'white',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                }}
-              >
-                Create First Project
-              </Link>
+            <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px' }}>
+              <EmptyState
+                icon={<ProjectsIcon />}
+                title="Welcome to TerrainForge"
+                description="Create your first project to see your dashboard come alive with KPIs, maps, and insights."
+                actionLabel="Create Project"
+                onAction={() => navigate('/projects')}
+              />
             </div>
           ) : (
             <div className="flex flex-col gap-[8px]">

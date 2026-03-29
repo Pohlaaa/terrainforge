@@ -18,6 +18,7 @@ import { Badge } from '@/components/shared/Badge';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { EmptyState, EquipmentIcon } from '@/components/shared/EmptyState';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -412,16 +413,21 @@ export const EquipmentManager: React.FC = () => {
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}
       {filtered.length === 0 && (
-        <div className="text-center py-[48px] px-[24px] text-[var(--text-3)]">
-          <div className="text-[40px] mb-[12px] opacity-30">🚜</div>
-          <div className="text-[16px] font-[600] text-[var(--text-2)] mb-[6px]">
-            {equipment.length === 0 ? 'No equipment yet' : 'No equipment matches your filters'}
-          </div>
-          <div className="text-[13px]">
-            {equipment.length === 0
-              ? 'Add your first piece of equipment to get started'
-              : 'Try clearing the filters'}
-          </div>
+        <div>
+          {equipment.length === 0 ? (
+            <EmptyState
+              icon={<EquipmentIcon />}
+              title="Register your fleet"
+              description="Track equipment status, maintenance schedules, and assignments."
+              actionLabel="Add Equipment"
+              onAction={openAdd}
+            />
+          ) : (
+            <div className="text-center py-[48px] px-[24px] text-[var(--text-3)]">
+              <div className="text-[14px] text-[var(--text-2)]">No equipment matches your filters</div>
+              <div className="text-[12px] mt-[4px]">Try clearing the filters</div>
+            </div>
+          )}
         </div>
       )}
 

@@ -14,6 +14,7 @@ import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SearchFilter } from '@/components/shared/SearchFilter';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { EmptyState, MaterialsIcon } from '@/components/shared/EmptyState';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -542,14 +543,21 @@ export const MaterialLibrary: React.FC = () => {
           {/* Material table */}
           <div className="flex-1 overflow-x-auto">
             {displayMaterials.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="text-[48px] mb-4 opacity-40">🧱</div>
-                <div className="text-[16px] font-[600] text-[var(--text-primary)] mb-2">No materials found</div>
-                <div className="text-[13px] text-[var(--text-tertiary)] mb-6">
-                  {activeCategory === 'all' ? 'Add your first material to get started' : `No ${activeCatDef.label} materials yet`}
+              materials.length === 0 ? (
+                <EmptyState
+                  icon={<MaterialsIcon />}
+                  title="Stock your material library"
+                  description="Add materials to track inventory and costs across projects."
+                  actionLabel="Add Material"
+                  onAction={openAddModal}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="text-[14px] text-[var(--text-secondary)] mb-2">
+                    No {activeCategory === 'all' ? '' : activeCatDef.label + ' '}materials match your filters
+                  </div>
                 </div>
-                <Button variant="primary" onClick={openAddModal}>Add Material</Button>
-              </div>
+              )
             ) : (
               <table className="w-full">
                 <thead>
