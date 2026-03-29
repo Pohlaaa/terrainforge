@@ -124,28 +124,15 @@ Running log of bugs, friction points, and observations found during testing. Eac
 | ID | Severity | Finding | Status |
 |----|----------|---------|--------|
 | FR-001 | P2 | AI autofill for project creation form (pilot request) | Resolved — S7-4: AI project creation via Claude Haiku, describe job → pre-filled form |
-| FR-002 | P1 | Edit overall project details after creation (pilot request) | Resolved — S6-3: Edit modal on project detail |
-| FR-003 | P2 | Prompt user to add materials during project creation flow (pilot request) | Resolved — S7-5: Materials tab added to project detail; AI suggestions shown during creation |
-| FR-005 | P2 | Import material list from CSV (pilot request) | Resolved — S7-5: CSV import button added to Material Library |
+| FR-002 | P1 | Edit overall project details after creation | Resolved — S6-3 |
 
 ---
 
-## Sprint 8 Findings
+## Sprint 9 Findings
 
 | ID | Severity | Finding | Status |
 |----|----------|---------|--------|
-| F-008 | P2 | Billing page stale subscription status — page could show cached trial state instead of current Supabase status | Resolved — S8-4: added on-mount fetchOrg call; fixed query from owner_id to id |
-| F-014 | P2 | Clear Demo Data button never appeared — gate was checking hardcoded `proj_001`/`proj_002` IDs which real users never have | Resolved — S5-2: replaced with `isDemo` flag; S8-1: moved Clear Demo Data from sidebar to Settings page |
-| F-015 | P2 | Empty states untestable (blocked by F-014) | Resolved — empty states work correctly; demo data clears via Settings page |
-
----
-
-## Known Gaps (not bugs — planned work)
-
-| Gap | Planned Sprint |
-|-----|---------------|
-| Zone material assignment UI — can create zones but can't assign materials to them from Projects page | Resolved — S7-5: per-project Materials tab added |
-| No onboarding wizard for first-time users | Partial — empty states + welcome card exist; full guided wizard is Phase 2 |
-| Mobile responsiveness untested | Resolved — S7-2: responsive layout, tablet-first breakpoints |
-| Seed data doesn't clear automatically on new account | Resolved — S5-2 (isDemo flag); S8-1 (Settings page Clear Demo Data) |
-| Map widget placeholder on Dashboard | Resolved — S4-2: replaced with active projects widget |
+| F-032 | P1 | **Onboarding redirect loop** — After completing onboarding wizard, ProtectedRoute re-checked `hasCompletedOnboarding()` on every navigation, resetting state to `null` and redirecting back to `/onboarding`. Root cause: `location.pathname` in useEffect dependency array + state reset on every path change. | Resolved — S9-hotfix-3: check once per session, cache result |
+| F-033 | P1 | **Existing users forced into onboarding** — Users who signed up before Sprint 9 (no `user_preferences` row) were redirected to onboarding on every login. ProtectedRoute treated missing row as "not onboarded". | Resolved — S9-hotfix-4: moved onboarding gate to signup flow only. Onboarding only triggers from Signup page, not ProtectedRoute |
+| F-034 | P1 | **New user signup skips onboarding** — Fresh signup with new email does NOT trigger onboarding flow, goes directly to dashboard. The signup-to-onboarding redirect (S9-hotfix-4) may not be wired correctly, or the navigate to `/onboarding` fires before auth state is ready. | Open — deferred to Sprint 11 |
+| F-035 | P2 | **ProtectedRoute.tsx truncation risk** — File appeared as 39 lines in Cowork mount but 67 lines on local filesystem. Mount sync issue, not a real truncation, but indicates Cowork file reads may not always reflect latest git state. | Noted — not a code bug, operational awareness |

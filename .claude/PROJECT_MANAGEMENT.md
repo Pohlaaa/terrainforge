@@ -135,9 +135,31 @@ SQL migrations written for project_materials and project_crew tables (Charlie ru
 Goal: Settings page, inline project picker for Work Orders/Manifest, Dashboard widget detail, billing sync
 All 5 tasks complete: Settings page with org name editing and demo data control; card-based project picker on Work Orders + Manifest Engine; rich project detail cards on Dashboard with checklist progress bars; billing page on-mount status sync (F-008 fixed); FINDINGS log and dashboard updated.
 
+### Sprint 9 — Complete ✅
+Goal: Foundation + highest-impact user flows — design tokens, onboarding, project creation, materials, settings
+All 6 tasks complete + 4 hotfixes. Design token migration applied, onboarding wizard built (4-step flow with AI KPI config), project creation overhauled with AI quick-create + zone builder, material management UI rebuilt with category sidebar and filterable table, settings page with 6-section left-nav + theme selector + integrations cards. SQL migration for user_preferences table.
+Hotfixes: onboarding redirect loop (3 iterations), existing user backward-compatibility, signup-only onboarding gate.
+Known issue: F-034 — new user signup does not trigger onboarding. Deferred to Sprint 11.
+
+### Sprint 10 — In Progress
+Goal: Dashboard power features — KPI customization drawer, drag-and-drop widget system, micro-interactions, Mapbox map integration
+Tasks: S10-1 (KPI drawer + AI natural language input), S10-2 (widget drag-and-drop dashboard), S10-3 (micro-interactions polish pass), S10-4 (Mapbox map widget)
+
+### Sprint 11 — Planned (The "Ship It" Sprint)
+Goal: MVP-ready gate — every feature polished, every flow tested end-to-end, zero dead code, new AND existing users can complete a full front-to-back run
+Scope:
+- Fix new user onboarding flow (F-034)
+- Ensure Sprint 10 UI is applied consistently across ALL pages (not just dashboard)
+- Project folder cleanup: remove dead worktrees, stale build artifacts, unused files
+- Comprehensive code review: dead imports, unused components, inconsistent patterns
+- Full end-to-end test: new user signup → onboarding → create project → add materials → assign crew → complete tasks → export manifest
+- Full end-to-end test: existing user login → dashboard → navigate all pages → edit project → verify persistence
+- Phase 1 gate audit: check every criterion, close any remaining gaps
+- This sprint marks the official Phase 1 MVP — ready for real users
+
 ## Active Sprint
 
-None — Sprint 8 complete. Awaiting pilot user for Phase 1 gate closure.
+Sprint 10 — Dashboard power features (KPI drawer, widget system, micro-interactions, Mapbox)
 
 ## Phase 1 Remaining Backlog
 
@@ -153,3 +175,4 @@ None — Sprint 8 complete. Awaiting pilot user for Phase 1 gate closure.
 10. Pilot user onboarding — first real contractor account (M) → Sprint 5
 11. Multi-tenancy test with 2+ accounts (S) → Sprint 5
 12. Netlify staging deploy + custom domain setup → Sprint 5
+                                                                                                                                                                 
