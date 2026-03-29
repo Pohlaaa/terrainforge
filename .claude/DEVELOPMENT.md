@@ -51,6 +51,26 @@ Use `useForm` hook from `src/hooks/useForm.ts`. Validate with `src/utils/validat
 - Multi-tenant: always include `org_id` in queries, never let RLS be the only guard
 - Test queries in Supabase dashboard before implementing in code
 
+### RLS Policy Rules (learned the hard way — Sprint 5)
+- Every table with RLS enabled MUST have explicit INSERT, SELECT, UPDATE, DELETE policies for every path the frontend client uses. Don't assume SECURITY DEFINER triggers cover all cases — they only cover the trigger path.
+- When adding a new table: write all four RLS policies before writing any frontend code that touches it. Treat "no INSERT policy" as a bug, not a TODO.
+- RLS rejections are silent (zero rows affected, no error thrown). Never rely on error handling to catch RLS failures — verify with a direct query from Supabase SQL Editor using the anon key role.
+- Chicken-and-egg patterns (user needs a membership row to INSERT a membership row) must be resolved with a self-referencing policy like `WITH CHECK (auth.uid() = user_id)`, not deferred to "the trigger will handle it."
+- When debugging persistence issues: check RLS policies FIRST. Run `SELECT policyname, cmd FROM pg_policies WHERE tablename = 'your_table';` to see what's actually in place.
+
+### Error Logging Standards
+- Log full error objects (`console.error('context:', err)`), not just `err.message` — Postgres error codes and details are in the full object
+- Use `[TF-DEBUG]` prefix for structured diagnostic logging in any Supabase write/fetch chain
+- Null/empty coercion: always coerce empty strings to null before sending to Postgres date/timestamp columns
+
+### New Table Checklist
+Before writing frontend code for any new Supabase table:
+1. RLS INSERT policy exists (test: can anon-key client insert?)
+2. RLS SELECT policy exists (test: can anon-key client read back what it inserted?)
+3. org_id column has a default or is explicitly set in all write paths
+4. NOT NULL columns have values supplied by frontend OR have DB defaults
+5. UNIQUE constraints won't conflict with fallback/retry logic (use timestamps or UUIDs in slugs)
+
 ## Import Order Convention
 1. React and React hooks
 2. Third-party libraries (zustand, react-router, lucide-react)
@@ -124,9 +144,12 @@ const handleExport = async () => {
 ## Code Review Checklist
 Before marking any feature complete:
 - [ ] TypeScript compiles with no errors (`npm run build`)
-- [ ] No `console.log` left in production code
+- [ ] No `console.log` left in production code (exception: `[TF-DEBUG]` logs can stay during active sprint debugging)
 - [ ] Loading and error states are handled
 - [ ] Mobile layout is not broken
 - [ ] New types added to `src/types/index.ts`
 - [ ] New constants added to `src/lib/constants.ts`
 - [ ] PDF exports (if touched): tested by generating actual PDF, not just checking TypeScript
+- [ ] Supabase writes (if touched): verified data persists across page refresh — not just optimistic UI
+- [ ] RLS policies (if new table): all four CRUD policies exist and tested from frontend client
+- [ ] Error logging: full error objects logged, not just `.message`

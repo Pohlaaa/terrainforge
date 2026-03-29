@@ -3,28 +3,68 @@
 @tailwind utilities;
 
 :root {
+  /* ── Brand accent colors (unchanged) ─────────────────────────────────── */
   --green: #2D6A4F;
   --green-l: #74C69D;
   --green-xl: #B7E4C7;
-  --green-bg: #0E1A12;
+  --green-bg: #D1FAE5;
   --blue: #2563EB;
-  --blue-l: #60A5FA;
+  --blue-l: #3B82F6;
   --purple: #7C3AED;
   --purple-l: #A78BFA;
   --amber: #D97706;
-  --amber-l: #FCD34D;
+  --amber-l: #F59E0B;
   --red: #DC2626;
-  --red-l: #F87171;
+  --red-l: #EF4444;
   --teal: #0D9488;
-  --teal-l: #5EEAD4;
-  --surface: #111810;
-  --surface2: #161E14;
-  --border: #1E3A2A;
-  --border2: #2A4A38;
-  --text: #CDE8D8;
-  --text-2: #7A9A88;
-  --text-3: #4A6A58;
-  --text-4: #2D4A38;
+  --teal-l: #14B8A6;
+
+  /* ── Light theme surfaces ─────────────────────────────────────────────── */
+  --surface: #FAFAFA;
+  --surface2: #FFFFFF;
+  --surface3: #F3F4F6;
+
+  /* ── Light theme borders ──────────────────────────────────────────────── */
+  --border: #E5E7EB;
+  --border2: #D1D5DB;
+
+  /* ── Dark text hierarchy (on light backgrounds) ───────────────────────── */
+  --text: #1A1A2E;
+  --text-2: #4B5563;
+  --text-3: #9CA3AF;
+  --text-4: #6B7280;
+
+  /* ── Sidebar — stays dark for visual contrast ─────────────────────────── */
+  --bg-sidebar: #1A1A2E;
+  --sidebar-text: #E2E8F0;
+  --sidebar-text-2: #94A3B8;
+  --sidebar-text-3: #64748B;
+  --sidebar-text-4: #475569;
+  --sidebar-border: #2D3748;
+  --sidebar-surface2: #252D3D;
+
+  /* ── Semantic tokens (sprint spec) ───────────────────────────────────── */
+  --bg-primary: #FAFAFA;
+  --bg-secondary: #FFFFFF;
+  --bg-surface: #FFFFFF;
+  --text-primary: #1A1A2E;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+  --text-on-dark: #FFFFFF;
+  --text-on-primary: #FFFFFF;
+  --color-primary: #2D6A4F;
+  --color-primary-hover: #245A42;
+  --color-primary-light: #D1FAE5;
+  --color-secondary: #D4A843;
+  --color-secondary-hover: #C49A3A;
+  --border-color: #E5E7EB;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --color-error: #DC2626;
+  --color-success: #16A34A;
+  --color-warning: #F59E0B;
+  --color-info: #2563EB;
 }
 
 * {
@@ -38,22 +78,27 @@ body,
 }
 
 body {
-  @apply bg-surface text-text font-sans;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  @apply font-sans;
 }
 
 ::placeholder {
-  @apply text-text-3;
+  color: var(--text-muted);
 }
 
 input,
 textarea,
 select {
-  @apply bg-surface-2 text-text border border-border rounded;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  @apply rounded;
 }
 
 select option {
-  background-color: var(--surface2);
-  color: var(--text);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 button {
@@ -61,5 +106,8 @@ button {
 }
 
 a {
-  @apply text-blue-l hover:text-blue;
+  color: var(--color-info);
+}
+a:hover {
+  color: var(--blue);
 }

@@ -15,13 +15,24 @@ Never plan more than 2 sprints ahead — the product is too early for that to be
 ## Phase Gates
 A phase is complete when the gate criteria are met. Don't start Phase 2 work until Phase 1 is gated.
 
-**Phase 1 Gate Criteria:**
+**Phase 1 Gate Criteria (revised Sprint 6 — workflow completeness, not just technical completeness):**
+
+Technical foundation (all met):
 - [x] All 8 pages pulling live data from Zustand stores
-- [x] Supabase migration run, data persisting end-to-end
+- [x] Supabase data persisting end-to-end through full CRUD cycles (verified Sprint 6)
 - [x] PDF manifest export working
 - [x] Stripe billing collecting subscription payments
-- [ ] At least 1 real contractor using the app (pilot user)
-- [ ] Auth + multi-tenancy tested with 2+ accounts
+- [x] Auth + multi-tenancy tested with 2+ accounts (verified Sprint 5)
+
+Workflow completeness (the real Phase 1 finish line):
+- [ ] A contractor can manage a real job from creation to material ordering using only TerrainForge — no spreadsheets on the side
+- [ ] Project CRUD is complete: create, view, edit, delete, with inline interactions (tap to open, not "click View button")
+- [ ] Material management loop: add materials to projects, import lists, track quantities, assign to zones
+- [ ] Crew assignment: assign crew to projects/zones, view skills match
+- [ ] Responsive layout: tablet-first (768-1024px primary), desktop bonus, phone simplified — usable on a jobsite
+- [ ] Professional UI: light theme, readable in daylight, clean enough to show a client
+- [ ] AI streamlining: smart project creation (describe job → form pre-filled), material suggestions from project type
+- [ ] At least 1 real contractor using the app for a real job (pilot user)
 
 **Phase 2 Gate (Operations & Integrations — after 5+ paying customers):**
 - 5+ paying customers on Phase 1 features
@@ -104,23 +115,39 @@ All 5 Code tasks complete (S4-1 through S4-5). S4-6 self-test completed — 2 P0
 Key findings: Cross-account data leak (F-011, P0), demo data button never shows for real users (F-014, P2).
 Zone UI and dashboard widget blocked from validation by F-011. Sprint 4 not gated — Sprint 5 fixes blockers.
 
+### Sprint 5 — Complete ✅
+Goal: Fix P0 data isolation bug, retest blocked Sprint 4 features, deploy to Netlify staging
+All 5 tasks complete. Staging live at terrainforge-staging.netlify.app. Persistence confirmed for basic create + refresh. Auth + multi-tenancy verified with pilot demo. RLS INSERT policies added. 5/6 Phase 1 gates met.
+Retrospective: 8 interlocking RLS/persistence bugs required layered fixes. Process improvements codified in DEVELOPMENT.md (RLS rules, new table checklist, error logging standards).
+
+### Sprint 6 — Complete ✅
+Goal: Fix delete+create persistence regression, resolve pilot demo bugs, add project editing
+All 5 tasks complete. Persistence confirmed through full delete+create+refresh cycles by two testers. Dropdowns readable, project editing working, email confirmation enabled, backdate warning functional.
+Additional DB fixes applied: relaxed total_area_sqft CHECK constraint (>= 0 instead of > 0), made start_date/target_date nullable.
+Note: Recommend Crew button (F-031) deferred — low priority, marked "coming soon."
+
 ## Active Sprint
 
-Sprint 5 — Stability & Pilot Prep
-Goal: Fix P0 data isolation bug, retest blocked Sprint 4 features, deploy to Netlify staging
-Done when: New account sees zero data from other accounts, zone CRUD confirmed working, staging URL live
-Risk: Data isolation fix touches all stores and AuthContext — regression test login/logout carefully after
+Sprint 7 — UI/UX Overhaul + Core Workflow Completion
+Goal: Professional tablet-friendly UI, streamlined interactions, AI smart project creation, material + crew assignment to projects
+Done when: Contractor can manage a real job on a tablet — create project (with AI assist), add materials, assign crew, track progress — without spreadsheets
+Risk: Theme overhaul touches every component — high regression surface. Build validation is the gate.
 
 Tasks:
-1. Fix cross-account data leak — clear all stores on signOut, remove fetch guards (P0 — F-011) — S
-2. Fix demo data detection + verify empty states — replace ID gate with isDemo flag (F-014, F-015) — S
-3. Charlie retests S4-1, S4-2, S4-4, S4-5 in incognito window (manual test — not a Code task) — M
-4. Production build prep for Netlify staging deploy — M
-5. Phase 1 gate review — Cowork session after staging is live — S
+1. Color palette + theme overhaul (dark → light, professional) — L
+2. Responsive layout — tablet-first breakpoints, collapsible sidebar — L
+3. Interaction streamlining — clickable cards, overflow menus, inline editing — M
+4. AI smart project creation — describe job → pre-filled form — M
+5. Material management loop — assign to projects, import CSV, AI suggestions — L
+6. Crew assignment to projects — assign/unassign, skills matching — M
 
 Dependencies:
-- Sprint 4 merged to main ✅
-- S5-1 must be merged and verified before S5-3 retest begins
+- Sprint 6 complete ✅
+- S7-1 (theme) and S7-2 (responsive) must land before S7-3 (interactions)
+- S7-4 (AI) can run in parallel with S7-5/S7-6 but should come after S7-3 so the form is streamlined
+- SQL migrations for S7-5 and S7-6 — Charlie runs manually after Code completes
+
+Execution: Single-prompt autonomous run per SPRINT_EXECUTION.md
 
 ## Phase 1 Remaining Backlog
 

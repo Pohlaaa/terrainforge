@@ -55,12 +55,74 @@ Running log of bugs, friction points, and observations found during testing. Eac
 
 ---
 
+## Sprint 5 — Staging Deploy Findings
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F-019 | P0 | **fetchOrg INSERT fallback missing `slug`** — When signup trigger doesn't fire or user has no org, `orgStore.fetchOrg` tries to INSERT a new org but omits the `slug` column (NOT NULL UNIQUE). INSERT always fails, org store stays null, all subsequent Supabase writes silently fail because `addProject` checks for org_id. | Resolved — S5-4b: added slug generation to fallback INSERT |
+| F-020 | P0 | **fetchOrg INSERT doesn't create `organization_members` row** — Even when the org INSERT succeeds, no membership row is created. All RLS policies check `organization_members` for access. Without a membership row, every SELECT/INSERT on projects/crew/materials/equipment is blocked by RLS. | Resolved — S5-4b: fallback now inserts org_members row with admin role |
+| F-021 | P1 | **fetchOrg query ambiguous with multiple orgs per user** — `.eq('owner_id', orgId).single()` fails with a non-PGRST116 error when multiple orgs exist for the same owner_id. The code only handles PGRST116 (no rows), not the "multiple rows" error, so org store stays null. Fix: query by `id` instead of `owner_id` since canonical orgs have `id = user_id`. | Resolved — S5-4b: changed query to `.eq('id', orgId)`, cleaned up duplicates |
+| F-022 | P1 | **Empty date strings rejected by Postgres** — `createProject` sends `""` for `start_date`/`target_date` when user doesn't set dates. Postgres rejects empty strings for date columns. Fix: coerce to null. | Resolved — S5-4b: added null coercion in createProject |
+| F-023 | P2 | **Silent error swallowing across entire write chain** — orgStore, projectStore, crewStore, materialStore, equipmentStore all catch errors and log only `err.message`. No structured logging, no breadcrumbs. Makes staging debugging nearly impossible. | Resolved — S5-4c: added [TF-DEBUG] instrumentation across persistence chain |
+| F-024 | P0 | **Missing RLS INSERT policy on `organizations` table** — RLS is enabled but no INSERT policy exists. The `fetchOrg` fallback tries to INSERT a new org from the frontend client, but it's silently blocked by RLS. The signup trigger uses SECURITY DEFINER (bypasses RLS), but users created via Supabase Auth dashboard or whose trigger failed have no org and no way to create one from the frontend. | Resolved — S5-4c: added `org_insert_own` RLS policy (auth.uid() = owner_id) |
+| F-025 | P0 | **Missing RLS self-INSERT policy on `organization_members`** — The only INSERT policy is `org_members_insert` which requires `user_is_admin(org_id)`. A new user with no existing membership can never satisfy this, creating a chicken-and-egg problem. The signup trigger bypasses this, but the frontend fallback cannot. | Resolved — S5-4c: added `org_members_insert_self` RLS policy (auth.uid() = user_id) |
+| F-026 | P0 | **`projects_create` policy may silently reject inserts** — The `projects_create` RLS policy requires `user_has_role(org_id, 'designer')` which queries `organization_members`. If the org_members row doesn't exist or the org_members_view policy blocks the read, the project INSERT is silently rejected. The optimistic UI update shows the project, but Supabase never stores it. Page refresh reloads from Supabase → project is gone. | Resolved — root cause was F-024/F-025. With RLS INSERT policies in place, org + membership rows are created, and projects_create succeeds. |
+
+---
+
+## Sprint 5 Retrospective — RLS Persistence Debugging
+
+**Root cause chain:** Supabase RLS policies were incomplete. The original migration (001) defined SELECT/UPDATE/DELETE policies but missed INSERT policies for `organizations` and `organization_members`. The signup trigger (`handle_new_user`, SECURITY DEFINER) bypassed RLS, masking the gap. When the trigger didn't fire or users were created manually, the frontend fallback path hit a wall: no INSERT policy → silent rejection → org store null → org_id missing → all downstream writes rejected → optimistic UI showed data but Supabase stored nothing → page refresh cleared it.
+
+**What made this hard to diagnose:**
+1. RLS rejections are silent by design — no error thrown, just zero rows affected
+2. Optimistic UI hid the problem by showing locally-created data
+3. Multiple layered issues (missing slug, missing org_members row, missing RLS policies) each individually looked like THE bug
+4. Error handlers caught and logged `.message` only, discarding Postgres error codes
+5. The signup trigger success path worked perfectly, so the happy path was fine — only edge cases failed
+
+**Lessons to carry forward:**
+- Always define INSERT policies when enabling RLS — don't rely solely on SECURITY DEFINER triggers
+- Test the frontend client path AND the trigger path independently
+- Log full error objects, not just `.message`
+- Add structured `[TF-DEBUG]` logging for any Supabase write chain
+- Verify RLS policies with a direct Supabase client query (not just through the app) before considering a write path complete
+
+---
+
+## Sprint 5 — Pilot Demo Findings (post-demo with real user)
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F-027 | P0 | **Persistence regression on delete + create cycle** — Projects persist across single refresh, but after deleting a project and creating new ones, data doesn't survive refresh. Same issue observed with equipment and materials. Root cause: optimistic deletes removed from state before Supabase confirmation; failed deletes left orphaned DB records. Additional DB issues: `total_area_sqft` CHECK constraint rejected 0, `target_date`/`start_date` NOT NULL rejected empty dates. | Resolved — S6-1 (confirm-first deletes, create rollback, post-mutation refetch) + DB constraint fixes |
+| F-028 | P1 | **Signup allows non-existent email addresses** — No email verification step. Users can register with any string that passes format validation. Need Supabase email confirmation flow or at minimum a verification email. | Resolved — S6-4: enabled Supabase email confirmation + frontend messaging |
+| F-029 | P2 | **Dates in the past are allowed without confirmation** — Project start/target dates accept past dates with no warning. Should show "Are you sure you want to backdate?" confirmation dialog. | Resolved — S6-3: backdate warning added to project create/edit forms |
+| F-030 | P1 | **Poor text readability across site** — Text is hard to read in multiple areas, particularly dropdown menus where text renders as white on light backgrounds in some browsers. Likely CSS custom property or theme inheritance issue with select/dropdown elements. | Resolved — S6-2: explicit dark theme styling on select/option elements |
+| F-031 | P2 | **Recommend Crew button non-functional** — Button exists but clicking does nothing. Either the handler is missing or the AI integration isn't wired. | Deferred — marked "coming soon", will wire to AI in Phase 2 |
+
+### Pilot User Feedback
+
+**Strategic feedback:** "Why does this have to be specific to landscaping? I could use this to help me remodel my bathroom." — User sees the project management workflow as applicable beyond landscaping. This validates the core UX but suggests the landscaping-specific branding may be limiting perceived value. Consider: is TerrainForge a landscaping tool, or a contractor project management tool with landscaping as the first vertical?
+
+**Feature requests from demo:**
+
+| ID | Request | Priority | Sprint |
+|----|---------|----------|--------|
+| FR-001 | AI autofill for project creation form | P2 | Phase 2 |
+| FR-002 | Edit overall project details after creation | P1 | Sprint 6 |
+| FR-003 | Prompt user to add materials during project creation flow | P2 | Sprint 6 |
+| FR-004 | Pre-project checklist should require proof/material before items can be checked off (e.g., can't check "Permit" without uploading a permit, can't check "Deposit" without recording payment) | P2 | Phase 2 |
+| FR-005 | Import material list (CSV/spreadsheet upload) | P2 | Phase 2 |
+| FR-006 | Add suppliers to materials (supplier management) | P2 | Phase 2 |
+
+---
+
 ## Known Gaps (not bugs — planned work)
 
 | Gap | Planned Sprint |
 |-----|---------------|
-| Zone material assignment UI — can create zones but can't assign materials to them from Projects page | Sprint 5 |
-| No onboarding wizard for first-time users | Sprint 5 |
-| Mobile responsiveness untested | Sprint 5 |
+| Zone material assignment UI — can create zones but can't assign materials to them from Projects page | Sprint 6 |
+| No onboarding wizard for first-time users | Sprint 6 |
+| Mobile responsiveness untested | Sprint 6 |
 | Seed data doesn't clear automatically on new account | Sprint 4 (S4-4) |
 | Map widget placeholder on Dashboard | Sprint 4 (S4-2) |
