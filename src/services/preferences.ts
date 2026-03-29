@@ -46,11 +46,13 @@ export async function upsertUserPreferences(
 ): Promise<UserPreferences | null> {
   try {
     const payload = toSnakeCase({ ...prefs, userId, orgId })
+    console.log('[TF-DEBUG] upsertUserPreferences payload:', payload)
     const { data, error } = await supabase
       .from('user_preferences')
       .upsert(payload, { onConflict: 'user_id' })
       .select()
       .single()
+    console.log('[TF-DEBUG] upsertUserPreferences response:', { data, error })
     if (error) {
       console.error('[TF-DEBUG] upsertUserPreferences error:', error)
       return null
@@ -68,6 +70,7 @@ export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
       .select('onboarding_completed_at')
       .eq('user_id', userId)
       .maybeSingle()
+    console.log('[TF-DEBUG] hasCompletedOnboarding result:', { data, error })
     if (error || !data) return false
     return (data as { onboarding_completed_at: string | null }).onboarding_completed_at !== null
   } catch {
