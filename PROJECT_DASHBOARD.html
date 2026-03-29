@@ -168,7 +168,7 @@
 */
 const PROJECT_DATA = {
   project: "TerrainForge",
-  lastUpdated: "2026-03-29 (Sprint 8 complete)",
+  lastUpdated: "2026-03-29 (Sprint 9 complete)",
   currentPhase: 1,
 
   // ── Completed work before sprints started ──
@@ -253,22 +253,27 @@ const PROJECT_DATA = {
     { date: "2026-03-29", text: "S8-3: Dashboard project cards upgraded — zone count, cost estimate, checklist progress bar, View link", tag: "feat" },
     { date: "2026-03-29", text: "S8-4: Billing page on-mount fetchOrg sync + fix owner_id → id query (F-008)", tag: "fix" },
     { date: "2026-03-29", text: "S8-5: FINDINGS updated — F-008/F-014/F-015/FR-001/FR-003/FR-005 resolved; known gaps closed; dashboard + PM docs updated", tag: "docs" },
+    { date: "2026-03-29", text: "S9-1: Design token migration — full v2 CSS custom property set, dark theme block, Inter font, all legacy aliases preserved", tag: "feat" },
+    { date: "2026-03-29", text: "S9-2: Onboarding wizard — 4-step flow (business type, company info, priorities, AI dashboard preview), preferences.ts service, ProtectedRoute onboarding gate", tag: "feat" },
+    { date: "2026-03-29", text: "S9-3: Project creation overhaul — AI Quick Create with example chips, zone builder, two-column form, v2 modal design", tag: "feat" },
+    { date: "2026-03-29", text: "S9-4: Material management UI overhaul — category sidebar, inline quick-add bar, search + stock filter, stock status badges", tag: "feat" },
+    { date: "2026-03-29", text: "S9-5: Settings page overhaul — 6-section layout (profile, appearance, notifications, integrations, team, billing), live theme toggle persisted to localStorage", tag: "feat" },
+    { date: "2026-03-29", text: "S9-6: Sprint 9 SQL migration (user_preferences table + RLS policies + indexes), dashboard updated to Sprint 10", tag: "infra" },
   ],
 
   // ── Current Sprint ──
   currentSprint: {
-    number: 8,
-    name: "Polish, Settings & Phase 1 Closure",
-    dateRange: "2026-03-29 → 2026-04-05",
-    goal: "Close remaining Phase 1 workflow gaps — account settings, project context UX on secondary pages, dashboard detail, billing sync",
-    doneWhen: "Contractor can view/edit org name, switch projects from Work Orders/Manifest directly, see project detail on dashboard, billing status always fresh",
-    risk: "Settings org name update requires admin RLS — verify update policy exists on organizations table",
+    number: 10,
+    name: "Dashboard Customization",
+    dateRange: "2026-03-30 → 2026-04-06",
+    goal: "Build dashboard power features on top of Sprint 9's design token foundation and user_preferences table — KPI customization, drag-and-drop widget layout, Mapbox map widget, and a full polish pass",
+    doneWhen: "Contractor can reorder KPIs via a slide-in drawer, add/remove widgets from the dashboard canvas, see projects on a live map, and the app has consistent empty states, skeletons, and motion transitions throughout",
+    risk: "mapbox-gl adds ~250KB to bundle — evaluate dynamic import() code-splitting before merging S10-3",
     tasks: [
-      { id: "S8-1", name: "Settings page + org name editing",                  effort: "M", status: "complete", notes: "New /settings route, sidebar link, updateOrgName in orgStore, Clear Demo Data moved here" },
-      { id: "S8-2", name: "Project picker on Work Orders + Manifest Engine",    effort: "M", status: "complete", notes: "Card grid replaces dropdown empty state; shows name, client, zone count, materials" },
-      { id: "S8-3", name: "Dashboard project detail cards",                     effort: "S", status: "complete", notes: "Zone count, cost estimate, checklist %, progress bar, View → link" },
-      { id: "S8-4", name: "Billing page on-mount status sync (F-008)",          effort: "S", status: "complete", notes: "useEffect calls fetchOrg on mount; fixes stale subscription display" },
-      { id: "S8-5", name: "FINDINGS + dashboard + PM docs update",             effort: "S", status: "complete", notes: "Sprint 7+8 findings resolved, dashboard updated, PM history updated" },
+      { id: "S10-1", name: "KPI Customization Drawer",       effort: "M", status: "pending", notes: "Slide-in panel, drag-to-reorder active KPIs, 12+ KPI library, NL AI input with chips" },
+      { id: "S10-2", name: "Widget System + Edit Layout mode", effort: "L", status: "pending", notes: "Drag-and-drop canvas, Edit Layout toggle, Add Widget picker (Chart, Notes, Calendar, Activity Feed)" },
+      { id: "S10-3", name: "Mapbox Map Widget",               effort: "M", status: "pending", notes: "mapbox-gl integration, status-colored project pins, hover tooltips, map/satellite toggle" },
+      { id: "S10-4", name: "Polish pass",                     effort: "M", status: "pending", notes: "Empty states with illustrations, loading skeletons, motion/transitions, accessibility audit" },
     ]
   },
 
