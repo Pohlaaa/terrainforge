@@ -134,6 +134,13 @@ const Billing: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Sync orgStore on mount (F-008: stale billing status fix) ───────────────
+
+  useEffect(() => {
+    if (orgId) fetchOrg(orgId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
+
   // ── Fetch billing data ─────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -146,7 +153,7 @@ const Billing: React.FC = () => {
       const { data, error } = await supabase
         .from('organizations')
         .select('subscription_status, subscription_tier, trial_ends_at')
-        .eq('owner_id', orgId)
+        .eq('id', orgId)
         .single();
 
       if (!error && data) {
