@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
@@ -31,6 +31,45 @@ function useDebouncedCallback<T extends unknown[]>(
   );
 }
 
+// Generate mock sparkline data (7 points, slight upward trend)
+function getMockSparklinePoints(width = 100, height = 32): string {
+  const pts = [0.6, 0.5, 0.65, 0.55, 0.7, 0.62, 0.75];
+  const coords = pts.map((v, i) => {
+    const x = (i / (pts.length - 1)) * width;
+    const y = height - v * height * 0.85 - height * 0.075;
+    return `${x},${y}`;
+  });
+  return coords.join(' ');
+}
+
+function Sparkline({ editMode }: { editMode?: boolean }) {
+  if (editMode) return null;
+  const pts = getMockSparklinePoints(100, 32);
+  const polyPts = `0,32 ${pts} 100,32`;
+  return (
+    <svg
+      viewBox="0 0 100 32"
+      preserveAspectRatio="none"
+      style={{ display: 'block', width: '100%', height: '32px', marginTop: '8px' }}
+      aria-hidden="true"
+    >
+      <polygon
+        points={polyPts}
+        fill="var(--brand-primary)"
+        fillOpacity="0.15"
+      />
+      <polyline
+        points={pts}
+        fill="none"
+        stroke="var(--brand-primary)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 // Single KPI card with count-up animation
 interface KPICardProps {
   icon: string;
@@ -42,6 +81,8 @@ interface KPICardProps {
   decimals?: number;
   editMode?: boolean;
   isDragging?: boolean;
+  navigateTo?: string;
+  navigateParams?: string;
 }
 
 const KPICard: React.FC<KPICardProps> = ({
@@ -54,53 +95,96 @@ const KPICard: React.FC<KPICardProps> = ({
   decimals = 0,
   editMode = false,
   isDragging = false,
+  navigateTo,
+  navigateParams,
 }) => {
+  const navigate = useNavigate();
+  const [hovered, setHovered] = useState(false);
   const display = useCountUp({ end: value, prefix, suffix, decimals });
+
+  const handleClick = () => {
+    if (!editMode && navigateTo) {
+      navigate(navigateTo + (navigateParams ?? ''));
+    }
+  };
+
   return (
     <div
+      onClick={handleClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         background: 'var(--surface-card)',
         border: editMode ? '2px dashed var(--color-primary)' : '1px solid var(--border-default)',
+        borderLeft: editMode ? '2px dashed var(--color-primary)' : '4px solid var(--brand-primary)',
         borderRadius: '10px',
-        padding: '16px',
+        padding: '16px 16px 0 14px',
         boxShadow: isDragging
           ? '0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)'
+          : hovered && !editMode
+          ? 'var(--shadow-hover)'
           : undefined,
+        transform: hovered && !editMode && !isDragging ? 'translateY(-1px)' : undefined,
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
+        cursor: navigateTo && !editMode ? 'pointer' : undefined,
+        overflow: 'hidden',
       }}
     >
-      <div
-        style={{
-          fontSize: '10px',
-          fontWeight: 700,
-          color: 'var(--text-tertiary)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          marginBottom: '6px',
-        }}
-      >
-        {icon} {label}
-      </div>
-      <div
-        className="font-serif"
-        style={{
-          fontSize: '28px',
-          color: 'var(--text-primary)',
-          lineHeight: 1,
-        }}
-      >
-        {display}
-      </div>
-      {subtitle && (
+      <div style={{ padding: '0 0 12px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div
+            style={{
+              fontSize: '10px',
+              fontWeight: 700,
+              color: 'var(--text-tertiary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              marginBottom: '6px',
+            }}
+          >
+            {icon} {label}
+          </div>
+          {navigateTo && !editMode && (
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              style={{
+                color: 'var(--text-tertiary)',
+                opacity: hovered ? 1 : 0.5,
+                transition: 'opacity 0.15s ease',
+                flexShrink: 0,
+                marginTop: '1px',
+              }}
+            >
+              <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
         <div
+          className="font-serif"
           style={{
-            fontSize: '10px',
-            color: 'var(--text-tertiary)',
-            marginTop: '4px',
+            fontSize: '28px',
+            color: 'var(--text-primary)',
+            lineHeight: 1,
           }}
         >
-          {subtitle}
+          {display}
         </div>
-      )}
+        {subtitle && (
+          <div
+            style={{
+              fontSize: '10px',
+              color: 'var(--text-tertiary)',
+              marginTop: '4px',
+            }}
+          >
+            {subtitle}
+          </div>
+        )}
+      </div>
+      <Sparkline editMode={editMode} />
     </div>
   );
 };
@@ -403,6 +487,8 @@ export const Dashboard: React.FC = () => {
                         decimals={kpi.decimals}
                         editMode={editMode}
                         isDragging={isDraggingThis}
+                        navigateTo={kpi.navigateTo}
+                        navigateParams={kpi.navigateParams}
                       />
                     </div>
                   </div>

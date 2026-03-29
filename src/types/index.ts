@@ -316,6 +316,8 @@ export interface KPIDefinition {
   prefix?: string;
   suffix?: string;
   decimals?: number;
+  navigateTo?: string;
+  navigateParams?: string;
 }
 
 // Type aliases for formatting and display
