@@ -116,6 +116,13 @@ export const Projects: React.FC = () => {
   // AI material selection state (tracks which suggested materials the user has staged for addition)
   const [addedMaterialIndices, setAddedMaterialIndices] = useState<Set<number>>(new Set());
 
+  // Checklist form state for new project creation (always starts all-false)
+  const EMPTY_CHECKLIST: Project['checklist'] = {
+    permit: false, utility: false, deposit: false, design: false,
+    access: false, materials: false, crew: false, equipment: false,
+  };
+  const [formChecklist, setFormChecklist] = useState<Project['checklist']>(EMPTY_CHECKLIST);
+
   // Zone builder state (for new project creation)
   const [newProjectZones, setNewProjectZones] = useState<Array<{name: string; area: string; color: string}>>([]);
   const ZONE_COLORS = ['#2D6A4F', '#2563EB', '#F59E0B', '#DC2626', '#7C3AED', '#0D9488'];
@@ -180,6 +187,7 @@ export const Projects: React.FC = () => {
     setAiSkipped(false);
     setAiSuggestion(null);
     setAddedMaterialIndices(new Set());
+    setFormChecklist(EMPTY_CHECKLIST);
     setNewProjectZones([]);
   }
 
@@ -248,10 +256,7 @@ export const Projects: React.FC = () => {
       targetDate: form.targetDate || '',
       budget: parseFloat(form.budget) || 0,
       notes: form.notes.trim(),
-      checklist: {
-        permit: false, utility: false, deposit: false, design: false,
-        access: false, materials: false, crew: false, equipment: false,
-      },
+      checklist: formChecklist,
       zones: builtZones,
     });
 
@@ -1311,6 +1316,58 @@ export const Projects: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Pre-project checklist */}
+            <div className="px-6 py-5 border-t border-[var(--border-light)]">
+              <div className="text-[11px] font-[600] text-[var(--text-tertiary)] uppercase tracking-[0.06em] mb-3">
+                Pre-project Checklist
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {CHECKLIST_ITEMS.map(({ key, label }) => {
+                  const k = key as keyof Project['checklist'];
+                  const aiRecommended = Boolean(aiSuggestion?.checklistSuggestions?.[k]);
+                  return (
+                    <label
+                      key={key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: aiRecommended ? 'var(--brand-primary-bg)' : 'transparent',
+                        border: aiRecommended ? '1px solid var(--brand-primary)' : '1px solid transparent',
+                        transition: 'background 0.1s',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formChecklist[k]}
+                        onChange={e => setFormChecklist(prev => ({ ...prev, [k]: e.target.checked }))}
+                        style={{ accentColor: 'var(--brand-primary)', width: '14px', height: '14px', flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: '13px', color: 'var(--text-primary)', flex: 1 }}>{label}</span>
+                      {aiRecommended && (
+                        <span style={{
+                          fontSize: '9px',
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          color: 'var(--brand-primary)',
+                          background: 'var(--brand-primary-bg)',
+                          border: '1px solid var(--brand-primary)',
+                          borderRadius: '4px',
+                          padding: '1px 4px',
+                          lineHeight: 1.5,
+                        }}>
+                          ✦ AI
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Zone Builder */}
