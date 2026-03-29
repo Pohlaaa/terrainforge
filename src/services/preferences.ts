@@ -71,8 +71,26 @@ export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
       .eq('user_id', userId)
       .maybeSingle()
     console.log('[TF-DEBUG] hasCompletedOnboarding result:', { data, error })
-    if (error || !data) return false
-    return (data as { onboarding_completed_at: string | null }).onboarding_completed_at !== null
+
+    // Preferences row exists — use onboarding_completed_at as the source of truth
+    if (!error && data) {
+      return (data as { onboarding_completed_at: string | null }).onboarding_completed_at !== null
+    }
+
+    // No preferences row — check if this is a pre-onboarding user who already has an org
+    // membership. If so, skip onboarding; if not, they're genuinely new.
+    const { data: memberData, error: memberError } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    console.log('[TF-DEBUG] hasCompletedOnboarding org membership check:', { memberData, memberError })
+    if (!memberError && memberData) {
+      // Pre-existing user — treat as onboarding complete
+      return true
+    }
+
+    return false
   } catch {
     // Table might not exist yet — treat as not completed
     return false
