@@ -21,15 +21,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation()
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null)
 
-  // Re-check onboarding status whenever the path changes so that completing
-  // the wizard and navigating to '/' picks up the freshly-written DB record.
+  // Check onboarding status once per session when the user first becomes available.
+  // onboardingDone is never reset to null after being set — subsequent navigations
+  // use the cached result to avoid flash-redirects while the async check runs.
   useEffect(() => {
-    if (!user || skipOnboardingCheck) return
-    setOnboardingDone(null)
+    if (!user || skipOnboardingCheck || onboardingDone !== null) return
     hasCompletedOnboarding(user.id).then(done => {
       setOnboardingDone(done)
     })
-  }, [user, skipOnboardingCheck, location.pathname])
+  }, [user, skipOnboardingCheck, onboardingDone])
 
   // Wait for Supabase auth to resolve before making any routing decisions
   if (loading) {
