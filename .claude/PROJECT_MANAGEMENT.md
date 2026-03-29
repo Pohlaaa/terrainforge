@@ -126,28 +126,18 @@ All 5 tasks complete. Persistence confirmed through full delete+create+refresh c
 Additional DB fixes applied: relaxed total_area_sqft CHECK constraint (>= 0 instead of > 0), made start_date/target_date nullable.
 Note: Recommend Crew button (F-031) deferred — low priority, marked "coming soon."
 
+### Sprint 7 — Complete ✅
+Goal: Professional tablet-friendly UI, AI smart project creation, material + crew assignment to projects
+All 6 tasks complete. Light theme overhaul, collapsible sidebar, responsive grids, clickable project cards, AI project creation via Claude Haiku, per-project Materials tab with CSV import, Crew assignment tab with assign/remove modal.
+SQL migrations written for project_materials and project_crew tables (Charlie runs in Supabase SQL Editor).
+
+### Sprint 8 — Complete ✅
+Goal: Settings page, inline project picker for Work Orders/Manifest, Dashboard widget detail, billing sync
+All 5 tasks complete: Settings page with org name editing and demo data control; card-based project picker on Work Orders + Manifest Engine; rich project detail cards on Dashboard with checklist progress bars; billing page on-mount status sync (F-008 fixed); FINDINGS log and dashboard updated.
+
 ## Active Sprint
 
-Sprint 7 — UI/UX Overhaul + Core Workflow Completion
-Goal: Professional tablet-friendly UI, streamlined interactions, AI smart project creation, material + crew assignment to projects
-Done when: Contractor can manage a real job on a tablet — create project (with AI assist), add materials, assign crew, track progress — without spreadsheets
-Risk: Theme overhaul touches every component — high regression surface. Build validation is the gate.
-
-Tasks:
-1. Color palette + theme overhaul (dark → light, professional) — L
-2. Responsive layout — tablet-first breakpoints, collapsible sidebar — L
-3. Interaction streamlining — clickable cards, overflow menus, inline editing — M
-4. AI smart project creation — describe job → pre-filled form — M
-5. Material management loop — assign to projects, import CSV, AI suggestions — L
-6. Crew assignment to projects — assign/unassign, skills matching — M
-
-Dependencies:
-- Sprint 6 complete ✅
-- S7-1 (theme) and S7-2 (responsive) must land before S7-3 (interactions)
-- S7-4 (AI) can run in parallel with S7-5/S7-6 but should come after S7-3 so the form is streamlined
-- SQL migrations for S7-5 and S7-6 — Charlie runs manually after Code completes
-
-Execution: Single-prompt autonomous run per SPRINT_EXECUTION.md
+None — Sprint 8 complete. Awaiting pilot user for Phase 1 gate closure.
 
 ## Phase 1 Remaining Backlog
 
