@@ -183,9 +183,6 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
                   onPointerDown: (e: React.PointerEvent) => handlePointerDown(e, index),
                   onPointerMove: handlePointerMove,
                   onPointerUp: handlePointerUp,
-                  style: {
-                    '@media (pointer: coarse)': { minWidth: '48px' },
-                  },
                 }}
                 isDragging={isDragging}
                 style={transformStyle}

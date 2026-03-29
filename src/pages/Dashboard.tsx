@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
@@ -40,6 +40,8 @@ interface KPICardProps {
   prefix?: string;
   suffix?: string;
   decimals?: number;
+  editMode?: boolean;
+  isDragging?: boolean;
 }
 
 const KPICard: React.FC<KPICardProps> = ({
@@ -50,15 +52,20 @@ const KPICard: React.FC<KPICardProps> = ({
   prefix = '',
   suffix = '',
   decimals = 0,
+  editMode = false,
+  isDragging = false,
 }) => {
   const display = useCountUp({ end: value, prefix, suffix, decimals });
   return (
     <div
       style={{
         background: 'var(--surface-card)',
-        border: '1px solid var(--border-default)',
+        border: editMode ? '2px dashed var(--color-primary)' : '1px solid var(--border-default)',
         borderRadius: '10px',
         padding: '16px',
+        boxShadow: isDragging
+          ? '0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)'
+          : undefined,
       }}
     >
       <div
@@ -98,8 +105,29 @@ const KPICard: React.FC<KPICardProps> = ({
   );
 };
 
+interface KpiDragState {
+  dragging: boolean;
+  dragIndex: number;
+  startY: number;
+  currentY: number;
+  itemHeight: number;
+}
+
 export const Dashboard: React.FC = () => {
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  const [kpiDragState, setKpiDragState] = useState<KpiDragState | null>(null);
+  const kpiRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   const { projects, isLoading, error } = useProjectStore();
+
+  useEffect(() => {
+    if (error) toast.error('Failed to load dashboard data');
+  }, [error]);
   const { crew } = useCrewStore();
   const { equipment } = useEquipmentStore();
   const { materials } = useMaterialStore();
@@ -131,7 +159,7 @@ export const Dashboard: React.FC = () => {
       }));
       try {
         await updateWidgetLayout(userId, serialized);
-        toast.info('Dashboard layout saved');
+        toast.success('Dashboard layout saved');
       } catch {
         // silently ignore
       }
@@ -147,7 +175,14 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleVisibilityToggle = (widgetId: string) => {
+    const widget = widgetLayout.find((w) => w.id === widgetId);
+    const isCurrentlyVisible = widget?.visible ?? false;
     toggleWidgetVisibility(widgetId);
+    if (isCurrentlyVisible) {
+      toast.info('Widget hidden — use Edit Layout to restore');
+    } else {
+      toast.success('Widget restored');
+    }
     if (user?.id) {
       debouncedSaveLayout(user.id, widgetLayout);
     }
@@ -169,9 +204,58 @@ export const Dashboard: React.FC = () => {
     .map((id) => KPI_LIBRARY.find((k) => k.id === id))
     .filter((k): k is NonNullable<typeof k> => Boolean(k));
 
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const handleKpiPointerDown = (e: React.PointerEvent, index: number) => {
+    if (!editMode) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const rect = kpiRefs.current[index]?.getBoundingClientRect();
+    setKpiDragState({
+      dragging: true,
+      dragIndex: index,
+      startY: e.clientY,
+      currentY: e.clientY,
+      itemHeight: rect?.height ?? 80,
+    });
+  };
+
+  const handleKpiPointerMove = (e: React.PointerEvent) => {
+    if (!kpiDragState?.dragging) return;
+    setKpiDragState((prev) => (prev ? { ...prev, currentY: e.clientY } : null));
+  };
+
+  const handleKpiPointerUp = async (e: React.PointerEvent) => {
+    if (!kpiDragState) return;
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    const delta = kpiDragState.currentY - kpiDragState.startY;
+    const indexOffset = Math.round(delta / kpiDragState.itemHeight);
+    const toIndex = Math.max(
+      0,
+      Math.min(activeKpis.length - 1, kpiDragState.dragIndex + indexOffset),
+    );
+    if (toIndex !== kpiDragState.dragIndex) {
+      const newOrder = [...(selectedKpis ?? DEFAULT_SELECTED_KPIS)];
+      const [moved] = newOrder.splice(kpiDragState.dragIndex, 1);
+      newOrder.splice(toIndex, 0, moved);
+      setSelectedKpis(newOrder);
+      if (user?.id) {
+        try {
+          await updateSelectedKpis(user.id, newOrder);
+          toast.success('KPI layout saved');
+        } catch {
+          toast.error('Failed to save KPI order');
+        }
+      }
+    }
+    setKpiDragState(null);
+  };
+
   const hiddenWidgets = widgetLayout.filter((w) => !w.visible);
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[16px] items-start">
         <div className="flex flex-col gap-[8px]">
@@ -252,19 +336,76 @@ export const Dashboard: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col gap-[8px]">
-              {activeKpis.map((kpi) => {
+              {activeKpis.map((kpi, index) => {
                 const result = kpi.compute(appState);
+                const isDraggingThis = Boolean(
+                  kpiDragState?.dragging && kpiDragState.dragIndex === index,
+                );
+                const kpiDelta = kpiDragState ? kpiDragState.currentY - kpiDragState.startY : 0;
+                const kpiTargetIndex =
+                  kpiDragState && kpiDragState.itemHeight > 0
+                    ? Math.max(
+                        0,
+                        Math.min(
+                          activeKpis.length - 1,
+                          kpiDragState.dragIndex +
+                            Math.round(kpiDelta / kpiDragState.itemHeight),
+                        ),
+                      )
+                    : -1;
+                const showKpiPlaceholder =
+                  kpiDragState?.dragging &&
+                  kpiDragState.dragIndex !== index &&
+                  kpiTargetIndex === index &&
+                  !prefersReducedMotion;
+
                 return (
-                  <KPICard
-                    key={kpi.id}
-                    icon={kpi.icon}
-                    label={kpi.label}
-                    value={result.value}
-                    subtitle={result.subtitle}
-                    prefix={kpi.prefix}
-                    suffix={kpi.suffix}
-                    decimals={kpi.decimals}
-                  />
+                  <div key={kpi.id}>
+                    {showKpiPlaceholder && (
+                      <div
+                        className="animate-placeholder-pulse"
+                        style={{
+                          height: `${kpiDragState?.itemHeight ?? 80}px`,
+                          background: 'var(--surface-hover)',
+                          border: '2px dashed var(--border-default)',
+                          borderRadius: '10px',
+                          marginBottom: '8px',
+                        }}
+                      />
+                    )}
+                    <div
+                      ref={(el) => { kpiRefs.current[index] = el; }}
+                      onPointerDown={(e) => handleKpiPointerDown(e, index)}
+                      onPointerMove={handleKpiPointerMove}
+                      onPointerUp={handleKpiPointerUp}
+                      style={{
+                        transform: isDraggingThis && !prefersReducedMotion
+                          ? `translateY(${kpiDelta}px) scale(1.02)`
+                          : undefined,
+                        zIndex: isDraggingThis ? 100 : undefined,
+                        position: 'relative',
+                        transition:
+                          kpiDragState?.dragging && !isDraggingThis && !prefersReducedMotion
+                            ? 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                            : undefined,
+                        cursor: editMode ? 'grab' : undefined,
+                        touchAction: editMode ? 'none' : undefined,
+                        userSelect: editMode ? 'none' : undefined,
+                      }}
+                    >
+                      <KPICard
+                        icon={kpi.icon}
+                        label={kpi.label}
+                        value={result.value}
+                        subtitle={result.subtitle}
+                        prefix={kpi.prefix}
+                        suffix={kpi.suffix}
+                        decimals={kpi.decimals}
+                        editMode={editMode}
+                        isDragging={isDraggingThis}
+                      />
+                    </div>
+                  </div>
                 );
               })}
 
