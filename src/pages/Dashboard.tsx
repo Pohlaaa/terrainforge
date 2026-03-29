@@ -395,7 +395,7 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* Greeting header */}
-      <div style={{ marginBottom: '20px' }}>
+      <div style={{ marginBottom: '24px' }}>
         <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
           Good {greetingWord}{userName ? `, ${userName}` : ''}
         </div>
@@ -420,6 +420,9 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Section divider */}
+      <div style={{ height: '1px', background: 'var(--border-light)', marginBottom: '24px' }} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[16px] items-start">
         {/* LEFT COLUMN: KPIs + Customize */}
