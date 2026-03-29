@@ -29,9 +29,12 @@ export const WidgetCard: React.FC<WidgetCardProps> = ({
     return () => clearTimeout(t);
   }, []);
 
+  const editModeCardProps = editMode ? dragHandleProps : {};
+
   return (
     <div
       className={`${born ? 'animate-card-birth' : ''}`}
+      {...editModeCardProps}
       style={{
         background: 'var(--surface-card)',
         border: editMode
@@ -39,6 +42,9 @@ export const WidgetCard: React.FC<WidgetCardProps> = ({
           : '1px solid var(--border-default)',
         borderRadius: '10px',
         overflow: 'hidden',
+        cursor: editMode ? 'grab' : undefined,
+        touchAction: editMode ? 'none' : undefined,
+        userSelect: editMode ? 'none' : undefined,
         boxShadow: isDragging
           ? '0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)'
           : undefined,
@@ -59,20 +65,15 @@ export const WidgetCard: React.FC<WidgetCardProps> = ({
           gap: '8px',
         }}
       >
-        {/* Drag handle */}
+        {/* Drag handle indicator (visible in edit mode, non-exclusive drag target) */}
         <div
-          {...dragHandleProps}
           style={{
             display: editMode ? 'flex' : 'none',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: 'grab',
             color: 'var(--text-tertiary)',
             fontSize: '14px',
-            minWidth: '32px',
-            minHeight: '44px',
-            touchAction: 'none',
-            userSelect: 'none',
+            minWidth: '24px',
           }}
           aria-label="Drag to reorder"
         >
