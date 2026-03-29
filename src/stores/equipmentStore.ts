@@ -271,7 +271,7 @@ export const useEquipmentStore = create<EquipmentStore>()(
       addEquipment: async (equipData) => {
         const orgId = useOrgStore.getState().org?.id
         if (!orgId) {
-          console.error('addEquipment: no org_id available')
+          console.error('[TF-DEBUG] addEquipment: no org_id available')
           return
         }
         const newEquipment: Equipment = {
@@ -281,9 +281,21 @@ export const useEquipmentStore = create<EquipmentStore>()(
         set((state) => ({ equipment: [...state.equipment, newEquipment] }))
         try {
           const result = await db.createEquipment(equipData, newEquipment.id, orgId)
-          if (!result) console.error('addEquipment: createEquipment returned null — Supabase write failed')
+          if (!result) {
+            console.error('[TF-DEBUG] addEquipment: Supabase write failed, rolling back')
+            set((state) => ({
+              equipment: state.equipment.filter((e) => e.id !== newEquipment.id),
+              error: 'Failed to save equipment. Please try again.'
+            }))
+            return
+          }
+          await get().fetchEquipment()
         } catch (err: any) {
-          set((state) => ({ error: err.message }))
+          console.error('[TF-DEBUG] addEquipment error:', err)
+          set((state) => ({
+            equipment: state.equipment.filter((e) => e.id !== newEquipment.id),
+            error: err.message
+          }))
         }
       },
       updateEquipment: async (id, updates) => {
@@ -299,12 +311,19 @@ export const useEquipmentStore = create<EquipmentStore>()(
         }
       },
       deleteEquipment: async (id) => {
-        set((state) => ({
-          equipment: state.equipment.filter((e) => e.id !== id),
-        }))
         try {
-          await db.deleteEquipment(id)
+          const success = await db.deleteEquipment(id)
+          if (!success) {
+            console.error('[TF-DEBUG] deleteEquipment: Supabase delete failed for', id)
+            set((state) => ({ error: 'Failed to delete equipment. Please try again.' }))
+            return
+          }
+          set((state) => ({
+            equipment: state.equipment.filter((e) => e.id !== id),
+          }))
+          await get().fetchEquipment()
         } catch (err: any) {
+          console.error('[TF-DEBUG] deleteEquipment error:', err)
           set((state) => ({ error: err.message }))
         }
       },

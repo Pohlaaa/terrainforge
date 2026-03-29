@@ -168,7 +168,7 @@
 */
 const PROJECT_DATA = {
   project: "TerrainForge",
-  lastUpdated: "2026-03-28",
+  lastUpdated: "2026-03-29",
   currentPhase: 1,
 
   // ── Completed work before sprints started ──
@@ -238,23 +238,23 @@ const PROJECT_DATA = {
     { date: "2026-03-28", text: "S5-4: Create netlify.toml (SPA redirects, Node 20), update .env.example with all required vars, confirm clean build", tag: "infra" },
     { date: "2026-03-28", text: "S5-4b: Fix end-to-end Supabase persistence — slug+org_members in fetchOrg INSERT, query by id, date coercion, console.error breadcrumbs throughout write chain", tag: "fix" },
     { date: "2026-03-28", text: "S5-4c: Add [TF-DEBUG] instrumentation throughout org→project chain; add RLS INSERT policies for organizations + org_members; add /debug diagnostic route; migration 003_fix_rls_policies.sql", tag: "fix" },
+    { date: "2026-03-29", text: "S6-1: Fix delete+create persistence regression (F-027) — confirm-first deletes, create rollback on failure, refetch after all mutations", tag: "fix" },
   ],
 
   // ── Current Sprint ──
   currentSprint: {
-    number: 4,
-    name: "Self-Test & Workflow",
-    dateRange: "2026-03-28 → 2026-04-11",
-    goal: "Close the workflow gaps so Charlie can complete a full end-to-end flow with his own data",
-    doneWhen: "A brand new project can be created, zones added, manifest generated, and PDF exported — with custom data, no seed data required",
-    risk: "Zone creation UI touches Projects page, zone types, and projectStore — scope carefully to avoid regressions",
+    number: 6,
+    name: "Persistence Fix + Demo Polish",
+    dateRange: "2026-03-29 → 2026-04-04",
+    goal: "Fix delete+create persistence regression, resolve readability/UX bugs, add project editing",
+    doneWhen: "A contractor can create, edit, and delete projects/materials/equipment without data loss on refresh",
+    risk: "Delete confirm-first pattern changes UX timing — verify no double-delete or stale state issues",
     tasks: [
-      { id: "S4-1", name: "Zone creation + editing UI in Projects page",                  effort: "L", status: "pending", notes: "Add/edit/delete zones on any project — currently blocked with seed data only" },
-      { id: "S4-2", name: "Replace map placeholder with active project summary widget",   effort: "S", status: "pending", notes: "Remove 'Map placeholder' grey box — show top active projects or recent activity instead" },
-      { id: "S4-3", name: "Remove TestPDF.tsx dev artifact",                              effort: "S", status: "pending", notes: "Development artifact in src/components/pdf/ — should not exist in production" },
-      { id: "S4-4", name: "Remove Leaflet + react-leaflet from dependencies",             effort: "S", status: "pending", notes: "Unused, dead bundle weight — remove until map feature is actually built" },
-      { id: "S4-5", name: "Add seed data reset option",                                   effort: "M", status: "pending", notes: "'Start fresh / Clear demo data' to onboard real contractor without Henderson Backyard cluttering the view" },
-      { id: "S4-6", name: "First-login empty state",                                     effort: "M", status: "pending", notes: "When no projects exist, show guided 'Create your first project' prompt instead of blank KPI widgets" },
+      { id: "S6-1", name: "Fix delete+create persistence regression (F-027)",            effort: "M", status: "complete", notes: "Confirm-first deletes, rollback on failed creates, refetch after all mutations" },
+      { id: "S6-2", name: "Fix text readability / dropdown styling (F-030)",             effort: "S", status: "pending",  notes: "Select elements showing white-on-white in some browsers — explicit dark theme styling needed" },
+      { id: "S6-3", name: "Add project edit capability (FR-002, F-029)",                 effort: "M", status: "pending",  notes: "Edit project name/description/dates/status after creation; backdate confirmation" },
+      { id: "S6-4", name: "Email confirmation + crew recommend button (F-028, F-031)",   effort: "S", status: "pending",  notes: "Enable Supabase email confirm; disable crew recommend button with 'coming soon'" },
+      { id: "S6-5", name: "Smoke test + Phase 1 gate review",                            effort: "S", status: "pending",  notes: "Manual: create/delete/refresh cycle, dropdown check, edit persistence — if passes → 5/6 gate criteria met" },
     ]
   },
 

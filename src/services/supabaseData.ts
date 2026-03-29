@@ -178,15 +178,20 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
 
 export async function deleteProject(id: string): Promise<boolean> {
   try {
+    console.log('[TF-DEBUG] deleteProject: attempting delete for id', id)
     const { error } = await supabase
       .from('projects')
       .delete()
       .eq('id', id)
 
-    if (error) throw error
+    if (error) {
+      console.log('[TF-DEBUG] deleteProject: failed —', error)
+      throw error
+    }
+    console.log('[TF-DEBUG] deleteProject: success')
     return true
   } catch (err: any) {
-    console.error('deleteProject error:', err.message)
+    console.error('[TF-DEBUG] deleteProject: failed —', err.message)
     return false
   }
 }
@@ -408,15 +413,20 @@ export async function updateMaterial(id: string, updates: Partial<Material>): Pr
 
 export async function deleteMaterial(id: string): Promise<boolean> {
   try {
+    console.log('[TF-DEBUG] deleteMaterial: attempting delete for id', id)
     const { error } = await supabase
       .from('materials')
       .delete()
       .eq('id', id)
 
-    if (error) throw error
+    if (error) {
+      console.log('[TF-DEBUG] deleteMaterial: failed —', error)
+      throw error
+    }
+    console.log('[TF-DEBUG] deleteMaterial: success')
     return true
   } catch (err: any) {
-    console.error('deleteMaterial error:', err.message)
+    console.error('[TF-DEBUG] deleteMaterial: failed —', err.message)
     return false
   }
 }
@@ -732,15 +742,20 @@ export async function updateEquipment(id: string, updates: Partial<Equipment>): 
 
 export async function deleteEquipment(id: string): Promise<boolean> {
   try {
+    console.log('[TF-DEBUG] deleteEquipment: attempting delete for id', id)
     const { error } = await supabase
       .from('equipment')
       .delete()
       .eq('id', id)
 
-    if (error) throw error
+    if (error) {
+      console.log('[TF-DEBUG] deleteEquipment: failed —', error)
+      throw error
+    }
+    console.log('[TF-DEBUG] deleteEquipment: success')
     return true
   } catch (err: any) {
-    console.error('deleteEquipment error:', err.message)
+    console.error('[TF-DEBUG] deleteEquipment: failed —', err.message)
     return false
   }
 }

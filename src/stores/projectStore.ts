@@ -193,7 +193,7 @@ export const useProjectStore = create<ProjectStore>()(
         const orgId = useOrgStore.getState().org?.id
         console.log('[TF-DEBUG] addProject called, orgId:', orgId)
         if (!orgId) {
-          console.error('addProject: no org_id available')
+          console.error('[TF-DEBUG] addProject: no org_id available')
           return
         }
         const newProject: Project = {
@@ -207,9 +207,21 @@ export const useProjectStore = create<ProjectStore>()(
         try {
           const result = await db.createProject(projectData, newProject.id, orgId)
           console.log('[TF-DEBUG] addProject Supabase result:', result)
-          if (!result) console.error('addProject: createProject returned null — Supabase write failed')
+          if (!result) {
+            console.error('[TF-DEBUG] addProject: Supabase write failed, rolling back')
+            set((state) => ({
+              projects: state.projects.filter((p) => p.id !== newProject.id),
+              error: 'Failed to save project. Please try again.'
+            }))
+            return
+          }
+          await get().fetchProjects()
         } catch (err: any) {
-          set((state) => ({ error: err.message }))
+          console.error('[TF-DEBUG] addProject error:', err)
+          set((state) => ({
+            projects: state.projects.filter((p) => p.id !== newProject.id),
+            error: err.message
+          }))
         }
       },
       updateProject: async (id, updates) => {
@@ -225,13 +237,20 @@ export const useProjectStore = create<ProjectStore>()(
         }
       },
       deleteProject: async (id) => {
-        set((state) => ({
-          projects: state.projects.filter((p) => p.id !== id),
-          activeProjectId: state.activeProjectId === id ? null : state.activeProjectId,
-        }))
         try {
-          await db.deleteProject(id)
+          const success = await db.deleteProject(id)
+          if (!success) {
+            console.error('[TF-DEBUG] deleteProject: Supabase delete failed for', id)
+            set((state) => ({ error: 'Failed to delete project. Please try again.' }))
+            return
+          }
+          set((state) => ({
+            projects: state.projects.filter((p) => p.id !== id),
+            activeProjectId: state.activeProjectId === id ? null : state.activeProjectId,
+          }))
+          await get().fetchProjects()
         } catch (err: any) {
+          console.error('[TF-DEBUG] deleteProject error:', err)
           set((state) => ({ error: err.message }))
         }
       },
