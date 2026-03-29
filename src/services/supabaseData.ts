@@ -140,7 +140,10 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     // Write zones to the zones table now that the project row exists
     if (zones && zones.length > 0) {
       for (const { id: _zoneId, createdAt: _createdAt, ...zoneData } of zones) {
-        await createZone(id, zoneData, orgId)
+        const zoneResult = await createZone(id, zoneData, orgId)
+        if (!zoneResult) {
+          console.warn('createProject: failed to persist zone', zoneData.name)
+        }
       }
     }
 
@@ -214,8 +217,8 @@ export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'cre
     snakeData.org_id = orgId
     snakeData.dependencies = zone.dependencies // Keep as array
     // Field fixups: frontend name → DB column name
-    snakeData.area_sqft = snakeData.area; delete snakeData.area
-    snakeData.perimeter_lnft = snakeData.perimeter; delete snakeData.perimeter
+    snakeData.area_sqft = snakeData.area > 0 ? snakeData.area : null; delete snakeData.area
+    snakeData.perimeter_lnft = snakeData.perimeter > 0 ? snakeData.perimeter : null; delete snakeData.perimeter
     snakeData.sequence_number = snakeData.sequence; delete snakeData.sequence
     snakeData.crew_assignment = snakeData.crew; delete snakeData.crew
 
@@ -246,8 +249,8 @@ export async function updateZone(zoneId: string, updates: Partial<Zone>): Promis
       snakeData.dependencies = updateData.dependencies
     }
     // Field fixups
-    if ('area' in snakeData) { snakeData.area_sqft = snakeData.area; delete snakeData.area }
-    if ('perimeter' in snakeData) { snakeData.perimeter_lnft = snakeData.perimeter; delete snakeData.perimeter }
+    if ('area' in snakeData) { snakeData.area_sqft = snakeData.area > 0 ? snakeData.area : null; delete snakeData.area }
+    if ('perimeter' in snakeData) { snakeData.perimeter_lnft = snakeData.perimeter > 0 ? snakeData.perimeter : null; delete snakeData.perimeter }
     if ('sequence' in snakeData) { snakeData.sequence_number = snakeData.sequence; delete snakeData.sequence }
     if ('crew' in snakeData) { snakeData.crew_assignment = snakeData.crew; delete snakeData.crew }
 

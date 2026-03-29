@@ -245,7 +245,7 @@ export const Projects: React.FC = () => {
         equipment: [] as import('@/types').ZoneEquipment[],
         createdAt: new Date().toISOString(),
       }));
-    await addProject({
+    const newProjectId = await addProject({
       name: form.name.trim(),
       client: form.client.trim(),
       address: form.address.trim(),
@@ -261,22 +261,17 @@ export const Projects: React.FC = () => {
     });
 
     // Persist only the AI-suggested materials the user staged (clicked "+")
-    if (aiSuggestion?.suggestedMaterials?.length && addedMaterialIndices.size > 0) {
-      const newProject = useProjectStore.getState().projects.find(
-        (p) => p.name === form.name.trim() && p.client === form.client.trim()
-      );
-      if (newProject) {
-        aiSuggestion.suggestedMaterials.forEach((m, idx) => {
-          if (!addedMaterialIndices.has(idx)) return;
-          addProjectMaterial(newProject.id, {
-            materialId: '',
-            name: m.name,
-            quantity: m.estimatedQuantity,
-            unit: m.unit,
-            unitCost: 0,
-          });
+    if (newProjectId && aiSuggestion?.suggestedMaterials?.length && addedMaterialIndices.size > 0) {
+      aiSuggestion.suggestedMaterials.forEach((m, idx) => {
+        if (!addedMaterialIndices.has(idx)) return;
+        addProjectMaterial(newProjectId, {
+          materialId: '',
+          name: m.name,
+          quantity: m.estimatedQuantity,
+          unit: m.unit,
+          unitCost: 0,
         });
-      }
+      });
     }
 
     toast.success('Project created');

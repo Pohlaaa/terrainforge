@@ -18,7 +18,7 @@ interface ProjectStore {
   reset: () => void
   setProjects: (projects: Project[]) => void
   setActiveProject: (id: string | null) => void
-  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => Promise<void>
+  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => Promise<string | null>
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>
   deleteProject: (id: string) => Promise<void>
   addZone: (projectId: string, zone: Omit<Zone, 'id' | 'createdAt'>) => Promise<void>
@@ -207,7 +207,7 @@ export const useProjectStore = create<ProjectStore>()(
         console.log('[TF-DEBUG] addProject called, orgId:', orgId)
         if (!orgId) {
           console.error('[TF-DEBUG] addProject: no org_id available')
-          return
+          return null
         }
         const newProject: Project = {
           ...projectData,
@@ -226,15 +226,17 @@ export const useProjectStore = create<ProjectStore>()(
               projects: state.projects.filter((p) => p.id !== newProject.id),
               error: 'Failed to save project. Please try again.'
             }))
-            return
+            return null
           }
           await get().fetchProjects()
+          return newProject.id
         } catch (err: any) {
           console.error('[TF-DEBUG] addProject error:', err)
           set((state) => ({
             projects: state.projects.filter((p) => p.id !== newProject.id),
             error: err.message
           }))
+          return null
         }
       },
       updateProject: async (id, updates) => {

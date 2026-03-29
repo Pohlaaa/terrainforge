@@ -1,3 +1,4 @@
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import type { Map as MapboxMap, Marker } from 'mapbox-gl';
 import type { Project } from '@/types';
