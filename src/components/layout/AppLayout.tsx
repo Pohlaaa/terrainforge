@@ -67,6 +67,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     setMobileSidebarOpen(false);
   }, [location.pathname]);
 
+  // Apply saved theme on app load
+  useEffect(() => {
+    const saved = localStorage.getItem('tf-theme') as 'light' | 'dark' | 'system' | null
+    const theme = saved || 'light'
+    if (theme === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light')
+    } else {
+      document.documentElement.setAttribute('data-theme', theme)
+    }
+  }, [])
+
   // Fetch org data once the user is known
   useEffect(() => {
     if (user?.id) {
