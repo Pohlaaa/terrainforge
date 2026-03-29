@@ -395,7 +395,7 @@ export const useMaterialStore = create<MaterialStore>()(
       addMaterial: async (materialData) => {
         const orgId = useOrgStore.getState().org?.id
         if (!orgId) {
-          console.error('addMaterial: no org_id available')
+          console.error('[TF-DEBUG] addMaterial: no org_id available')
           return
         }
         const newMaterial: Material = {
@@ -405,9 +405,21 @@ export const useMaterialStore = create<MaterialStore>()(
         set((state) => ({ materials: [...state.materials, newMaterial] }))
         try {
           const result = await db.createMaterial(materialData, newMaterial.id, orgId)
-          if (!result) console.error('addMaterial: createMaterial returned null — Supabase write failed')
+          if (!result) {
+            console.error('[TF-DEBUG] addMaterial: Supabase write failed, rolling back')
+            set((state) => ({
+              materials: state.materials.filter((m) => m.id !== newMaterial.id),
+              error: 'Failed to save material. Please try again.'
+            }))
+            return
+          }
+          await get().fetchMaterials()
         } catch (err: any) {
-          set((state) => ({ error: err.message }))
+          console.error('[TF-DEBUG] addMaterial error:', err)
+          set((state) => ({
+            materials: state.materials.filter((m) => m.id !== newMaterial.id),
+            error: err.message
+          }))
         }
       },
       updateMaterial: async (id, updates) => {
@@ -423,12 +435,19 @@ export const useMaterialStore = create<MaterialStore>()(
         }
       },
       deleteMaterial: async (id) => {
-        set((state) => ({
-          materials: state.materials.filter((m) => m.id !== id),
-        }))
         try {
-          await db.deleteMaterial(id)
+          const success = await db.deleteMaterial(id)
+          if (!success) {
+            console.error('[TF-DEBUG] deleteMaterial: Supabase delete failed for', id)
+            set((state) => ({ error: 'Failed to delete material. Please try again.' }))
+            return
+          }
+          set((state) => ({
+            materials: state.materials.filter((m) => m.id !== id),
+          }))
+          await get().fetchMaterials()
         } catch (err: any) {
+          console.error('[TF-DEBUG] deleteMaterial error:', err)
           set((state) => ({ error: err.message }))
         }
       },
