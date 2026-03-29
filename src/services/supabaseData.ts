@@ -140,7 +140,10 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     // Write zones to the zones table now that the project row exists
     if (zones && zones.length > 0) {
       for (const { id: _zoneId, createdAt: _createdAt, ...zoneData } of zones) {
-        await createZone(id, zoneData, orgId)
+        const zoneResult = await createZone(id, zoneData, orgId)
+        if (!zoneResult) {
+          console.warn('createProject: failed to persist zone', zoneData.name)
+        }
       }
     }
 
