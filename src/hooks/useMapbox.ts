@@ -47,7 +47,11 @@ export function useMapbox({
   const [error, setError] = useState<string | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
+  // Keep a stable ref to onProjectClick to avoid re-running the marker effect
+  const onProjectClickRef = useRef(onProjectClick);
+  useEffect(() => { onProjectClickRef.current = onProjectClick; }, [onProjectClick]);
 
+  // Effect 1: initialize the map instance. Re-runs only when satelliteMode changes.
   useEffect(() => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
     if (!token) {
@@ -79,88 +83,7 @@ export function useMapbox({
         });
 
         mapRef.current = mapInstance;
-
-        mapInstance.on('load', () => {
-          setLoaded(true);
-
-          const projectsWithCoords = projects.filter((p) => p.lat && p.lng);
-          if (projectsWithCoords.length === 0) return;
-
-          const bounds = new mapboxgl.LngLatBounds();
-
-          projectsWithCoords.forEach((project) => {
-            const pinColor = statusPinColor(project);
-            const checks = Object.values(project.checklist);
-            const completedCount = checks.filter(Boolean).length;
-            const pct = checks.length > 0 ? Math.round((completedCount / checks.length) * 100) : 0;
-
-            const el = document.createElement('div');
-            el.style.cssText = [
-              'width:32px',
-              'height:32px',
-              'border-radius:50%',
-              `background:${pinColor}`,
-              'border:3px solid white',
-              'box-shadow:0 2px 8px rgba(0,0,0,0.3)',
-              'cursor:pointer',
-              'transition:transform 0.15s ease',
-              'display:flex',
-              'align-items:center',
-              'justify-content:center',
-            ].join(';');
-
-            el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.15)'; });
-            el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
-
-            const budgetStr = project.budget
-              ? `$${(project.budget / 1000).toFixed(1)}k`
-              : 'TBD';
-
-            const popup = new mapboxgl.Popup({ offset: 16, maxWidth: '240px' }).setHTML(
-              `<div style="font-family:Inter,sans-serif;padding:6px 2px 2px">
-                <div style="font-weight:700;font-size:14px;color:#111827;margin-bottom:2px;line-height:1.2">${project.name}</div>
-                <div style="font-size:12px;color:#6B7280;margin-bottom:4px">${project.client}</div>
-                ${project.address ? `<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">${project.address}</div>` : ''}
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-                  <span style="font-size:12px;color:#374151;font-weight:600">${budgetStr}</span>
-                  <span style="font-size:11px;color:#6B7280">${pct}% complete</span>
-                </div>
-                <div style="height:4px;background:#E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:8px">
-                  <div style="height:100%;width:${pct}%;background:${pinColor};border-radius:4px"></div>
-                </div>
-                <a href="/projects" style="font-size:12px;color:#2D6A4F;font-weight:600;text-decoration:none" onclick="event.preventDefault()">View Project →</a>
-              </div>`,
-            );
-
-            const marker = new mapboxgl.Marker({ element: el })
-              .setLngLat([project.lng!, project.lat!])
-              .setPopup(popup)
-              .addTo(mapInstance);
-
-            el.addEventListener('click', () => {
-              onProjectClick?.(project.id);
-            });
-
-            bounds.extend([project.lng!, project.lat!]);
-            markersRef.current.push(marker);
-          });
-
-          if (projectsWithCoords.length >= 1) {
-            if (projectsWithCoords.length === 1) {
-              mapInstance.flyTo({
-                center: [projectsWithCoords[0].lng!, projectsWithCoords[0].lat!],
-                zoom: 12,
-                animate: !prefersReducedMotion,
-              });
-            } else {
-              mapInstance.fitBounds(bounds, {
-                padding: 48,
-                maxZoom: 12,
-                animate: !prefersReducedMotion,
-              });
-            }
-          }
-        });
+        mapInstance.on('load', () => setLoaded(true));
 
         // Theme change observer
         const observer = new MutationObserver(() => {
@@ -191,6 +114,100 @@ export function useMapbox({
       setLoaded(false);
     };
   }, [satelliteMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Effect 2: render markers. Re-runs when the map finishes loading OR when
+  // projects data changes (e.g. arrives asynchronously from Supabase).
+  useEffect(() => {
+    if (!loaded || !mapRef.current) return;
+
+    const mapInstance = mapRef.current;
+
+    // Clear any existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    const projectsWithCoords = projects.filter((p) => p.lat && p.lng);
+    if (projectsWithCoords.length === 0) return;
+
+    const addMarkers = async () => {
+      const mapboxgl = (await import('mapbox-gl')).default;
+      const bounds = new mapboxgl.LngLatBounds();
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      projectsWithCoords.forEach((project) => {
+        const pinColor = statusPinColor(project);
+        const checks = Object.values(project.checklist);
+        const completedCount = checks.filter(Boolean).length;
+        const pct = checks.length > 0 ? Math.round((completedCount / checks.length) * 100) : 0;
+
+        const el = document.createElement('div');
+        el.style.cssText = [
+          'width:32px',
+          'height:32px',
+          'border-radius:50%',
+          `background:${pinColor}`,
+          'border:3px solid white',
+          'box-shadow:0 2px 8px rgba(0,0,0,0.3)',
+          'cursor:pointer',
+          'transition:transform 0.15s ease',
+          'display:flex',
+          'align-items:center',
+          'justify-content:center',
+        ].join(';');
+
+        el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.15)'; });
+        el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
+
+        const budgetStr = project.budget
+          ? `$${(project.budget / 1000).toFixed(1)}k`
+          : 'TBD';
+
+        const popup = new mapboxgl.Popup({ offset: 16, maxWidth: '240px' }).setHTML(
+          `<div style="font-family:Inter,sans-serif;padding:6px 2px 2px">
+            <div style="font-weight:700;font-size:14px;color:#111827;margin-bottom:2px;line-height:1.2">${project.name}</div>
+            <div style="font-size:12px;color:#6B7280;margin-bottom:4px">${project.client}</div>
+            ${project.address ? `<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">${project.address}</div>` : ''}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:12px;color:#374151;font-weight:600">${budgetStr}</span>
+              <span style="font-size:11px;color:#6B7280">${pct}% complete</span>
+            </div>
+            <div style="height:4px;background:#E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:8px">
+              <div style="height:100%;width:${pct}%;background:${pinColor};border-radius:4px"></div>
+            </div>
+            <a href="/projects" style="font-size:12px;color:#2D6A4F;font-weight:600;text-decoration:none" onclick="event.preventDefault()">View Project →</a>
+          </div>`,
+        );
+
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([project.lng!, project.lat!])
+          .setPopup(popup)
+          .addTo(mapInstance);
+
+        el.addEventListener('click', () => {
+          onProjectClickRef.current?.(project.id);
+        });
+
+        bounds.extend([project.lng!, project.lat!]);
+        markersRef.current.push(marker);
+      });
+
+      if (projectsWithCoords.length === 1) {
+        mapInstance.flyTo({
+          center: [projectsWithCoords[0].lng!, projectsWithCoords[0].lat!],
+          zoom: 12,
+          animate: !prefersReducedMotion,
+        });
+      } else {
+        mapInstance.fitBounds(bounds, {
+          padding: 48,
+          maxZoom: 12,
+          animate: !prefersReducedMotion,
+        });
+      }
+    };
+
+    addMarkers();
+  }, [projects, loaded]); // re-runs when project data arrives or map finishes loading
 
   return { map: mapRef.current, loaded, error };
 }
