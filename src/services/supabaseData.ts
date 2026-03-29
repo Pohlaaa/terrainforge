@@ -121,6 +121,9 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     delete snakeData.client       // string, DB expects client_id UUID FK (unused)
     delete snakeData.is_demo      // frontend-only flag, no DB column
     snakeData.total_area_sqft = snakeData.total_area; delete snakeData.total_area
+// Postgres rejects empty strings for date columns — coerce to null
+    if (snakeData.start_date === '') snakeData.start_date = null
+    if (snakeData.target_date === '') snakeData.target_date = null
     // Postgres rejects empty strings for date columns — coerce to null
     if (snakeData.start_date === '') snakeData.start_date = null
     if (snakeData.target_date === '') snakeData.target_date = null
