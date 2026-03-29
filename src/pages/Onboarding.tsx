@@ -132,6 +132,8 @@ Return only valid JSON, no markdown.`, 'claude-haiku-4-5-20251001')
           customKpis,
           onboardingCompletedAt: new Date().toISOString(),
         })
+        // Small delay so the Supabase write commits before ProtectedRoute re-checks
+        await new Promise(resolve => setTimeout(resolve, 200))
       }
     } catch {
       // Best-effort — still navigate even if save fails
