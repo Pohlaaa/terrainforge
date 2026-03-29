@@ -113,6 +113,9 @@ export const Projects: React.FC = () => {
   const [aiSkipped, setAiSkipped] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AIProjectSuggestion | null>(null);
 
+  // AI material selection state (tracks which suggested materials the user has staged for addition)
+  const [addedMaterialIndices, setAddedMaterialIndices] = useState<Set<number>>(new Set());
+
   // Zone builder state (for new project creation)
   const [newProjectZones, setNewProjectZones] = useState<Array<{name: string; area: string; color: string}>>([]);
   const ZONE_COLORS = ['#2D6A4F', '#2563EB', '#F59E0B', '#DC2626', '#7C3AED', '#0D9488'];
@@ -176,6 +179,7 @@ export const Projects: React.FC = () => {
     setAiError('');
     setAiSkipped(false);
     setAiSuggestion(null);
+    setAddedMaterialIndices(new Set());
     setNewProjectZones([]);
   }
 
@@ -233,11 +237,6 @@ export const Projects: React.FC = () => {
         equipment: [] as import('@/types').ZoneEquipment[],
         createdAt: new Date().toISOString(),
       }));
-    const checklist = aiSuggestion?.checklistSuggestions ?? {
-      permit: false, utility: false, deposit: false, design: false,
-      access: false, materials: false, crew: false, equipment: false,
-    };
-
     await addProject({
       name: form.name.trim(),
       client: form.client.trim(),
@@ -249,17 +248,21 @@ export const Projects: React.FC = () => {
       targetDate: form.targetDate || '',
       budget: parseFloat(form.budget) || 0,
       notes: form.notes.trim(),
-      checklist,
+      checklist: {
+        permit: false, utility: false, deposit: false, design: false,
+        access: false, materials: false, crew: false, equipment: false,
+      },
       zones: builtZones,
     });
 
-    // Persist AI-suggested materials to the newly created project
-    if (aiSuggestion?.suggestedMaterials?.length) {
+    // Persist only the AI-suggested materials the user staged (clicked "+")
+    if (aiSuggestion?.suggestedMaterials?.length && addedMaterialIndices.size > 0) {
       const newProject = useProjectStore.getState().projects.find(
         (p) => p.name === form.name.trim() && p.client === form.client.trim()
       );
       if (newProject) {
-        aiSuggestion.suggestedMaterials.forEach((m) => {
+        aiSuggestion.suggestedMaterials.forEach((m, idx) => {
+          if (!addedMaterialIndices.has(idx)) return;
           addProjectMaterial(newProject.id, {
             materialId: '',
             name: m.name,
@@ -1263,17 +1266,48 @@ export const Projects: React.FC = () => {
               {aiSuggestion && aiSuggestion.suggestedMaterials.length > 0 && (
                 <div className="mt-4">
                   <div className="text-[11px] font-[600] text-[var(--text-tertiary)] uppercase tracking-[0.06em] mb-2">
-                    AI Suggested Materials
+                    AI Suggested Materials — click to add
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {aiSuggestion.suggestedMaterials.map((m, i) => (
-                      <span
-                        key={i}
-                        className="px-3 py-1 rounded-full text-[12px] bg-[var(--brand-primary-bg)] text-[var(--brand-primary)]"
-                      >
-                        {m.name} · {m.estimatedQuantity} {m.unit}
-                      </span>
-                    ))}
+                    {aiSuggestion.suggestedMaterials.map((m, i) => {
+                      const added = addedMaterialIndices.has(i);
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setAddedMaterialIndices(prev => {
+                            const next = new Set(prev);
+                            if (next.has(i)) next.delete(i); else next.add(i);
+                            return next;
+                          })}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s, color 0.15s',
+                            background: added ? 'var(--status-green-bg)' : 'var(--brand-primary-bg)',
+                            color: added ? 'var(--status-green)' : 'var(--brand-primary)',
+                          }}
+                        >
+                          {added ? (
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          ) : (
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                              <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                            </svg>
+                          )}
+                          {added ? 'Added' : `${m.name} · ${m.estimatedQuantity} ${m.unit}`}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
