@@ -53,7 +53,7 @@ function App() {
                     <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
                     <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
                     <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
-                    <Route path="/debug" element={<Debug />} />
+                    {import.meta.env.DEV && <Route path="/debug" element={<Debug />} />}
                   </Routes>
                 </AppLayout>
               </ProtectedRoute>

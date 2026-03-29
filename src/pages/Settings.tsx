@@ -8,6 +8,7 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
+import { toast } from '@/hooks/useToast';
 
 type SettingsSection = 'profile' | 'appearance' | 'notifications' | 'integrations' | 'team' | 'billing'
 
@@ -75,7 +76,6 @@ export const Settings: React.FC = () => {
     }
   })
 
-  const [inviteToast, setInviteToast] = useState('')
 
   useEffect(() => {
     setOrgName(org?.name ?? '')
@@ -88,9 +88,11 @@ export const Settings: React.FC = () => {
     try {
       await updateOrgName(orgName.trim())
       setSaveStatus('saved')
+      toast.success('Company name saved')
       setTimeout(() => setSaveStatus('idle'), 2500)
     } catch {
       setSaveStatus('error')
+      toast.error('Failed to save company name')
     } finally {
       setIsSaving(false)
     }
@@ -331,16 +333,10 @@ export const Settings: React.FC = () => {
         </div>
         <Button
           variant="primary"
-          onClick={() => {
-            setInviteToast('Team invitations coming in Phase 2')
-            setTimeout(() => setInviteToast(''), 2500)
-          }}
+          onClick={() => toast.info('Team invitations coming in Phase 2')}
         >
           Invite Member
         </Button>
-        {inviteToast && (
-          <div className="mt-4 text-[13px] text-[var(--text-secondary)]">{inviteToast}</div>
-        )}
       </div>
     </div>
   )

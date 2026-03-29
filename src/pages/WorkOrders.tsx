@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { generateSteps } from '@/lib/workorders';
 import { Badge } from '@/components/shared/Badge';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { Skeleton } from '@/components/shared/Skeleton';
 import { pdf } from '@react-pdf/renderer';
 import { CrewPacketPDF } from '@/components/pdf/CrewPacketPDF';
 import { useCrewStore } from '@/stores/crewStore';
@@ -15,6 +16,12 @@ export const WorkOrders: React.FC = () => {
   const { projects, activeProjectId, setActiveProject, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
+
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   // completedSteps[zoneId] = Set of step numbers (1-based) marked done
   const [completedSteps, setCompletedSteps] = useState<Record<string, Set<number>>>({});
@@ -99,13 +106,18 @@ export const WorkOrders: React.FC = () => {
     }
   }
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center py-[64px]">
-        <div className="text-center">
-          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
-          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
-        </div>
+      <div className="flex flex-col gap-[12px]">
+        <Skeleton width="200px" height="22px" className="mb-[4px]" />
+        <Skeleton width="300px" height="12px" className="mb-[8px]" />
+        {[0,1,2].map(i => (
+          <div key={i} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '16px' }}>
+            <Skeleton width="50%" height="14px" className="mb-[10px]" />
+            <Skeleton height="6px" rounded="4px" className="mb-[8px]" />
+            <Skeleton width="70%" height="10px" />
+          </div>
+        ))}
       </div>
     );
   }

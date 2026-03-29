@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useEquipmentStore } from '@/stores/equipmentStore';
+import { Skeleton } from '@/components/shared/Skeleton';
+import { toast } from '@/hooks/useToast';
 import {
   EQUIPMENT_STATUS,
   EQUIP_CAPABILITIES,
@@ -178,6 +180,12 @@ export const EquipmentManager: React.FC = () => {
   const { equipment, addEquipment, updateEquipment, deleteEquipment, addMaintenanceEntry, isLoading, error } =
     useEquipmentStore();
 
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
   // Equipment add/edit modal
   const [showEquipModal, setShowEquipModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -256,8 +264,10 @@ export const EquipmentManager: React.FC = () => {
       const existing = equipment.find(e => e.id === editingId);
       const data = formToEquip(equipForm);
       await updateEquipment(editingId, { ...data, maintenanceLog: existing?.maintenanceLog ?? [] });
+      toast.success('Equipment updated');
     } else {
       await addEquipment(formToEquip(equipForm));
+      toast.success('Equipment added');
     }
     closeEquipModal();
   }
@@ -309,13 +319,27 @@ export const EquipmentManager: React.FC = () => {
     setMaintForm(EMPTY_MAINT_FORM);
   }
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center py-[64px]">
-        <div className="text-center">
-          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
-          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+      <div className="flex flex-col gap-[12px]">
+        <div className="flex gap-[12px]">
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ flex: 1, background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '16px' }}>
+              <Skeleton width="60px" height="10px" className="mb-[6px]" />
+              <Skeleton width="40px" height="24px" />
+            </div>
+          ))}
         </div>
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '16px' }}>
+            <div className="flex justify-between mb-[10px]">
+              <Skeleton width="160px" height="14px" />
+              <Skeleton width="70px" height="22px" rounded="20px" />
+            </div>
+            <Skeleton height="6px" rounded="4px" className="mb-[8px]" />
+            <Skeleton width="120px" height="10px" />
+          </div>
+        ))}
       </div>
     );
   }

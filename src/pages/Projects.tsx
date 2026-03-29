@@ -17,6 +17,8 @@ import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { Skeleton } from '@/components/shared/Skeleton';
+import { toast } from '@/hooks/useToast';
 
 type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
 
@@ -74,6 +76,12 @@ export const Projects: React.FC = () => {
     projectCrew, addProjectCrew, removeProjectCrew } = useProjectStore();
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
+
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   // Detail view tab state
   const [detailTab, setDetailTab] = useState<'zones' | 'materials' | 'crew'>('zones');
@@ -235,6 +243,7 @@ export const Projects: React.FC = () => {
       },
       zones: builtZones,
     });
+    toast.success('Project created');
     closeNewModal();
   }
 
@@ -242,6 +251,7 @@ export const Projects: React.FC = () => {
     if (!deleteId) return;
     if (activeProjectId === deleteId) setActiveProject(null);
     await deleteProject(deleteId);
+    toast.info('Project deleted');
     setDeleteId(null);
   }
 
@@ -906,13 +916,20 @@ export const Projects: React.FC = () => {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center py-[64px]">
-        <div className="text-center">
-          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
-          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px]">
+        {[0,1,2,3,4,5].map(i => (
+          <div key={i} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '16px' }}>
+            <Skeleton width="60%" height="14px" className="mb-[10px]" />
+            <Skeleton width="40%" height="10px" className="mb-[16px]" />
+            <Skeleton height="6px" rounded="4px" className="mb-[8px]" />
+            <div className="flex gap-[8px] mt-[12px]">
+              <Skeleton width="60px" height="22px" rounded="20px" />
+              <Skeleton width="70px" height="22px" rounded="20px" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

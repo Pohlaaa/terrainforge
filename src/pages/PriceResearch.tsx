@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { callClaude } from '@/services/anthropic';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { Skeleton } from '@/components/shared/Skeleton';
 import type { PriceEstimate, PriceCacheEntry, Material } from '@/types';
 
 // ── Cache helpers (module-level pure functions) ───────────────────────────────
@@ -130,6 +131,12 @@ export const PriceResearch: React.FC = () => {
   const { projects, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
 
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
   // Form state
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [location, setLocation] = useState('');
@@ -222,12 +229,21 @@ export const PriceResearch: React.FC = () => {
 
   // ── Loading state ─────────────────────────────────────────────────────────
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center py-[64px]">
-        <div className="text-center">
-          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
-          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+      <div className="flex flex-col gap-[12px]">
+        <Skeleton width="200px" height="22px" className="mb-[4px]" />
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '20px' }}>
+          <div className="flex gap-[12px] mb-[16px]">
+            <Skeleton height="44px" />
+            <Skeleton width="120px" height="44px" />
+          </div>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ borderBottom: '1px solid var(--border-light)', padding: '12px 0' }}>
+              <Skeleton width="60%" height="13px" className="mb-[8px]" />
+              <Skeleton width="40%" height="10px" />
+            </div>
+          ))}
         </div>
       </div>
     );

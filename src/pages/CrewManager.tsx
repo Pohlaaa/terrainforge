@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCrewStore } from '@/stores/crewStore';
 import { SKILL_OPTIONS, ALERT_THRESHOLDS } from '@/lib/constants';
 import type { CrewMember } from '@/types';
@@ -11,6 +11,8 @@ import { Badge } from '@/components/shared/Badge';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { Skeleton } from '@/components/shared/Skeleton';
+import { toast } from '@/hooks/useToast';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -108,6 +110,12 @@ function formToMember(f: CrewForm): Omit<CrewMember, 'id'> {
 export const CrewManager: React.FC = () => {
   const { crew, addCrewMember, updateCrewMember, deleteCrewMember, isLoading, error } = useCrewStore();
 
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -157,8 +165,10 @@ export const CrewManager: React.FC = () => {
     if (!validate()) return;
     if (editingId) {
       await updateCrewMember(editingId, formToMember(form));
+      toast.success('Crew member updated');
     } else {
       await addCrewMember(formToMember(form));
+      toast.success('Crew member added');
     }
     closeModal();
   }
@@ -166,6 +176,7 @@ export const CrewManager: React.FC = () => {
   async function handleDelete() {
     if (!deleteId) return;
     await deleteCrewMember(deleteId);
+    toast.info('Crew member removed');
     setDeleteId(null);
   }
 
@@ -186,13 +197,22 @@ export const CrewManager: React.FC = () => {
     }));
   }
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center py-[64px]">
-        <div className="text-center">
-          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
-          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px]">
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '16px' }}>
+            <div className="flex items-center gap-[10px] mb-[12px]">
+              <Skeleton width="40px" height="40px" rounded="50%" />
+              <div className="flex-1">
+                <Skeleton width="60%" height="13px" className="mb-[6px]" />
+                <Skeleton width="40%" height="10px" />
+              </div>
+            </div>
+            <Skeleton height="10px" className="mb-[8px]" />
+            <Skeleton width="80%" height="10px" />
+          </div>
+        ))}
       </div>
     );
   }

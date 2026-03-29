@@ -11,16 +11,18 @@ TerrainForge is a SaaS platform for landscaping contractors. It replaces spreads
 
 **Phase rationale:** Phase 2 (Operations) was reprioritized over the 3D Design Studio because it delivers direct operational value to the contractor's daily workflow — scheduling, time tracking, and client invoicing are what keeps customers retained and drives word-of-mouth. The 3D studio is a differentiator but is not a retention driver at the current stage.
 
-## Current Status (2026-03-28)
-- Auth: Working (Supabase email/password, protected routes, session persistence)
-- All 8 pages: Fully wired to Zustand stores with real data from Supabase
-- Database: 15 tables live, 55 RLS policies, data persisting end-to-end
+## Current Status (2026-03-29) — Phase 1 MVP Complete ✅
+- Auth: Working (Supabase email/password, protected routes, session persistence, email confirmation)
+- Onboarding: 4-step wizard (business type, company info, priorities, AI KPI config) — triggers on new signup only
+- All 10 pages: Fully wired to Zustand stores with real data from Supabase (Dashboard, Projects, Materials, Manifest, WorkOrders, PriceResearch, Crew, Equipment, Settings, Billing + Onboarding)
+- Database: 15 tables live, 55+ RLS policies, full multi-tenancy (org_id isolation)
 - PDF Export: ManifestPDF.tsx and CrewPacketPDF.tsx built, export buttons wired
 - Stripe Billing: Live — Billing page, checkout session, customer portal, webhook handler (3 Edge Functions)
-- Claude API: Wired to Price Research with 24hr localStorage cache
+- Claude API: Wired to Price Research (24hr localStorage cache) and AI project quick-create (Claude Haiku)
 - Trial banner + billing gate: Active in AppLayout and ProtectedRoute
-- Sprints 1, 2, 3 complete (23 tasks total). Phase 1 gate: 4/6 criteria met
-- Remaining Phase 1: Zone creation UI (Sprint 4), pilot user + multi-tenancy test (Sprint 5)
+- Skeleton loading states + unified toast notification system: All pages
+- Dashboard: KPI customization drawer, drag-and-drop widget system, Mapbox map widget
+- Sprints 1–11 complete (60+ tasks total). Phase 1 gate: All technical criteria met; pilot user pending
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features)

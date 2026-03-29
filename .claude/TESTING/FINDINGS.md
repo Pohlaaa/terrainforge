@@ -134,5 +134,32 @@ Running log of bugs, friction points, and observations found during testing. Eac
 |----|----------|---------|--------|
 | F-032 | P1 | **Onboarding redirect loop** — After completing onboarding wizard, ProtectedRoute re-checked `hasCompletedOnboarding()` on every navigation, resetting state to `null` and redirecting back to `/onboarding`. Root cause: `location.pathname` in useEffect dependency array + state reset on every path change. | Resolved — S9-hotfix-3: check once per session, cache result |
 | F-033 | P1 | **Existing users forced into onboarding** — Users who signed up before Sprint 9 (no `user_preferences` row) were redirected to onboarding on every login. ProtectedRoute treated missing row as "not onboarded". | Resolved — S9-hotfix-4: moved onboarding gate to signup flow only. Onboarding only triggers from Signup page, not ProtectedRoute |
-| F-034 | P1 | **New user signup skips onboarding** — Fresh signup with new email does NOT trigger onboarding flow, goes directly to dashboard. The signup-to-onboarding redirect (S9-hotfix-4) may not be wired correctly, or the navigate to `/onboarding` fires before auth state is ready. | Open — deferred to Sprint 11 |
+| F-034 | P1 | **New user signup skips onboarding** — Fresh signup with new email does NOT trigger onboarding flow, goes directly to dashboard. The signup-to-onboarding redirect (S9-hotfix-4) may not be wired correctly, or the navigate to `/onboarding` fires before auth state is ready. | Resolved — S11-1: Login.tsx now calls `hasCompletedOnboarding(user.id)` post-login and routes to `/onboarding` if false |
+
+---
+
+## Sprint 11 — Ship It Verification (2026-03-29)
+
+### E2E Flow 1 — New User Path (code walkthrough)
+- Signup.tsx → navigates to `/onboarding` ✅
+- Login.tsx → calls `hasCompletedOnboarding()` post-login → routes to `/onboarding` if false ✅
+- Onboarding.tsx → on "Get Started" calls `upsertUserPreferences` → navigates to `/` ✅
+- ProtectedRoute.tsx → no onboarding redirect logic (removed S9-hotfix-4) ✅
+
+### E2E Flow 2 — Existing User Path (code walkthrough)
+- Login.tsx → `hasCompletedOnboarding()` returns true → navigates to `/` ✅
+- All 8 pages render with skeleton loading states (no blank screens) ✅
+- All CRUD operations fire toast notifications ✅
+- Debug route gated to `import.meta.env.DEV` only ✅
+
+### Sprint 11 Code Quality Findings
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F-036 | P2 | Legacy inline toast state (`quickAddToast`) in MaterialLibrary.tsx — not using unified toast system | Resolved — S11-4 |
+| F-037 | P2 | Legacy inline toast state (`inviteToast`) in Settings.tsx — not using unified toast system | Resolved — S11-4 |
+| F-038 | P3 | `posthog-js` and `@sentry/react` in package.json but never imported | Resolved — S11-5: removed from package.json |
+| F-039 | P3 | Fragment sprint prompt files (SPRINT_5_PROMPTS_S5-4b/c.md) committed to repo | Resolved — S11-5: deleted |
+
+### Phase 1 MVP Build Gate
+`npm run build` — PASSED ✅ (2026-03-29, 1713 modules, no TypeScript errors)
 | F-035 | P2 | **ProtectedRoute.tsx truncation risk** — File appeared as 39 lines in Cowork mount but 67 lines on local filesystem. Mount sync issue, not a real truncation, but indicates Cowork file reads may not always reflect latest git state. | Noted — not a code bug, operational awareness |
