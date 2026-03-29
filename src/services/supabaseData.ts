@@ -114,6 +114,14 @@ export async function fetchProjects(): Promise<Project[]> {
         camelProject.checklist = JSON.parse(camelProject.checklist)
       }
 
+      // Parse project-level materials from JSONB
+      if (typeof camelProject.materials === 'string') {
+        try { camelProject.materials = JSON.parse(camelProject.materials) } catch { camelProject.materials = [] }
+      }
+      if (!Array.isArray(camelProject.materials)) {
+        camelProject.materials = []
+      }
+
       return camelProject as Project
     })
   } catch (err: any) {
@@ -124,7 +132,7 @@ export async function fetchProjects(): Promise<Project[]> {
 
 export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, id: string, orgId: string): Promise<Project | null> {
   try {
-    const { zones, ...projectData } = project
+    const { zones, materials: projectMaterials, ...projectData } = project as any
     const snakeData = toSnakeCase(projectData) as any
     snakeData.id = id
     snakeData.org_id = orgId
@@ -147,6 +155,14 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
 
     console.log('[TF-DEBUG] createProject response:', { data, error })
     if (error) throw error
+
+    // Persist project-level materials if provided
+    if (projectMaterials && projectMaterials.length > 0) {
+      await supabase
+        .from('projects')
+        .update({ materials: projectMaterials })
+        .eq('id', id)
+    }
 
     // Write zones to the zones table now that the project row exists
     if (zones && zones.length > 0) {
