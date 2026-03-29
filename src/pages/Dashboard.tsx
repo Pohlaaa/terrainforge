@@ -359,6 +359,32 @@ export const Dashboard: React.FC = () => {
     );
   }
 
+  // Greeting header data
+  const greetingHour = new Date().getHours();
+  const greetingWord = greetingHour < 12 ? 'morning' : greetingHour < 17 ? 'afternoon' : 'evening';
+  const userName = (() => {
+    if (user?.user_metadata?.full_name) return (user.user_metadata.full_name as string).split(' ')[0];
+    if (user?.email) {
+      const prefix = user.email.split('@')[0];
+      return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+    return '';
+  })();
+  const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const activeCount = projects.filter((p) => {
+    const checks = Object.values(p.checklist);
+    return checks.filter(Boolean).length < checks.length;
+  }).length;
+  const today = new Date().toISOString().split('T')[0];
+  const needingAttentionCount = projects.filter((p) => {
+    const checks = Object.values(p.checklist);
+    const pct = checks.length > 0 ? checks.filter(Boolean).length / checks.length : 0;
+    return pct < 1 && p.targetDate && p.targetDate < today;
+  }).length;
+  const totalValueK = Math.round(
+    projects.reduce((s, p) => s + (p.budget ?? 0), 0) / 1000,
+  );
+
   return (
     <div>
       {error && (
@@ -366,6 +392,33 @@ export const Dashboard: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
+
+      {/* Greeting header */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+          Good {greetingWord}{userName ? `, ${userName}` : ''}
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+          {dateStr}
+        </div>
+        {projects.length > 0 && (
+          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{activeCount}</span> projects active
+            {needingAttentionCount > 0 && (
+              <>
+                {' · '}
+                <span style={{ fontWeight: 700, color: 'var(--status-amber)' }}>{needingAttentionCount}</span> needing attention
+              </>
+            )}
+            {totalValueK > 0 && (
+              <>
+                {' · '}
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>${totalValueK}K</span> total value
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[16px] items-start">
         {/* LEFT COLUMN: KPIs + Customize */}
