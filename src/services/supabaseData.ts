@@ -68,6 +68,7 @@ export async function fetchProjects(): Promise<Project[]> {
         )
       `)
 
+    console.log('[TF-DEBUG] fetchProjects query response:', { data: data?.length, error })
     if (error) throw error
 
     return (data || []).map(project => {
@@ -124,12 +125,15 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     if (snakeData.start_date === '') snakeData.start_date = null
     if (snakeData.target_date === '') snakeData.target_date = null
 
+    console.log('[TF-DEBUG] createProject payload:', JSON.stringify(snakeData, null, 2))
+
     const { data, error } = await supabase
       .from('projects')
       .insert([snakeData])
       .select()
       .single()
 
+    console.log('[TF-DEBUG] createProject response:', { data, error })
     if (error) throw error
 
     return {

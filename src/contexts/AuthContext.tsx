@@ -43,6 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        console.log('[TF-DEBUG] onAuthStateChange:', _event, session?.user?.id)
         if (_event === 'SIGNED_OUT') {
           useProjectStore.getState().reset()
           useCrewStore.getState().reset()
