@@ -51,6 +51,11 @@ select {
   @apply bg-surface-2 text-text border border-border rounded;
 }
 
+select option {
+  background-color: var(--surface2);
+  color: var(--text);
+}
+
 button {
   @apply transition-colors duration-200;
 }
