@@ -12,6 +12,7 @@ import PriceResearch from '@/pages/PriceResearch'
 import CrewManager from '@/pages/CrewManager'
 import EquipmentManager from '@/pages/EquipmentManager'
 import Billing from '@/pages/Billing'
+import Settings from '@/pages/Settings'
 import Debug from '@/pages/Debug'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
@@ -43,6 +44,7 @@ function App() {
                     <Route path="/crew" element={<ErrorBoundary><CrewManager /></ErrorBoundary>} />
                     <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
                     <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
+                    <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
                     <Route path="/debug" element={<Debug />} />
                   </Routes>
                 </AppLayout>
