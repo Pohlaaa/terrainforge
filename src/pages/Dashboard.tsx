@@ -199,6 +199,7 @@ interface KpiDragState {
 }
 
 export const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [initialLoad, setInitialLoad] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setInitialLoad(false), 600);
