@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { AppState } from '@/types';
 import { useCrewStore } from '@/stores/crewStore';
 
@@ -9,6 +10,7 @@ interface CrewWidgetProps {
 export const CrewWidget: React.FC<CrewWidgetProps> = ({ appState }) => {
   const { crew, projects } = appState;
   const { getAvailableToday } = useCrewStore();
+  const navigate = useNavigate();
 
   const availableToday = getAvailableToday();
   const availableTodayIds = new Set(availableToday.map((m) => m.id));
@@ -37,33 +39,81 @@ export const CrewWidget: React.FC<CrewWidgetProps> = ({ appState }) => {
   }
 
   return (
-    <div className="px-[14px] py-[10px] max-h-[180px] overflow-y-auto">
-      <div className="space-y-[8px]">
-        {crewRows.map((member) => (
-          <div key={member.id} className="flex items-center justify-between text-[12px]">
-            <span className="text-[var(--text-secondary)]">{member.name}</span>
-            {member.assigned ? (
-              <span className="inline-flex bg-[#60A5FA] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
-                On Job
-              </span>
-            ) : member.bookedToday ? (
-              <span className="inline-flex bg-[#FB923C] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
-                Booked
-              </span>
-            ) : member.availableToday ? (
-              <span
-                className="inline-flex text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                Available
-              </span>
-            ) : (
-              <span className="inline-flex bg-[var(--surface-hover)] text-[var(--text-tertiary)] px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
-                Off
-              </span>
-            )}
-          </div>
-        ))}
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          padding: '6px 14px 0',
+        }}
+      >
+        <button
+          onClick={() => navigate('/crew')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            fontSize: '13px',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            padding: 0,
+            transition: 'color 0.15s ease',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--brand-primary)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
+        >
+          View All →
+        </button>
+      </div>
+      <div className="px-[14px] py-[8px] max-h-[180px] overflow-y-auto">
+        <div className="space-y-[4px]">
+          {crewRows.map((member) => (
+            <div
+              key={member.id}
+              onClick={() => navigate('/crew')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '12px',
+                padding: '6px 8px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'background 0.12s ease',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-hover)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                <span className="text-[var(--text-secondary)]">{member.name}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {member.assigned ? (
+                  <span className="inline-flex bg-[#60A5FA] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
+                    On Job
+                  </span>
+                ) : member.bookedToday ? (
+                  <span className="inline-flex bg-[#FB923C] text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
+                    Booked
+                  </span>
+                ) : member.availableToday ? (
+                  <span
+                    className="inline-flex text-white px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]"
+                    style={{ background: 'var(--color-primary)' }}
+                  >
+                    Available
+                  </span>
+                ) : (
+                  <span className="inline-flex bg-[var(--surface-hover)] text-[var(--text-tertiary)] px-[6px] py-[2px] rounded-[4px] font-[600] text-[10px]">
+                    Off
+                  </span>
+                )}
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: 'var(--text-tertiary)' }}>
+                  <path d="M4 2.5l3.5 3.5L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

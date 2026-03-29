@@ -18,6 +18,8 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       value: projects.filter(p => p.zones?.length > 0).length,
     }),
     colorVar: '--color-primary',
+    navigateTo: '/projects',
+    navigateParams: '?status=active',
   },
   {
     id: 'planning_projects',
@@ -28,6 +30,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       value: projects.filter(p => !p.zones || p.zones.length === 0).length,
     }),
     colorVar: '--color-primary',
+    navigateTo: '/projects',
   },
   {
     id: 'pipeline_value',
@@ -42,6 +45,8 @@ export const KPI_LIBRARY: KPIDefinition[] = [
     prefix: '$',
     suffix: 'k',
     decimals: 1,
+    navigateTo: '/projects',
+    navigateParams: '?sort=value',
   },
   {
     id: 'avg_project_value',
@@ -57,6 +62,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
     prefix: '$',
     suffix: 'k',
     decimals: 1,
+    navigateTo: '/projects',
   },
   {
     id: 'crew_available',
@@ -72,6 +78,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       return { value: available.length, subtitle: `of ${crew.length} total` };
     },
     colorVar: '--status-info',
+    navigateTo: '/crew',
   },
   {
     id: 'crew_utilization',
@@ -88,6 +95,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
     },
     colorVar: '--status-info',
     suffix: '%',
+    navigateTo: '/crew',
   },
   {
     id: 'fleet_available',
@@ -98,6 +106,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       value: equipment.filter(e => e.status === 'available').length,
     }),
     colorVar: '--status-warning',
+    navigateTo: '/equipment',
   },
   {
     id: 'fleet_in_service',
@@ -108,6 +117,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       value: equipment.filter(e => e.status === 'maintenance').length,
     }),
     colorVar: '--status-warning',
+    navigateTo: '/equipment',
   },
   {
     id: 'low_stock_alerts',
@@ -118,6 +128,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       value: materials.filter(m => m.qtyOnHand < m.minStockLevel).length,
     }),
     colorVar: '--status-error',
+    navigateTo: '/materials',
   },
   {
     id: 'total_materials',
@@ -126,6 +137,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
     icon: '🧱',
     compute: ({ materials }) => ({ value: materials.length }),
     colorVar: '--color-primary',
+    navigateTo: '/materials',
   },
   {
     id: 'overdue_projects',
@@ -142,6 +154,8 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       return { value: overdue.length };
     },
     colorVar: '--color-primary',
+    navigateTo: '/projects',
+    navigateParams: '?status=overdue',
   },
   {
     id: 'cert_expiring',
@@ -159,6 +173,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       return { value: count, subtitle: 'within 30 days' };
     },
     colorVar: '--status-info',
+    navigateTo: '/crew',
   },
 ];
 

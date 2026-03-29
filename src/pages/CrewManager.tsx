@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
+import { EmptyState, CrewIcon } from '@/components/shared/EmptyState';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -254,12 +255,13 @@ export const CrewManager: React.FC = () => {
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}
       {crew.length === 0 && (
-        <div className="text-center py-[64px] px-[24px] text-[var(--text-3)]">
-          <div className="text-[40px] mb-[12px] opacity-30">👥</div>
-          <div className="text-[16px] font-[600] text-[var(--text-2)] mb-[6px]">No crew members yet</div>
-          <div className="text-[13px] mb-[20px]">Build your roster to start assigning crew to projects</div>
-          <Button variant="primary" onClick={openAdd}>+ Add Crew Member</Button>
-        </div>
+        <EmptyState
+          icon={<CrewIcon />}
+          title="Build your team"
+          description="Add crew members to assign them to projects and track availability."
+          actionLabel="Add Crew Member"
+          onAction={openAdd}
+        />
       )}
 
       {/* ── Crew grid ─────────────────────────────────────────────────────── */}

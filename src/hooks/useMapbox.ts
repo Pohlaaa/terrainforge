@@ -2,6 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import type { Map as MapboxMap, Marker } from 'mapbox-gl';
 import type { Project } from '@/types';
 
+function statusPinColor(project: Project): string {
+  const checks = Object.values(project.checklist);
+  const completed = checks.filter(Boolean).length;
+  const pct = checks.length > 0 ? completed / checks.length : 0;
+  const today = new Date().toISOString().split('T')[0];
+  const isOverdue = project.targetDate && project.targetDate < today && pct < 1;
+
+  if (isOverdue) return '#F59E0B';
+  if (pct === 1) return '#16A34A';
+  if (pct === 0) return '#9CA3AF';
+  if (pct >= 0.5) return '#2563EB';
+  return '#F59E0B';
+}
+
 interface UseMapboxOptions {
   container: React.RefObject<HTMLDivElement | null>;
   center?: [number, number];
@@ -10,6 +24,7 @@ interface UseMapboxOptions {
   darkStyle?: string;
   projects?: Project[];
   onProjectClick?: (projectId: string) => void;
+  satelliteMode?: boolean;
 }
 
 interface UseMapboxReturn {
@@ -26,6 +41,7 @@ export function useMapbox({
   darkStyle = 'mapbox://styles/mapbox/dark-v11',
   projects = [],
   onProjectClick,
+  satelliteMode = false,
 }: UseMapboxOptions): UseMapboxReturn {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +62,12 @@ export function useMapbox({
         mapboxgl.accessToken = token;
 
         const prefersDark = document.documentElement.dataset.theme === 'dark';
-        const mapStyle = prefersDark ? darkStyle : style;
+        let mapStyle: string;
+        if (satelliteMode) {
+          mapStyle = 'mapbox://styles/mapbox/satellite-streets-v12';
+        } else {
+          mapStyle = prefersDark ? darkStyle : style;
+        }
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         const mapInstance = new mapboxgl.Map({
@@ -68,27 +89,46 @@ export function useMapbox({
           const bounds = new mapboxgl.LngLatBounds();
 
           projectsWithCoords.forEach((project) => {
+            const pinColor = statusPinColor(project);
+            const checks = Object.values(project.checklist);
+            const completedCount = checks.filter(Boolean).length;
+            const pct = checks.length > 0 ? Math.round((completedCount / checks.length) * 100) : 0;
+
             const el = document.createElement('div');
-            const primaryColor =
-              getComputedStyle(document.documentElement)
-                .getPropertyValue('--color-primary')
-                .trim() || '#2D6A4F';
             el.style.cssText = [
               'width:32px',
               'height:32px',
               'border-radius:50%',
-              `background:${primaryColor}`,
+              `background:${pinColor}`,
               'border:3px solid white',
-              'box-shadow:0 2px 4px rgba(0,0,0,0.2)',
+              'box-shadow:0 2px 8px rgba(0,0,0,0.3)',
               'cursor:pointer',
-              'padding:6px',
-              'box-sizing:content-box',
+              'transition:transform 0.15s ease',
+              'display:flex',
+              'align-items:center',
+              'justify-content:center',
             ].join(';');
 
-            const popup = new mapboxgl.Popup({ offset: 12 }).setHTML(
-              `<div style="font-family:Inter,sans-serif;padding:4px 0">
-                <div style="font-weight:600;font-size:13px">${project.name}</div>
-                <div style="font-size:11px;color:#666;margin-top:2px">${project.client}</div>
+            el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.15)'; });
+            el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
+
+            const budgetStr = project.budget
+              ? `$${(project.budget / 1000).toFixed(1)}k`
+              : 'TBD';
+
+            const popup = new mapboxgl.Popup({ offset: 16, maxWidth: '240px' }).setHTML(
+              `<div style="font-family:Inter,sans-serif;padding:6px 2px 2px">
+                <div style="font-weight:700;font-size:14px;color:#111827;margin-bottom:2px;line-height:1.2">${project.name}</div>
+                <div style="font-size:12px;color:#6B7280;margin-bottom:4px">${project.client}</div>
+                ${project.address ? `<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">${project.address}</div>` : ''}
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-size:12px;color:#374151;font-weight:600">${budgetStr}</span>
+                  <span style="font-size:11px;color:#6B7280">${pct}% complete</span>
+                </div>
+                <div style="height:4px;background:#E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:8px">
+                  <div style="height:100%;width:${pct}%;background:${pinColor};border-radius:4px"></div>
+                </div>
+                <a href="/projects" style="font-size:12px;color:#2D6A4F;font-weight:600;text-decoration:none" onclick="event.preventDefault()">View Project →</a>
               </div>`,
             );
 
@@ -105,25 +145,29 @@ export function useMapbox({
             markersRef.current.push(marker);
           });
 
-          if (projectsWithCoords.length > 1) {
-            mapInstance.fitBounds(bounds, {
-              padding: 40,
-              maxZoom: 12,
-              animate: !prefersReducedMotion,
-            });
+          if (projectsWithCoords.length >= 1) {
+            if (projectsWithCoords.length === 1) {
+              mapInstance.flyTo({
+                center: [projectsWithCoords[0].lng!, projectsWithCoords[0].lat!],
+                zoom: 12,
+                animate: !prefersReducedMotion,
+              });
+            } else {
+              mapInstance.fitBounds(bounds, {
+                padding: 48,
+                maxZoom: 12,
+                animate: !prefersReducedMotion,
+              });
+            }
           }
         });
 
         // Theme change observer
         const observer = new MutationObserver(() => {
+          if (satelliteMode) return;
           const theme = document.documentElement.dataset.theme;
           const newStyle = theme === 'dark' ? darkStyle : style;
-          const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          if (prefersReduced) {
-            mapInstance.setStyle(newStyle);
-          } else {
-            mapInstance.setStyle(newStyle);
-          }
+          mapInstance.setStyle(newStyle);
         });
         observer.observe(document.documentElement, {
           attributes: true,
@@ -146,7 +190,7 @@ export function useMapbox({
       markersRef.current = [];
       setLoaded(false);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [satelliteMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { map: mapRef.current, loaded, error };
 }

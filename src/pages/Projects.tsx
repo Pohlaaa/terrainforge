@@ -19,6 +19,9 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
+import { AddressInput } from '@/components/shared/AddressInput';
+import type { AddressSuggestion } from '@/hooks/useAddressAutocomplete';
+import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 
 type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
 
@@ -34,6 +37,8 @@ interface NewProjectForm {
   name: string;
   client: string;
   address: string;
+  lat?: number;
+  lng?: number;
   totalArea: string;
   startDate: string;
   targetDate: string;
@@ -232,6 +237,8 @@ export const Projects: React.FC = () => {
       name: form.name.trim(),
       client: form.client.trim(),
       address: form.address.trim(),
+      lat: form.lat,
+      lng: form.lng,
       totalArea: parseFloat(form.totalArea) || 0,
       startDate,
       targetDate: form.targetDate || '',
@@ -954,23 +961,13 @@ export const Projects: React.FC = () => {
 
       {/* Empty state */}
       {projects.length === 0 ? (
-        <div className="flex items-center justify-center py-[80px] px-[24px]">
-          <div className="text-center max-w-[400px]">
-            <div className="text-[48px] mb-[16px] opacity-20">⊞</div>
-            <div className="font-serif text-[22px] text-[var(--text)] mb-[10px]">
-              No projects yet
-            </div>
-            <div className="text-[13px] text-[var(--text-3)] mb-[8px] leading-relaxed">
-              Projects are the foundation of TerrainForge. Each project holds your zones, materials manifest, work orders, and crew assignments.
-            </div>
-            <div className="text-[12px] text-[var(--text-4)] mb-[28px]">
-              Create your first project to start building a manifest.
-            </div>
-            <Button variant="primary" onClick={() => setShowNewModal(true)}>
-              + Create Your First Project
-            </Button>
-          </div>
-        </div>
+        <EmptyState
+          icon={<ProjectsIcon />}
+          title="Your first project starts here"
+          description="Track jobs, assign crews, and manage materials all in one place."
+          actionLabel="New Project"
+          onAction={() => setShowNewModal(true)}
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px]">
           {projects.map((project) => {
@@ -1188,12 +1185,13 @@ export const Projects: React.FC = () => {
                   onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
                   placeholder="Client name"
                 />
-                <Input
+                <AddressInput
                   label="Address"
                   required
                   value={form.address}
                   error={formErrors.address}
-                  onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                  onChange={(text) => setForm(f => ({ ...f, address: text, lat: undefined, lng: undefined }))}
+                  onSelect={(s: AddressSuggestion) => setForm(f => ({ ...f, address: s.address, lat: s.lat, lng: s.lng }))}
                   placeholder="123 Main St"
                 />
                 <div className="relative">

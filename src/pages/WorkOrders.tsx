@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/shared/Skeleton';
 import { pdf } from '@react-pdf/renderer';
 import { CrewPacketPDF } from '@/components/pdf/CrewPacketPDF';
 import { useCrewStore } from '@/stores/crewStore';
+import { useNavigate } from 'react-router-dom';
+import { EmptyState, WorkOrdersIcon } from '@/components/shared/EmptyState';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -16,6 +18,7 @@ export const WorkOrders: React.FC = () => {
   const { projects, activeProjectId, setActiveProject, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
+  const navigate = useNavigate();
 
   const [initialLoad, setInitialLoad] = useState(true);
   useEffect(() => {
@@ -129,11 +132,13 @@ export const WorkOrders: React.FC = () => {
         <div className="text-[22px] font-serif text-[var(--text)] mb-[6px]">Work Orders</div>
         <p className="text-[13px] text-[var(--text-3)] mb-[24px]">Select a project to view its installation steps and export a crew packet.</p>
         {projects.length === 0 ? (
-          <div className="text-center py-[64px] text-[var(--text-3)]">
-            <div className="text-[40px] mb-[12px] opacity-30">⊟</div>
-            <div className="text-[16px] font-[600] text-[var(--text-2)] mb-[6px]">No projects yet</div>
-            <div className="text-[13px]">Create a project first, then come back to generate work orders.</div>
-          </div>
+          <EmptyState
+            icon={<WorkOrdersIcon />}
+            title="No work orders yet"
+            description="Work orders will appear here as you assign tasks to projects."
+            actionLabel="View Projects"
+            onAction={() => navigate('/projects')}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[12px]">
             {projects.map(p => (
