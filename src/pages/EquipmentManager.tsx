@@ -403,7 +403,7 @@ export const EquipmentManager: React.FC = () => {
 
       {/* ── Equipment grid ───────────────────────────────────────────────── */}
       {filtered.length > 0 && (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-[14px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
           {filtered.map(equip => {
             const svcHrsAlert = hoursAlert(equip.hours, equip.serviceDueHours);
             const nextSvcAlert = dateAlert(equip.nextService, ALERT_THRESHOLDS.EQUIPMENT_SERVICE_DAYS);
