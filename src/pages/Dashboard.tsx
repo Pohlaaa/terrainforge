@@ -124,6 +124,10 @@ export const Dashboard: React.FC = () => {
   const kpiRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const { projects, isLoading, error } = useProjectStore();
+
+  useEffect(() => {
+    if (error) toast.error('Failed to load dashboard data');
+  }, [error]);
   const { crew } = useCrewStore();
   const { equipment } = useEquipmentStore();
   const { materials } = useMaterialStore();
@@ -155,7 +159,7 @@ export const Dashboard: React.FC = () => {
       }));
       try {
         await updateWidgetLayout(userId, serialized);
-        toast.info('Dashboard layout saved');
+        toast.success('Dashboard layout saved');
       } catch {
         // silently ignore
       }
@@ -171,7 +175,14 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleVisibilityToggle = (widgetId: string) => {
+    const widget = widgetLayout.find((w) => w.id === widgetId);
+    const isCurrentlyVisible = widget?.visible ?? false;
     toggleWidgetVisibility(widgetId);
+    if (isCurrentlyVisible) {
+      toast.info('Widget hidden — use Edit Layout to restore');
+    } else {
+      toast.success('Widget restored');
+    }
     if (user?.id) {
       debouncedSaveLayout(user.id, widgetLayout);
     }
