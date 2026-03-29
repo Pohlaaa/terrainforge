@@ -233,6 +233,11 @@ export const Projects: React.FC = () => {
         equipment: [] as import('@/types').ZoneEquipment[],
         createdAt: new Date().toISOString(),
       }));
+    const checklist = aiSuggestion?.checklistSuggestions ?? {
+      permit: false, utility: false, deposit: false, design: false,
+      access: false, materials: false, crew: false, equipment: false,
+    };
+
     await addProject({
       name: form.name.trim(),
       client: form.client.trim(),
@@ -244,12 +249,28 @@ export const Projects: React.FC = () => {
       targetDate: form.targetDate || '',
       budget: parseFloat(form.budget) || 0,
       notes: form.notes.trim(),
-      checklist: {
-        permit: false, utility: false, deposit: false, design: false,
-        access: false, materials: false, crew: false, equipment: false,
-      },
+      checklist,
       zones: builtZones,
     });
+
+    // Persist AI-suggested materials to the newly created project
+    if (aiSuggestion?.suggestedMaterials?.length) {
+      const newProject = useProjectStore.getState().projects.find(
+        (p) => p.name === form.name.trim() && p.client === form.client.trim()
+      );
+      if (newProject) {
+        aiSuggestion.suggestedMaterials.forEach((m) => {
+          addProjectMaterial(newProject.id, {
+            materialId: '',
+            name: m.name,
+            quantity: m.estimatedQuantity,
+            unit: m.unit,
+            unitCost: 0,
+          });
+        });
+      }
+    }
+
     toast.success('Project created');
     closeNewModal();
   }
