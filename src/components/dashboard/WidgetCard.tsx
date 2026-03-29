@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { WidgetConfig } from '@/types';
 
 interface WidgetCardProps {
@@ -22,17 +22,12 @@ export const WidgetCard: React.FC<WidgetCardProps> = ({
   style,
   children,
 }) => {
-  const [born, setBorn] = useState(false);
-  const prevVisible = useRef(config.visible);
+  const [born, setBorn] = useState(true);
 
   useEffect(() => {
-    if (!prevVisible.current && config.visible) {
-      requestAnimationFrame(() => setBorn(true));
-      const t = setTimeout(() => setBorn(false), 300);
-      return () => clearTimeout(t);
-    }
-    prevVisible.current = config.visible;
-  }, [config.visible]);
+    const t = setTimeout(() => setBorn(false), 400);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div
