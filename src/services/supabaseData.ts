@@ -126,6 +126,7 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     if (snakeData.target_date === '') snakeData.target_date = null
 
     console.log('[TF-DEBUG] createProject payload:', JSON.stringify(snakeData, null, 2))
+    console.log('[TF-DEBUG] createProject lat/lng:', snakeData.lat, snakeData.lng)
 
     const { data, error } = await supabase
       .from('projects')
@@ -135,6 +136,13 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
 
     console.log('[TF-DEBUG] createProject response:', { data, error })
     if (error) throw error
+
+    // Write zones to the zones table now that the project row exists
+    if (zones && zones.length > 0) {
+      for (const { id: _zoneId, createdAt: _createdAt, ...zoneData } of zones) {
+        await createZone(id, zoneData, orgId)
+      }
+    }
 
     return {
       ...toCamelCase(data),
