@@ -22,6 +22,8 @@ interface OrgStore {
   error: string | null;
   /** Fetch the org row for the given org/user ID and update store state. */
   fetchOrg: (orgId: string) => Promise<void>;
+  /** Update the org's display name. */
+  updateOrgName: (name: string) => Promise<void>;
   /** Clear org data on sign-out. */
   clearOrg: () => void;
 }
@@ -147,6 +149,19 @@ export const useOrgStore = create<OrgStore>()(
             isLoading: false,
             error: err instanceof Error ? err.message : 'Failed to load org data',
           });
+        }
+      },
+
+      updateOrgName: async (name: string) => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) return
+        set((state) => ({ org: state.org ? { ...state.org, name } : null }))
+        const { error } = await supabase
+          .from('organizations')
+          .update({ name })
+          .eq('id', orgId)
+        if (error) {
+          console.error('[TF-DEBUG] updateOrgName failed', error)
         }
       },
 
