@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TerrainForge v5 — Micro-Interactions Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --surface-bg: #FAFAFA; --surface-card: #FFFFFF; --surface-hover: #F3F4F6;
+  --surface-active: #E5E7EB; --surface-selected: #D1FAE5;
+  --text-primary: #111827; --text-secondary: #4B5563; --text-tertiary: #9CA3AF;
+  --brand-primary: #2D6A4F; --brand-primary-hover: #245A42; --brand-primary-bg: #D1FAE5;
+  --brand-secondary: #D4A843;
+  --border-light: #F3F4F6; --border-default: #E5E7EB; --border-strong: #D1D5DB;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-hover: 0 4px 8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-elevated: 0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
+  --shadow-panel: 0 8px 24px rgba(0,0,0,0.12);
+  --status-green: #16A34A; --status-green-bg: #DCFCE7;
+  --status-amber: #F59E0B; --status-amber-bg: #FEF3C7;
+  --status-red: #DC2626; --status-red-bg: #FEE2E2;
+  --status-blue: #2563EB; --status-blue-bg: #DBEAFE;
+  --status-gray: #9CA3AF; --status-gray-bg: #F3F4F6;
+  --sidebar-bg: #0F172A; --sidebar-hover: #1E293B; --sidebar-active: #334155;
+  --sidebar-text: #E2E8F0; --sidebar-text-muted: #94A3B8; --sidebar-border: #1E293B;
+  --sidebar-accent: #34D399;
+}
+[data-theme="dark"] {
+  --surface-bg: #0F172A; --surface-card: #1E293B; --surface-hover: #334155;
+  --surface-active: #475569; --surface-selected: #064E3B;
+  --text-primary: #F1F5F9; --text-secondary: #CBD5E1; --text-tertiary: #64748B;
+  --brand-primary: #34D399; --brand-primary-hover: #6EE7B7; --brand-primary-bg: #064E3B;
+  --border-light: #1E293B; --border-default: #334155; --border-strong: #475569;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3); --shadow-hover: 0 4px 8px rgba(0,0,0,0.3);
+  --shadow-elevated: 0 12px 32px rgba(0,0,0,0.4);
+  --shadow-panel: 0 8px 24px rgba(0,0,0,0.4);
+  --status-green-bg: #064E3B; --status-amber-bg: #78350F; --status-red-bg: #7F1D1D;
+  --status-blue-bg: #1E3A5F; --status-gray-bg: #1E293B;
+}
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--surface-bg); color: var(--text-primary); line-height: 1.5; }
+
+/* Top nav */
+.top-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 999; background: var(--sidebar-bg); padding: 0 24px; display: flex; align-items: center; height: 48px; border-bottom: 1px solid var(--sidebar-border); }
+.top-bar-title { color: #fff; font-size: 14px; font-weight: 700; margin-right: 20px; }
+.top-bar-title span { color: var(--sidebar-accent); }
+.section-jump { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--sidebar-text-muted); cursor: pointer; border: none; background: none; }
+.section-jump:hover { background: var(--sidebar-hover); color: var(--sidebar-text); }
+.top-right { margin-left: auto; }
+.theme-btn { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--sidebar-text-muted); cursor: pointer; border: 1px solid var(--sidebar-border); background: none; }
+.theme-btn:hover { background: var(--sidebar-hover); color: #fff; }
+
+/* Layout */
+.playground { padding: 72px 40px 60px; max-width: 1100px; margin: 0 auto; }
+.section { margin-bottom: 56px; }
+.section-label { font-size: 11px; font-weight: 700; color: var(--brand-primary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.section-title { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 4px; }
+.section-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+.demo-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.demo-card { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 12px; padding: 24px; flex: 1; min-width: 280px; }
+.demo-label { font-size: 12px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 16px; }
+.trigger-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--brand-primary); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; height: 38px; transition: background 0.15s ease; }
+.trigger-btn:hover { background: var(--brand-primary-hover); }
+.trigger-btn-secondary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--surface-card); color: var(--text-primary); border: 1px solid var(--border-default); border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; height: 38px; }
+.trigger-btn-secondary:hover { background: var(--surface-hover); }
+.reset-link { font-size: 12px; color: var(--text-tertiary); cursor: pointer; margin-left: 8px; text-decoration: underline; }
+
+/* ===== 1. COMPLETION CELEBRATIONS ===== */
+
+/* Status change pulse */
+.status-badge { display: inline-flex; align-items: center; padding: 4px 14px; border-radius: 99px; font-size: 13px; font-weight: 600; position: relative; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.status-badge.green { background: var(--status-green-bg); color: var(--status-green); }
+.status-badge.blue { background: var(--status-blue-bg); color: var(--status-blue); }
+.status-badge.amber { background: var(--status-amber-bg); color: var(--status-amber); }
+.status-badge.gray { background: var(--status-gray-bg); color: var(--status-gray); }
+
+@keyframes completionPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); }
+  30% { transform: scale(1.25); box-shadow: 0 0 0 8px rgba(22, 163, 74, 0.2); }
+  60% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(22, 163, 74, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+.status-badge.celebrating { animation: completionPulse 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* Progress bar */
+.progress-container { margin: 16px 0; }
+.progress-track { height: 8px; background: var(--surface-hover); border-radius: 4px; overflow: hidden; position: relative; }
+.progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--status-green) 0%, #34d399 100%); transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1); position: relative; }
+.progress-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%); animation: shimmerSweep 1.5s ease-in-out; opacity: 0; }
+@keyframes shimmerSweep { 0% { transform: translateX(-100%); opacity: 1; } 100% { transform: translateX(100%); opacity: 0; } }
+.progress-fill.animating::after { animation: shimmerSweep 1s ease-in-out; }
+.progress-pct { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-top: 6px; display: inline-block; }
+
+/* Checklist */
+.checklist { list-style: none; }
+.checklist-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); transition: all 0.35s ease; }
+.checklist-item:last-child { border-bottom: none; }
+.check-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.check-circle svg { width: 12px; height: 12px; stroke: transparent; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.check-circle svg path { stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 0.35s ease 0.1s; }
+.checklist-item.checked .check-circle { background: var(--brand-primary); border-color: var(--brand-primary); transform: scale(1.1); }
+.checklist-item.checked .check-circle svg path { stroke: #fff; stroke-dashoffset: 0; }
+.check-text { font-size: 14px; color: var(--text-primary); transition: all 0.35s ease; position: relative; }
+.check-text::after { content: ''; position: absolute; left: 0; top: 50%; height: 1.5px; background: var(--text-tertiary); width: 0; transition: width 0.4s ease 0.15s; }
+.checklist-item.checked .check-text { color: var(--text-tertiary); }
+.checklist-item.checked .check-text::after { width: 100%; }
+.checklist-item.checked { transform: translateX(4px); }
+
+/* ===== 2. CREATION MOMENTUM ===== */
+
+/* Card birth */
+@keyframes cardBirth {
+  0% { opacity: 0; transform: scale(0.8); border-color: var(--brand-primary); box-shadow: 0 0 0 4px rgba(45, 106, 79, 0.2); }
+  50% { opacity: 1; transform: scale(1.03); }
+  70% { border-color: var(--brand-primary); box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.1); }
+  100% { opacity: 1; transform: scale(1); border-color: var(--border-default); box-shadow: none; }
+}
+.card-birth { animation: cardBirth 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.project-mini { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 10px; padding: 14px 16px; width: 200px; transition: all 0.2s ease; }
+.project-mini-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.project-mini-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.card-list { display: flex; gap: 12px; flex-wrap: wrap; min-height: 60px; align-items: flex-start; }
+
+/* Zone color stamp */
+@keyframes inkDrop {
+  0% { clip-path: circle(0% at 50% 50%); opacity: 0.5; }
+  60% { clip-path: circle(60% at 50% 50%); opacity: 1; }
+  100% { clip-path: circle(50% at 50% 50%); opacity: 1; }
+}
+.zone-dot { width: 16px; height: 16px; border-radius: 4px; display: inline-block; }
+.zone-dot.stamping { animation: inkDrop 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+.zone-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface-bg); border-radius: 8px; border: 1px solid var(--border-default); margin-bottom: 8px; }
+.zone-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.zone-size { font-size: 12px; color: var(--text-tertiary); margin-left: auto; }
+
+/* Running total ticker */
+.ticker-value { font-size: 32px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; display: inline-flex; overflow: hidden; }
+.ticker-digit { display: inline-block; transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* ===== 3. DATA FEEDBACK LOOPS ===== */
+
+/* KPI card with hover sparkline */
+.kpi-live { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 12px; padding: 18px 20px; min-width: 200px; cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); position: relative; overflow: hidden; }
+.kpi-live:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.kpi-live-label { font-size: 12px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.kpi-live-value { font-size: 28px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+.kpi-live-change { font-size: 12px; font-weight: 500; color: var(--status-green); margin-top: 2px; }
+.kpi-sparkline { position: absolute; bottom: 0; left: 0; right: 0; height: 40px; opacity: 0; transition: opacity 0.3s ease; }
+.kpi-live:hover .kpi-sparkline { opacity: 1; }
+.kpi-sparkline svg { width: 100%; height: 100%; }
+.kpi-sparkline path.spark-line { fill: none; stroke: var(--brand-primary); stroke-width: 2; stroke-dasharray: 200; stroke-dashoffset: 200; transition: stroke-dashoffset 0.8s ease; }
+.kpi-live:hover .kpi-sparkline path.spark-line { stroke-dashoffset: 0; }
+.kpi-sparkline path.spark-fill { fill: var(--brand-primary); opacity: 0.08; }
+
+/* Stock pulse */
+.stock-pill { display: inline-flex; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+.stock-pill.good { background: var(--status-green-bg); color: var(--status-green); }
+.stock-pill.low { background: var(--status-amber-bg); color: var(--status-amber); animation: stockPulseLow 3s ease-in-out infinite; }
+.stock-pill.out { background: var(--status-red-bg); color: var(--status-red); animation: stockPulseOut 2s ease-in-out infinite; }
+@keyframes stockPulseLow { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes stockPulseOut { 0%,100% { opacity: 0.65; transform: scale(1); } 50% { opacity: 1; transform: scale(1.03); } }
+
+/* Budget health bar */
+.budget-bar-track { height: 10px; background: var(--surface-hover); border-radius: 5px; overflow: hidden; position: relative; }
+.budget-bar-fill { height: 100%; border-radius: 5px; transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.8s ease; }
+.budget-label-row { display: flex; justify-content: space-between; font-size: 13px; margin-top: 6px; }
+
+/* ===== 4. DRAG & DROP POLISH ===== */
+.drag-demo-area { display: flex; gap: 0; min-height: 80px; padding: 16px; background: var(--surface-bg); border-radius: 10px; border: 1px solid var(--border-default); position: relative; }
+.drag-widget { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 10px; padding: 14px 18px; cursor: grab; user-select: none; min-width: 140px; text-align: center; position: relative; z-index: 1; margin: 0 6px; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.2s ease, opacity 0.2s ease; }
+.drag-widget.lifting { transform: scale(1.06); box-shadow: var(--shadow-elevated); border-color: var(--brand-primary); z-index: 100; cursor: grabbing; opacity: 0.95; }
+.drag-widget.dimmed { opacity: 0.5; transform: scale(0.97); }
+.drag-widget.slot-open-left { transform: translateX(20px); }
+.drag-widget.slot-open-right { transform: translateX(-20px); }
+.drag-widget-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.drag-widget-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+@keyframes dropSettle {
+  0% { transform: scale(1.06); }
+  40% { transform: scale(0.96); }
+  70% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+.drag-widget.settled { animation: dropSettle 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* Drag ghost placeholder */
+.drag-placeholder { min-width: 140px; min-height: 56px; border: 2px dashed var(--brand-primary); border-radius: 10px; background: var(--brand-primary-bg); margin: 0 6px; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); animation: placeholderPulse 1s ease-in-out infinite; }
+@keyframes placeholderPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 0.8; } }
+
+/* Order number badges */
+.drag-order { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--brand-primary); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.drag-widget.settled .drag-order { animation: dropSettle 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* ===== 5. LOADING & EMPTY STATES ===== */
+.skeleton-card { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 12px; padding: 20px; overflow: hidden; }
+.skeleton-line { height: 12px; border-radius: 6px; background: var(--surface-hover); position: relative; overflow: hidden; margin-bottom: 10px; }
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w80 { width: 80%; }
+.skeleton-line.w40 { width: 40%; }
+.skeleton-line.h20 { height: 20px; }
+.skeleton-line::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(45,106,79,0.06) 50%, transparent 100%); animation: skeletonShimmer 1.8s ease-in-out infinite; }
+@keyframes skeletonShimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+.empty-state { text-align: center; padding: 40px 20px; }
+.empty-icon { font-size: 48px; animation: breathe 3s ease-in-out infinite; }
+@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.empty-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 12px 0 4px; }
+.empty-desc { font-size: 13px; color: var(--text-tertiary); margin-bottom: 16px; }
+.pulse-btn { animation: btnPulse 2.5s ease-in-out infinite; }
+@keyframes btnPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(45,106,79,0.3); } 50% { box-shadow: 0 0 0 8px rgba(45,106,79,0); } }
+
+/* ===== 6. TOAST SYSTEM ===== */
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column-reverse; gap: 8px; }
+.toast-item { padding: 14px 20px 14px 16px; background: var(--sidebar-bg); color: #fff; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-panel); display: flex; align-items: center; gap: 10px; transform: translateY(12px); opacity: 0; transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; }
+.toast-item.show { transform: translateY(0); opacity: 1; pointer-events: all; }
+.toast-item.hiding { transform: translateX(120%); opacity: 0; }
+.toast-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.toast-icon svg { width: 100%; height: 100%; }
+.toast-icon svg circle, .toast-icon svg path { stroke-dasharray: 60; stroke-dashoffset: 60; transition: stroke-dashoffset 0.5s ease 0.15s; }
+.toast-item.show .toast-icon svg circle, .toast-item.show .toast-icon svg path { stroke-dashoffset: 0; }
+
+/* Error shake */
+@keyframes errorShake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-4px); } 40%,80% { transform: translateX(4px); } }
+.toast-item.error { animation: errorShake 0.4s ease 0.1s; }
+
+/* ===== 7. NOTIFICATION BELL ===== */
+.bell-demo { display: flex; align-items: center; gap: 16px; }
+.bell-btn { position: relative; width: 40px; height: 40px; border-radius: 10px; background: var(--surface-bg); border: 1px solid var(--border-default); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+@keyframes bellRing { 0%,100% { transform: rotate(0); } 15% { transform: rotate(12deg); } 30% { transform: rotate(-10deg); } 45% { transform: rotate(6deg); } 60% { transform: rotate(-4deg); } 75% { transform: rotate(2deg); } }
+.bell-btn.ringing { animation: bellRing 0.6s ease; }
+.bell-badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--status-red); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; transform: scale(0); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bell-badge.visible { transform: scale(1); }
+
+/* Dividers */
+.section-divider { height: 1px; background: var(--border-default); margin: 48px 0; }
+
+/* ===== TABLET-FIRST RESPONSIVE (768-1024px) ===== */
+
+/* Touch target enforcement: everything tappable gets 44px minimum */
+@media (pointer: coarse), (max-width: 1024px) {
+  /* Buttons: enforce 44px minimum touch target */
+  .trigger-btn, .trigger-btn-secondary { min-height: 44px; min-width: 44px; padding: 10px 20px; font-size: 14px; }
+  .section-jump { min-height: 44px; padding: 10px 14px; }
+  .theme-btn { min-height: 44px; padding: 10px 16px; }
+
+  /* Active/pressed states for touch — more visible than hover */
+  .trigger-btn:active { transform: scale(0.95); transition: transform 0.1s ease; }
+  .trigger-btn-secondary:active { transform: scale(0.95); background: var(--surface-active); }
+
+  /* Checklist: bigger hit areas */
+  .checklist-item { padding: 16px 4px; gap: 14px; -webkit-tap-highlight-color: transparent; }
+  .check-circle { width: 28px; height: 28px; }
+  .check-circle svg { width: 14px; height: 14px; }
+  .check-text { font-size: 15px; }
+  .checklist-item:active { background: var(--surface-hover); border-radius: 8px; }
+
+  /* KPI cards: bigger tap area, more prominent lift */
+  .kpi-live { padding: 20px 22px; min-width: 180px; }
+  .kpi-live:active { transform: scale(0.97); }
+  .kpi-live-label { font-size: 13px; }
+  .kpi-live-value { font-size: 30px; }
+
+  /* Stock pills: bigger for tapping */
+  .stock-pill { padding: 6px 14px; font-size: 13px; }
+
+  /* Drag widgets: larger for fat-finger friendliness */
+  .drag-widget { min-width: 120px; padding: 16px 14px; min-height: 64px; touch-action: none; }
+  .drag-widget-label { font-size: 14px; }
+  .drag-widget-sub { font-size: 12px; }
+  .drag-order { width: 22px; height: 22px; font-size: 11px; }
+
+  /* Project mini cards */
+  .project-mini { padding: 16px 18px; }
+  .project-mini-name { font-size: 15px; }
+
+  /* Zone rows */
+  .zone-row { padding: 14px 16px; }
+  .zone-dot { width: 20px; height: 20px; }
+  .zone-label { font-size: 15px; }
+
+  /* Bell button */
+  .bell-btn { width: 48px; height: 48px; font-size: 22px; }
+
+  /* Toast: bigger touch dismiss area */
+  .toast-item { padding: 16px 24px 16px 18px; font-size: 15px; border-radius: 12px; }
+
+  /* Pulse btn (empty state) */
+  .pulse-btn { min-height: 48px; padding: 12px 24px; font-size: 15px; }
+
+  /* Reset links: make tappable */
+  .reset-link { font-size: 14px; padding: 8px 12px; display: inline-block; min-height: 44px; line-height: 28px; }
+}
+
+/* Layout adjustments for tablet width */
+@media (max-width: 1024px) {
+  .playground { padding: 64px 24px 48px; }
+  .section { margin-bottom: 44px; }
+  .section-title { font-size: 20px; }
+  .section-desc { font-size: 14px; margin-bottom: 20px; }
+
+  /* Top bar: horizontally scrollable nav */
+  .top-bar { padding: 0 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 2px; scrollbar-width: none; }
+  .top-bar::-webkit-scrollbar { display: none; }
+  .top-bar-title { font-size: 13px; margin-right: 12px; white-space: nowrap; }
+
+  /* Demo rows stack or wrap better */
+  .demo-row { gap: 14px; }
+  .demo-card { min-width: 260px; padding: 20px; }
+
+  /* KPI row: 2-col on tablet instead of 3 side by side */
+  .demo-row:has(.kpi-live) { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* Card list wraps */
+  .card-list { gap: 10px; }
+  .project-mini { width: auto; flex: 1; min-width: 160px; }
+
+  /* Drag area: allow horizontal scroll if needed, or wrap */
+  .drag-demo-area { flex-wrap: wrap; gap: 8px; padding: 14px; }
+  .drag-widget { margin: 0; flex: 1 1 calc(33% - 8px); min-width: 110px; }
+  .drag-placeholder { flex: 1 1 calc(33% - 8px); min-width: 110px; margin: 0; }
+
+  /* Budget buttons wrap */
+  .demo-card > div:has(.trigger-btn-secondary) { flex-wrap: wrap; }
+
+  /* Skeleton cards */
+  .demo-row:has(.skeleton-card) .demo-card > div { flex-direction: column; }
+
+  /* Section dividers: less margin */
+  .section-divider { margin: 36px 0; }
+
+  /* Toast positioning: bottom center for tablet */
+  .toast-container { bottom: 16px; right: 16px; left: 16px; align-items: center; }
+}
+
+/* Smaller tablets / large phones (640px and below) */
+@media (max-width: 640px) {
+  .playground { padding: 56px 16px 40px; }
+
+  /* Stack everything single column */
+  .demo-row { flex-direction: column; }
+  .demo-row:has(.kpi-live) { grid-template-columns: 1fr; }
+  .demo-card { min-width: 100%; }
+
+  /* Drag area: 2 across */
+  .drag-demo-area { padding: 12px; }
+  .drag-widget { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  .drag-placeholder { flex: 1 1 calc(50% - 8px); min-width: 0; }
+
+  /* KPI cards full width */
+  .kpi-live { min-width: 100%; }
+
+  /* Card list single col */
+  .card-list { flex-direction: column; }
+  .project-mini { width: 100%; }
+
+  /* Top bar: compact */
+  .top-bar-title span { display: none; }
+  .section-jump { padding: 10px 10px; font-size: 11px; }
+}
+
+/* ===== TOUCH-SPECIFIC ANIMATIONS ===== */
+/* On touch devices, replace hover sparklines with tap-triggered */
+@media (pointer: coarse) {
+  /* Disable hover-only effects — require tap */
+  .kpi-live:hover { transform: none; box-shadow: var(--shadow-card); }
+  .kpi-live:hover .kpi-sparkline { opacity: 0; }
+
+  /* Tap active state instead */
+  .kpi-live:active { transform: scale(0.97); }
+  .kpi-live.tapped .kpi-sparkline { opacity: 1; }
+  .kpi-live.tapped { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+
+  /* Long-press hint for drag items */
+  .drag-widget::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit;
+    background: var(--brand-primary); opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none; z-index: -1;
+  }
+  .drag-widget:active::before { opacity: 0.06; }
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-bar-title"><span>Terrain</span>Forge <span style="color:var(--sidebar-text-muted);font-weight:400;margin-left:8px;">v5 Micro-Interactions</span></div>
+  <button class="section-jump" onclick="document.getElementById('sec-completion').scrollIntoView({behavior:'smooth'})">Completion</button>
+  <button class="section-jump" onclick="document.getElementById('sec-creation').scrollIntoView({behavior:'smooth'})">Creation</button>
+  <button class="section-jump" onclick="document.getElementById('sec-data').scrollIntoView({behavior:'smooth'})">Data</button>
+  <button class="section-jump" onclick="document.getElementById('sec-drag').scrollIntoView({behavior:'smooth'})">Drag</button>
+  <button class="section-jump" onclick="document.getElementById('sec-states').scrollIntoView({behavior:'smooth'})">States</button>
+  <button class="section-jump" onclick="document.getElementById('sec-toasts').scrollIntoView({behavior:'smooth'})">Toasts</button>
+  <div class="top-right"><button class="theme-btn" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme==='dark'?'light':'dark'">Toggle Theme</button></div>
+</div>
+
+<div class="playground">
+
+<!-- ===== 1. COMPLETION CELEBRATIONS ===== -->
+<div class="section" id="sec-completion">
+  <div class="section-label">1. Completion Celebrations</div>
+  <div class="section-title">Status changes that feel rewarding</div>
+  <div class="section-desc">The dopamine hit when something gets done. Tap to trigger each animation.</div>
+
+  <div class="demo-row">
+    <!-- Status pulse -->
+    <div class="demo-card">
+      <div class="demo-label">Status Change Pulse</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <span class="status-badge blue" id="statusDemo">In Progress</span>
+        <span style="font-size:13px;color:var(--text-tertiary);">&#8594;</span>
+        <span style="font-size:13px;color:var(--text-tertiary);">tap to complete</span>
+      </div>
+      <button class="trigger-btn" onclick="demoStatusPulse()">Mark Complete</button>
+      <span class="reset-link" onclick="resetStatusPulse()">reset</span>
+    </div>
+
+    <!-- Progress bar fill -->
+    <div class="demo-card">
+      <div class="demo-label">Progress Bar Fill</div>
+      <div class="progress-container">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill" style="width:35%"></div>
+        </div>
+        <span class="progress-pct" id="progressPct">35%</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="trigger-btn" onclick="demoProgress(65)">65%</button>
+        <button class="trigger-btn" onclick="demoProgress(85)">85%</button>
+        <button class="trigger-btn" onclick="demoProgress(100)">100%</button>
+        <span class="reset-link" onclick="demoProgress(35)">reset</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checklist -->
+  <div class="demo-row" style="margin-top:16px;">
+    <div class="demo-card" style="max-width:400px;">
+      <div class="demo-label">Checklist Strike-Through</div>
+      <ul class="checklist">
+        <li class="checklist-item" onclick="toggleCheck(this)">
+          <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+          <span class="check-text">Grade and compact subbase</span>
+        </li>
+        <li class="checklist-item" onclick="toggleCheck(this)">
+          <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+          <span class="check-text">Lay geotextile fabric</span>
+        </li>
+        <li class="checklist-item" onclick="toggleCheck(this)">
+          <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+          <span class="check-text">Set edge restraints</span>
+        </li>
+        <li class="checklist-item" onclick="toggleCheck(this)">
+          <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+          <span class="check-text">Install pavers in pattern</span>
+        </li>
+        <li class="checklist-item" onclick="toggleCheck(this)">
+          <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+          <span class="check-text">Sweep polymeric sand</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ===== 2. CREATION MOMENTUM ===== -->
+<div class="section" id="sec-creation">
+  <div class="section-label">2. Creation Momentum</div>
+  <div class="section-title">Making "add" feel productive</div>
+  <div class="section-desc">Every new item should feel like you just built something real.</div>
+
+  <div class="demo-row">
+    <!-- Card birth -->
+    <div class="demo-card" style="flex:2;">
+      <div class="demo-label">Card Birth Animation</div>
+      <div class="card-list" id="cardList">
+        <div class="project-mini"><div class="project-mini-name">Oak St Patio</div><div class="project-mini-meta">$12,500 &middot; 65%</div></div>
+        <div class="project-mini"><div class="project-mini-name">Maple Hardscape</div><div class="project-mini-meta">$28,000 &middot; 40%</div></div>
+      </div>
+      <div style="margin-top:14px;">
+        <button class="trigger-btn" onclick="demoCardBirth()">+ Add Project</button>
+        <span class="reset-link" onclick="resetCardBirth()">reset</span>
+      </div>
+    </div>
+
+    <!-- Running total -->
+    <div class="demo-card">
+      <div class="demo-label">Running Total Ticker</div>
+      <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px;">TOTAL BUDGET</div>
+      <div class="ticker-value" id="tickerValue">$40,500</div>
+      <div style="margin-top:14px;">
+        <button class="trigger-btn" onclick="demoTicker()">Add $8,200</button>
+        <span class="reset-link" onclick="resetTicker()">reset</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zone color stamp -->
+  <div class="demo-row" style="margin-top:16px;">
+    <div class="demo-card" style="max-width:400px;">
+      <div class="demo-label">Zone Color Stamp</div>
+      <div id="zoneList">
+        <div class="zone-row"><div class="zone-dot" style="background:#16A34A;"></div><div class="zone-label">Front Patio</div><div class="zone-size">1,200 sqft</div></div>
+        <div class="zone-row"><div class="zone-dot" style="background:#2563EB;"></div><div class="zone-label">Retaining Wall</div><div class="zone-size">80 lf</div></div>
+      </div>
+      <button class="trigger-btn" style="margin-top:10px;" onclick="demoZoneStamp()">+ Add Zone</button>
+      <span class="reset-link" onclick="resetZones()">reset</span>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ===== 3. DATA FEEDBACK LOOPS ===== -->
+<div class="section" id="sec-data">
+  <div class="section-label">3. Data Feedback</div>
+  <div class="section-title">Numbers that feel alive</div>
+  <div class="section-desc">Hover the KPI cards. Watch the stock badges pulse. Tap to change the budget spend.</div>
+
+  <div class="demo-row">
+    <div class="kpi-live">
+      <div class="kpi-live-label">Active Projects</div>
+      <div class="kpi-live-value">12</div>
+      <div class="kpi-live-change">+3 this month</div>
+      <div class="kpi-sparkline"><svg viewBox="0 0 200 40" preserveAspectRatio="none"><path class="spark-fill" d="M0,35 L25,28 L50,32 L75,20 L100,24 L125,15 L150,18 L175,8 L200,12 L200,40 L0,40 Z"/><path class="spark-line" d="M0,35 L25,28 L50,32 L75,20 L100,24 L125,15 L150,18 L175,8 L200,12"/></svg></div>
+    </div>
+    <div class="kpi-live">
+      <div class="kpi-live-label">Total Budget</div>
+      <div class="kpi-live-value">$184K</div>
+      <div class="kpi-live-change">+$42K vs last month</div>
+      <div class="kpi-sparkline"><svg viewBox="0 0 200 40" preserveAspectRatio="none"><path class="spark-fill" d="M0,30 L30,25 L60,28 L90,18 L120,22 L150,10 L180,14 L200,8 L200,40 L0,40 Z"/><path class="spark-line" d="M0,30 L30,25 L60,28 L90,18 L120,22 L150,10 L180,14 L200,8"/></svg></div>
+    </div>
+    <div class="kpi-live">
+      <div class="kpi-live-label">Crew Deployed</div>
+      <div class="kpi-live-value">8</div>
+      <div class="kpi-live-change">2 available</div>
+      <div class="kpi-sparkline"><svg viewBox="0 0 200 40" preserveAspectRatio="none"><path class="spark-fill" d="M0,20 L30,18 L60,25 L90,15 L120,20 L150,22 L180,12 L200,16 L200,40 L0,40 Z"/><path class="spark-line" d="M0,20 L30,18 L60,25 L90,15 L120,20 L150,22 L180,12 L200,16"/></svg></div>
+    </div>
+  </div>
+
+  <div class="demo-row" style="margin-top:20px;">
+    <!-- Stock pulses -->
+    <div class="demo-card">
+      <div class="demo-label">Stock Level Pulse</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;color:var(--text-primary);">Belgard Holland Stone</span><span class="stock-pill good">In Stock</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;color:var(--text-primary);">Techo-Bloc Blu 60</span><span class="stock-pill low">Low Stock</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;color:var(--text-primary);">Natural Flagstone</span><span class="stock-pill out">Out of Stock</span></div>
+      </div>
+    </div>
+
+    <!-- Budget health bar -->
+    <div class="demo-card">
+      <div class="demo-label">Budget Health Indicator</div>
+      <div class="budget-bar-track">
+        <div class="budget-bar-fill" id="budgetFill" style="width:45%;background:var(--status-green);"></div>
+      </div>
+      <div class="budget-label-row">
+        <span style="color:var(--text-secondary);">Spent: <strong id="budgetSpent">$5,625</strong></span>
+        <span style="color:var(--text-tertiary);">Budget: $12,500</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="trigger-btn-secondary" onclick="demoBudget(45, 5625, 'var(--status-green)')">45%</button>
+        <button class="trigger-btn-secondary" onclick="demoBudget(72, 9000, 'var(--status-amber)')">72%</button>
+        <button class="trigger-btn-secondary" onclick="demoBudget(95, 11875, 'var(--status-red)')">95%</button>
+        <button class="trigger-btn-secondary" onclick="demoBudget(110, 13750, '#9b1c1c')">110%</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ===== 4. DRAG & DROP ===== -->
+<div class="section" id="sec-drag">
+  <div class="section-label">4. Drag & Drop Polish</div>
+  <div class="section-title">Making rearranging feel physical</div>
+  <div class="section-desc">Drag widgets between zones. Notice the lift, the magnetic snap, and the settle on drop.</div>
+
+  <div class="demo-row">
+    <div class="demo-card" style="flex:2;">
+      <div class="demo-label">Widget Reorder — drag any card to rearrange</div>
+      <div class="drag-demo-area" id="dragArea">
+        <div class="drag-widget" data-id="kpi">
+          <div class="drag-order">1</div>
+          <div class="drag-widget-label">KPI Row</div><div class="drag-widget-sub">4 metrics</div>
+        </div>
+        <div class="drag-widget" data-id="map">
+          <div class="drag-order">2</div>
+          <div class="drag-widget-label">Project Map</div><div class="drag-widget-sub">6 pins</div>
+        </div>
+        <div class="drag-widget" data-id="jobs">
+          <div class="drag-order">3</div>
+          <div class="drag-widget-label">Active Jobs</div><div class="drag-widget-sub">3 projects</div>
+        </div>
+        <div class="drag-widget" data-id="budget">
+          <div class="drag-order">4</div>
+          <div class="drag-widget-label">Budget Chart</div><div class="drag-widget-sub">Monthly view</div>
+        </div>
+        <div class="drag-widget" data-id="activity">
+          <div class="drag-order">5</div>
+          <div class="drag-widget-label">Activity Feed</div><div class="drag-widget-sub">Recent updates</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text-tertiary);">Grab a widget, drag over another to swap positions. Watch for the lift, the slot opening, and the settle.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ===== 5. LOADING & EMPTY STATES ===== -->
+<div class="section" id="sec-states">
+  <div class="section-label">5. Loading & Empty States</div>
+  <div class="section-title">Keeping engagement during waits</div>
+  <div class="section-desc">Skeleton loaders with brand-tinted shimmer. Empty states that invite action.</div>
+
+  <div class="demo-row">
+    <div class="demo-card">
+      <div class="demo-label">Skeleton Shimmer</div>
+      <div style="display:flex;gap:12px;">
+        <div class="skeleton-card" style="flex:1;">
+          <div class="skeleton-line h20 w60"></div>
+          <div class="skeleton-line w80"></div>
+          <div class="skeleton-line w40"></div>
+          <div style="height:8px;"></div>
+          <div class="skeleton-line h20 w40"></div>
+        </div>
+        <div class="skeleton-card" style="flex:1;">
+          <div class="skeleton-line h20 w80"></div>
+          <div class="skeleton-line w60"></div>
+          <div class="skeleton-line w80"></div>
+          <div style="height:8px;"></div>
+          <div class="skeleton-line h20 w40"></div>
+        </div>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-label">Empty State</div>
+      <div class="empty-state">
+        <div class="empty-icon">&#128679;</div>
+        <div class="empty-title">No projects yet</div>
+        <div class="empty-desc">Create your first project to get started.</div>
+        <button class="trigger-btn pulse-btn">+ New Project</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ===== 6. TOASTS & NOTIFICATIONS ===== -->
+<div class="section" id="sec-toasts">
+  <div class="section-label">6. Toasts & Notifications</div>
+  <div class="section-title">Feedback that confirms without interrupting</div>
+  <div class="section-desc">Success draws a checkmark. Errors shake. The bell rings on new alerts.</div>
+
+  <div class="demo-row">
+    <div class="demo-card">
+      <div class="demo-label">Toast Variants</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="trigger-btn" onclick="fireToast('success','Project created successfully')">Success Toast</button>
+        <button class="trigger-btn-secondary" onclick="fireToast('error','Failed to save — check connection')">Error Toast</button>
+        <button class="trigger-btn-secondary" onclick="fireToast('info','Manifest generated — 47 items')">Info Toast</button>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-label">Notification Bell</div>
+      <div class="bell-demo">
+        <div class="bell-btn" id="bellBtn" onclick="demoBell()">
+          &#128276;
+          <div class="bell-badge" id="bellBadge">0</div>
+        </div>
+        <span style="font-size:13px;color:var(--text-secondary);">Tap to receive a new alert</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /playground -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// 1. Status pulse
+function demoStatusPulse() {
+  const el = document.getElementById('statusDemo');
+  el.className = 'status-badge green celebrating';
+  el.textContent = 'Completed';
+  setTimeout(() => el.classList.remove('celebrating'), 700);
+}
+function resetStatusPulse() {
+  const el = document.getElementById('statusDemo');
+  el.className = 'status-badge blue';
+  el.textContent = 'In Progress';
+}
+
+// Progress bar
+function demoProgress(pct) {
+  const fill = document.getElementById('progressFill');
+  const label = document.getElementById('progressPct');
+  fill.style.width = pct + '%';
+  fill.classList.add('animating');
+  // Animate number
+  const start = parseInt(label.textContent);
+  const diff = pct - start;
+  const duration = 800;
+  const startTime = performance.now();
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    label.textContent = Math.round(start + diff * eased) + '%';
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  setTimeout(() => fill.classList.remove('animating'), 1200);
+}
+
+// Checklist
+function toggleCheck(item) {
+  item.classList.toggle('checked');
+}
+
+// Card birth
+let cardCount = 2;
+const newProjects = [
+  { name: 'Pine Ridge Irrigation', meta: '$8,200 · 20%' },
+  { name: 'Cedar Park Landscape', meta: '$15,300 · 0%' },
+  { name: 'Birch Lane Wall', meta: '$22,000 · 10%' },
+  { name: 'Elm Court Drainage', meta: '$6,800 · 0%' },
+];
+function demoCardBirth() {
+  if (cardCount >= 6) return;
+  const p = newProjects[cardCount - 2] || { name: 'New Project', meta: '$0 · 0%' };
+  const card = document.createElement('div');
+  card.className = 'project-mini card-birth';
+  card.innerHTML = `<div class="project-mini-name">${p.name}</div><div class="project-mini-meta">${p.meta}</div>`;
+  document.getElementById('cardList').appendChild(card);
+  cardCount++;
+}
+function resetCardBirth() {
+  const list = document.getElementById('cardList');
+  while (list.children.length > 2) list.removeChild(list.lastChild);
+  cardCount = 2;
+}
+
+// Running total ticker
+let currentTotal = 40500;
+function demoTicker() {
+  const target = currentTotal + 8200;
+  animateValue('tickerValue', currentTotal, target, 700);
+  currentTotal = target;
+}
+function resetTicker() {
+  animateValue('tickerValue', currentTotal, 40500, 500);
+  currentTotal = 40500;
+}
+function animateValue(elId, start, end, duration) {
+  const el = document.getElementById(elId);
+  const startTime = performance.now();
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(start + (end - start) * eased);
+    el.textContent = '$' + current.toLocaleString();
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+// Zone color stamp
+const zoneColors = ['#F59E0B', '#DC2626', '#8B5CF6', '#EC4899'];
+const zoneNames = ['Side Walkway', 'Back Deck', 'Garden Bed', 'Driveway'];
+let zoneCount = 0;
+function demoZoneStamp() {
+  if (zoneCount >= 4) return;
+  const row = document.createElement('div');
+  row.className = 'zone-row';
+  row.style.opacity = '0';
+  row.style.transform = 'translateY(8px)';
+  const dot = document.createElement('div');
+  dot.className = 'zone-dot stamping';
+  dot.style.background = zoneColors[zoneCount];
+  row.innerHTML = `<div class="zone-label">${zoneNames[zoneCount]}</div><div class="zone-size">${Math.floor(Math.random()*2000+500)} sqft</div>`;
+  row.prepend(dot);
+  document.getElementById('zoneList').appendChild(row);
+  requestAnimationFrame(() => { row.style.transition = 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)'; row.style.opacity = '1'; row.style.transform = 'translateY(0)'; });
+  zoneCount++;
+}
+function resetZones() {
+  const list = document.getElementById('zoneList');
+  while (list.children.length > 2) list.removeChild(list.lastChild);
+  zoneCount = 0;
+}
+
+// Budget health
+function demoBudget(pct, spent, color) {
+  const fill = document.getElementById('budgetFill');
+  const spentEl = document.getElementById('budgetSpent');
+  fill.style.width = Math.min(pct, 100) + '%';
+  fill.style.background = color;
+  const startVal = parseInt(spentEl.textContent.replace(/[$,]/g, ''));
+  const duration = 800;
+  const startTime = performance.now();
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    spentEl.textContent = '$' + Math.round(startVal + (spent - startVal) * eased).toLocaleString();
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+// Drag & Drop Reorder
+(function() {
+  const area = document.getElementById('dragArea');
+  let dragged = null;
+  let placeholder = null;
+  let startX = 0;
+  let startY = 0;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  function getWidgets() { return [...area.querySelectorAll('.drag-widget')]; }
+
+  function updateOrderBadges() {
+    getWidgets().forEach((w, i) => {
+      const badge = w.querySelector('.drag-order');
+      if (badge) badge.textContent = i + 1;
+    });
+  }
+
+  // Pointer-based drag for better control than native drag
+  area.addEventListener('pointerdown', (e) => {
+    const widget = e.target.closest('.drag-widget');
+    if (!widget || !area.contains(widget)) return;
+
+    dragged = widget;
+    const rect = widget.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    startX = rect.left;
+    startY = rect.top;
+
+    // Create placeholder
+    placeholder = document.createElement('div');
+    placeholder.className = 'drag-placeholder';
+    placeholder.style.width = rect.width + 'px';
+    placeholder.style.height = rect.height + 'px';
+
+    // Lift the dragged widget
+    widget.classList.add('lifting');
+    widget.style.position = 'fixed';
+    widget.style.width = rect.width + 'px';
+    widget.style.left = rect.left + 'px';
+    widget.style.top = rect.top + 'px';
+    widget.style.zIndex = '100';
+    widget.style.pointerEvents = 'none';
+    widget.style.transition = 'transform 0.15s ease, box-shadow 0.15s ease';
+
+    // Insert placeholder where widget was
+    area.insertBefore(placeholder, widget);
+
+    // Dim siblings
+    getWidgets().forEach(w => { if (w !== dragged) w.classList.add('dimmed'); });
+
+    widget.setPointerCapture(e.pointerId);
+  });
+
+  area.addEventListener('pointermove', (e) => {
+    if (!dragged) return;
+
+    // Move the floating widget
+    dragged.style.left = (e.clientX - offsetX) + 'px';
+    dragged.style.top = (e.clientY - offsetY) + 'px';
+
+    // Find which sibling we're over
+    const widgets = getWidgets().filter(w => w !== dragged);
+    for (const w of widgets) {
+      const rect = w.getBoundingClientRect();
+      const midX = rect.left + rect.width / 2;
+      if (e.clientX < midX) {
+        if (placeholder.nextSibling !== w) {
+          area.insertBefore(placeholder, w);
+        }
+        return;
+      }
+    }
+    // Past all widgets — put placeholder at end (before dragged)
+    area.insertBefore(placeholder, dragged);
+  });
+
+  area.addEventListener('pointerup', (e) => {
+    if (!dragged) return;
+
+    // Un-dim siblings
+    getWidgets().forEach(w => w.classList.remove('dimmed'));
+
+    // Remove lifting styles
+    dragged.classList.remove('lifting');
+    dragged.style.position = '';
+    dragged.style.width = '';
+    dragged.style.left = '';
+    dragged.style.top = '';
+    dragged.style.zIndex = '';
+    dragged.style.pointerEvents = '';
+    dragged.style.transition = '';
+
+    // Insert widget where placeholder is
+    area.insertBefore(dragged, placeholder);
+    placeholder.remove();
+    placeholder = null;
+
+    // Settle animation
+    dragged.classList.add('settled');
+    setTimeout(() => dragged.classList.remove('settled'), 450);
+
+    // Update order badges
+    updateOrderBadges();
+
+    dragged = null;
+  });
+
+  area.addEventListener('pointercancel', () => {
+    if (dragged) {
+      getWidgets().forEach(w => w.classList.remove('dimmed'));
+      dragged.classList.remove('lifting');
+      dragged.style.position = '';
+      dragged.style.width = '';
+      dragged.style.left = '';
+      dragged.style.top = '';
+      dragged.style.zIndex = '';
+      dragged.style.pointerEvents = '';
+      dragged.style.transition = '';
+      if (placeholder) { area.insertBefore(dragged, placeholder); placeholder.remove(); }
+      dragged = null;
+      placeholder = null;
+    }
+  });
+})();
+
+// Toasts
+let toastId = 0;
+function fireToast(type, msg) {
+  const container = document.getElementById('toastContainer');
+  const id = 'toast-' + (toastId++);
+  const icons = {
+    success: `<svg viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>`,
+    error: `<svg viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+    info: `<svg viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>`
+  };
+  const toast = document.createElement('div');
+  toast.className = 'toast-item' + (type === 'error' ? ' error' : '');
+  toast.id = id;
+  toast.innerHTML = `<div class="toast-icon">${icons[type]}</div>${msg}`;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    toast.classList.add('hiding');
+    setTimeout(() => toast.remove(), 400);
+  }, 3000);
+}
+
+// KPI tap-to-toggle sparkline (touch devices)
+document.querySelectorAll('.kpi-live').forEach(kpi => {
+  kpi.addEventListener('click', () => {
+    // Toggle sparkline visibility on tap
+    const isTouch = matchMedia('(pointer: coarse)').matches;
+    if (isTouch) {
+      const wasActive = kpi.classList.contains('tapped');
+      // Close all others
+      document.querySelectorAll('.kpi-live.tapped').forEach(k => k.classList.remove('tapped'));
+      if (!wasActive) kpi.classList.add('tapped');
+    }
+  });
+});
+
+// Bell
+let bellCount = 0;
+function demoBell() {
+  bellCount++;
+  const btn = document.getElementById('bellBtn');
+  const badge = document.getElementById('bellBadge');
+  btn.classList.remove('ringing');
+  void btn.offsetWidth;
+  btn.classList.add('ringing');
+  badge.textContent = bellCount;
+  badge.classList.add('visible');
+  setTimeout(() => btn.classList.remove('ringing'), 700);
+}
+</script>
+</body>
+</html>
