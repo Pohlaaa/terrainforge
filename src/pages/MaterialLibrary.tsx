@@ -493,7 +493,7 @@ export const MaterialLibrary: React.FC = () => {
               <div className="text-[12px] mt-[8px]">Add supplier details when editing a material</div>
             </div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-[14px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
               {Array.from(supplierMap.entries()).map(([name, info]) => (
                 <div
                   key={name}

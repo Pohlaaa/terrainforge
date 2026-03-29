@@ -86,7 +86,7 @@ export const Dashboard: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
-      <div className="grid grid-cols-[320px_1fr] gap-[16px] items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[16px] items-start">
       {/* LEFT COLUMN: KPIs + Alerts */}
       <div className="flex flex-col gap-[12px]">
         {/* KPI cards — replaced by welcome card when no projects exist */}

@@ -292,7 +292,7 @@ export const Projects: React.FC = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-[1fr_320px] gap-[16px] items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[16px] items-start">
           {/* Zones panel */}
           <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
             <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
@@ -603,7 +603,7 @@ export const Projects: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-[16px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px]">
           {projects.map((project) => {
             const status = getProjectStatus(project);
             const checks = Object.values(project.checklist);
