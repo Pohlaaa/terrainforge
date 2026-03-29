@@ -117,12 +117,35 @@ Running log of bugs, friction points, and observations found during testing. Eac
 
 ---
 
+---
+
+## Sprint 7 — Feature Findings (all resolved)
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| FR-001 | P2 | AI autofill for project creation form (pilot request) | Resolved — S7-4: AI project creation via Claude Haiku, describe job → pre-filled form |
+| FR-002 | P1 | Edit overall project details after creation (pilot request) | Resolved — S6-3: Edit modal on project detail |
+| FR-003 | P2 | Prompt user to add materials during project creation flow (pilot request) | Resolved — S7-5: Materials tab added to project detail; AI suggestions shown during creation |
+| FR-005 | P2 | Import material list from CSV (pilot request) | Resolved — S7-5: CSV import button added to Material Library |
+
+---
+
+## Sprint 8 Findings
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F-008 | P2 | Billing page stale subscription status — page could show cached trial state instead of current Supabase status | Resolved — S8-4: added on-mount fetchOrg call; fixed query from owner_id to id |
+| F-014 | P2 | Clear Demo Data button never appeared — gate was checking hardcoded `proj_001`/`proj_002` IDs which real users never have | Resolved — S5-2: replaced with `isDemo` flag; S8-1: moved Clear Demo Data from sidebar to Settings page |
+| F-015 | P2 | Empty states untestable (blocked by F-014) | Resolved — empty states work correctly; demo data clears via Settings page |
+
+---
+
 ## Known Gaps (not bugs — planned work)
 
 | Gap | Planned Sprint |
 |-----|---------------|
-| Zone material assignment UI — can create zones but can't assign materials to them from Projects page | Sprint 6 |
-| No onboarding wizard for first-time users | Sprint 6 |
-| Mobile responsiveness untested | Sprint 6 |
-| Seed data doesn't clear automatically on new account | Sprint 4 (S4-4) |
-| Map widget placeholder on Dashboard | Sprint 4 (S4-2) |
+| Zone material assignment UI — can create zones but can't assign materials to them from Projects page | Resolved — S7-5: per-project Materials tab added |
+| No onboarding wizard for first-time users | Partial — empty states + welcome card exist; full guided wizard is Phase 2 |
+| Mobile responsiveness untested | Resolved — S7-2: responsive layout, tablet-first breakpoints |
+| Seed data doesn't clear automatically on new account | Resolved — S5-2 (isDemo flag); S8-1 (Settings page Clear Demo Data) |
+| Map widget placeholder on Dashboard | Resolved — S4-2: replaced with active projects widget |
