@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
+import { Skeleton } from '@/components/shared/Skeleton';
 import {
   generateManifest,
   computeQty,
@@ -30,6 +31,12 @@ export const ManifestEngine: React.FC = () => {
   const { projects, activeProjectId, setActiveProject, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
+
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   const [view, setView] = useState<'zone' | 'consolidated'>('zone');
   const [exporting, setExporting] = useState(false);
@@ -179,12 +186,22 @@ export const ManifestEngine: React.FC = () => {
     </tr>
   );
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center py-[64px]">
-        <div className="text-center">
-          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
-          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-[16px]">
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '16px' }}>
+          <Skeleton width="100px" height="12px" className="mb-[12px]" />
+          {[0,1,2,3].map(i => <Skeleton key={i} height="40px" className="mb-[8px]" />)}
+        </div>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '16px' }}>
+          <Skeleton width="200px" height="14px" className="mb-[16px]" />
+          {[0,1,2,3,4].map(i => (
+            <div key={i} className="flex gap-[12px] py-[10px]" style={{ borderBottom: '1px solid var(--border-light)' }}>
+              <Skeleton width="140px" height="12px" />
+              <Skeleton width="60px" height="12px" />
+              <Skeleton width="80px" height="12px" />
+            </div>
+          ))}
         </div>
       </div>
     );

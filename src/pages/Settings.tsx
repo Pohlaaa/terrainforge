@@ -8,6 +8,7 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
+import { toast } from '@/hooks/useToast';
 
 type SettingsSection = 'profile' | 'appearance' | 'notifications' | 'integrations' | 'team' | 'billing'
 
@@ -88,9 +89,11 @@ export const Settings: React.FC = () => {
     try {
       await updateOrgName(orgName.trim())
       setSaveStatus('saved')
+      toast.success('Company name saved')
       setTimeout(() => setSaveStatus('idle'), 2500)
     } catch {
       setSaveStatus('error')
+      toast.error('Failed to save company name')
     } finally {
       setIsSaving(false)
     }

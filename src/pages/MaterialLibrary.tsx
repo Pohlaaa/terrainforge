@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useMaterialStore } from '@/stores/materialStore';
+import { Skeleton } from '@/components/shared/Skeleton';
+import { toast } from '@/hooks/useToast';
 import { RESERVE, CAT_LABELS, MATERIAL_CATEGORIES, UNIT_TYPES } from '@/lib/constants';
 import type { Material, MaterialCategory } from '@/types';
 import { Button } from '@/components/ui/Button';
@@ -130,6 +132,12 @@ const UNIT_OPTIONS = UNIT_TYPES.map(u => ({ value: u.id, label: u.label }));
 export const MaterialLibrary: React.FC = () => {
   const { materials, addMaterial, updateMaterial, deleteMaterial, adjustStock, isLoading, error } = useMaterialStore();
 
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoad(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
   // UI state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -154,7 +162,7 @@ export const MaterialLibrary: React.FC = () => {
   const [quickUnit, setQuickUnit] = useState('sqft');
   const [quickCost, setQuickCost] = useState('');
   const [quickQty, setQuickQty] = useState('');
-  const [quickAddToast, setQuickAddToast] = useState('');
+  const [quickAddToast, setQuickAddToast] = useState(''); // legacy — use toast() instead
 
   // CSV import state
   const [showImportModal, setShowImportModal] = useState(false);
@@ -296,8 +304,7 @@ export const MaterialLibrary: React.FC = () => {
     });
     const name = quickName.trim();
     setQuickName(''); setQuickCost(''); setQuickQty('');
-    setQuickAddToast(`Added ${name}`);
-    setTimeout(() => setQuickAddToast(''), 2500);
+    toast.success(`${name} added to library`);
   }
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -336,8 +343,10 @@ export const MaterialLibrary: React.FC = () => {
     const data = formToMaterial(form);
     if (editingId) {
       await updateMaterial(editingId, data);
+      toast.success('Material updated');
     } else {
       await addMaterial(data);
+      toast.success('Material added');
     }
     closeMaterialModal();
   }
@@ -345,6 +354,7 @@ export const MaterialLibrary: React.FC = () => {
   async function handleDelete() {
     if (!deleteMaterialId) return;
     await deleteMaterial(deleteMaterialId);
+    toast.info('Material deleted');
     setDeleteMaterialId(null);
   }
 
@@ -377,13 +387,18 @@ export const MaterialLibrary: React.FC = () => {
   const adjustingMaterial = adjustMaterialId ? materials.find(m => m.id === adjustMaterialId) : null;
   const deletingMaterial = deleteMaterialId ? materials.find(m => m.id === deleteMaterialId) : null;
 
-  if (isLoading) {
+  if (isLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center py-[64px]">
-        <div className="text-center">
-          <div className="animate-spin inline-block text-[28px] mb-[10px]">⌛</div>
-          <div className="text-[13px] text-[var(--text-3)]">Loading...</div>
-        </div>
+      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '16px' }}>
+        <Skeleton width="180px" height="14px" className="mb-[16px]" />
+        {[0,1,2,3,4,5,6].map(i => (
+          <div key={i} className="flex gap-[12px] items-center py-[10px]" style={{ borderBottom: '1px solid var(--border-light)' }}>
+            <Skeleton width="140px" height="12px" />
+            <Skeleton width="60px" height="12px" />
+            <Skeleton width="50px" height="12px" />
+            <Skeleton width="80px" height="22px" rounded="20px" />
+          </div>
+        ))}
       </div>
     );
   }
