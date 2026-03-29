@@ -118,6 +118,7 @@ export function useMapbox({
   // Effect 2: render markers. Re-runs when the map finishes loading OR when
   // projects data changes (e.g. arrives asynchronously from Supabase).
   useEffect(() => {
+    console.log('[TF-DEBUG] useMapbox: projects received', projects.length, 'with coords:', projects.filter(p => p.lat && p.lng).length, projects.map(p => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })));
     if (!loaded || !mapRef.current) return;
 
     const mapInstance = mapRef.current;
