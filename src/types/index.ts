@@ -174,6 +174,31 @@ export interface Activity {
   timestamp: string;
 }
 
+export interface NotificationSettings {
+  deadlineReminders: boolean;
+  lowStockAlerts: boolean;
+  certExpiry: boolean;
+  maintenanceDue: boolean;
+  weeklyDigest: boolean;
+}
+
+export interface UserPreferences {
+  id: string;
+  userId: string;
+  orgId: string;
+  businessType: string | null;
+  companyName: string | null;
+  teamSize: string | null;
+  userRole: string | null;
+  priorities: string[];
+  onboardingCompletedAt: string | null;
+  selectedKpis: string[];
+  customKpis: Array<{ name: string; description: string; valueSource?: string }>;
+  widgetLayout: Array<{ widgetId: string; type: string; position: number; config?: Record<string, unknown> }>;
+  notificationSettings: NotificationSettings;
+  theme: 'light' | 'dark' | 'system';
+}
+
 export interface DashboardKPI {
   activeProjects: number;
   totalProjectValue: number;

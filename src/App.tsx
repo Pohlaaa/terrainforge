@@ -14,6 +14,7 @@ import EquipmentManager from '@/pages/EquipmentManager'
 import Billing from '@/pages/Billing'
 import Settings from '@/pages/Settings'
 import Debug from '@/pages/Debug'
+import Onboarding from '@/pages/Onboarding'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
 import ForgotPassword from '@/pages/ForgotPassword'
@@ -27,6 +28,13 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+
+          {/* Onboarding — requires auth but no sidebar or billing gate */}
+          <Route path="/onboarding" element={
+            <ProtectedRoute skipOnboardingCheck>
+              <Onboarding />
+            </ProtectedRoute>
+          } />
 
           {/* Protected routes — wrapped in AppLayout (sidebar + trial banner) */}
           <Route
