@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Pencil } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
@@ -71,6 +71,8 @@ export const Projects: React.FC = () => {
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [form, setForm] = useState<NewProjectForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Partial<NewProjectForm>>({});
 
@@ -96,6 +98,19 @@ export const Projects: React.FC = () => {
     () => Object.fromEntries(projects.map(p => [p.id, computeProjectCostRaw(p, materials)])),
     [projects, materials]
   );
+
+  // Close overflow menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    if (openMenuId) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openMenuId]);
 
   function validate(): boolean {
     const errors: Partial<NewProjectForm> = {};
@@ -613,7 +628,9 @@ export const Projects: React.FC = () => {
             return (
               <div
                 key={project.id}
-                className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden hover:border-[var(--green-l)] transition-colors duration-200 flex flex-col"
+                className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden hover:shadow-md active:shadow-sm transition-shadow duration-200 flex flex-col cursor-pointer relative"
+                style={{ boxShadow: 'var(--shadow-sm)' }}
+                onClick={() => setActiveProject(project.id)}
               >
                 {/* Card header */}
                 <div className="px-[16px] py-[14px] border-b border-[var(--border)] flex items-start justify-between gap-[8px]">
@@ -625,7 +642,36 @@ export const Projects: React.FC = () => {
                       {project.client} · {project.address}
                     </p>
                   </div>
-                  <Badge variant={status.variant}>{status.label}</Badge>
+                  <div className="flex items-center gap-[6px] flex-shrink-0">
+                    <Badge variant={status.variant}>{status.label}</Badge>
+                    {/* ··· overflow menu */}
+                    <div
+                      className="relative"
+                      ref={openMenuId === project.id ? menuRef : undefined}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <button
+                        className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[var(--text-3)] hover:text-[var(--text)] hover:bg-[var(--surface3)] transition-colors"
+                        onClick={() => setOpenMenuId(openMenuId === project.id ? null : project.id)}
+                        aria-label="Project actions"
+                      >
+                        ···
+                      </button>
+                      {openMenuId === project.id && (
+                        <div
+                          className="absolute right-0 top-full mt-[4px] z-10 bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] shadow-md py-[4px] min-w-[120px]"
+                          style={{ boxShadow: 'var(--shadow-md)' }}
+                        >
+                          <button
+                            className="w-full text-left px-[12px] py-[8px] text-[12px] text-[var(--color-error)] hover:bg-[var(--surface3)] transition-colors"
+                            onClick={() => { setDeleteId(project.id); setOpenMenuId(null); }}
+                          >
+                            Delete Project
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Card body */}
@@ -684,25 +730,6 @@ export const Projects: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Card footer */}
-                <div className="px-[16px] py-[12px] border-t border-[var(--border)] flex gap-[8px]">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setActiveProject(project.id)}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setDeleteId(project.id)}
-                  >
-                    Delete
-                  </Button>
                 </div>
               </div>
             );
