@@ -213,7 +213,7 @@ export const useProjectStore = create<ProjectStore>()(
           ...projectData,
           id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
-          zones: []
+          zones: projectData.zones ?? []
         }
         set((state) => ({ projects: [...state.projects, newProject] }))
         console.log('[TF-DEBUG] addProject sending to Supabase, project id:', newProject.id)
