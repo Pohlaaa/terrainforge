@@ -168,7 +168,7 @@
 */
 const PROJECT_DATA = {
   project: "TerrainForge",
-  lastUpdated: "2026-03-29 (Sprint 9 complete)",
+  lastUpdated: "2026-03-29 (Sprint 10 complete)",
   currentPhase: 1,
 
   // ── Completed work before sprints started ──
@@ -259,21 +259,25 @@ const PROJECT_DATA = {
     { date: "2026-03-29", text: "S9-4: Material management UI overhaul — category sidebar, inline quick-add bar, search + stock filter, stock status badges", tag: "feat" },
     { date: "2026-03-29", text: "S9-5: Settings page overhaul — 6-section layout (profile, appearance, notifications, integrations, team, billing), live theme toggle persisted to localStorage", tag: "feat" },
     { date: "2026-03-29", text: "S9-6: Sprint 9 SQL migration (user_preferences table + RLS policies + indexes), dashboard updated to Sprint 10", tag: "infra" },
+    { date: "2026-03-29", text: "S10-1: KPI Customization Drawer — slide-in panel, 12-KPI library grouped by category, 2-column grid, max-6 enforcement, count-up animations, Supabase + localStorage persistence", tag: "feat" },
+    { date: "2026-03-29", text: "S10-2: Drag-and-Drop Widget Dashboard — pointer-based drag, spring animations, collapse/remove/add widgets, Edit Dashboard mode, widget layout persisted to user_preferences", tag: "feat" },
+    { date: "2026-03-29", text: "S10-3: Micro-Interactions Polish Pass — 14 CSS keyframes, skeleton loading states, Toast notifications, Button pulse/shake/loading, Badge stock pulse, prefers-reduced-motion support", tag: "feat" },
+    { date: "2026-03-29", text: "S10-4: Mapbox map widget with token-gated graceful degradation, dark/light theme sync, project marker click-nav, skeleton loading, PROJECT_DASHBOARD updated", tag: "feat" },
   ],
 
   // ── Current Sprint ──
   currentSprint: {
-    number: 10,
-    name: "Dashboard Customization",
-    dateRange: "2026-03-30 → 2026-04-06",
-    goal: "Build dashboard power features on top of Sprint 9's design token foundation and user_preferences table — KPI customization, drag-and-drop widget layout, Mapbox map widget, and a full polish pass",
-    doneWhen: "Contractor can reorder KPIs via a slide-in drawer, add/remove widgets from the dashboard canvas, see projects on a live map, and the app has consistent empty states, skeletons, and motion transitions throughout",
-    risk: "mapbox-gl adds ~250KB to bundle — evaluate dynamic import() code-splitting before merging S10-3",
+    number: 11,
+    name: "Phase 2 Planning — Operations & Integrations",
+    dateRange: "TBD",
+    goal: "Plan and kick off Phase 2: scheduling, time tracking, client portal, QuickBooks/Stripe payouts, mobile field access",
+    doneWhen: "Sprint 11 scope defined, Phase 2 architecture documented, first feature (scheduling or time tracking) shipped",
+    risk: "Phase 2 scope is large — prioritize the features most likely to drive retention (scheduling first, then time tracking)",
     tasks: [
-      { id: "S10-1", name: "KPI Customization Drawer",       effort: "M", status: "pending", notes: "Slide-in panel, drag-to-reorder active KPIs, 12+ KPI library, NL AI input with chips" },
-      { id: "S10-2", name: "Widget System + Edit Layout mode", effort: "L", status: "pending", notes: "Drag-and-drop canvas, Edit Layout toggle, Add Widget picker (Chart, Notes, Calendar, Activity Feed)" },
-      { id: "S10-3", name: "Mapbox Map Widget",               effort: "M", status: "pending", notes: "mapbox-gl integration, status-colored project pins, hover tooltips, map/satellite toggle" },
-      { id: "S10-4", name: "Polish pass",                     effort: "M", status: "pending", notes: "Empty states with illustrations, loading skeletons, motion/transitions, accessibility audit" },
+      { id: "S11-1", name: "Sprint 11 planning + Phase 2 architecture doc", effort: "S", status: "pending", notes: "Define Phase 2 scope, tech decisions (calendar library, time tracking model), DB schema additions" },
+      { id: "S11-2", name: "Scheduling: crew calendar view",               effort: "L", status: "pending", notes: "Weekly/monthly calendar, crew day assignments, conflict detection" },
+      { id: "S11-3", name: "Time tracking: clock in/out per project",       effort: "M", status: "pending", notes: "Simple punch clock, daily summaries, project hour totals" },
+      { id: "S11-4", name: "Client portal: read-only project status",       effort: "M", status: "pending", notes: "Shareable link, project timeline, checklist progress, no login required" },
     ]
   },
 
