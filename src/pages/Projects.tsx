@@ -19,6 +19,8 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
+import { AddressInput } from '@/components/shared/AddressInput';
+import type { AddressSuggestion } from '@/hooks/useAddressAutocomplete';
 
 type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
 
@@ -34,6 +36,8 @@ interface NewProjectForm {
   name: string;
   client: string;
   address: string;
+  lat?: number;
+  lng?: number;
   totalArea: string;
   startDate: string;
   targetDate: string;
@@ -232,6 +236,8 @@ export const Projects: React.FC = () => {
       name: form.name.trim(),
       client: form.client.trim(),
       address: form.address.trim(),
+      lat: form.lat,
+      lng: form.lng,
       totalArea: parseFloat(form.totalArea) || 0,
       startDate,
       targetDate: form.targetDate || '',
@@ -1188,12 +1194,13 @@ export const Projects: React.FC = () => {
                   onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
                   placeholder="Client name"
                 />
-                <Input
+                <AddressInput
                   label="Address"
                   required
                   value={form.address}
                   error={formErrors.address}
-                  onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                  onChange={(text) => setForm(f => ({ ...f, address: text, lat: undefined, lng: undefined }))}
+                  onSelect={(s: AddressSuggestion) => setForm(f => ({ ...f, address: s.address, lat: s.lat, lng: s.lng }))}
                   placeholder="123 Main St"
                 />
                 <div className="relative">
