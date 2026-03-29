@@ -218,6 +218,9 @@ export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'cre
     snakeData.perimeter_lnft = snakeData.perimeter; delete snakeData.perimeter
     snakeData.sequence_number = snakeData.sequence; delete snakeData.sequence
     snakeData.crew_assignment = snakeData.crew; delete snakeData.crew
+    // CHECK constraints reject 0 but pass on NULL — coerce 0/falsy to null
+    if (!snakeData.area_sqft || snakeData.area_sqft <= 0) snakeData.area_sqft = null
+    if (!snakeData.perimeter_lnft || snakeData.perimeter_lnft <= 0) snakeData.perimeter_lnft = null
 
     const { data, error } = await supabase
       .from('zones')
