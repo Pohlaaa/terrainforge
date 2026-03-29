@@ -404,7 +404,8 @@ export const useMaterialStore = create<MaterialStore>()(
         }
         set((state) => ({ materials: [...state.materials, newMaterial] }))
         try {
-          await db.createMaterial(materialData, newMaterial.id, orgId)
+          const result = await db.createMaterial(materialData, newMaterial.id, orgId)
+          if (!result) console.error('addMaterial: createMaterial returned null — Supabase write failed')
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }

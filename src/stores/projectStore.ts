@@ -201,7 +201,8 @@ export const useProjectStore = create<ProjectStore>()(
         }
         set((state) => ({ projects: [...state.projects, newProject] }))
         try {
-          await db.createProject(projectData, newProject.id, orgId)
+          const result = await db.createProject(projectData, newProject.id, orgId)
+          if (!result) console.error('addProject: createProject returned null — Supabase write failed')
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }

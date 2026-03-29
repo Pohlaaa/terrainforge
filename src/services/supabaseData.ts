@@ -121,10 +121,6 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     delete snakeData.client       // string, DB expects client_id UUID FK (unused)
     delete snakeData.is_demo      // frontend-only flag, no DB column
     snakeData.total_area_sqft = snakeData.total_area; delete snakeData.total_area
-// Postgres rejects empty strings for date columns — coerce to null
-    if (snakeData.start_date === '') snakeData.start_date = null
-    if (snakeData.target_date === '') snakeData.target_date = null
-    // Postgres rejects empty strings for date columns — coerce to null
     if (snakeData.start_date === '') snakeData.start_date = null
     if (snakeData.target_date === '') snakeData.target_date = null
 
@@ -141,7 +137,7 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
       zones: []
     } as unknown as Project
   } catch (err: any) {
-    console.error('createProject error:', err.message)
+    console.error('createProject error:', err)
     return null
   }
 }
@@ -378,7 +374,7 @@ export async function createMaterial(material: Omit<Material, 'id'>, id: string,
 
     return toCamelCase(data) as Material
   } catch (err: any) {
-    console.error('createMaterial error:', err.message)
+    console.error('createMaterial error:', err)
     return null
   }
 }
@@ -513,7 +509,7 @@ export async function createCrewMember(member: Omit<CrewMember, 'id'>, id: strin
 
     return crewMember as CrewMember
   } catch (err: any) {
-    console.error('createCrewMember error:', err.message)
+    console.error('createCrewMember error:', err)
     return null
   }
 }
@@ -687,7 +683,7 @@ export async function createEquipment(equip: Omit<Equipment, 'id'>, id: string, 
       maintenanceLog: []
     } as unknown as Equipment
   } catch (err: any) {
-    console.error('createEquipment error:', err.message)
+    console.error('createEquipment error:', err)
     return null
   }
 }
