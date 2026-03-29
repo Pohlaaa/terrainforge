@@ -22,6 +22,7 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useBillingGate } from '@/hooks/useBillingGate';
+import { ToastContainer } from '@/components/shared/Toast';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -188,6 +189,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </main>
 
       </div>
+
+      {/* ── Toast notification region ─────────────────────────────────── */}
+      <ToastContainer />
     </div>
   );
 };

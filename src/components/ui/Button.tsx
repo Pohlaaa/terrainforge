@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
   size?: 'sm' | 'md' | 'lg' | 'xs';
   children: React.ReactNode;
   icon?: React.ReactNode;
+  loading?: boolean;
+  success?: boolean;
+  error?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -13,14 +16,52 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   icon,
   className = '',
+  loading,
+  success,
+  error,
+  onClick,
+  disabled,
   ...props
 }) => {
+  const [pulseClass, setPulseClass] = useState('');
+  const prevSuccess = useRef(success);
+  const prevError = useRef(error);
+
+  useEffect(() => {
+    if (!prevSuccess.current && success) {
+      setPulseClass('animate-completion-pulse');
+      const t = setTimeout(() => setPulseClass(''), 600);
+      return () => clearTimeout(t);
+    }
+    prevSuccess.current = success;
+  }, [success]);
+
+  useEffect(() => {
+    if (!prevError.current && error) {
+      setPulseClass('animate-error-shake');
+      const t = setTimeout(() => setPulseClass(''), 400);
+      return () => clearTimeout(t);
+    }
+    prevError.current = error;
+  }, [error]);
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled && !loading) {
+      setPulseClass('animate-btn-pulse');
+      setTimeout(() => setPulseClass(''), 150);
+      onClick?.(e);
+    }
+  };
+
   const variantClasses = {
     primary: 'bg-[var(--green)] text-white hover:bg-[#3a8a65]',
-    secondary: 'bg-transparent border border-[var(--border2)] text-[var(--text-2)] hover:border-[var(--green-l)] hover:text-[var(--text)]',
-    danger: 'bg-[rgba(220,38,38,.15)] border border-[var(--red)] text-[var(--red-l)] hover:bg-[rgba(220,38,38,.25)]',
+    secondary:
+      'bg-transparent border border-[var(--border2)] text-[var(--text-2)] hover:border-[var(--green-l)] hover:text-[var(--text)]',
+    danger:
+      'bg-[rgba(220,38,38,.15)] border border-[var(--red)] text-[var(--red-l)] hover:bg-[rgba(220,38,38,.25)]',
     ghost: 'bg-transparent border-none text-[var(--text-3)] hover:text-[var(--text)]',
-    outline: 'bg-transparent border-2 border-[var(--border)] text-[var(--text-2)] hover:border-[var(--green-l)]',
+    outline:
+      'bg-transparent border-2 border-[var(--border)] text-[var(--text-2)] hover:border-[var(--green-l)]',
   };
 
   const sizeClasses = {
@@ -32,11 +73,29 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
-      className={`inline-flex items-center gap-[7px] rounded-[8px] font-[600] border-none transition-all duration-200 cursor-pointer ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center gap-[7px] rounded-[8px] font-[600] border-none transition-all duration-200 cursor-pointer ${variantClasses[variant]} ${sizeClasses[size]} ${pulseClass} ${className}`}
+      onClick={handleClick}
+      disabled={disabled || loading}
       {...props}
     >
-      {icon && <span>{icon}</span>}
-      {children}
+      {loading ? (
+        <span
+          style={{
+            display: 'inline-block',
+            width: '14px',
+            height: '14px',
+            border: '2px solid currentColor',
+            borderTopColor: 'transparent',
+            borderRadius: '50%',
+            animation: 'spin 0.6s linear infinite',
+          }}
+        />
+      ) : (
+        <>
+          {icon && <span>{icon}</span>}
+          {children}
+        </>
+      )}
     </button>
   );
 };

@@ -107,6 +107,15 @@
   --text-muted: var(--text-tertiary);
   --text-on-dark: #FFFFFF;
   --text-on-primary: #FFFFFF;
+
+  /* ── Status semantic aliases ─────────────────────────────────────────────── */
+  --status-success: var(--status-green);
+  --status-error: var(--status-red);
+  --status-warning: var(--status-amber);
+  --status-info: var(--status-blue);
+
+  /* ── Elevated shadow ─────────────────────────────────────────────────────── */
+  --shadow-elevated: 0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
 }
 
 [data-theme="dark"] {
@@ -197,4 +206,134 @@ a {
 }
 a:hover {
   color: var(--blue);
+}
+
+/* ── Micro-interaction keyframes ─────────────────────────────────────────── */
+
+@keyframes completionPulse {
+  0% { box-shadow: 0 0 0 0 rgba(45,106,79,0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(45,106,79,0); }
+  100% { box-shadow: 0 0 0 0 rgba(45,106,79,0); }
+}
+
+@keyframes shimmerSweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes cardBirth {
+  0% { opacity: 0; transform: translateY(12px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes dropSettle {
+  0% { transform: scale(1.03) translateY(-4px); }
+  50% { transform: scale(0.99) translateY(1px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes placeholderPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes btnPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes bellRing {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-4deg); }
+  75% { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes stockPulseLow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251,146,60,0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(251,146,60,0); }
+}
+
+@keyframes stockPulseOut {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(220,38,38,0); }
+}
+
+@keyframes inkDrop {
+  0% { transform: scale(0); opacity: 0.4; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes toastSlideIn {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toastSlideOut {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+/* ── Animation utility classes ───────────────────────────────────────────── */
+
+.animate-completion-pulse { animation: completionPulse 0.6s ease-out; }
+.animate-card-birth { animation: cardBirth 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-drop-settle { animation: dropSettle 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.animate-placeholder-pulse { animation: placeholderPulse 1.5s ease-in-out infinite; }
+.animate-breathe { animation: breathe 2s ease-in-out infinite; }
+.animate-btn-pulse { animation: btnPulse 0.15s ease; }
+.animate-error-shake { animation: errorShake 0.4s ease; }
+.animate-bell-ring { animation: bellRing 0.6s ease; }
+.animate-stock-pulse-low { animation: stockPulseLow 2s ease-in-out infinite; }
+.animate-stock-pulse-out { animation: stockPulseOut 1.5s ease-in-out infinite; }
+.animate-toast-in { animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-toast-out { animation: toastSlideOut 0.2s ease-out forwards; }
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--surface-hover) 25%, var(--surface-active) 50%, var(--surface-hover) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-completion-pulse,
+  .animate-card-birth,
+  .animate-drop-settle,
+  .animate-placeholder-pulse,
+  .animate-breathe,
+  .animate-btn-pulse,
+  .animate-error-shake,
+  .animate-bell-ring,
+  .animate-stock-pulse-low,
+  .animate-stock-pulse-out,
+  .animate-toast-in,
+  .animate-toast-out,
+  .skeleton-shimmer {
+    animation: none !important;
+    transition: none !important;
+  }
 }
