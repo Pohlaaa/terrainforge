@@ -29,9 +29,9 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* Onboarding — requires auth but no sidebar or billing gate */}
+          {/* Onboarding — requires auth but no sidebar */}
           <Route path="/onboarding" element={
-            <ProtectedRoute skipOnboardingCheck>
+            <ProtectedRoute>
               <Onboarding />
             </ProtectedRoute>
           } />

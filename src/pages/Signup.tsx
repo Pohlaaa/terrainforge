@@ -65,9 +65,7 @@ export const Signup: React.FC = () => {
       })
       setSuccess(true)
       setTimeout(() => {
-        navigate('/login', {
-          state: { message: 'Account created! Please check your email to verify your account.' }
-        })
+        navigate('/onboarding')
       }, 2000)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create account'
@@ -87,13 +85,13 @@ export const Signup: React.FC = () => {
               Account Created Successfully!
             </h2>
             <p className="text-[var(--text-2)] mb-6">
-              Check your email for a verification link. You'll be redirected to login shortly.
+              You'll be redirected to set up your account in a moment.
             </p>
             <Link
-              to="/login"
+              to="/onboarding"
               className="inline-block px-6 py-2 bg-[var(--green)] hover:bg-[var(--green-l)] text-[var(--surface)] font-semibold rounded transition-colors"
             >
-              Go to Sign In
+              Get Started
             </Link>
           </div>
         </div>
