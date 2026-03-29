@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Pencil } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
+import { useCrewStore } from '@/stores/crewStore';
 import { computeProjectCostRaw } from '@/lib/manifest';
 import { CHECKLIST_ITEMS } from '@/lib/constants';
 import type { Project, Zone } from '@/types';
@@ -69,11 +70,16 @@ const EMPTY_ZONE_FORM: ZoneForm = { name: '', area: '', perimeter: '', notes: ''
 
 export const Projects: React.FC = () => {
   const { projects, addProject, updateProject, deleteProject, toggleChecklist, setActiveProject, activeProjectId, isLoading, error,
-    addZone, updateZone, deleteZone, projectMaterials, addProjectMaterial, removeProjectMaterial } = useProjectStore();
+    addZone, updateZone, deleteZone, projectMaterials, addProjectMaterial, removeProjectMaterial,
+    projectCrew, addProjectCrew, removeProjectCrew } = useProjectStore();
   const { materials } = useMaterialStore();
+  const { crew } = useCrewStore();
 
   // Detail view tab state
-  const [detailTab, setDetailTab] = useState<'zones' | 'materials'>('zones');
+  const [detailTab, setDetailTab] = useState<'zones' | 'materials' | 'crew'>('zones');
+
+  // Crew assignment state
+  const [showCrewPanel, setShowCrewPanel] = useState(false);
 
   // Add material to project state
   const [showAddMaterialModal, setShowAddMaterialModal] = useState(false);
@@ -344,6 +350,9 @@ export const Projects: React.FC = () => {
     const filteredMaterials = materials.filter(m =>
       m.name.toLowerCase().includes(matSearch.toLowerCase())
     );
+    const assignedCrew = projectCrew[selectedProject.id] ?? [];
+    const assignedCrewIds = new Set(assignedCrew.map(e => e.crewMemberId));
+    const availableCrew = crew.filter(c => !assignedCrewIds.has(c.id));
 
     return (
       <div>
@@ -369,19 +378,24 @@ export const Projects: React.FC = () => {
 
         {/* Tab bar */}
         <div className="flex gap-0 mb-[16px] border-b border-[var(--border)]">
-          {(['zones', 'materials'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setDetailTab(tab)}
-              className={`px-[16px] py-[10px] text-[13px] font-[600] border-b-[2px] transition-colors capitalize ${
-                detailTab === tab
-                  ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                  : 'border-transparent text-[var(--text-3)] hover:text-[var(--text-2)]'
-              }`}
-            >
-              {tab === 'zones' ? `Zones (${selectedProject.zones.length})` : `Materials (${assignedMaterials.length})`}
-            </button>
-          ))}
+          {(['zones', 'materials', 'crew'] as const).map((tab) => {
+            const label = tab === 'zones' ? `Zones (${selectedProject.zones.length})`
+              : tab === 'materials' ? `Materials (${assignedMaterials.length})`
+              : `Crew (${assignedCrew.length})`;
+            return (
+              <button
+                key={tab}
+                onClick={() => setDetailTab(tab)}
+                className={`px-[16px] py-[10px] text-[13px] font-[600] border-b-[2px] transition-colors ${
+                  detailTab === tab
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+                    : 'border-transparent text-[var(--text-3)] hover:text-[var(--text-2)]'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[16px] items-start">
@@ -439,7 +453,7 @@ export const Projects: React.FC = () => {
               )}
             </div>
           </div>
-          ) : (
+          ) : detailTab === 'materials' ? (
           /* ── Materials tab ──────────────────────────────────────────────── */
           <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
             <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
@@ -492,7 +506,59 @@ export const Projects: React.FC = () => {
               )}
             </div>
           </div>
-          )}
+          ) : detailTab === 'crew' ? (
+          /* ── Crew tab ───────────────────────────────────────────────────── */
+          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
+            <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
+              <div className="text-[12px] font-[700] text-[var(--text)]">
+                Assigned Crew
+              </div>
+              <Button variant="primary" size="sm" onClick={() => setShowCrewPanel(true)}>
+                + Assign Crew
+              </Button>
+            </div>
+            <div className="p-[14px]">
+              {assignedCrew.length === 0 ? (
+                <div className="text-center py-[32px] text-[var(--text-3)]">
+                  <div className="text-[28px] mb-[8px] opacity-30">👥</div>
+                  <div className="text-[13px] mb-[12px]">No crew assigned yet</div>
+                  <Button variant="primary" size="sm" onClick={() => setShowCrewPanel(true)}>
+                    + Assign Crew
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-[6px]">
+                  {assignedCrew.map((entry) => {
+                    const member = crew.find(c => c.id === entry.crewMemberId);
+                    return (
+                      <div key={entry.id} className="flex items-center justify-between bg-[var(--surface3)] border border-[var(--border)] rounded-[8px] px-[12px] py-[8px]">
+                        <div className="flex items-center gap-[10px]">
+                          <div className="w-[32px] h-[32px] rounded-full bg-[var(--color-primary-light)] flex items-center justify-center text-[13px] font-[700] text-[var(--color-primary)] flex-shrink-0">
+                            {entry.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-[13px] font-[600] text-[var(--text)]">{entry.name}</div>
+                            <div className="text-[11px] text-[var(--text-3)]">
+                              {entry.roleOnProject || entry.role}
+                              {member && member.skills.length > 0 && ` · ${member.skills.slice(0, 2).join(', ')}`}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeProjectCrew(selectedProject.id, entry.id)}
+                          className="text-[var(--text-3)] hover:text-[var(--color-error)] transition-colors text-[14px] w-[24px] h-[24px] flex items-center justify-center"
+                          aria-label="Remove crew member"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+          ) : null}
 
           {/* Right column: info + checklist */}
           <div className="flex flex-col gap-[12px]">
@@ -644,6 +710,62 @@ export const Projects: React.FC = () => {
                 onChange={e => setMatQty(e.target.value)}
               />
             </div>
+          </div>
+        </Modal>
+
+        {/* Crew assignment modal */}
+        <Modal
+          isOpen={showCrewPanel}
+          title="Assign Crew to Project"
+          onClose={() => setShowCrewPanel(false)}
+          maxWidth="480px"
+        >
+          <div className="flex flex-col gap-[10px]">
+            {availableCrew.length === 0 && assignedCrew.length === 0 && (
+              <div className="text-center py-[24px] text-[12px] text-[var(--text-3)]">No crew members in your roster</div>
+            )}
+            {availableCrew.length === 0 && assignedCrew.length > 0 && (
+              <div className="text-[12px] text-[var(--text-3)] text-center py-[16px]">All crew members are already assigned</div>
+            )}
+            {availableCrew.map((member) => (
+              <div
+                key={member.id}
+                className="flex items-center justify-between bg-[var(--surface3)] border border-[var(--border)] rounded-[8px] px-[12px] py-[10px] hover:border-[var(--color-primary)] cursor-pointer transition-colors"
+                onClick={() => {
+                  addProjectCrew(selectedProject.id, {
+                    crewMemberId: member.id,
+                    name: member.name,
+                    role: member.role,
+                    roleOnProject: member.role,
+                  });
+                }}
+              >
+                <div className="flex items-center gap-[10px]">
+                  <div className="w-[32px] h-[32px] rounded-full bg-[var(--color-primary-light)] flex items-center justify-center text-[13px] font-[700] text-[var(--color-primary)] flex-shrink-0">
+                    {member.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-[600] text-[var(--text)]">{member.name}</div>
+                    <div className="text-[11px] text-[var(--text-3)]">
+                      {member.role}
+                      {member.skills.length > 0 && ` · ${member.skills.slice(0, 3).join(', ')}`}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[11px] font-[600] text-[var(--color-primary)] flex-shrink-0">+ Assign</span>
+              </div>
+            ))}
+            {assignedCrew.length > 0 && (
+              <div className="mt-[8px] pt-[8px] border-t border-[var(--border)]">
+                <div className="text-[10px] font-[600] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">Already assigned</div>
+                {assignedCrew.map(entry => (
+                  <div key={entry.id} className="flex items-center gap-[8px] px-[12px] py-[6px] text-[12px] text-[var(--text-3)]">
+                    <span>{entry.name}</span>
+                    <span className="text-[var(--text-4)]">· {entry.role}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Modal>
 
