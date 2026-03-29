@@ -145,6 +145,17 @@ export const MaterialLibrary: React.FC = () => {
   const [invSearch, setInvSearch] = useState('');
   const [invFilter, setInvFilter] = useState('');
 
+  // New UI state — category sidebar, search, stock filter, quick-add
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'low' | 'out'>('all');
+  const [quickName, setQuickName] = useState('');
+  const [quickCategory, setQuickCategory] = useState('paver');
+  const [quickUnit, setQuickUnit] = useState('sqft');
+  const [quickCost, setQuickCost] = useState('');
+  const [quickQty, setQuickQty] = useState('');
+  const [quickAddToast, setQuickAddToast] = useState('');
+
   // CSV import state
   const [showImportModal, setShowImportModal] = useState(false);
   const [csvPreview, setCsvPreview] = useState<Array<{ name: string; category: string; unit: string; cost: string }>>([]);
@@ -240,6 +251,55 @@ export const MaterialLibrary: React.FC = () => {
 
   const lowStockCount = useMemo(() => materials.filter(isLowStock).length, [materials]);
 
+  function getStockStatus(m: Material): 'in' | 'low' | 'out' {
+    if (m.qtyOnHand <= 0) return 'out'
+    if (m.qtyOnHand <= m.minStockLevel) return 'low'
+    return 'in'
+  }
+
+  // Category sidebar data
+  const SIDEBAR_CATS = [
+    { id: 'all', emoji: '📦', label: 'All Materials', match: (_: string) => true },
+    { id: 'paver', emoji: '🧱', label: 'Pavers', match: (c: string) => c === 'paver' },
+    { id: 'stone', emoji: '🪨', label: 'Stone', match: (c: string) => c === 'stone' },
+    { id: 'sod', emoji: '🌿', label: 'Sod', match: (c: string) => c === 'sod' },
+    { id: 'mulch', emoji: '🪵', label: 'Mulch', match: (c: string) => c === 'mulch' },
+    { id: 'edging', emoji: '🧹', label: 'Edging', match: (c: string) => c === 'edging' },
+    { id: 'plants', emoji: '🌱', label: 'Plants', match: (c: string) => ['plant', 'shrub', 'tree'].includes(c) },
+    { id: 'lighting', emoji: '💡', label: 'Lighting', match: (c: string) => c === 'lighting' },
+    { id: 'irrigation', emoji: '💧', label: 'Irrigation', match: (c: string) => c === 'irrigation' },
+    { id: 'other', emoji: '📦', label: 'Other', match: (c: string) => ['tile', 'brick', 'concrete', 'gravel', 'sand', 'soil', 'seed', 'lumber', 'misc'].includes(c) },
+  ];
+
+  const activeCatDef = SIDEBAR_CATS.find(c => c.id === activeCategory) ?? SIDEBAR_CATS[0];
+
+  const displayMaterials = useMemo(() => {
+    return materials.filter(m => {
+      const matchCat = activeCatDef.match(m.category);
+      const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) || (m.supplier_name ?? '').toLowerCase().includes(search.toLowerCase());
+      const status = getStockStatus(m);
+      const matchStock = stockFilter === 'all' || status === stockFilter;
+      return matchCat && matchSearch && matchStock;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materials, activeCategory, search, stockFilter, activeCatDef]);
+
+  async function handleQuickAdd() {
+    if (!quickName.trim()) return;
+    await addMaterial({
+      name: quickName.trim(), category: quickCategory, unit: quickUnit,
+      cost: parseFloat(quickCost) || 0, qtyOnHand: parseInt(quickQty) || 0,
+      minStockLevel: 0, reserveOverride: null, coverage: null, depthIn: null,
+      notes: '', supplier_name: '', supplier_sku: '', supplier_phone: '',
+      supplier_contact: '', lead_time_days: null, price_update_date: '',
+      supplier_notes: '', storageLocation: '', lastRestocked: '',
+    });
+    const name = quickName.trim();
+    setQuickName(''); setQuickCost(''); setQuickQty('');
+    setQuickAddToast(`Added ${name}`);
+    setTimeout(() => setQuickAddToast(''), 2500);
+  }
+
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   function openAddModal() {
@@ -330,262 +390,221 @@ export const MaterialLibrary: React.FC = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div>
+    <div className="h-full flex flex-col">
       {error && (
         <div className="mb-[16px]">
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
-      <TabPanel tabs={tabs} defaultTab="library">
 
-        {/* ── Library Tab ──────────────────────────────────────────────────── */}
-        <div>
-          <div className="flex gap-[8px] mb-[16px] items-center flex-wrap">
-            <Button variant="primary" onClick={openAddModal}>+ Add Material</Button>
-            <Button variant="outline" onClick={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}>↑ Import CSV</Button>
-            <div className="ml-auto">
-              <SearchFilter
-                searchValue={searchTerm}
-                onSearchChange={setSearchTerm}
-                filterValue={filterCategory}
-                onFilterChange={setFilterCategory}
-                placeholder="Search materials..."
-                filterOptions={FILTER_OPTIONS}
-                filterLabel="All Categories"
-              />
-            </div>
-          </div>
-
-          <div className="text-[12px] text-[var(--text-3)] mb-[10px]">
-            {filteredMaterials.length} of {materials.length} materials
-          </div>
-
-          <div className="overflow-x-auto border rounded-[10px] border-[var(--border)]">
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr className="bg-[var(--green)] text-white">
-                  {['Material Name', 'Category', 'Unit', 'Unit Cost', 'Reserve %', 'Coverage', 'Supplier', 'SKU', ''].map((h, i) => (
-                    <th
-                      key={i}
-                      className={`px-[14px] py-[10px] text-[10px] font-[700] uppercase tracking-[0.05em] ${i === 8 ? 'text-right' : 'text-left'}`}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMaterials.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-[14px] py-[24px] text-center text-[var(--text-3)]">
-                      {searchTerm || filterCategory ? 'No materials match your filter' : 'No materials yet — click + Add Material'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMaterials.map((material) => (
-                    <tr
-                      key={material.id}
-                      className="border-b border-[var(--border)] hover:bg-[rgba(45,106,79,.06)] transition-colors duration-150 odd:bg-[rgba(255,255,255,.02)]"
-                    >
-                      <td className="px-[14px] py-[10px] text-[var(--text)] font-[500]">
-                        {material.name}
-                      </td>
-                      <td className="px-[14px] py-[10px]">
-                        <Badge variant={getCategoryBadge(material.category)}>
-                          {CAT_LABELS[material.category as MaterialCategory] ?? material.category}
-                        </Badge>
-                      </td>
-                      <td className="px-[14px] py-[10px] text-[var(--text-2)]">{material.unit}</td>
-                      <td className="px-[14px] py-[10px] text-[var(--green-l)] font-mono font-[600]">
-                        ${material.cost.toFixed(2)}
-                      </td>
-                      <td className="px-[14px] py-[10px] text-[var(--amber-l)] font-mono">
-                        {getReservePct(material)}%
-                      </td>
-                      <td className="px-[14px] py-[10px] text-[var(--text-2)]">
-                        {material.coverage ? `${material.coverage} ${material.unit}` : '—'}
-                      </td>
-                      <td className="px-[14px] py-[10px] text-[var(--text-2)]">
-                        {material.supplier_name || '—'}
-                      </td>
-                      <td className="px-[14px] py-[10px] font-mono text-[11px] text-[var(--text-3)]">
-                        {material.supplier_sku || '—'}
-                      </td>
-                      <td className="px-[14px] py-[10px] text-right whitespace-nowrap space-x-[4px]">
-                        <Button variant="ghost" size="xs" onClick={() => openEditModal(material)}>
-                          Edit
-                        </Button>
-                        <Button variant="danger" size="xs" onClick={() => setDeleteMaterialId(material.id)}>
-                          Delete
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+      {/* Toast */}
+      {quickAddToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-[var(--brand-primary)] text-white text-[13px] font-[500] shadow-[var(--shadow-panel)]">
+          {quickAddToast}
         </div>
+      )}
 
-        {/* ── Inventory Tab ─────────────────────────────────────────────────── */}
-        <div>
-          {/* Summary cards */}
-          <div className="grid grid-cols-4 gap-[12px] mb-[20px]">
-            {[
-              { label: 'Total Items', value: materials.length },
-              { label: 'Low Stock', value: lowStockCount, warn: lowStockCount > 0 },
-              {
-                label: 'Total On Hand',
-                value: materials.reduce((s, m) => s + m.qtyOnHand, 0).toLocaleString(),
-              },
-              {
-                label: 'Reorder Value',
-                value: `$${materials
-                  .filter(isLowStock)
-                  .reduce((s, m) => s + m.cost * (m.minStockLevel * 2), 0)
-                  .toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-              },
-            ].map((stat, idx) => (
-              <div key={idx} className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]">
-                <div className="text-[10px] text-[var(--text-3)] font-[700] uppercase tracking-[0.06em] mb-[6px]">
-                  {stat.label}
-                </div>
-                <div className={`font-serif text-[28px] leading-[1] ${'warn' in stat && stat.warn ? 'text-[var(--red-l)]' : 'text-[var(--text)]'}`}>
-                  {stat.value}
-                </div>
+      <div className="flex gap-0 flex-1 overflow-hidden">
+        {/* Category sidebar — hidden on phone */}
+        <aside className="hidden md:block w-[200px] border-r border-[var(--border-default)] bg-[var(--surface-card)] overflow-y-auto flex-shrink-0">
+          {SIDEBAR_CATS.map(cat => {
+            const count = cat.id === 'all' ? materials.length : materials.filter(m => cat.match(m.category)).length;
+            return (
+              <div
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors text-[14px] ${
+                  activeCategory === cat.id
+                    ? 'text-[var(--brand-primary)] bg-[var(--surface-selected)] font-[500]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">{cat.emoji} {cat.label}</span>
+                <span className="text-[11px] font-[500] px-2 py-0.5 rounded-full bg-[var(--surface-hover)] text-[var(--text-tertiary)]">
+                  {count}
+                </span>
               </div>
+            );
+          })}
+        </aside>
+
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto flex flex-col">
+          {/* Mobile category chip bar */}
+          <div className="md:hidden overflow-x-auto flex gap-2 px-4 py-3 border-b border-[var(--border-default)]">
+            {SIDEBAR_CATS.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`px-3 py-1.5 rounded-full text-[12px] whitespace-nowrap transition-colors ${
+                  activeCategory === cat.id
+                    ? 'bg-[var(--brand-primary)] text-white'
+                    : 'bg-[var(--surface-hover)] text-[var(--text-secondary)]'
+                }`}
+              >
+                {cat.emoji} {cat.label}
+              </button>
             ))}
           </div>
 
-          <div className="flex items-center justify-between mb-[12px]">
-            <SearchFilter
-              searchValue={invSearch}
-              onSearchChange={setInvSearch}
-              filterValue={invFilter}
-              onFilterChange={setInvFilter}
-              placeholder="Search inventory..."
-              filterOptions={FILTER_OPTIONS}
-              filterLabel="All Categories"
-            />
+          {/* Quick-add bar */}
+          <div className="px-4 py-3 border-b border-[var(--border-default)] bg-[var(--surface-bg)]">
+            <div className="flex flex-wrap gap-2 items-end">
+              <input
+                type="text"
+                placeholder="Material name"
+                value={quickName}
+                onChange={e => setQuickName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleQuickAdd(); }}
+                className="flex-1 min-w-[180px] h-[40px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+              />
+              <select
+                value={quickCategory}
+                onChange={e => setQuickCategory(e.target.value)}
+                className="w-[130px] h-[40px] px-2 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none"
+              >
+                {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <select
+                value={quickUnit}
+                onChange={e => setQuickUnit(e.target.value)}
+                className="w-[90px] h-[40px] px-2 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none"
+              >
+                {UNIT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-[var(--text-tertiary)]">$</span>
+                <input
+                  type="number"
+                  placeholder="Cost"
+                  value={quickCost}
+                  onChange={e => setQuickCost(e.target.value)}
+                  className="w-[90px] h-[40px] pl-6 pr-2 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
+                />
+              </div>
+              <input
+                type="number"
+                placeholder="Qty"
+                value={quickQty}
+                onChange={e => setQuickQty(e.target.value)}
+                className="w-[80px] h-[40px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
+              />
+              <Button variant="primary" className="h-[40px]" onClick={handleQuickAdd} disabled={!quickName.trim()}>
+                Add
+              </Button>
+              <Button variant="secondary" size="sm" className="h-[40px]" onClick={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}>
+                ↑ CSV
+              </Button>
+            </div>
           </div>
 
-          <div className="overflow-x-auto border rounded-[10px] border-[var(--border)]">
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr className="bg-[var(--green)] text-white">
-                  {['Material', 'Category', 'Unit', 'On Hand', 'Min Stock', 'Status', 'Storage Location', 'Last Restocked', ''].map((h, i) => (
-                    <th
-                      key={i}
-                      className={`px-[14px] py-[10px] text-[10px] font-[700] uppercase tracking-[0.05em] ${i === 8 ? 'text-right' : 'text-left'}`}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInventory.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-[14px] py-[20px] text-center text-[var(--text-3)]">
-                      No inventory data
-                    </td>
+          {/* Search and stock filter bar */}
+          <div className="px-4 py-3 flex items-center gap-3 border-b border-[var(--border-light)]">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px]">🔍</span>
+              <input
+                type="text"
+                placeholder="Search materials..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full h-[40px] pl-9 pr-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+              />
+            </div>
+            <div className="flex gap-1 bg-[var(--surface-hover)] p-1 rounded-lg">
+              {(['all', 'in', 'low', 'out'] as const).map(sf => {
+                const label = sf === 'all' ? 'All' : sf === 'in' ? 'In Stock' : sf === 'low' ? 'Low Stock' : 'Out of Stock';
+                return (
+                  <button
+                    key={sf}
+                    onClick={() => setStockFilter(sf)}
+                    className={`px-3 py-1.5 rounded-md text-[12px] font-[500] cursor-pointer transition-colors ${
+                      stockFilter === sf
+                        ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
+                        : 'text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Material table */}
+          <div className="flex-1 overflow-x-auto">
+            {displayMaterials.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="text-[48px] mb-4 opacity-40">🧱</div>
+                <div className="text-[16px] font-[600] text-[var(--text-primary)] mb-2">No materials found</div>
+                <div className="text-[13px] text-[var(--text-tertiary)] mb-6">
+                  {activeCategory === 'all' ? 'Add your first material to get started' : `No ${activeCatDef.label} materials yet`}
+                </div>
+                <Button variant="primary" onClick={openAddModal}>Add Material</Button>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[var(--border-default)] text-[11px] font-[600] uppercase tracking-[0.05em] text-[var(--text-tertiary)]">
+                    <th className="text-left px-4 py-3">Name</th>
+                    <th className="text-left px-4 py-3">Category</th>
+                    <th className="text-right px-4 py-3">Unit</th>
+                    <th className="text-right px-4 py-3">Cost</th>
+                    <th className="text-right px-4 py-3">On Hand</th>
+                    <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">Supplier</th>
+                    <th className="text-right px-4 py-3">Actions</th>
                   </tr>
-                ) : (
-                  filteredInventory.map((material) => {
-                    const low = isLowStock(material);
+                </thead>
+                <tbody>
+                  {displayMaterials.map(material => {
+                    const status = getStockStatus(material);
                     return (
-                      <tr
-                        key={material.id}
-                        className={`border-b border-[var(--border)] hover:bg-[rgba(45,106,79,.06)] transition-colors duration-150 odd:bg-[rgba(255,255,255,.02)] ${low ? 'bg-[rgba(220,38,38,.04)]' : ''}`}
-                      >
-                        <td className="px-[14px] py-[10px] text-[var(--text)] font-[500]">
-                          {material.name}
-                        </td>
-                        <td className="px-[14px] py-[10px]">
-                          <Badge variant={getCategoryBadge(material.category)}>
+                      <tr key={material.id} className="border-b border-[var(--border-light)] hover:bg-[var(--surface-hover)] cursor-pointer transition-colors">
+                        <td className="px-4 py-3 text-[14px] font-[500] text-[var(--text-primary)]">{material.name}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-[12px] px-2.5 py-1 rounded-full bg-[var(--surface-hover)] text-[var(--text-secondary)] font-[500] capitalize">
                             {CAT_LABELS[material.category as MaterialCategory] ?? material.category}
-                          </Badge>
+                          </span>
                         </td>
-                        <td className="px-[14px] py-[10px] text-[var(--text-2)]">{material.unit}</td>
-                        <td className={`px-[14px] py-[10px] font-mono font-[600] ${low ? 'text-[var(--red-l)]' : 'text-[var(--text)]'}`}>
-                          {material.qtyOnHand.toLocaleString()}
+                        <td className="px-4 py-3 text-right text-[14px] text-[var(--text-secondary)]">{material.unit}</td>
+                        <td className="px-4 py-3 text-right text-[14px] font-[500] text-[var(--text-primary)]">${material.cost.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-[14px] text-[var(--text-primary)]">{material.qtyOnHand}</td>
+                        <td className="px-4 py-3">
+                          {status === 'in' && (
+                            <span className="inline-flex items-center gap-1.5 text-[12px] font-[500] px-2.5 py-1 rounded-full bg-[var(--status-green-bg)] text-[var(--status-green)]">● In Stock</span>
+                          )}
+                          {status === 'low' && (
+                            <span className="inline-flex items-center gap-1.5 text-[12px] font-[500] px-2.5 py-1 rounded-full bg-[var(--status-amber-bg)] text-[var(--status-amber)]">● Low Stock</span>
+                          )}
+                          {status === 'out' && (
+                            <span className="inline-flex items-center gap-1.5 text-[12px] font-[500] px-2.5 py-1 rounded-full bg-[var(--status-red-bg)] text-[var(--status-red)]">● Out</span>
+                          )}
                         </td>
-                        <td className="px-[14px] py-[10px] text-[var(--text-2)] font-mono">
-                          {material.minStockLevel.toLocaleString()}
-                        </td>
-                        <td className="px-[14px] py-[10px]">
-                          {low
-                            ? <Badge variant="red">Low Stock</Badge>
-                            : <Badge variant="green">OK</Badge>}
-                        </td>
-                        <td className="px-[14px] py-[10px] text-[var(--text-2)] text-[12px]">
-                          {material.storageLocation || '—'}
-                        </td>
-                        <td className="px-[14px] py-[10px] text-[var(--text-2)] text-[12px]">
-                          {material.lastRestocked
-                            ? new Date(material.lastRestocked).toLocaleDateString()
-                            : '—'}
-                        </td>
-                        <td className="px-[14px] py-[10px] text-right">
-                          <Button variant="ghost" size="xs" onClick={() => openAdjustModal(material.id)}>
-                            Adjust
-                          </Button>
+                        <td className="px-4 py-3 text-[13px] text-[var(--text-secondary)]">{material.supplier_name || '—'}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex gap-1 justify-end">
+                            <button
+                              onClick={() => openEditModal(material)}
+                              className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] flex items-center justify-center transition-colors"
+                              title="Edit"
+                            >✏️</button>
+                            <button
+                              onClick={() => setQuickAddToast('Material ordering coming in Phase 2')}
+                              className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] flex items-center justify-center transition-colors"
+                              title="Order"
+                            >📦</button>
+                          </div>
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* ── Suppliers Tab ─────────────────────────────────────────────────── */}
-        <div>
-          {supplierMap.size === 0 ? (
-            <div className="text-center py-[48px] text-[var(--text-3)]">
-              <div className="text-[14px]">No suppliers yet</div>
-              <div className="text-[12px] mt-[8px]">Add supplier details when editing a material</div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
-              {Array.from(supplierMap.entries()).map(([name, info]) => (
-                <div
-                  key={name}
-                  className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px]"
-                >
-                  <h3 className="text-[14px] font-[700] text-[var(--text)] mb-[12px]">{name}</h3>
-                  <div className="space-y-[8px] text-[12px] text-[var(--text-2)]">
-                    {info.contact && (
-                      <div>
-                        <div className="text-[10px] text-[var(--text-4)] uppercase font-[700] mb-[2px]">Contact</div>
-                        {info.contact}
-                      </div>
-                    )}
-                    {info.phone && (
-                      <div>
-                        <div className="text-[10px] text-[var(--text-4)] uppercase font-[700] mb-[2px]">Phone</div>
-                        {info.phone}
-                      </div>
-                    )}
-                    {info.notes && (
-                      <div>
-                        <div className="text-[10px] text-[var(--text-4)] uppercase font-[700] mb-[2px]">Notes</div>
-                        <span className="text-[var(--text-3)]">{info.notes}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-[10px] text-[var(--text-4)] mt-[12px] pt-[10px] border-t border-[var(--border)]">
-                    Supplies {info.materials.length} material{info.materials.length !== 1 ? 's' : ''}:{' '}
-                    <span className="text-[var(--text-3)]">{info.materials.slice(0, 3).join(', ')}
-                    {info.materials.length > 3 ? ` +${info.materials.length - 3} more` : ''}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </TabPanel>
 
       {/* ── CSV Import Modal ──────────────────────────────────────────────────── */}
       <Modal
