@@ -82,24 +82,28 @@ export const useOrgStore = create<OrgStore>()(
         set({ isLoading: true, error: null });
 
         try {
+          // Bug 5 fix: query by id (canonical — signup trigger sets id = auth.uid())
           const { data, error } = await supabase
             .from('organizations')
             .select(
               'id, name, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id'
             )
-            .eq('owner_id', orgId)
+            .eq('id', orgId)
             .single();
 
           if (error) {
             if (error.code === 'PGRST116') {
-              // New user — create an org record in Supabase so all RLS-protected writes succeed
+              // New user — create org + membership so all RLS-protected writes succeed
               const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+              // Bug 1 fix: include slug (NOT NULL UNIQUE constraint)
+              const slug = 'org-' + orgId.replace(/-/g, '').slice(0, 8) + '-' + Date.now()
               const { data: newOrg, error: insertError } = await supabase
                 .from('organizations')
                 .insert([{
                   id: orgId,
                   owner_id: orgId,
                   name: '',
+                  slug,
                   subscription_status: 'trialing',
                   subscription_tier: 'starter',
                   trial_ends_at: trialEndsAt,
@@ -109,12 +113,22 @@ export const useOrgStore = create<OrgStore>()(
 
               if (insertError) {
                 // Row may have been created by a concurrent trigger — fall back to safe defaults
+                console.error('fetchOrg: org INSERT failed', insertError)
                 set({ org: makeDefaultOrg(orgId), isLoading: false })
               } else {
+                console.error('fetchOrg: org INSERT succeeded, id =', newOrg.id)
+                // Bug 2 fix: create organization_members row so RLS policies pass
+                const { error: memberError } = await supabase
+                  .from('organization_members')
+                  .insert([{ org_id: orgId, user_id: orgId, role: 'admin' }])
+                if (memberError) {
+                  console.error('fetchOrg: organization_members INSERT failed', memberError)
+                }
                 set({ org: mapOrgRow(newOrg as OrgRow), isLoading: false })
               }
             } else {
               // Network or other error — keep any cached org, surface error
+              console.error('fetchOrg: SELECT failed', error)
               set({ isLoading: false, error: error.message });
             }
             return;

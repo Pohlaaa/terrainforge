@@ -280,7 +280,8 @@ export const useEquipmentStore = create<EquipmentStore>()(
         }
         set((state) => ({ equipment: [...state.equipment, newEquipment] }))
         try {
-          await db.createEquipment(equipData, newEquipment.id, orgId)
+          const result = await db.createEquipment(equipData, newEquipment.id, orgId)
+          if (!result) console.error('addEquipment: createEquipment returned null — Supabase write failed')
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }

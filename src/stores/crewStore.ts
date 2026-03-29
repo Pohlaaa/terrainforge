@@ -118,7 +118,8 @@ export const useCrewStore = create<CrewStore>()(
         }
         set((state) => ({ crew: [...state.crew, newMember] }))
         try {
-          await db.createCrewMember(memberData, newMember.id, orgId)
+          const result = await db.createCrewMember(memberData, newMember.id, orgId)
+          if (!result) console.error('addCrewMember: createCrewMember returned null — Supabase write failed')
         } catch (err: any) {
           set((state) => ({ error: err.message }))
         }
