@@ -235,8 +235,8 @@ export const Projects: React.FC = () => {
       .map((z, i) => ({
         id: crypto.randomUUID(),
         name: z.name.trim(),
-        area: parseFloat(z.area) || null,
-        perimeter: parseFloat((z as any).perimeter) || null,
+        area: parseFloat(z.area) || 0,
+        perimeter: 0,
         sequence: i + 1,
         crew: '',
         dependencies: [] as string[],

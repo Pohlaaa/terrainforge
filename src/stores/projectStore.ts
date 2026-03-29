@@ -6,7 +6,7 @@ import { useMaterialStore } from './materialStore'
 import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
 import { supabase } from '@/services/supabase'
-import toast from 'react-hot-toast'
+import { toast } from '@/hooks/useToast'
 
 // Wire up Supabase error reporter — shows toasts and structured console logs
 db.setSupabaseErrorReporter((operation, table, error) => {
