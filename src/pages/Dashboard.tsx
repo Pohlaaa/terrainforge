@@ -15,6 +15,7 @@ import { toast } from '@/hooks/useToast';
 import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiDefinitions';
 import { updateSelectedKpis, updateWidgetLayout } from '@/services/preferences';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
+import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
 import type { AppState } from '@/types';
 
 // Debounce helper for Supabase layout writes
@@ -425,6 +426,11 @@ export const Dashboard: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
+
+      {/* ── Setup Checklist (first-run guidance) ─────────────────────────── */}
+      <div className="mt-3">
+        <SetupChecklist />
+      </div>
 
       {/* ── KPI Strip (v7 inline compact) ────────────────────────────────── */}
       {projects.length === 0 ? (

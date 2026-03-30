@@ -299,6 +299,11 @@ export const Schedule: React.FC = () => {
   // Checklist progress counts per entry
   const [progressCounts, setProgressCounts] = useState<Record<string, number>>({});
 
+  // Track visit for setup checklist
+  useEffect(() => {
+    localStorage.setItem('tf-visited-schedule', 'true');
+  }, []);
+
   // Poll crew statuses every 30 seconds
   useEffect(() => {
     if (!orgId) return;

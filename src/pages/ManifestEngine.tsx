@@ -33,6 +33,11 @@ export const ManifestEngine: React.FC = () => {
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
 
+  // Track visit for setup checklist
+  useEffect(() => {
+    localStorage.setItem('tf-visited-manifest', 'true');
+  }, []);
+
   const [initialLoad, setInitialLoad] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setInitialLoad(false), 600);
