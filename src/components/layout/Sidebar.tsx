@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { path: '/work-orders', label: 'Work Orders', icon: '✓', dotColor: '#A78BFA' },
   { path: '/price-research', label: 'Price Research', icon: '💰', dotColor: '#5EEAD4' },
   { path: '/crew', label: 'Crew Manager', icon: '👥', dotColor: '#F87171' },
+  { path: '/schedule', label: 'Schedule', icon: '📅', dotColor: '#818CF8' },
   { path: '/equipment', label: 'Equipment', icon: '⚙', dotColor: '#D97706' },
 ];
 

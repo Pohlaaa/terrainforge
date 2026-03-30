@@ -9,6 +9,7 @@ import MaterialLibrary from '@/pages/MaterialLibrary'
 import ManifestEngine from '@/pages/ManifestEngine'
 import WorkOrders from '@/pages/WorkOrders'
 import PriceResearch from '@/pages/PriceResearch'
+import Schedule from '@/pages/Schedule'
 import CrewManager from '@/pages/CrewManager'
 import EquipmentManager from '@/pages/EquipmentManager'
 import Billing from '@/pages/Billing'
@@ -49,6 +50,7 @@ function App() {
                     <Route path="/manifest" element={<ErrorBoundary><ManifestEngine /></ErrorBoundary>} />
                     <Route path="/work-orders" element={<ErrorBoundary><WorkOrders /></ErrorBoundary>} />
                     <Route path="/price-research" element={<ErrorBoundary><PriceResearch /></ErrorBoundary>} />
+                    <Route path="/schedule" element={<ErrorBoundary><Schedule /></ErrorBoundary>} />
                     <Route path="/crew" element={<ErrorBoundary><CrewManager /></ErrorBoundary>} />
                     <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
                     <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />

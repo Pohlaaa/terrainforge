@@ -1,0 +1,579 @@
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useScheduleStore } from '@/stores/scheduleStore';
+import { useProjectStore } from '@/stores/projectStore';
+import { useCrewStore } from '@/stores/crewStore';
+import type { ScheduleEntry } from '@/types';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getMonday(d: Date): Date {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon = new Date(d);
+  mon.setDate(d.getDate() + diff);
+  return mon;
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return isoDate(d);
+}
+
+function formatDateHeader(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return `${days[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function formatWeekLabel(mondayStr: string): string {
+  const d = new Date(mondayStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+/** Deterministic hue from a string */
+function idToHue(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < Math.min(6, id.length); i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % 360;
+}
+
+function chipColor(projectId: string): { bg: string; text: string; border: string } {
+  const hue = idToHue(projectId);
+  return {
+    bg: `hsl(${hue} 40% 18%)`,
+    text: `hsl(${hue} 70% 75%)`,
+    border: `hsl(${hue} 50% 30%)`,
+  };
+}
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: ScheduleEntry['status'] }) {
+  const map: Record<string, { label: string; color: string }> = {
+    scheduled: { label: 'Scheduled', color: 'var(--text-3)' },
+    in_progress: { label: 'In Progress', color: 'var(--green-l)' },
+    completed: { label: 'Done', color: '#60A5FA' },
+    cancelled: { label: 'Cancelled', color: '#F87171' },
+  };
+  const s = map[status] ?? map.scheduled;
+  return (
+    <span style={{ fontSize: '9px', color: s.color, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      {s.label}
+    </span>
+  );
+}
+
+// ── Assignment Modal ──────────────────────────────────────────────────────────
+
+interface AssignModalProps {
+  crewMemberId: string;
+  date: string;
+  onClose: () => void;
+}
+
+const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, onClose }) => {
+  const { projects } = useProjectStore();
+  const { addEntry } = useScheduleStore();
+  const [projectId, setProjectId] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleAssign() {
+    if (!projectId) return;
+    setSubmitting(true);
+    await addEntry({
+      projectId,
+      crewMemberId,
+      equipmentId: null,
+      scheduledDate: date,
+      startTime: startTime || null,
+      endTime: endTime || null,
+      notes,
+      status: 'scheduled',
+    });
+    setSubmitting(false);
+    onClose();
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: '12px', padding: '24px', width: '380px', maxWidth: '90vw',
+      }}>
+        <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>
+          Assign to Schedule
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--text-3)', marginBottom: '20px' }}>
+          {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
+              Project *
+            </label>
+            <select
+              value={projectId}
+              onChange={e => setProjectId(e.target.value)}
+              style={{
+                width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+                borderRadius: '8px', color: 'var(--text)', padding: '9px 12px', fontSize: '13px', outline: 'none',
+              }}
+            >
+              <option value="">— Select a project —</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
+                Start (optional)
+              </label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                style={{
+                  width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: '8px', color: 'var(--text)', padding: '9px 12px', fontSize: '13px', outline: 'none',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
+                End (optional)
+              </label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                style={{
+                  width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: '8px', color: 'var(--text)', padding: '9px 12px', fontSize: '13px', outline: 'none',
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
+              Notes (optional)
+            </label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={2}
+              style={{
+                width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+                borderRadius: '8px', color: 'var(--text)', padding: '9px 12px', fontSize: '13px', outline: 'none',
+                resize: 'none', fontFamily: 'inherit',
+              }}
+              placeholder="Task notes..."
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+              background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAssign}
+            disabled={!projectId || submitting}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+              background: 'var(--green)', border: 'none', color: 'white', cursor: !projectId ? 'not-allowed' : 'pointer',
+              opacity: !projectId ? 0.5 : 1,
+            }}
+          >
+            {submitting ? 'Assigning…' : 'Assign'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
+export const Schedule: React.FC = () => {
+  const navigate = useNavigate();
+  const { entries, moveEntry, deleteEntry, getEntriesForCrewMember, hasConflict } = useScheduleStore();
+  const { projects } = useProjectStore();
+  const { crew } = useCrewStore();
+
+  // Week navigation
+  const [weekStart, setWeekStart] = useState(() => isoDate(getMonday(new Date())));
+  const [showWeekend, setShowWeekend] = useState(true);
+
+  // Modal state
+  const [modalTarget, setModalTarget] = useState<{ crewMemberId: string; date: string } | null>(null);
+
+  // Drag state
+  const [dragEntryId, setDragEntryId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ crewId: string; date: string } | null>(null);
+
+  // Build week dates
+  const weekDays = useMemo(() => {
+    const days: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      days.push(addDays(weekStart, i));
+    }
+    return showWeekend ? days : days.slice(0, 5);
+  }, [weekStart, showWeekend]);
+
+  const todayISO = isoDate(new Date());
+
+  function prevWeek() {
+    setWeekStart(addDays(weekStart, -7));
+  }
+
+  function nextWeek() {
+    setWeekStart(addDays(weekStart, 7));
+  }
+
+  function goToday() {
+    setWeekStart(isoDate(getMonday(new Date())));
+  }
+
+  // Drag handlers
+  function handleDragStart(e: React.DragEvent, entryId: string) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', entryId);
+    setDragEntryId(entryId);
+  }
+
+  function handleDragOver(e: React.DragEvent, crewId: string, date: string) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTarget({ crewId, date });
+  }
+
+  function handleDragLeave() {
+    setDropTarget(null);
+  }
+
+  function handleDrop(e: React.DragEvent, crewId: string, date: string) {
+    e.preventDefault();
+    const entryId = e.dataTransfer.getData('text/plain');
+    if (entryId) {
+      const entry = entries.find(en => en.id === entryId);
+      if (entry) {
+        const newCrewId = crewId !== entry.crewMemberId ? crewId : undefined;
+        moveEntry(entryId, date, newCrewId);
+      }
+    }
+    setDragEntryId(null);
+    setDropTarget(null);
+  }
+
+  function handleDragEnd() {
+    setDragEntryId(null);
+    setDropTarget(null);
+  }
+
+  const projectMap = useMemo(
+    () => Object.fromEntries(projects.map(p => [p.id, p.name])),
+    [projects]
+  );
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ fontSize: '22px', fontFamily: 'var(--serif)', color: 'var(--text)', marginBottom: '4px' }}>
+          Schedule
+        </div>
+        <p style={{ fontSize: '13px', color: 'var(--text-3)' }}>
+          Assign crew to projects by day. Drag chips to reschedule.
+        </p>
+      </div>
+
+      {/* Week nav bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', flexWrap: 'wrap',
+      }}>
+        <button
+          onClick={prevWeek}
+          style={{
+            padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+            background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer',
+          }}
+        >
+          ← Prev Week
+        </button>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', flex: 1, textAlign: 'center', minWidth: '200px' }}>
+          Week of {formatWeekLabel(weekStart)}
+        </div>
+        <button
+          onClick={nextWeek}
+          style={{
+            padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+            background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer',
+          }}
+        >
+          Next Week →
+        </button>
+        <button
+          onClick={goToday}
+          style={{
+            padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+            background: 'var(--green)', border: 'none', color: 'white', cursor: 'pointer',
+          }}
+        >
+          Today
+        </button>
+        <button
+          onClick={() => setShowWeekend(s => !s)}
+          style={{
+            padding: '7px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+            background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-3)', cursor: 'pointer',
+          }}
+        >
+          {showWeekend ? '5-day' : '7-day'}
+        </button>
+      </div>
+
+      {crew.length === 0 ? (
+        <div style={{
+          textAlign: 'center', padding: '48px 24px',
+          background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px',
+          color: 'var(--text-3)',
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '10px', opacity: 0.3 }}>📅</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>No crew members</div>
+          <div style={{ fontSize: '13px' }}>
+            Add crew members first to use the schedule.{' '}
+            <button
+              onClick={() => navigate('/crew')}
+              style={{ background: 'none', border: 'none', color: 'var(--green-l)', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}
+            >
+              Go to Crew Manager →
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Calendar grid */
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: `${weekDays.length * 120 + 140}px` }}>
+            {/* Day header row */}
+            <thead>
+              <tr>
+                <th style={{
+                  width: '140px', padding: '10px 12px', fontSize: '11px', fontWeight: 700,
+                  color: 'var(--text-4)', textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.06em',
+                  borderBottom: '1px solid var(--border)',
+                }}>
+                  Crew Member
+                </th>
+                {weekDays.map((date) => {
+                  const isToday = date === todayISO;
+                  return (
+                    <th
+                      key={date}
+                      style={{
+                        padding: '10px 8px', fontSize: '11px', fontWeight: 700,
+                        color: isToday ? 'var(--green-l)' : 'var(--text-3)',
+                        textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em',
+                        borderBottom: '1px solid var(--border)',
+                        background: isToday ? 'rgba(45,106,79,0.08)' : 'transparent',
+                      }}
+                    >
+                      {formatDateHeader(date)}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {crew.map((member) => (
+                <tr key={member.id}>
+                  {/* Crew name cell */}
+                  <td style={{
+                    padding: '10px 12px', fontSize: '12px', fontWeight: 600,
+                    color: 'var(--text-2)', borderBottom: '1px solid var(--border)',
+                    whiteSpace: 'nowrap', verticalAlign: 'top',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        background: 'var(--surface3)', border: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '11px', fontWeight: 700, color: 'var(--green-l)', flexShrink: 0,
+                      }}>
+                        {member.name.charAt(0)}
+                      </div>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px' }}>
+                        {member.name}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Day cells */}
+                  {weekDays.map((date) => {
+                    const cellEntries = getEntriesForCrewMember(member.id, date);
+                    const conflict = hasConflict(member.id, date);
+                    const isDropTarget =
+                      dropTarget?.crewId === member.id && dropTarget?.date === date;
+                    const isToday = date === todayISO;
+
+                    return (
+                      <td
+                        key={date}
+                        onDragOver={(e) => handleDragOver(e, member.id, date)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, member.id, date)}
+                        onClick={() => {
+                          if (cellEntries.length === 0) {
+                            setModalTarget({ crewMemberId: member.id, date });
+                          }
+                        }}
+                        style={{
+                          padding: '6px',
+                          minHeight: '60px',
+                          verticalAlign: 'top',
+                          borderBottom: '1px solid var(--border)',
+                          borderLeft: '1px solid var(--border)',
+                          background: isDropTarget
+                            ? 'rgba(45,106,79,0.15)'
+                            : isToday
+                            ? 'rgba(45,106,79,0.05)'
+                            : 'transparent',
+                          outline: isDropTarget ? '2px dashed var(--green-l)' : 'none',
+                          cursor: cellEntries.length === 0 ? 'pointer' : 'default',
+                          transition: 'background 0.1s',
+                          position: 'relative',
+                        }}
+                      >
+                        {/* Conflict warning */}
+                        {conflict && (
+                          <div
+                            title={`${member.name} has multiple assignments on this day`}
+                            style={{
+                              position: 'absolute', top: '4px', right: '4px',
+                              fontSize: '12px', cursor: 'help', zIndex: 2,
+                            }}
+                          >
+                            ⚠️
+                          </div>
+                        )}
+
+                        {/* Entry chips */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {cellEntries.map((entry) => {
+                            const colors = chipColor(entry.projectId);
+                            const projName = projectMap[entry.projectId] ?? 'Unknown';
+                            const isDragging = dragEntryId === entry.id;
+                            return (
+                              <div
+                                key={entry.id}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, entry.id)}
+                                onDragEnd={handleDragEnd}
+                                title={`${projName}${entry.startTime ? ' · ' + entry.startTime : ''}${entry.notes ? '\n' + entry.notes : ''}`}
+                                style={{
+                                  background: colors.bg,
+                                  border: `1px solid ${colors.border}`,
+                                  color: colors.text,
+                                  borderRadius: '6px',
+                                  padding: '4px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  cursor: 'grab',
+                                  opacity: isDragging ? 0.4 : 1,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  maxWidth: '100%',
+                                  userSelect: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '4px',
+                                }}
+                              >
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                                  {projName}
+                                </span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }}
+                                  style={{
+                                    background: 'none', border: 'none', color: colors.text,
+                                    cursor: 'pointer', fontSize: '10px', padding: '0 2px',
+                                    opacity: 0.6, flexShrink: 0, lineHeight: 1,
+                                  }}
+                                  title="Remove"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* "+" hover indicator for empty cells */}
+                        {cellEntries.length === 0 && !isDropTarget && (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            height: '40px', opacity: 0, transition: 'opacity 0.15s',
+                            color: 'var(--text-4)', fontSize: '18px',
+                          }}
+                          className="schedule-cell-plus"
+                          >
+                            +
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Assignment Modal */}
+      {modalTarget && (
+        <AssignModal
+          crewMemberId={modalTarget.crewMemberId}
+          date={modalTarget.date}
+          onClose={() => setModalTarget(null)}
+        />
+      )}
+
+      <style>{`
+        td:hover .schedule-cell-plus { opacity: 1 !important; }
+      `}</style>
+    </div>
+  );
+};
+
+export default Schedule;
