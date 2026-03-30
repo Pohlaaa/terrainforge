@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useScheduleStore } from '@/stores/scheduleStore';
 import { Pencil } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
@@ -81,6 +83,8 @@ export const Projects: React.FC = () => {
     projectCrew, addProjectCrew, removeProjectCrew } = useProjectStore();
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
+  const navigate = useNavigate();
+  const { getEntriesForProject } = useScheduleStore();
 
   const [initialLoad, setInitialLoad] = useState(true);
   useEffect(() => {
@@ -698,6 +702,55 @@ export const Projects: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {/* Upcoming Schedule */}
+            {(() => {
+              const upcomingEntries = getEntriesForProject(selectedProject.id).filter(
+                (e) => e.scheduledDate >= new Date().toISOString().split('T')[0]
+              ).slice(0, 5);
+              return (
+                <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden">
+                  <div className="px-[16px] py-[12px] border-b border-[var(--border)] flex items-center justify-between">
+                    <div className="text-[12px] font-[700] text-[var(--text)]">
+                      📅 Upcoming Schedule
+                    </div>
+                    <button
+                      onClick={() => navigate('/schedule')}
+                      className="text-[11px] text-[var(--green-l)] hover:underline bg-transparent border-none cursor-pointer"
+                    >
+                      Schedule crew →
+                    </button>
+                  </div>
+                  <div className="p-[14px]">
+                    {upcomingEntries.length === 0 ? (
+                      <div className="text-center py-[20px] text-[var(--text-3)]">
+                        <div className="text-[11px] mb-[8px]">No crew scheduled</div>
+                        <button
+                          onClick={() => navigate('/schedule')}
+                          className="text-[11px] text-[var(--green-l)] hover:underline bg-transparent border-none cursor-pointer"
+                        >
+                          Schedule crew →
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-[6px]">
+                        {upcomingEntries.map((entry) => {
+                          const member = crew.find(m => m.id === entry.crewMemberId);
+                          const dateStr = new Date(entry.scheduledDate + 'T00:00:00')
+                            .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          return (
+                            <div key={entry.id} className="flex items-center justify-between text-[11px] py-[4px] border-b border-[var(--border)] last:border-0">
+                              <span className="text-[var(--text-2)] font-[600]">{member?.name ?? 'Unknown'}</span>
+                              <span className="text-[var(--text-4)]">{dateStr}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
