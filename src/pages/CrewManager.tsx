@@ -346,7 +346,7 @@ export const CrewManager: React.FC = () => {
                           key={day}
                           onClick={() => toggleDay(member, day)}
                           title={`Toggle ${DAY_LABELS[day]}`}
-                          className={`px-[9px] py-[4px] rounded-[8px] text-[10px] font-[700] border-none cursor-pointer transition-colors duration-150 ${
+                          className={`px-[10px] py-[7px] rounded-[8px] text-[10px] font-[700] border-none cursor-pointer transition-colors duration-150 ${
                             member.availability[day]
                               ? 'bg-[rgba(45,106,79,.25)] text-[var(--green-l)]'
                               : 'bg-[var(--surface3)] text-[var(--text-4)]'

@@ -333,7 +333,7 @@ export const PriceResearch: React.FC = () => {
                     <button
                       key={matId}
                       onClick={() => setMaterialType(isActive ? '' : name)}
-                      className={`inline-flex items-center rounded-[8px] px-[8px] py-[3px] text-[11px] border transition-colors cursor-pointer ${
+                      className={`inline-flex items-center rounded-[8px] px-[10px] py-[6px] text-[11px] border transition-colors cursor-pointer ${
                         isActive
                           ? 'bg-[rgba(116,198,157,.15)] border-[var(--green-l)] text-[var(--green-l)]'
                           : 'bg-[var(--surface3)] border-[var(--border)] text-[var(--text-2)] hover:border-[var(--green-l)] hover:text-[var(--green-l)]'
