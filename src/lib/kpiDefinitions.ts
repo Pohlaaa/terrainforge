@@ -14,9 +14,14 @@ export const KPI_LIBRARY: KPIDefinition[] = [
     label: 'Active Projects',
     category: 'projects',
     icon: '📋',
-    compute: ({ projects }) => ({
-      value: projects.filter(p => p.zones?.length > 0).length,
-    }),
+    compute: ({ projects }) => {
+      const active = projects.filter(p => {
+        const checks = Object.values(p.checklist);
+        const completed = checks.filter(Boolean).length;
+        return completed < checks.length; // not 100% complete
+      });
+      return { value: active.length, subtitle: `of ${projects.length} total` };
+    },
     colorVar: '--color-primary',
     navigateTo: '/projects',
     navigateParams: '?status=active',
@@ -78,24 +83,25 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       return { value: available.length, subtitle: `of ${crew.length} total` };
     },
     colorVar: '--status-info',
-    navigateTo: '/crew',
+    navigateTo: '/crew-manager',
   },
   {
     id: 'crew_utilization',
     label: 'Crew Utilization',
     category: 'crew',
     icon: '📈',
-    compute: ({ crew, projects }) => {
+    compute: ({ crew }) => {
       const teamSize = crew.length;
       if (teamSize === 0) return { value: 0 };
-      const assignedIds = new Set(
-        projects.flatMap(p => p.zones.map(z => z.crew)).filter(Boolean),
-      );
-      return { value: Math.round((assignedIds.size / teamSize) * 100) };
+      // Count crew members available today (rough utilization proxy)
+      const dayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()];
+      const availableToday = crew.filter(m => m.availability[dayKey]).length;
+      const pct = Math.round((availableToday / teamSize) * 100);
+      return { value: pct, subtitle: `${availableToday} of ${teamSize} available` };
     },
     colorVar: '--status-info',
     suffix: '%',
-    navigateTo: '/crew',
+    navigateTo: '/crew-manager',
   },
   {
     id: 'fleet_available',
@@ -178,10 +184,10 @@ export const KPI_LIBRARY: KPIDefinition[] = [
 ];
 
 export const DEFAULT_WIDGET_LAYOUT: WidgetConfig[] = [
-  { id: 'widget-alerts', type: 'alerts', title: 'Alerts', visible: true, collapsed: false, order: 0 },
-  { id: 'widget-projects', type: 'projects', title: 'Projects in Progress', visible: true, collapsed: false, order: 1 },
-  { id: 'widget-crew', type: 'crew', title: 'Crew Utilization', visible: true, collapsed: false, order: 2 },
-  { id: 'widget-fleet', type: 'fleet', title: 'Fleet Status', visible: true, collapsed: false, order: 3 },
-  { id: 'widget-map', type: 'map', title: 'Project Map', visible: false, collapsed: false, order: 4 },
-  { id: 'widget-schedule', type: 'schedule', title: "Today's Schedule", visible: true, collapsed: false, order: 5 },
+  { id: 'widget-map', type: 'map', title: 'Project Map', visible: true, collapsed: false, order: 0, size: 'full' },
+  { id: 'widget-alerts', type: 'alerts', title: 'Alerts', visible: true, collapsed: false, order: 1, size: 'half' },
+  { id: 'widget-projects', type: 'projects', title: 'Projects in Progress', visible: true, collapsed: false, order: 2, size: 'half' },
+  { id: 'widget-crew', type: 'crew', title: 'Crew Utilization', visible: true, collapsed: false, order: 3, size: 'half' },
+  { id: 'widget-fleet', type: 'fleet', title: 'Fleet Status', visible: true, collapsed: false, order: 4, size: 'half' },
+  { id: 'widget-schedule', type: 'schedule', title: "Today's Schedule", visible: true, collapsed: false, order: 5, size: 'full' },
 ];
