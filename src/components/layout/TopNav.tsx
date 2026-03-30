@@ -169,34 +169,6 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
                   style={{ height: '1px', background: 'var(--border-default)' }}
                 />
 
-                {/* Navigation items */}
-                <button
-                  onClick={() => { setDropdownOpen(false); navigate('/billing'); }}
-                  className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 cursor-pointer border-none bg-transparent transition-colors duration-100"
-                  style={{ color: 'var(--text-primary)', borderRadius: 'var(--radius-sm)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <NavIcon name="credit-card" size={14} />
-                  Billing
-                </button>
-
-                <button
-                  onClick={() => { setDropdownOpen(false); navigate('/settings'); }}
-                  className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 cursor-pointer border-none bg-transparent transition-colors duration-100"
-                  style={{ color: 'var(--text-primary)', borderRadius: 'var(--radius-sm)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <NavIcon name="settings" size={14} />
-                  Settings
-                </button>
-
-                <div
-                  className="my-1"
-                  style={{ height: '1px', background: 'var(--border-default)' }}
-                />
-
                 <button
                   onClick={() => { setDropdownOpen(false); window.open('/crew', '_blank'); }}
                   className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 cursor-pointer border-none bg-transparent transition-colors duration-100"
