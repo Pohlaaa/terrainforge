@@ -257,8 +257,8 @@ export const CrewManager: React.FC = () => {
       {crew.length === 0 && (
         <EmptyState
           icon={<CrewIcon />}
-          title="Build your team"
-          description="Add crew members to assign them to projects and track availability."
+          title="Build your crew roster"
+          description="Add your team members so you can assign them to projects and schedule their work week."
           actionLabel="Add Crew Member"
           onAction={openAdd}
         />

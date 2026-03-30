@@ -1050,8 +1050,8 @@ export const Projects: React.FC = () => {
       {projects.length === 0 ? (
         <EmptyState
           icon={<ProjectsIcon />}
-          title="Your first project starts here"
-          description="Track jobs, assign crews, and manage materials all in one place."
+          title="Create your first project"
+          description="Every job starts here. Add a project with a name, address, and budget — then build zones, assign crew, and track progress."
           actionLabel="New Project"
           onAction={() => setShowNewModal(true)}
         />

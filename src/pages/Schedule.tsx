@@ -487,9 +487,10 @@ export const Schedule: React.FC = () => {
           color: 'var(--text-3)',
         }}>
           <div style={{ fontSize: '32px', marginBottom: '10px', opacity: 0.3 }}>📅</div>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>No crew members</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>Your schedule is empty</div>
           <div style={{ fontSize: '13px' }}>
-            Add crew members first to use the schedule.{' '}
+            Once you have projects and crew, drag and drop assignments here to plan each work week.{' '}
+            Tip: Add projects and crew members first, then come back to build your schedule.{' '}
             <button
               onClick={() => navigate('/crew')}
               style={{ background: 'none', border: 'none', color: 'var(--green-l)', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}

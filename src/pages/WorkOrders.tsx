@@ -141,8 +141,8 @@ export const WorkOrders: React.FC = () => {
           <EmptyState
             icon={<WorkOrdersIcon />}
             title="No work orders yet"
-            description="Work orders will appear here as you assign tasks to projects."
-            actionLabel="View Projects"
+            description="Work orders are generated from project zones. Create a project with zones first, then come back to see installation steps."
+            actionLabel="Go to Projects"
             onAction={() => navigate('/projects')}
           />
         ) : (

@@ -417,8 +417,8 @@ export const EquipmentManager: React.FC = () => {
           {equipment.length === 0 ? (
             <EmptyState
               icon={<EquipmentIcon />}
-              title="Register your fleet"
-              description="Track equipment status, maintenance schedules, and assignments."
+              title="Register your equipment"
+              description="Track your trucks, excavators, and tools. Log maintenance, insurance, and which jobs they're assigned to."
               actionLabel="Add Equipment"
               onAction={openAdd}
             />

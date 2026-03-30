@@ -221,8 +221,8 @@ export const ManifestEngine: React.FC = () => {
         {projects.length === 0 ? (
           <div className="text-center py-[64px] text-[var(--text-3)]">
             <div className="text-[40px] mb-[12px] opacity-30">📋</div>
-            <div className="text-[16px] font-[600] text-[var(--text-2)] mb-[6px]">No projects yet</div>
-            <div className="text-[13px]">Create a project with zones and materials, then come back to generate a manifest.</div>
+            <div className="text-[16px] font-[600] text-[var(--text-2)] mb-[6px]">Generate your first manifest</div>
+            <div className="text-[13px]">Create a project with zones and materials first, then come back to calculate exact quantities, costs, and order lists.</div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[12px]">
