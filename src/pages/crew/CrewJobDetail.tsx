@@ -9,7 +9,8 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useOrgStore } from '@/stores/orgStore';
-import { fetchScheduleEntries, fetchCrewStatus, upsertCrewStatus } from '@/services/supabaseData';
+import { fetchScheduleEntries, fetchCrewStatus, upsertCrewStatus, fetchChecklistProgress, saveChecklistStep, removeChecklistStep, uploadCrewPhoto, fetchCrewPhotos, getPhotoUrl } from '@/services/supabaseData';
+import type { CrewPhoto } from '@/services/supabaseData';
 import { generateSteps } from '@/lib/workorders';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import type { ScheduleEntry } from '@/types';
@@ -27,6 +28,9 @@ export const CrewJobDetail: React.FC = () => {
   const [completedSteps, setCompletedSteps] = useState<Record<string, Set<number>>>({});
   const [crewStatus, setCrewStatus] = useState<string>('off_duty');
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [photos, setPhotos] = useState<Array<CrewPhoto & { url: string }>>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const crewMemberId = localStorage.getItem('tf_crew_member_id');
 
@@ -40,6 +44,30 @@ export const CrewJobDetail: React.FC = () => {
       setLoading(false);
     });
   }, [orgId, entryId]);
+
+  // Fetch persisted checklist progress
+  useEffect(() => {
+    if (!entry) return;
+    fetchChecklistProgress(entry.id).then((rows) => {
+      const map: Record<string, Set<number>> = {};
+      for (const { zoneId, stepNumber } of rows) {
+        if (!map[zoneId]) map[zoneId] = new Set();
+        map[zoneId].add(stepNumber);
+      }
+      setCompletedSteps(map);
+    });
+  }, [entry?.id]);
+
+  // Fetch photos
+  useEffect(() => {
+    if (!entry) return;
+    fetchCrewPhotos(entry.id).then(async (list) => {
+      const withUrls = await Promise.all(
+        list.map(async (p) => ({ ...p, url: await getPhotoUrl(p.storagePath) }))
+      );
+      setPhotos(withUrls);
+    });
+  }, [entry?.id]);
 
   // Fetch current crew status
   useEffect(() => {
@@ -67,12 +95,31 @@ export const CrewJobDetail: React.FC = () => {
   const totalDone = Object.values(completedSteps).reduce((s, set) => s + set.size, 0);
 
   function toggleStep(zoneId: string, stepN: number) {
+    if (!orgId || !crewMemberId || !entry) return;
     setCompletedSteps(prev => {
       const zoneSet = new Set(prev[zoneId] ?? []);
-      if (zoneSet.has(stepN)) zoneSet.delete(stepN);
-      else zoneSet.add(stepN);
+      if (zoneSet.has(stepN)) {
+        zoneSet.delete(stepN);
+        removeChecklistStep(entry.id, zoneId, stepN);
+      } else {
+        zoneSet.add(stepN);
+        saveChecklistStep(orgId, entry.id, crewMemberId, zoneId, stepN);
+      }
       return { ...prev, [zoneId]: zoneSet };
     });
+  }
+
+  async function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !orgId || !crewMemberId || !entry) return;
+    setUploading(true);
+    const photo = await uploadCrewPhoto(orgId, entry.id, crewMemberId, file);
+    if (photo) {
+      const url = await getPhotoUrl(photo.storagePath);
+      setPhotos(prev => [...prev, { ...photo, url }]);
+    }
+    setUploading(false);
+    e.target.value = '';
   }
 
   async function handleStatusUpdate(status: string) {
@@ -161,6 +208,30 @@ export const CrewJobDetail: React.FC = () => {
         <ProgressBar completed={totalDone} total={totalSteps} showPercentage={false} />
       </div>
 
+      {/* Photo gallery */}
+      {(photos.length > 0 || uploading) && (
+        <div className="mb-[16px]">
+          <div className="text-[11px] font-[700] uppercase tracking-[0.05em] mb-[8px]" style={{ color: 'var(--text-4)' }}>
+            Photos ({photos.length})
+          </div>
+          <div className="grid grid-cols-3 gap-[8px]">
+            {photos.map(p => (
+              <div key={p.id} className="aspect-square rounded-[8px] overflow-hidden" style={{ background: 'var(--surface2)' }}>
+                <img src={p.url} alt={p.caption || 'Job photo'} className="w-full h-full object-cover" />
+              </div>
+            ))}
+            {uploading && (
+              <div
+                className="aspect-square rounded-[8px] flex items-center justify-center text-[11px]"
+                style={{ background: 'var(--surface2)', color: 'var(--text-4)' }}
+              >
+                Uploading...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Zone sections */}
       {project.zones.length === 0 ? (
         <div className="text-center py-[32px] text-[13px]" style={{ color: 'var(--text-3)' }}>
@@ -235,6 +306,38 @@ export const CrewJobDetail: React.FC = () => {
             })}
         </div>
       )}
+
+      {/* Hidden file input for camera */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handlePhotoCapture}
+        className="hidden"
+        style={{ display: 'none' }}
+      />
+
+      {/* Camera FAB */}
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="fixed rounded-full flex items-center justify-center cursor-pointer border-none transition-opacity disabled:opacity-50"
+        style={{
+          bottom: '76px',
+          right: '16px',
+          width: '52px',
+          height: '52px',
+          background: 'var(--green)',
+          color: '#fff',
+          fontSize: '22px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          zIndex: 10,
+        }}
+        title="Take photo"
+      >
+        📷
+      </button>
 
       {/* Status buttons — fixed to bottom */}
       <div
