@@ -21,6 +21,18 @@ import { HelpIcon } from '@/components/shared/Tooltip';
 import { insertSampleData } from '@/services/supabaseData';
 import type { AppState } from '@/types';
 
+// Fallback mapping: priority labels → KPI IDs (handles stale localStorage from pre-hotfix sessions)
+const PRIORITY_TO_KPI: Record<string, string> = {
+  'Project Tracking': 'active_projects',
+  'Budget & Estimates': 'pipeline_value',
+  'Crew Management': 'crew_available',
+  'Material Inventory': 'low_stock_alerts',
+  'Equipment Tracking': 'fleet_available',
+  'Client Comms': 'active_projects',
+  'Invoicing': 'pipeline_value',
+  'Weather Planning': 'active_projects',
+};
+
 // Debounce helper for Supabase layout writes
 function useDebouncedCallback<T extends unknown[]>(
   fn: (...args: T) => void,
@@ -245,19 +257,20 @@ const WelcomeBanner: React.FC<{ hasProjects: boolean }> = ({ hasProjects }) => {
       <button
         onClick={dismiss}
         style={{
-          background: 'var(--surface3)',
-          border: '1px solid var(--border)',
-          borderRadius: '6px',
-          color: 'var(--text-2)',
-          fontSize: '14px',
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--text-3)',
+          fontSize: '16px',
           fontWeight: 600,
           cursor: 'pointer',
-          padding: '4px 8px',
+          padding: '4px 6px',
           lineHeight: 1,
           flexShrink: 0,
+          borderRadius: '6px',
+          transition: 'color 0.15s ease, background 0.15s ease',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--text-3)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-2)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.background = 'transparent'; }}
         aria-label="Dismiss welcome banner"
       >
         ✕
@@ -379,7 +392,13 @@ export const Dashboard: React.FC = () => {
   };
 
   const activeKpis = (selectedKpis ?? DEFAULT_SELECTED_KPIS)
-    .map((id) => KPI_LIBRARY.find((k) => k.id === id))
+    .map((id) => {
+      const direct = KPI_LIBRARY.find((k) => k.id === id);
+      if (direct) return direct;
+      // Fallback: id might be a priority label from stale localStorage
+      const mappedId = PRIORITY_TO_KPI[id];
+      return mappedId ? KPI_LIBRARY.find((k) => k.id === mappedId) : undefined;
+    })
     .filter((k): k is NonNullable<typeof k> => Boolean(k));
 
   const prefersReducedMotion =

@@ -48,6 +48,18 @@ const KPI_MAP: Record<string, { label: string; icon: string }> = {
   'Weather Planning':  { label: 'Weather Alerts',     icon: '🌤️' },
 }
 
+// Map onboarding priority labels → KPI library IDs for Supabase persistence
+const PRIORITY_TO_KPI_ID: Record<string, string> = {
+  'Project Tracking': 'active_projects',
+  'Budget & Estimates': 'pipeline_value',
+  'Crew Management': 'crew_available',
+  'Material Inventory': 'low_stock_alerts',
+  'Equipment Tracking': 'fleet_available',
+  'Client Comms': 'active_projects',
+  'Invoicing': 'pipeline_value',
+  'Weather Planning': 'active_projects',
+}
+
 const DEFAULT_KPIS = ['Project Tracking', 'Budget & Estimates', 'Crew Management', 'Material Inventory']
 
 const AI_CHIPS = ['Jobs overdue this week', 'Profit margin by project', 'Crew utilization rate']
@@ -132,13 +144,17 @@ Return only valid JSON, no markdown.`, 'claude-haiku-4-5-20251001')
     setIsSaving(true)
     try {
       if (user && org) {
+        // Convert priority labels to KPI library IDs before saving
+        const kpiIds = derivedKpis
+          .map(label => PRIORITY_TO_KPI_ID[label] ?? label)
+          .filter((v, i, a) => a.indexOf(v) === i); // deduplicate
         await upsertUserPreferences(user.id, org.id, {
           businessType,
           companyName,
           teamSize,
           userRole: role,
           priorities,
-          selectedKpis: derivedKpis,
+          selectedKpis: kpiIds,
           customKpis,
           onboardingCompletedAt: new Date().toISOString(),
         })

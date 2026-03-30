@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { IconRail } from '@/components/layout/IconRail';
 import { TopNav } from '@/components/layout/TopNav';
 import { SubTabBar } from '@/components/layout/SubTabBar';
@@ -99,7 +99,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     }
   }, [user?.id, fetchOrg, fetchProjects, fetchCrew, fetchMaterials, fetchEquipment]);
 
-  // Load user preferences (KPI selections from onboarding) once per session
+  // Load user preferences (KPI selections from onboarding) once per session.
+  // Also redirect genuinely new users to onboarding (catches email-confirm redirects
+  // that bypass Login.tsx's hasCompletedOnboarding check).
+  const navigate = useNavigate();
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   useEffect(() => {
     if (!user?.id || prefsLoaded) return;
@@ -113,10 +116,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         // Deduplicate and ensure we have at least some KPIs
         const unique = [...new Set(resolved)];
         useUIStore.getState().setSelectedKpis(unique.length > 0 ? unique : DEFAULT_SELECTED_KPIS);
+      } else if (!prefs?.onboardingCompletedAt) {
+        // No prefs row or no onboarding timestamp — genuinely new user.
+        // Redirect to onboarding so they don't land on an empty dashboard.
+        navigate('/onboarding', { replace: true });
+        return;
       }
       setPrefsLoaded(true);
     });
-  }, [user?.id, prefsLoaded]);
+  }, [user?.id, prefsLoaded, navigate]);
 
   // Suppress banners on the billing page itself — user is already looking at it
   const isOnBillingPage = location.pathname === '/billing';
