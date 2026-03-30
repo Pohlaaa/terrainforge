@@ -439,10 +439,10 @@ export const Dashboard: React.FC = () => {
       ) : (
         <>
           <div
-            className="flex -mx-3 sm:-mx-4 lg:-mx-6"
+            className="flex flex-wrap -mx-3 sm:-mx-4 lg:-mx-6"
             style={{ background: 'var(--border-default)', gap: '1px', borderBottom: '1px solid var(--border-default)' }}
           >
-            {activeKpis.slice(0, 4).map((kpi) => {
+            {activeKpis.map((kpi) => {
               const result = kpi.compute(appState);
               const display = `${kpi.prefix ?? ''}${
                 kpi.decimals ? result.value.toFixed(kpi.decimals) : Math.round(result.value)
@@ -451,7 +451,7 @@ export const Dashboard: React.FC = () => {
                 <div
                   key={kpi.id}
                   onClick={() => kpi.navigateTo && navigate(kpi.navigateTo + (kpi.navigateParams ?? ''))}
-                  className="flex-1 min-w-0 transition-colors duration-100"
+                  className="flex-1 min-w-[120px] transition-colors duration-100"
                   style={{
                     background: 'var(--surface-card)',
                     padding: '10px 12px',
@@ -473,6 +473,21 @@ export const Dashboard: React.FC = () => {
                       {result.subtitle}
                     </div>
                   )}
+                  {/* Mini sparkline */}
+                  <svg
+                    viewBox="0 0 80 20"
+                    preserveAspectRatio="none"
+                    style={{ display: 'block', width: '100%', height: '20px', marginTop: '4px', opacity: 0.5 }}
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M0,16 L10,14 L20,15 L30,12 L40,10 L50,11 L60,8 L70,6 L80,3"
+                      fill="none"
+                      stroke="var(--brand-primary)"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </div>
               );
             })}
