@@ -43,26 +43,27 @@
 
 ---
 
-## 2. Session Model (Two-Mode)
+## 2. Session Model (Two-Mode + Workflow Loop)
 
-As of Sprint 16.5, we use a two-mode model. VSCode Claude Code handles everything sprint-related. Cowork is reserved for strategic/business work only.
+VSCode Claude Code handles everything sprint-related. Cowork handles strategy, file optimization, and batch checkpoints.
 
 ### Claude Code in VSCode (PRIMARY — planning + execution)
-- Reads ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md to plan sprints
+- Reads ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md, DATA_MODEL_M1.5.md to plan sprints
 - Writes sprint prompt files (`.claude/SPRINT_[N]_PROMPTS.md`)
 - Writes SQL migration files in `supabase/migrations/`
 - Executes all sprint code (branch, implement, build, commit, PR)
 - Writes hotfix prompts and executes them
-- Updates CONTEXT.md, ORCHESTRATOR.md after sprints
+- Updates CONTEXT.md after sprints
 - Provides the post-sprint command block for Charlie
 - The ONLY entity that touches files in `src/`
 - Per-task cycle: implement → build → commit → next task
+- **End-of-sprint**: reminds Charlie to update SPRINT_LOG.md
 
-### Cowork (STRATEGIC only)
+### Cowork (STRATEGY + BATCH CHECKPOINTS)
 - Business strategy, roadmap decisions, milestone evaluation
 - Non-code deliverables (pitch decks, marketing docs, presentations)
 - UI Design preview production (HTML design previews)
-- Remote dispatch from phone (see REMOTE_WORKFLOW.md)
+- **Batch checkpoints** every 3-5 sprints (see Workflow Loop below)
 - Does NOT plan sprints, write sprint prompts, write SQL, or touch code
 
 ### Charlie's role in the loop
@@ -70,8 +71,32 @@ As of Sprint 16.5, we use a two-mode model. VSCode Claude Code handles everythin
 - Merges sprint branches in PowerShell (command block provided by Code)
 - Tests locally: `npm run dev` → `localhost:3000` (incognito)
 - Reports test results back to Code: PASS / PARTIAL / FAIL
+- **After each sprint pass**: updates SPRINT_LOG.md (~2 min)
 - Deploys to prod: `git push origin main`
 - Commits `.claude/` doc updates after sprints
+
+### Workflow Loop
+
+Two cadences drive the development cycle:
+
+**Sprint Cadence** (every sprint):
+```
+Code executes sprint → Charlie tests → PASS/FAIL
+  → Charlie updates SPRINT_LOG.md (what felt right, what felt off, what's missing)
+  → Code starts next sprint
+```
+
+**Batch Cadence** (every 3-5 sprints, or at milestone boundaries):
+```
+Charlie opens Cowork → Cowork reads CONTEXT.md + ROADMAP.md + SPRINT_LOG.md
+  → Cowork flags priority shifts from sprint log feedback
+  → Cowork updates ROADMAP.md, CONSIDERATIONS.md, DATA_MODEL_M1.5.md as needed
+  → Cowork archives processed sprint log entries
+  → Cowork writes summary + next-batch direction
+  → Charlie starts next Code session with updated files
+```
+
+**Why this matters**: CONTEXT.md tells Cowork what Code built. SPRINT_LOG.md tells Cowork what Charlie experienced. Both signals are needed to optimize the next batch of sprints.
 
 ---
 
@@ -80,14 +105,15 @@ As of Sprint 16.5, we use a two-mode model. VSCode Claude Code handles everythin
 ### Sprint Lifecycle
 
 ```
-1. Plan    → Code reads ROADMAP/CONTEXT/CONSIDERATIONS, writes SPRINT_[N]_PROMPTS.md + migration SQL
+1. Plan    → Code reads ROADMAP/CONTEXT/CONSIDERATIONS/DATA_MODEL, writes SPRINT_[N]_PROMPTS.md + migration SQL
 2. Pre-fly → Charlie runs SQL migration in Supabase (if any)
 3. Execute → Code creates branch, implements, builds, commits, opens PR
 4. Merge   → Charlie: pastes post-sprint command block into PowerShell
 5. Test    → Charlie: localhost:3000 in incognito, runs test checklist
 6. Fix     → If issues: Code writes + executes hotfix prompt, repeat 4-5
-7. Wrap    → Code updates CONTEXT.md, Charlie commits .claude/ docs
-8. Deploy  → Charlie: git push origin main (when ready)
+7. Wrap    → Code updates CONTEXT.md, reminds Charlie to update SPRINT_LOG.md
+8. Log     → Charlie: adds sprint entry to SPRINT_LOG.md (~2 min)
+9. Deploy  → Charlie: git push origin main (when ready)
 ```
 
 ### Sprint Prompt Quality Bar
@@ -270,6 +296,8 @@ After the Sprint 25 consolidation, the `.claude/` directory has a clean structur
 | `ORCHESTRATOR.md` | This file — full knowledge base for Orchestrator/Cowork |
 | `CODE_GUIDE.md` | Execution workflow, sprint lifecycle, testing protocol |
 | `DESIGN_SYSTEM.md` | Design tokens, color system, component patterns |
+| `DATA_MODEL_M1.5.md` | M1.5 Project Intelligence schema — new tables, extended projects, migration plan |
+| `SPRINT_LOG.md` | Charlie's testing impressions per sprint — Cowork reads during batch checkpoints |
 | `CONSIDERATIONS.md` | Backlog items not yet sprint-ready |
 | `SPRINT_TEMPLATE.md` | Template for writing new sprint prompts |
 
@@ -282,8 +310,17 @@ After the Sprint 25 consolidation, the `.claude/` directory has a clean structur
 | `TESTING/` | QA findings, test protocol, sprint test results |
 | `SQL/` | Sprint-specific SQL reference files |
 
-### How to start a new session
+### How to start a new Code session
 1. Read this file (`ORCHESTRATOR.md`) — you now know everything
 2. Read `CONTEXT.md` — current sprint status
 3. Read `ROADMAP.md` — what milestone is active, what's next
-4. Ask Charlie: "I'm up to speed. What are we working on?"
+4. Read `DATA_MODEL_M1.5.md` — if working on M1.5 sprints
+5. Ask Charlie: "I'm up to speed. What are we working on?"
+
+### How to start a new Cowork session (batch checkpoint)
+1. Read `CONTEXT.md` — what Code has built since last checkpoint
+2. Read `ROADMAP.md` — milestone progress
+3. Read `SPRINT_LOG.md` — Charlie's testing feedback since last checkpoint
+4. Summarize: what changed, what needs attention, any priority shifts
+5. Update files as needed: ROADMAP.md, CONSIDERATIONS.md, DATA_MODEL_M1.5.md
+6. Archive processed SPRINT_LOG.md entries to `.claude/archive/sprint_log_archive.md`

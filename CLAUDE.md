@@ -128,6 +128,8 @@ After the Sprint 25 consolidation, only these files are active:
 - `.claude/CONSIDERATIONS.md` — backlog items, design decisions
 - `.claude/ORCHESTRATOR.md` — full project knowledge base, Supabase rules
 - `.claude/DESIGN_SYSTEM.md` — design tokens (for visual sprints)
+- `.claude/DATA_MODEL_M1.5.md` — M1.5 Project Intelligence schema (new tables, extended projects, migration plan)
+- `.claude/SPRINT_LOG.md` — Charlie's testing impressions per sprint (Cowork reads during batch checkpoints)
 - `.claude/SPRINT_TEMPLATE.md` — template for new sprint prompts
 
 ### Business/Strategy (Cowork only — Code does not read these)

@@ -3,7 +3,7 @@
 > **Purpose**: Replaces the old Phase 1-4 model. Milestones are outcome-driven with clear gates.
 > **Created**: 2026-03-29
 > **Owner**: Charlie (Business Systems Analyst II)
-> **Last updated**: 2026-03-30
+> **Last updated**: 2026-03-30 (M1.5 Project Intelligence added)
 
 ---
 
@@ -51,7 +51,7 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 
 **Gate**: A 15-minute demo to a real contractor results in "how do I sign up?" not "what else does it do?" The demo includes showing the manager view AND the crew view side-by-side.
 
-**Estimated sprints**: 5-8 (Sprint 15-22)
+**Status**: **COMPLETE** (Sprints 15-25)
 
 ---
 
@@ -59,16 +59,113 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 
 **Goal**: A contractor who finds TerrainForge online can sign up, understand the product, and see value within 5 minutes — without a demo call.
 
-**What's missing**:
-- [ ] **Guided first-run experience** — After onboarding wizard, walk user through creating first project → adding crew → viewing schedule. Not a tutorial modal — contextual prompts on each page.
-- [ ] **Empty state redesign** — Every page with zero data should guide toward the next action, not show a blank table.
-- [ ] **Sample data toggle** — Let new users explore with pre-loaded demo data before committing their own. One-click "Load sample landscaping company" that populates 3 projects, 8 crew, materials, equipment.
-- [ ] **Settings page completion** — Profile, company info, notification preferences (even if notifications aren't wired yet — the settings should exist).
-- [ ] **Help & support foundation** — Tooltip system on key features, "?" icons linking to short explanations. Not a help center — just contextual guidance.
+**What's done**:
+- [x] **Setup checklist** — 5-step progress tracker on Dashboard, auto-dismiss for existing users. **DONE Sprint 26.**
+- [x] **Enhanced empty states** — Action-oriented copy on 6 pages. **DONE Sprint 26.**
+- [x] **Sample data loader** — "Load Sample Company" inserts 3 projects, 6 crew, 5 equipment, 8 materials. **DONE Sprint 26.**
+- [x] **Tooltip system** — HelpIcon component with contextual help on 5 key pages. **DONE Sprint 26.**
+- [x] **Onboarding KPI sync** — Wizard selections map to Dashboard KPIs. **DONE Sprint 27.**
+- [x] **Welcome banner** — First-time user banner, auto-hides after 3 visits. **DONE Sprint 27.**
+- [x] **Billing banners** — Trial/past-due banners in AppLayout. **DONE Sprint 27.**
+
+**What's remaining**:
+- [ ] **Settings page completion** — Profile, company info, notification preferences.
 
 **Gate**: A contractor completes signup-to-first-project in under 5 minutes without any external help.
 
-**Estimated sprints**: 2-3 (Sprint 20-22)
+**Status**: **NEAR COMPLETE** (Sprints 26-27). Settings page is the one remaining item.
+
+---
+
+## Milestone 1.5a: "Project Intelligence — Creation Wizard"
+
+**Goal**: A contractor describes a job and gets a fully structured project — tasks, materials, crew, equipment, timeline, budget — in under 5 minutes. AI does the heavy lifting; the contractor refines.
+
+**Why this exists**: M1 proved the platform works. M2 proved onboarding works. But the *project creation experience* is still a basic form with some AI pre-fill. Projects are the core of everything a contractor does in TerrainForge. Making project creation intelligent and comprehensive is what turns "cool tool" into "I need this." This is also the demo moment that sells the product.
+
+**Design principles**:
+- **Guided wizard, not a giant form** — 7 steps that follow the natural dependency chain of how contractors plan jobs
+- **AI generates, contractor owns** — AI produces a smart starting point at each step. Once the contractor edits, the AI doesn't override. No cascading recalculation surprises.
+- **Progressive disclosure** — Each step reveals only what's relevant given what came before
+- **Non-destructive** — Existing project creation still works. The wizard is an enhanced path, not a replacement that breaks things.
+
+**Step 1: Describe the Job** (identity)
+- Name, client info (name, phone, email, property type), description (natural language), project type (full install / renovation / hardscape / softscape / drainage / irrigation / maintenance), scope size (small/medium/large/commercial)
+- AI processes description immediately, infers project type and scope if not specified
+
+**Step 2: Site Intelligence** (location + conditions)
+- Address autocomplete (existing Mapbox integration)
+- AI infers: climate zone, typical soil type, municipal permit zone, HOA likelihood
+- Contractor adds: slope/grade, existing vegetation, sun exposure, drainage patterns
+- Access & logistics: gate codes, parking restrictions, permitted hours, utility locations, HOA rules
+- Site photo upload (Supabase Storage — new `project-photos` bucket, separate from `crew-photos`)
+
+**Step 3: Scope & Tasks** (AI-generated work breakdown)
+- AI generates zones from description ("front yard hardscape", "backyard patio", "side drainage")
+- AI generates tasks with dependencies, grouped into phases: Demo/Prep → Rough Grade → Hardscape → Softscape → Lighting/Irrigation → Cleanup/Punchlist
+- Contractor reorders, adds, removes tasks. Edits phase assignments.
+- Task dependencies visualized (task A must finish before task B starts)
+
+**Step 4: Resources** (crew, materials, equipment, subs)
+- AI recommends crew size and required skills based on tasks
+- AI generates material list from zones + tasks (manifest engine runs automatically)
+- AI suggests equipment with duration estimates ("skid steer, 3 days during grading phase")
+- Subcontractor fields: name, trade, scope, scheduled dates
+- Contractor assigns specific people, adjusts quantities
+
+**Step 5: Timeline & Budget** (AI estimates, contractor adjusts)
+- Start date / target completion
+- AI proposes timeline based on scope + crew size + task dependencies
+- Budget breakdown: labor (crew hours x rates), materials (from manifest), equipment rental, subcontractor costs, overhead/markup percentage
+- Client quote field with margin calculation (quote - cost = profit)
+
+**Step 6: Compliance** (permits, inspections, risk)
+- AI generates permit checklist based on location + scope
+- Inspection milestone fields tied to permit requirements
+- Risk notes (freeform) — "underground utilities unmarked", "client particular about property line"
+
+**Step 7: Review & Create**
+- Full summary of everything. One tap to create.
+- Project becomes a living entity with all data populated.
+
+**Data model** (full schema in DATA_MODEL_M1.5.md — design upfront, build incrementally):
+- New tables: `project_tasks`, `project_subcontractors`, `project_documents`, `project_site_conditions`
+- Extended tables: `projects` (client fields, budget fields, project type, scope size, compliance notes)
+- New Supabase Storage bucket: `project-photos`
+- All new tables follow existing patterns: org_id, RLS, TEXT + CHECK (no ENUMs)
+
+**Gate**: Contractor describes a job → full project plan with tasks, materials, crew, and preliminary schedule in under 5 minutes. Pilot contractor confirms: "this saves me real time."
+
+**Estimated sprints**: 3-4 (Sprint 28-31)
+
+---
+
+## Milestone 1.5b: "Project Intelligence — Project Dashboard"
+
+**Goal**: A contractor can manage an active project entirely from the project detail view. Each project is its own command center.
+
+**Why split from 1.5a**: The creation wizard (1.5a) ships first and gets tested with pilot contractors. Their feedback shapes which dashboard sections matter most. This prevents building a 12-panel dashboard when contractors only use 4 of them.
+
+**Project detail view sections**:
+- **Header**: Name, client, status phase, address with map pin, overall progress %
+- **Schedule**: This project's schedule entries for the current week, who's assigned where
+- **Task tracker**: Phase-grouped task list with completion status (linked to crew app checklist)
+- **Resources**: Assigned crew, material status (ordered/on-site/used), equipment with date ranges
+- **Budget**: Quote vs actual cost, visual on-budget/over-budget indicator, margin
+- **Activity feed**: Recent photo uploads, status changes, task completions — chronological timeline
+- **Documents**: Site photos, permits, contracts, manifests — uploaded files with preview
+- **Compliance**: Permit status, inspection dates, risk notes
+
+**Design approach**:
+- Tabbed or scrollable sections (not all visible at once — that's overwhelming)
+- Consistent with existing v7 design system (card-based, dark theme, 44px touch targets)
+- Detail panel may need to become a full page rather than a slide-in panel — TBD based on information density
+
+**Gate**: Contractor can manage an active project entirely from the project view without navigating to other pages. Pilot contractor confirms: "I can see everything I need about this job."
+
+**Estimated sprints**: 2-3 (Sprint 32-34)
+
+**Pilot testing**: Begin informal pilot contractor conversations during M1.5a development. Show current app state. Gather feedback that shapes M1.5b priorities.
 
 ---
 
@@ -159,9 +256,16 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 23 | M1 | Crew PIN auth — PIN login, org shortcode (**COMPLETE**) |
 | 24 | M1 | Dashboard + Projects v7 redesign — KPI strip, dense cards, list view (**COMPLETE**) |
 | 25/25.5/25.6 | M1 | Polish + demo prep — sidebar, widgets, map, KPI fixes (**COMPLETE**) |
-| 26-27 | M2 | Onboarding flow, empty states, settings, help tooltips |
-| 28-29 | M3 | Stripe completion, landing page, deploy, outreach |
-| 30+ | M4 | Time tracking, client portal, CSV, invoicing, crew app enhancements |
+| 26/26.5/26.6 | M2 | First-run experience — setup checklist, empty states, sample data, tooltips (**COMPLETE**) |
+| 27/27.5/27.6 | M2 | Onboarding polish — KPI sync, welcome banner, billing banners, debug cleanup (**COMPLETE**) |
+| 28 | M1.5a | Project Intelligence kickoff — extended projects table, project_tasks, site conditions, wizard Steps 1-3 |
+| 29-30 | M1.5a | Wizard Steps 4-7 — resources, timeline/budget, compliance, review & create |
+| 31 | M1.5a | Wizard polish, AI tuning, pilot contractor testing |
+| 32-33 | M1.5b | Project dashboard — schedule, tasks, resources, budget, activity tabs |
+| 34 | M1.5b | Dashboard polish — documents, compliance, pilot feedback integration |
+| 35 | M2/M3 | Settings page completion (last M2 item) + M3 production deploy prep |
+| 36-37 | M3 | Stripe completion, landing page, trial flow, outreach |
+| 38+ | M4 | Time tracking, client portal, CSV, invoicing, crew app enhancements |
 
 *Sprint numbers are estimates. Actual scope depends on sprint outcomes and user feedback.*
 
@@ -175,4 +279,9 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 2026-03-29 | Moved scheduling from Phase 2 to Milestone 1 (pre-launch) | Scheduling is the daily-use hook that makes the product indispensable, not a post-launch add-on |
 | 2026-03-29 | Added guided onboarding as Milestone 2 | First-run experience is a blocker for self-serve signups; can't scale with demo-only acquisition |
 | 2026-03-29 | Crew-facing app added to Milestone 1 | Manager schedules, crew executes — the two sides complete the loop. A scheduling tool without crew visibility is half a product. Same React app, separate route tree (`/crew/*`), shared Supabase backend. |
-| 2026-03-29 | Sprint 15/15.5 shipped scheduling | Manager-side scheduling complete. Weekly grid, drag-and-drop, dashboard widget, project integration, Supabase
+| 2026-03-30 | Inserted M1.5a/b between M2 and M3 | Project creation experience is the core value differentiator. Rushing to M3 (revenue) with a basic project form would undermine the product's "I need this" moment. |
+| 2026-03-30 | Split M1.5 into a (wizard) and b (dashboard) | Prevents scope gravity. Ship wizard first, pilot test it, let feedback shape which dashboard sections matter most before building all 8. |
+| 2026-03-30 | Design data model upfront for all of M1.5 | Full schema in DATA_MODEL_M1.5.md. Avoids migration churn from discovering missing columns mid-sprint. Build incrementally but design holistically. |
+| 2026-03-30 | Added `project_permits` table (not in original spec) | Permits have lifecycle state (applied → approved → inspected) that `project_documents` can't model. Landscaping permits are common enough to warrant a dedicated table. |
+| 2026-03-30 | Deferred Settings page to Sprint 35 | Settings is the last M2 item but doesn't block M1.5 work. Bundling it with M3 prep avoids breaking M1.5 focus. |
+| 2026-03-29 | Sprint 15/15.5 shipp

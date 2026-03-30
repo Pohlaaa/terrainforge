@@ -8,7 +8,7 @@
 ## Your Role
 
 You are the primary development environment for TerrainForge. You handle:
-- **Sprint planning**: Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md → write SPRINT_[N]_PROMPTS.md
+- **Sprint planning**: Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md, DATA_MODEL_M1.5.md → write SPRINT_[N]_PROMPTS.md
 - **Migration authoring**: Write SQL files in `supabase/migrations/` (NEVER inline SQL in markdown)
 - **Sprint execution**: Branch, implement, build, commit, PR
 - **Hotfix writing + execution**: When tests fail, write and run the fix
@@ -41,7 +41,7 @@ Cowork (the Anthropic desktop app) is only used for strategic/business work — 
 Charlie executes steps marked **(C)**. Claude Code handles **(CC)**.
 
 ### Phase A: Plan (CC)
-1. Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md
+1. Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md, DATA_MODEL_M1.5.md
 2. Write SPRINT_[N]_PROMPTS.md with all tasks, types, file paths, and test section
 3. Write SQL migration file in `supabase/migrations/` if sprint adds DB features
 4. Update CONTEXT.md with sprint status
@@ -73,8 +73,10 @@ Then: open `http://localhost:3000` in incognito, run test checklist, report PASS
 If PARTIAL or FAIL: write SPRINT_[N]_5_HOTFIX.md, execute it, provide new merge block. Repeat until PASS.
 
 ### Phase F: Wrap Up (CC + C)
-1. (CC) Update CONTEXT.md and ORCHESTRATOR.md with sprint results
-2. (C) Commit .claude/ docs: `git add .claude/ supabase/migrations/ CLAUDE.md && git commit -m "docs: add Sprint [N] orchestration files" && git push origin main`
+1. (CC) Update CONTEXT.md with sprint results
+2. (CC) **Remind Charlie**: "Sprint [N] passed. Please update `.claude/SPRINT_LOG.md` with your testing impressions — what felt right, what felt off, and anything you discovered you need."
+3. (C) Update SPRINT_LOG.md with sprint entry (~2 min)
+4. (C) Commit .claude/ docs: `git add .claude/ supabase/migrations/ CLAUDE.md && git commit -m "docs: add Sprint [N] orchestration files" && git push origin main`
 
 ---
 
