@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Skeleton } from '@/components/shared/Skeleton';
+import { HelpIcon } from '@/components/shared/Tooltip';
 import type { PriceEstimate, PriceCacheEntry, Material } from '@/types';
 
 // ── Cache helpers (module-level pure functions) ───────────────────────────────
@@ -263,7 +264,7 @@ export const PriceResearch: React.FC = () => {
       <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[20px] mb-[16px]">
         <div className="flex items-start justify-between mb-[18px]">
           <div>
-            <h2 className="text-[14px] font-[700] text-[var(--text)]">Supplier Price Research</h2>
+            <h2 className="text-[14px] font-[700] text-[var(--text)] inline-flex items-center">Supplier Price Research<HelpIcon tooltip="AI-powered material pricing. Enter a material and location to get current market estimates." position="right" /></h2>
             <p className="text-[12px] text-[var(--text-3)] mt-[4px]">
               Find current retail and wholesale prices near you — powered by Claude
             </p>

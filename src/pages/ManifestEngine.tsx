@@ -3,6 +3,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { HelpIcon } from '@/components/shared/Tooltip';
 import {
   generateManifest,
   computeQty,
@@ -217,7 +218,7 @@ export const ManifestEngine: React.FC = () => {
   if (!project) {
     return (
       <div>
-        <PageHeader title="Manifest Engine" subtitle="Select a project to calculate material quantities, review costs, and export a PDF manifest." />
+        <PageHeader title="Manifest Engine" subtitle="Select a project to calculate material quantities, review costs, and export a PDF manifest." titleExtra={<HelpIcon tooltip="Calculates exact material quantities for each zone based on area and perimeter. Includes waste reserve." position="right" />} />
         {projects.length === 0 ? (
           <div className="text-center py-[64px] text-[var(--text-3)]">
             <div className="text-[40px] mb-[12px] opacity-30">📋</div>

@@ -10,6 +10,7 @@ import { fetchAllCrewStatuses, fetchChecklistProgressCounts, fetchCrewPhotos, ge
 import type { CrewPhoto } from '@/services/supabaseData';
 import { generateSteps } from '@/lib/workorders';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { HelpIcon } from '@/components/shared/Tooltip';
 import type { ScheduleEntry, ScheduleEntryStatus } from '@/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -433,7 +434,7 @@ export const Schedule: React.FC = () => {
 
   return (
     <div>
-      <PageHeader title="Schedule" subtitle="Assign crew to projects by day. Drag chips to reschedule." />
+      <PageHeader title="Schedule" subtitle="Assign crew to projects by day. Drag chips to reschedule." titleExtra={<HelpIcon tooltip="Drag crew members onto days to assign them. Click an assignment to edit details." position="right" />} />
 
       {/* Week nav bar */}
       <div style={{

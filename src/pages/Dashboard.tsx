@@ -17,6 +17,7 @@ import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiDefinitions';
 import { updateSelectedKpis, updateWidgetLayout } from '@/services/preferences';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
+import { HelpIcon } from '@/components/shared/Tooltip';
 import { insertSampleData } from '@/services/supabaseData';
 import type { AppState } from '@/types';
 
@@ -556,8 +557,9 @@ export const Dashboard: React.FC = () => {
       {/* ── Widget Grid (full width, v7) ─────────────────────────────────── */}
       <div className="flex flex-col gap-[12px] mt-3">
         <div className="flex items-center justify-between">
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
             Widgets
+            <HelpIcon tooltip="Choose which metrics appear here. Drag to reorder." position="right" />
           </div>
           <div className="flex items-center gap-[8px]">
             {editMode && (
