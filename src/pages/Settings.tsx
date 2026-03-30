@@ -8,6 +8,7 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { toast } from '@/hooks/useToast';
 
 type SettingsSection = 'profile' | 'appearance' | 'notifications' | 'integrations' | 'team' | 'billing'
@@ -48,6 +49,11 @@ export const Settings: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const hasDemoData = projects.some(p => p.isDemo === true)
+
+  // Sync org name when loaded async
+  useEffect(() => {
+    if (org?.name && !orgName) setOrgName(org.name)
+  }, [org?.name])
 
   // Appearance state
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() =>
@@ -362,6 +368,8 @@ export const Settings: React.FC = () => {
   )
 
   return (
+    <div>
+      <PageHeader title="Settings" subtitle="Manage your account, appearance, and team preferences." />
     <div className="flex gap-0 h-full">
       {/* Left nav — hidden on phone */}
       <nav className="hidden md:block w-[220px] border-r border-[var(--border-default)] bg-[var(--surface-card)] py-4 flex-shrink-0">
@@ -417,6 +425,7 @@ export const Settings: React.FC = () => {
         onConfirm={handleClearDemoData}
         onCancel={() => setShowClearConfirm(false)}
       />
+    </div>
     </div>
   )
 }
