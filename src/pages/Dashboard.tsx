@@ -389,175 +389,123 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div>
+      {/* ── Compact Greeting (v7) ────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between gap-3 -mx-3 -mt-2 sm:-mx-4 sm:-mt-3 lg:-mx-6 lg:-mt-4 px-4 lg:px-6"
+        style={{
+          paddingTop: '14px',
+          paddingBottom: '14px',
+          background: 'var(--surface-card)',
+          borderBottom: '1px solid var(--border-default)',
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            Good {greetingWord}{userName ? `, ${userName}` : ''}
+          </h2>
+          {projects.length > 0 && (
+            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+              <strong style={{ color: 'var(--brand-primary)' }}>{activeCount}</strong> projects
+              {' · '}
+              <strong style={{ color: 'var(--brand-primary)' }}>${totalValueK}K</strong> value
+              {needingAttentionCount > 0 && (
+                <>
+                  {' · '}
+                  <strong style={{ color: 'var(--status-amber)' }}>{needingAttentionCount}</strong> need attention
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {error && (
-        <div className="mb-[16px]">
+        <div className="mt-3 mb-2">
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
 
-      {/* Greeting header */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-          Good {greetingWord}{userName ? `, ${userName}` : ''}
+      {/* ── KPI Strip (v7 inline compact) ────────────────────────────────── */}
+      {projects.length === 0 ? (
+        <div className="mt-4 card-shadow" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px' }}>
+          <EmptyState
+            icon={<ProjectsIcon />}
+            title="Welcome to TerrainForge"
+            description="Create your first project to see your dashboard come alive with KPIs, maps, and insights."
+            actionLabel="Create Project"
+            onAction={() => navigate('/projects')}
+          />
         </div>
-        <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-          {dateStr}
-        </div>
-        {projects.length > 0 && (
-          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{activeCount}</span> projects active
-            {needingAttentionCount > 0 && (
-              <>
-                {' · '}
-                <span style={{ fontWeight: 700, color: 'var(--status-amber)' }}>{needingAttentionCount}</span> needing attention
-              </>
-            )}
-            {totalValueK > 0 && (
-              <>
-                {' · '}
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>${totalValueK}K</span> total value
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Section divider */}
-      <div style={{ height: '1px', background: 'var(--border-light)', marginBottom: '24px' }} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-[16px] items-start">
-        {/* LEFT COLUMN: KPIs + Customize */}
-        <div className="flex flex-col gap-[12px]">
-          {projects.length === 0 ? (
-            <div className="card-shadow" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px' }}>
-              <EmptyState
-                icon={<ProjectsIcon />}
-                title="Welcome to TerrainForge"
-                description="Create your first project to see your dashboard come alive with KPIs, maps, and insights."
-                actionLabel="Create Project"
-                onAction={() => navigate('/projects')}
-              />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-[8px]">
-              {activeKpis.map((kpi, index) => {
-                const result = kpi.compute(appState);
-                const isDraggingThis = Boolean(
-                  kpiDragState?.dragging && kpiDragState.dragIndex === index,
-                );
-                const kpiDelta = kpiDragState ? kpiDragState.currentY - kpiDragState.startY : 0;
-                const kpiTargetIndex =
-                  kpiDragState && kpiDragState.itemHeight > 0
-                    ? Math.max(
-                        0,
-                        Math.min(
-                          activeKpis.length - 1,
-                          kpiDragState.dragIndex +
-                            Math.round(kpiDelta / kpiDragState.itemHeight),
-                        ),
-                      )
-                    : -1;
-                const showKpiPlaceholder =
-                  kpiDragState?.dragging &&
-                  kpiDragState.dragIndex !== index &&
-                  kpiTargetIndex === index &&
-                  !prefersReducedMotion;
-
-                return (
-                  <div key={kpi.id}>
-                    {showKpiPlaceholder && (
-                      <div
-                        className="animate-placeholder-pulse"
-                        style={{
-                          height: `${kpiDragState?.itemHeight ?? 80}px`,
-                          background: 'var(--surface-hover)',
-                          border: '2px dashed var(--border-default)',
-                          borderRadius: '10px',
-                          marginBottom: '8px',
-                        }}
-                      />
-                    )}
-                    <div
-                      ref={(el) => { kpiRefs.current[index] = el; }}
-                      onPointerDown={(e) => handleKpiPointerDown(e, index)}
-                      onPointerMove={handleKpiPointerMove}
-                      onPointerUp={handleKpiPointerUp}
-                      style={{
-                        transform: isDraggingThis && !prefersReducedMotion
-                          ? `translateY(${kpiDelta}px) scale(1.02)`
-                          : undefined,
-                        zIndex: isDraggingThis ? 100 : undefined,
-                        position: 'relative',
-                        transition:
-                          kpiDragState?.dragging && !isDraggingThis && !prefersReducedMotion
-                            ? 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                            : undefined,
-                        cursor: editMode ? 'grab' : undefined,
-                        touchAction: editMode ? 'none' : undefined,
-                        userSelect: editMode ? 'none' : undefined,
-                      }}
-                    >
-                      <KPICard
-                        icon={kpi.icon}
-                        label={kpi.label}
-                        value={result.value}
-                        subtitle={result.subtitle}
-                        prefix={kpi.prefix}
-                        suffix={kpi.suffix}
-                        decimals={kpi.decimals}
-                        editMode={editMode}
-                        isDragging={isDraggingThis}
-                        navigateTo={kpi.navigateTo}
-                        navigateParams={kpi.navigateParams}
-                      />
-                    </div>
+      ) : (
+        <>
+          <div
+            className="flex -mx-3 sm:-mx-4 lg:-mx-6"
+            style={{ background: 'var(--border-default)', gap: '1px', borderBottom: '1px solid var(--border-default)' }}
+          >
+            {activeKpis.slice(0, 4).map((kpi) => {
+              const result = kpi.compute(appState);
+              const display = `${kpi.prefix ?? ''}${
+                kpi.decimals ? result.value.toFixed(kpi.decimals) : Math.round(result.value)
+              }${kpi.suffix ?? ''}`;
+              return (
+                <div
+                  key={kpi.id}
+                  onClick={() => kpi.navigateTo && navigate(kpi.navigateTo + (kpi.navigateParams ?? ''))}
+                  className="flex-1 min-w-0 transition-colors duration-100"
+                  style={{
+                    background: 'var(--surface-card)',
+                    padding: '10px 12px',
+                    cursor: kpi.navigateTo ? 'pointer' : undefined,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; }}
+                >
+                  <div className="flex items-baseline gap-1.5">
+                    <span style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                      {display}
+                    </span>
+                    <span className="truncate" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                      {kpi.label}
+                    </span>
                   </div>
-                );
-              })}
+                  {result.subtitle && (
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                      {result.subtitle}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-              <button
-                onClick={toggleKpiDrawer}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px dashed var(--border-default)',
-                  background: 'transparent',
-                  fontSize: '12px',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  minHeight: '44px',
-                  transition: 'all 0.2s ease',
-                }}
-                className="hover:bg-[var(--surface-hover)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-              >
-                ✎ Customize KPIs
-              </button>
-            </div>
-          )}
-
-          {kpiDrawerOpen && (
-            <KPIDrawer
-              open={kpiDrawerOpen}
-              onClose={closeKpiDrawer}
-              selectedKpis={selectedKpis ?? DEFAULT_SELECTED_KPIS}
-              onSelectionChange={handleKpiChange}
-            />
-          )}
-        </div>
-
-        {/* RIGHT COLUMN: Widget Grid */}
-        <div className="flex flex-col gap-[12px]">
-          <div className="flex items-center justify-between">
-            <div
-              style={{
-                fontSize: '14px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-              }}
+          {/* Customize KPIs link */}
+          <div className="flex items-center justify-between mt-3 mb-1">
+            <button
+              onClick={toggleKpiDrawer}
+              className="text-[11px] font-semibold bg-transparent border-none cursor-pointer transition-colors"
+              style={{ color: 'var(--brand-primary)', padding: '4px 0' }}
             >
-              Your Dashboard
-            </div>
+              Customize KPIs
+            </button>
+          </div>
+        </>
+      )}
+
+      {kpiDrawerOpen && (
+        <KPIDrawer
+          open={kpiDrawerOpen}
+          onClose={closeKpiDrawer}
+          selectedKpis={selectedKpis ?? DEFAULT_SELECTED_KPIS}
+          onSelectionChange={handleKpiChange}
+        />
+      )}
+
+      {/* ── Widget Grid (full width, v7) ─────────────────────────────────── */}
+      <div className="flex flex-col gap-[12px] mt-2">
+        <div className="flex items-center justify-between">
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Your Dashboard
+          </div>
             <div className="flex items-center gap-[8px]">
               {editMode && hiddenWidgets.length > 0 && (
                 <select
@@ -619,7 +567,6 @@ export const Dashboard: React.FC = () => {
             onToggleVisibility={handleVisibilityToggle}
           />
         </div>
-      </div>
     </div>
   );
 };
