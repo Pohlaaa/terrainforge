@@ -78,11 +78,50 @@ Each task (S[N]-[T]) must include:
 
 **The test**: Could a developer with zero project context read this prompt file and build exactly what we want? If yes, Code will one-shot it.
 
+## Deploy Workflow (Updated Sprint 12+)
+
+**Auto-deploy is DISABLED on Netlify to conserve build minutes (budget renews 4/19).**
+
+### Development Loop (costs zero build minutes)
+1. Code works on a branch, commits, opens PR
+2. Charlie merges PR: `gh pr merge [N] --squash --delete-branch`
+3. Pull to local: `git pull origin main`
+4. **Test locally first**: `npm run dev` in terminal → verify on localhost:5173
+5. Fix issues → commit → repeat until satisfied on localhost
+
+### Deploy to Production (costs build minutes — use sparingly)
+Only deploy when you're confident the code is ready:
+```powershell
+# Option A: Re-enable auto-deploy temporarily in Netlify dashboard, push, then disable again
+git push origin HEAD:main
+
+# Option B: Netlify CLI (build locally, upload artifacts — may save build minutes)
+npm run build
+npx netlify-cli deploy --prod --dir=dist
+
+# Option C: Ask Orchestrator to trigger via Netlify MCP API
+```
+
+### Rules
+- **NEVER push to main just to test** — test locally first
+- **Batch deploys** — merge all sprint PRs, test locally, deploy once
+- **Hotfixes**: one deploy per hotfix is acceptable
+- Push to `origin HEAD:main` (NOT `HEAD:master`) — Netlify watches the `main` branch
+
+### Streamlined Session Model (Updated Sprint 12+)
+The Deployment session added an unnecessary hop. New model:
+- **UI Design session** → produces visual previews
+- **Orchestrator** → writes Code prompts directly (combining UI specs + functional requirements)
+- **Claude Code** → executes autonomously
+- Deployment session is available for SQL migrations and infrastructure tasks only
+
 ## Key Rules
 
 1. **Only Code writes source code** — Cowork sessions plan, design, and prompt
 2. **Sprint prompts are the interface** between planning and execution
 3. **Design previews are the interface** between design and planning
-4. **Git workflow**: local `main` tracks `origin/master` — always push with `git push origin HEAD:master`
-5. **SQL migrations**: authored by Deployment session, reviewed by Orchestrator, run by Charlie in Supabase
+4. **Git workflow**: push to `origin HEAD:main` (Netlify watches `main` branch)
+5. **SQL migrations**: authored by Orchestrator, run by Charlie in Supabase
 6. **One-shot execution**: Every sprint prompt file should enable a single-prompt Code run with no follow-up needed
+7. **Test locally before deploying** — `npm run dev` is free, Netlify builds are not
+8. **VS Code**: Available with Claude Code extension. Use when local testing and real-time feedback loops become valuable (Sprint 13+)
