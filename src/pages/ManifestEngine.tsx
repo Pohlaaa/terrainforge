@@ -266,7 +266,7 @@ export const ManifestEngine: React.FC = () => {
             Project
           </label>
           <select
-            className="bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] text-[var(--text)] px-[14px] py-[10px] text-[13px] outline-none focus:border-[var(--green-l)] cursor-pointer w-full"
+            className="bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] text-[var(--text)] px-[14px] py-[10px] text-[13px] outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 cursor-pointer w-full"
             value={activeProjectId ?? ''}
             onChange={e => setActiveProject(e.target.value || null)}
           >

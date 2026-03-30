@@ -391,7 +391,7 @@ export const EquipmentManager: React.FC = () => {
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="px-[10px] py-[7px] text-[12px] bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] text-[var(--text)] cursor-pointer outline-none focus:border-[var(--green-l)]"
+            className="px-[10px] py-[7px] text-[12px] bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] text-[var(--text)] cursor-pointer outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30"
           >
             <option value="">All Status</option>
             {EQUIPMENT_STATUS.map(s => (
@@ -401,7 +401,7 @@ export const EquipmentManager: React.FC = () => {
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            className="px-[10px] py-[7px] text-[12px] bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] text-[var(--text)] cursor-pointer outline-none focus:border-[var(--green-l)]"
+            className="px-[10px] py-[7px] text-[12px] bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] text-[var(--text)] cursor-pointer outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30"
           >
             <option value="">All Types</option>
             {types.map(t => (
