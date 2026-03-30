@@ -116,39 +116,9 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
     setDragState(null);
   };
 
-  // Map widget spans full width, others go in 2-col grid
-  const mapWidgets = visibleWidgets.filter((w) => w.type === 'map');
-  const gridWidgets = visibleWidgets.filter((w) => w.type !== 'map');
-
   return (
-    <div className="flex flex-col gap-0">
-      {/* Map widget — full width */}
-      {mapWidgets.map((widget) => {
-        const displayTitle = getWidgetHeaderTitle(widget, appState);
-        const titleOverride = { ...widget, title: displayTitle };
-        return (
-          <div key={widget.id}>
-            <WidgetCard
-              config={titleOverride}
-              editMode={editMode}
-              onToggleCollapse={() => onToggleCollapsed(widget.id)}
-              onToggleVisibility={() => onToggleVisibility(widget.id)}
-              dragHandleProps={{
-                onPointerDown: () => {},
-                onPointerMove: () => {},
-                onPointerUp: () => {},
-              }}
-              isDragging={false}
-            >
-              {renderWidgetContent(widget, appState)}
-            </WidgetCard>
-          </div>
-        );
-      })}
-
-      {/* Other widgets — 2 column grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-0" style={{ borderTop: mapWidgets.length > 0 ? '1px solid var(--border-default)' : undefined }}>
-      {gridWidgets.map((widget, index) => {
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {visibleWidgets.map((widget, index) => {
         const isDragging = Boolean(dragState?.dragging && dragState.dragIndex === index);
         const delta = dragState ? dragState.currentY - dragState.startY : 0;
 
@@ -161,28 +131,25 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
           };
         }
 
-        // Show drop placeholder
-        const isDraggingOther =
-          dragState?.dragging && dragState.dragIndex !== index;
+        const isDraggingOther = dragState?.dragging && dragState.dragIndex !== index;
         const draggedIndex = dragState?.dragIndex ?? -1;
         const targetIndex =
           dragState && dragState.itemHeight > 0
-            ? Math.max(
-                0,
-                Math.min(
-                  visibleWidgets.length - 1,
-                  draggedIndex + Math.round(delta / dragState.itemHeight),
-                ),
-              )
+            ? Math.max(0, Math.min(visibleWidgets.length - 1, draggedIndex + Math.round(delta / dragState.itemHeight)))
             : -1;
-        const showPlaceholder =
-          isDraggingOther && targetIndex === index && !prefersReducedMotion;
+        const showPlaceholder = isDraggingOther && targetIndex === index && !prefersReducedMotion;
 
         const displayTitle = getWidgetHeaderTitle(widget, appState);
         const titleOverride = { ...widget, title: displayTitle };
 
+        // Map and schedule widgets span full width
+        const spanFull = widget.type === 'map' || widget.type === 'schedule';
+
         return (
-          <div key={widget.id}>
+          <div
+            key={widget.id}
+            style={spanFull ? { gridColumn: '1 / -1' } : undefined}
+          >
             {showPlaceholder && (
               <div
                 className="animate-placeholder-pulse"
@@ -196,14 +163,11 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
               />
             )}
             <div
-              ref={(el) => {
-                widgetRefs.current[index] = el;
-              }}
+              ref={(el) => { widgetRefs.current[index] = el; }}
               style={{
-                transition:
-                  isDraggingOther && !prefersReducedMotion
-                    ? 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                    : undefined,
+                transition: isDraggingOther && !prefersReducedMotion
+                  ? 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                  : undefined,
                 ...transformStyle,
               }}
             >
@@ -226,7 +190,6 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
           </div>
         );
       })}
-      </div>
     </div>
   );
 };
