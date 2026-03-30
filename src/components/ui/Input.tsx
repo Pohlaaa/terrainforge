@@ -21,11 +21,11 @@ export const Input: React.FC<InputProps> = ({
           {props.required && <span className="text-[var(--red-l)] ml-[2px]">*</span>}
         </label>
       )}
+      {hint && <div className="text-[12px] text-[var(--text-3)] mt-[2px] mb-[4px]">{hint}</div>}
       <input
         className={`bg-[var(--surface3)] border border-[var(--border)] rounded-[8px] text-[var(--text)] px-[12px] py-[9px] text-[13px] outline-none transition-all duration-200 focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 w-full ${className}`}
         {...props}
       />
-      {hint && <div className="text-[11px] text-[var(--text-4)] mt-[3px]">{hint}</div>}
       {error && <div className="text-[11px] text-[var(--red-l)] mt-[3px]">{error}</div>}
     </div>
   );

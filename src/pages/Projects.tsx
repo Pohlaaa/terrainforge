@@ -24,6 +24,7 @@ import { toast } from '@/hooks/useToast';
 import { AddressInput } from '@/components/shared/AddressInput';
 import type { AddressSuggestion } from '@/hooks/useAddressAutocomplete';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
+import { HelpIcon } from '@/components/shared/Tooltip';
 
 type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
 
@@ -1243,7 +1244,7 @@ export const Projects: React.FC = () => {
 
             {/* AI Quick Create */}
             <div className="px-6 py-5 border-b border-[var(--border-light)] bg-[var(--surface-bg)]">
-              <div className="text-[14px] font-[600] text-[var(--text-primary)] mb-2">Describe your project</div>
+              <div className="text-[14px] font-[600] text-[var(--text-primary)] mb-2 inline-flex items-center">Describe your project<HelpIcon tooltip="Type a natural language description and AI will pre-fill the form. You can edit any field after." position="right" /></div>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -1308,6 +1309,7 @@ export const Projects: React.FC = () => {
                     error={formErrors.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="e.g., Oak St Patio"
+                    hint="A short name for this job — e.g., 'Smith Patio' or 'Oak Creek Phase 2'"
                   />
                 </div>
                 <Input
@@ -1317,6 +1319,7 @@ export const Projects: React.FC = () => {
                   error={formErrors.client}
                   onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
                   placeholder="Client name"
+                  hint="The customer or property manager for this job"
                 />
                 <AddressInput
                   label="Address"
@@ -1337,6 +1340,7 @@ export const Projects: React.FC = () => {
                     onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
                     placeholder="0"
                     className="pl-6"
+                    hint="Total project budget including materials and labor"
                   />
                   <span className="absolute left-3 bottom-[9px] text-[13px] text-[var(--text-tertiary)]">$</span>
                 </div>
@@ -1346,6 +1350,7 @@ export const Projects: React.FC = () => {
                   value={form.totalArea}
                   onChange={e => setForm(f => ({ ...f, totalArea: e.target.value }))}
                   placeholder="0"
+                  hint="Combined area of all zones — used for material estimates"
                 />
                 <Input
                   label="Start date"
