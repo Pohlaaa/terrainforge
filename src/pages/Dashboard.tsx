@@ -194,6 +194,76 @@ const KPICard: React.FC<KPICardProps> = ({
   );
 };
 
+// ── Welcome Banner (first-time users, auto-hides after 3 visits) ─────────────
+
+const WelcomeBanner: React.FC<{ hasProjects: boolean }> = ({ hasProjects }) => {
+  const [visible, setVisible] = useState(() => {
+    if (hasProjects) return false;
+    if (localStorage.getItem('tf-welcome-dismissed') === 'true') return false;
+    const count = parseInt(localStorage.getItem('tf-welcome-count') || '0', 10);
+    if (count >= 3) return false;
+    localStorage.setItem('tf-welcome-count', String(count + 1));
+    return true;
+  });
+
+  if (!visible) return null;
+
+  const dismiss = () => {
+    localStorage.setItem('tf-welcome-dismissed', 'true');
+    setVisible(false);
+  };
+
+  const reducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  return (
+    <div
+      className="mt-3"
+      style={{
+        background: 'var(--surface2)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg, 12px)',
+        padding: '20px 24px',
+        marginBottom: '12px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: '16px',
+        animation: reducedMotion ? 'none' : 'fadeIn 0.2s ease-out',
+      }}
+    >
+      <div>
+        <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>
+          Welcome to TerrainForge!
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-2)', marginTop: '4px', lineHeight: 1.5 }}>
+          Start by creating your first project, or load sample data to explore.
+          The setup checklist below will guide you.
+        </div>
+      </div>
+      <button
+        onClick={dismiss}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--text-3)',
+          fontSize: '16px',
+          cursor: 'pointer',
+          padding: '4px',
+          lineHeight: 1,
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-3)'; }}
+        aria-label="Dismiss welcome banner"
+      >
+        ✕
+      </button>
+    </div>
+  );
+};
+
 interface KpiDragState {
   dragging: boolean;
   dragIndex: number;
@@ -444,6 +514,9 @@ export const Dashboard: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
+
+      {/* ── Welcome Banner (first-time users) ──────────────────────────── */}
+      <WelcomeBanner hasProjects={projects.length > 0} />
 
       {/* ── Setup Checklist (first-run guidance) ─────────────────────────── */}
       <div className="mt-3">
