@@ -45,6 +45,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // Mobile sidebar overlay state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Responsive sidebar: expanded (with labels) on xl+, icon-only on lg, hidden on mobile
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth >= 1280);
+  useEffect(() => {
+    function handleResize() {
+      setSidebarExpanded(window.innerWidth >= 1280);
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Close mobile sidebar on route change
   useEffect(() => {
     setMobileSidebarOpen(false);
@@ -86,9 +96,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* Icon Rail — visible on desktop/tablet (lg+) */}
+      {/* Sidebar — expanded on xl+, icon-only on lg, hidden on mobile */}
       <div className="hidden lg:block">
-        <IconRail />
+        <IconRail expanded={sidebarExpanded} />
       </div>
 
       {/* Mobile sidebar overlay */}
