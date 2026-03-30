@@ -200,10 +200,12 @@ export const useProjectStore = create<ProjectStore>()(
       setProjects: (projects) => set({ projects }),
       setActiveProject: (id) => set({ activeProjectId: id }),
       fetchProjects: async () => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) return
         console.log('[TF-DEBUG] fetchProjects called')
         set({ isLoading: true, error: null })
         try {
-          const projects = await db.fetchProjects()
+          const projects = await db.fetchProjects(orgId)
           console.log('[TF-DEBUG] fetchProjects returned', projects.length, 'projects')
           // Populate projectMaterials map from the JSONB materials field on each project
           const projectMaterials: Record<string, ProjectMaterialEntry[]> = {}

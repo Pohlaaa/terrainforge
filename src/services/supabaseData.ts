@@ -60,7 +60,7 @@ function toSnakeCase(obj: Record<string, any>): Record<string, any> {
 
 // ===== PROJECTS =====
 
-export async function fetchProjects(): Promise<Project[]> {
+export async function fetchProjects(orgId: string): Promise<Project[]> {
   try {
     const { data, error } = await supabase
       .from('projects')
@@ -78,6 +78,7 @@ export async function fetchProjects(): Promise<Project[]> {
           )
         )
       `)
+      .eq('org_id', orgId)
 
     console.log('[TF-DEBUG] fetchProjects query response:', { data: data?.length, error })
     if (error) throw error
@@ -475,7 +476,7 @@ export async function deleteMaterial(id: string): Promise<boolean> {
 
 // ===== CREW =====
 
-export async function fetchCrew(): Promise<CrewMember[]> {
+export async function fetchCrew(orgId: string): Promise<CrewMember[]> {
   try {
     const { data, error } = await supabase
       .from('crew_members')
@@ -487,6 +488,7 @@ export async function fetchCrew(): Promise<CrewMember[]> {
           expiry_date
         )
       `)
+      .eq('org_id', orgId)
 
     if (error) throw error
 

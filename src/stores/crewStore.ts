@@ -98,9 +98,11 @@ export const useCrewStore = create<CrewStore>()(
       reset: () => set({ crew: [], isLoading: false, error: null }),
       setCrew: (crew) => set({ crew }),
       fetchCrew: async () => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) return
         set({ isLoading: true, error: null })
         try {
-          const crew = await db.fetchCrew()
+          const crew = await db.fetchCrew(orgId)
           set({ crew, isLoading: false })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })
