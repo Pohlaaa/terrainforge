@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { navConfig, secondaryNavItems } from '@/components/layout/navConfig';
+import { navGroups } from '@/components/layout/navConfig';
 import { NavIcon } from '@/components/layout/NavIcon';
 
 interface MobileSidebarProps {
@@ -10,7 +10,7 @@ interface MobileSidebarProps {
 
 function isActive(itemPath: string, currentPath: string): boolean {
   if (itemPath === '/') return currentPath === '/';
-  return currentPath.startsWith(itemPath);
+  return currentPath === itemPath || currentPath.startsWith(itemPath + '/');
 }
 
 export const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
@@ -26,6 +26,33 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
   const handleSignOut = async () => {
     onClose();
     await signOut();
+  };
+
+  const renderNavButton = (path: string, icon: string, label: string, indented: boolean) => {
+    const active = isActive(path, location.pathname);
+    return (
+      <button
+        key={path}
+        onClick={() => handleNav(path)}
+        className="flex items-center gap-3 py-2.5 text-sm font-medium cursor-pointer border-none bg-transparent transition-all duration-100 w-full text-left"
+        style={{
+          borderRadius: 'var(--radius-md)',
+          paddingLeft: indented ? '32px' : '12px',
+          paddingRight: '12px',
+          background: active ? 'var(--sidebar-active)' : 'transparent',
+          color: active ? '#FFFFFF' : 'var(--sidebar-text-muted)',
+        }}
+        onMouseEnter={(e) => {
+          if (!active) e.currentTarget.style.background = 'var(--sidebar-hover)';
+        }}
+        onMouseLeave={(e) => {
+          if (!active) e.currentTarget.style.background = 'transparent';
+        }}
+      >
+        <NavIcon name={icon} size={18} />
+        {label}
+      </button>
+    );
   };
 
   return (
@@ -64,63 +91,38 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
         </button>
       </div>
 
-      {/* Primary nav items */}
-      <nav className="flex flex-col gap-0.5 px-2 pt-3">
-        {navConfig.map((item) => {
-          const active = isActive(item.path, location.pathname);
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNav(item.path)}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium cursor-pointer border-none bg-transparent transition-all duration-100 w-full text-left"
-              style={{
-                borderRadius: 'var(--radius-md)',
-                background: active ? 'var(--sidebar-active)' : 'transparent',
-                color: active ? '#FFFFFF' : 'var(--sidebar-text-muted)',
-              }}
-              onMouseEnter={(e) => {
-                if (!active) e.currentTarget.style.background = 'var(--sidebar-hover)';
-              }}
-              onMouseLeave={(e) => {
-                if (!active) e.currentTarget.style.background = 'transparent';
-              }}
-            >
-              <NavIcon name={item.icon} size={18} />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
+      {/* Grouped navigation */}
+      <nav className="flex flex-col px-2 pt-2 overflow-y-auto flex-1">
+        {navGroups.map((group, idx) => (
+          <React.Fragment key={group.key}>
+            {/* Divider between groups (skip before first) */}
+            {idx > 0 && (
+              <div className="mx-2 my-1.5" style={{ height: '1px', background: 'var(--sidebar-border)' }} />
+            )}
 
-      {/* Divider */}
-      <div className="mx-4 my-2" style={{ height: '1px', background: 'var(--sidebar-border)' }} />
+            {group.items.length === 0 ? (
+              // Single-page group (Dashboard) — render as clickable item
+              renderNavButton(group.defaultPath, group.icon, group.label, false)
+            ) : (
+              <>
+                {/* Section header */}
+                <div
+                  className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider select-none"
+                  style={{ color: 'var(--sidebar-text-muted)', opacity: 0.7 }}
+                >
+                  {group.label}
+                </div>
+                {/* Sub-items */}
+                {group.items.map((item) =>
+                  renderNavButton(item.path, item.icon, item.label, true)
+                )}
+              </>
+            )}
+          </React.Fragment>
+        ))}
 
-      {/* Secondary items */}
-      <nav className="flex flex-col gap-0.5 px-2">
-        {secondaryNavItems.map((item) => {
-          const active = isActive(item.path, location.pathname);
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNav(item.path)}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium cursor-pointer border-none bg-transparent transition-all duration-100 w-full text-left"
-              style={{
-                borderRadius: 'var(--radius-md)',
-                background: active ? 'var(--sidebar-active)' : 'transparent',
-                color: active ? '#FFFFFF' : 'var(--sidebar-text-muted)',
-              }}
-              onMouseEnter={(e) => {
-                if (!active) e.currentTarget.style.background = 'var(--sidebar-hover)';
-              }}
-              onMouseLeave={(e) => {
-                if (!active) e.currentTarget.style.background = 'transparent';
-              }}
-            >
-              <NavIcon name={item.icon} size={18} />
-              {item.label}
-            </button>
-          );
-        })}
+        {/* Divider before Crew App */}
+        <div className="mx-2 my-1.5" style={{ height: '1px', background: 'var(--sidebar-border)' }} />
 
         {/* Crew App — opens in new tab */}
         <button
@@ -138,11 +140,8 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
         </button>
       </nav>
 
-      {/* Spacer */}
-      <div className="flex-1" />
-
       {/* Footer */}
-      <div className="px-4 py-3">
+      <div className="px-4 py-3 flex-shrink-0">
         <div className="text-xs truncate mb-2" style={{ color: 'var(--sidebar-text-muted)' }}>
           {user?.email}
         </div>
