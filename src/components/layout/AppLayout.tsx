@@ -23,6 +23,8 @@ import { useMaterialStore } from '@/stores/materialStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useBillingGate } from '@/hooks/useBillingGate';
 import { ToastContainer } from '@/components/shared/Toast';
+import { useUIStore } from '@/stores/uiStore';
+import { fetchUserPreferences } from '@/services/preferences';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -84,6 +86,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       });
     }
   }, [user?.id, fetchOrg, fetchProjects, fetchCrew, fetchMaterials, fetchEquipment]);
+
+  // Load user preferences (KPI selections from onboarding) once per session
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  useEffect(() => {
+    if (!user?.id || prefsLoaded) return;
+    fetchUserPreferences(user.id).then((prefs) => {
+      if (prefs?.selectedKpis && prefs.selectedKpis.length > 0) {
+        useUIStore.getState().setSelectedKpis(prefs.selectedKpis);
+      }
+      setPrefsLoaded(true);
+    });
+  }, [user?.id, prefsLoaded]);
 
   // Suppress banners on the billing page itself — user is already looking at it
   const isOnBillingPage = location.pathname === '/billing';
