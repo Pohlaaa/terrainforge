@@ -384,9 +384,11 @@ export const useMaterialStore = create<MaterialStore>()(
       reset: () => set({ materials: [], isLoading: false, error: null }),
       setMaterials: (materials) => set({ materials }),
       fetchMaterials: async () => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) return
         set({ isLoading: true, error: null })
         try {
-          const materials = await db.fetchMaterials()
+          const materials = await db.fetchMaterials(orgId)
           set({ materials, isLoading: false })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })

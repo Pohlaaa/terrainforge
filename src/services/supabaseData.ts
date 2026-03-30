@@ -384,11 +384,12 @@ export async function setZoneEquipment(zoneId: string, equipment: ZoneEquipment[
 
 // ===== MATERIALS =====
 
-export async function fetchMaterials(): Promise<Material[]> {
+export async function fetchMaterials(orgId: string): Promise<Material[]> {
   try {
     const { data, error } = await supabase
       .from('materials')
       .select('*')
+      .eq('org_id', orgId)
 
     if (error) throw error
 
