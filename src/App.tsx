@@ -1,3 +1,4 @@
+import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/shared/ProtectedRoute'
@@ -14,7 +15,9 @@ import CrewManager from '@/pages/CrewManager'
 import EquipmentManager from '@/pages/EquipmentManager'
 import Billing from '@/pages/Billing'
 import Settings from '@/pages/Settings'
-import Debug from '@/pages/Debug'
+const Debug = import.meta.env.DEV
+  ? React.lazy(() => import('@/pages/Debug'))
+  : () => null;
 import Onboarding from '@/pages/Onboarding'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
@@ -55,7 +58,13 @@ function App() {
                     <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
                     <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
                     <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
-                    {import.meta.env.DEV && <Route path="/debug" element={<Debug />} />}
+                    {import.meta.env.DEV && (
+                      <Route path="/debug" element={
+                        <React.Suspense fallback={<div>Loading...</div>}>
+                          <Debug />
+                        </React.Suspense>
+                      } />
+                    )}
                   </Routes>
                 </AppLayout>
               </ProtectedRoute>
