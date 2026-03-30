@@ -169,9 +169,18 @@ export const CrewDashboard: React.FC = () => {
                   <div className="text-[15px] font-[600] truncate" style={{ color: 'var(--text)' }}>
                     {project?.name || 'Unknown Project'}
                   </div>
-                  <div className="text-[12px] truncate mt-[2px]" style={{ color: 'var(--text-3)' }}>
-                    {project?.address || ''}
-                  </div>
+                  {project?.address && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[12px] truncate mt-[2px] underline underline-offset-2 block"
+                      style={{ color: 'var(--brand-primary)' }}
+                    >
+                      {project.address}
+                    </a>
+                  )}
                   <div className="flex items-center gap-[8px] mt-[6px]">
                     <span className="text-[12px] font-mono" style={{ color: 'var(--text-2)' }}>
                       {timeRange}

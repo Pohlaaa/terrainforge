@@ -185,9 +185,17 @@ export const CrewJobDetail: React.FC = () => {
         <div className="text-[18px] font-serif font-[600]" style={{ color: 'var(--text)' }}>
           {project.name}
         </div>
-        <div className="text-[12px] mt-[2px]" style={{ color: 'var(--text-3)' }}>
-          {project.address}
-        </div>
+        {project.address && (
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.address)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[12px] mt-[2px] underline underline-offset-2 block"
+            style={{ color: 'var(--brand-primary)' }}
+          >
+            {project.address}
+          </a>
+        )}
         {assignedEquipment && (
           <div className="text-[12px] mt-[4px]" style={{ color: 'var(--text-2)' }}>
             Equipment: {assignedEquipment.name}
