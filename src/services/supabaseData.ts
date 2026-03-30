@@ -1218,3 +1218,71 @@ export async function diagnoseUserRole(): Promise<void> {
     console.warn('[TF-DIAG] Role check failed:', err.message);
   }
 }
+
+// ── Crew PIN Auth ──────────────────────────────────────────────────────────────
+
+/** Update a crew member's PIN hash. */
+export async function setCrewPinHash(crewMemberId: string, pinHash: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('crew_members')
+      .update({ pin_hash: pinHash })
+      .eq('id', crewMemberId);
+    if (error) throw error;
+    return true;
+  } catch (err: any) {
+    onSupabaseError('UPDATE', 'crew_members', err);
+    return false;
+  }
+}
+
+/** Clear a crew member's PIN hash. */
+export async function clearCrewPinHash(crewMemberId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('crew_members')
+      .update({ pin_hash: null })
+      .eq('id', crewMemberId);
+    if (error) throw error;
+    return true;
+  } catch (err: any) {
+    onSupabaseError('UPDATE', 'crew_members', err);
+    return false;
+  }
+}
+
+/** Look up an organization by its shortcode. Returns org id and name, or null. */
+export async function fetchOrgByShortcode(shortcode: string): Promise<{ id: string; name: string } | null> {
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('shortcode', shortcode.toUpperCase())
+      .single();
+    if (error) throw error;
+    return data ? { id: data.id, name: data.name } : null;
+  } catch (err: any) {
+    console.error('fetchOrgByShortcode error:', err.message);
+    return null;
+  }
+}
+
+/** Fetch crew members for an org (by org_id) — minimal fields for crew login picker. */
+export async function fetchCrewForLogin(orgId: string): Promise<Array<{ id: string; name: string; role: string; pinHash: string | null }>> {
+  try {
+    const { data, error } = await supabase
+      .from('crew_members')
+      .select('id, name, role, pin_hash')
+      .eq('org_id', orgId);
+    if (error) throw error;
+    return (data || []).map(row => ({
+      id: row.id,
+      name: row.name,
+      role: row.role,
+      pinHash: row.pin_hash,
+    }));
+  } catch (err: any) {
+    console.error('fetchCrewForLogin error:', err.message);
+    return [];
+  }
+}
