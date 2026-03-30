@@ -169,6 +169,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, mobileOpen 
                 )}
               </Link>
             ))}
+
+          {/* Crew app link */}
+          <div style={{ borderTop: '1px solid var(--sidebar-border)', margin: '8px 12px', opacity: 0.3 }} />
+          <a
+            href="/crew"
+            target="_blank"
+            rel="noopener"
+            className={`w-full text-left py-[9px] text-[13px] border-l-[3px] border-l-transparent flex items-center gap-[10px] transition-all duration-180 block min-h-[44px] hover:bg-[rgba(255,255,255,.06)] ${
+              collapsed ? 'px-[14px] justify-center' : 'px-[14px]'
+            }`}
+            style={{ color: 'var(--sidebar-text-2)', textDecoration: 'none' }}
+            title="Crew App Preview"
+          >
+            <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: '#22D3EE' }}></span>
+            {!collapsed && <span>Crew App</span>}
+          </a>
         </div>
 
         {/* Account group */}
