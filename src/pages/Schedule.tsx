@@ -451,9 +451,7 @@ export const Schedule: React.FC = () => {
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, member.id, date)}
                         onClick={() => {
-                          if (cellEntries.length === 0) {
-                            setModalTarget({ crewMemberId: member.id, date });
-                          }
+                          setModalTarget({ crewMemberId: member.id, date });
                         }}
                         style={{
                           padding: '6px',
@@ -467,7 +465,7 @@ export const Schedule: React.FC = () => {
                             ? 'rgba(45,106,79,0.05)'
                             : 'transparent',
                           outline: isDropTarget ? '2px dashed var(--green-l)' : 'none',
-                          cursor: cellEntries.length === 0 ? 'pointer' : 'default',
+                          cursor: 'pointer',
                           transition: 'background 0.1s',
                           position: 'relative',
                         }}
@@ -478,10 +476,14 @@ export const Schedule: React.FC = () => {
                             title={`${member.name} has multiple assignments on this day`}
                             style={{
                               position: 'absolute', top: '4px', right: '4px',
-                              fontSize: '12px', cursor: 'help', zIndex: 2,
+                              cursor: 'help', zIndex: 2,
+                              width: '16px', height: '16px', borderRadius: '50%',
+                              background: '#F59E0B', color: '#000', fontSize: '11px',
+                              fontWeight: 800, display: 'flex', alignItems: 'center',
+                              justifyContent: 'center', lineHeight: 1,
                             }}
                           >
-                            ⚠️
+                            !
                           </div>
                         )}
 
@@ -538,12 +540,15 @@ export const Schedule: React.FC = () => {
                           })}
                         </div>
 
-                        {/* "+" hover indicator for empty cells */}
-                        {cellEntries.length === 0 && !isDropTarget && (
+                        {/* "+" hover indicator */}
+                        {!isDropTarget && (
                           <div style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            height: '40px', opacity: 0, transition: 'opacity 0.15s',
-                            color: 'var(--text-4)', fontSize: '18px',
+                            height: cellEntries.length === 0 ? '40px' : '20px',
+                            opacity: 0, transition: 'opacity 0.15s',
+                            color: 'var(--text-4)',
+                            fontSize: cellEntries.length === 0 ? '18px' : '14px',
+                            marginTop: cellEntries.length > 0 ? '2px' : '0',
                           }}
                           className="schedule-cell-plus"
                           >
