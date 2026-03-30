@@ -13,6 +13,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { IconRail } from '@/components/layout/IconRail';
 import { TopNav } from '@/components/layout/TopNav';
+import { SubTabBar } from '@/components/layout/SubTabBar';
 import { MobileSidebar } from '@/components/layout/MobileSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgStore } from '@/stores/orgStore';
@@ -115,6 +116,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           onMobileMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
           showMobileMenu={mobileSidebarOpen}
         />
+
+        {/* Sub-tab bar for grouped pages */}
+        <SubTabBar />
 
         {/* ── Trial ending soon banner ───────────────────────────────────── */}
         {showTrial && (
