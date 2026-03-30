@@ -136,6 +136,8 @@ export const Settings: React.FC = () => {
     const result = await clearSampleData(org.id)
     if (result.success) {
       await Promise.all([fetchProjects(), fetchCrew(), fetchEquipment(), fetchMaterials()])
+      // Prevent setup checklist from reappearing after user already explored with sample data
+      localStorage.setItem('tf-setup-dismissed', 'true')
       toast.success('Sample data cleared')
     } else {
       toast.error(`Failed to clear sample data: ${result.error}`)

@@ -26,10 +26,13 @@ export const ScheduleWidget: React.FC = () => {
   const { crew } = useCrewStore();
 
   const todayISO = isoDate(new Date());
-  const todayEntries = getEntriesForDate(todayISO);
+  const rawEntries = getEntriesForDate(todayISO);
 
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p.name]));
   const crewMap = Object.fromEntries(crew.map(m => [m.id, m.name]));
+
+  // Filter out entries referencing projects that don't exist (stale seed data)
+  const todayEntries = rawEntries.filter(e => projectMap[e.projectId]);
 
   return (
     <div className="p-[14px]">
