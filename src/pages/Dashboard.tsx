@@ -219,9 +219,9 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (error) toast.error('Failed to load dashboard data');
   }, [error]);
-  const { crew } = useCrewStore();
-  const { equipment } = useEquipmentStore();
-  const { materials } = useMaterialStore();
+  const { crew, fetchCrew } = useCrewStore();
+  const { equipment, fetchEquipment } = useEquipmentStore();
+  const { materials, fetchMaterials } = useMaterialStore();
   const { user } = useAuth();
   const orgId = useOrgStore((s) => s.org?.id);
 
@@ -230,8 +230,7 @@ export const Dashboard: React.FC = () => {
     setSampleLoading(true);
     const result = await insertSampleData(orgId);
     if (result.success) {
-      await fetchProjects();
-      // Other stores will refresh on next page visit
+      await Promise.all([fetchProjects(), fetchCrew(), fetchEquipment(), fetchMaterials()]);
       toast.success('Sample company loaded!');
     } else {
       toast.error(`Failed: ${result.error}`);

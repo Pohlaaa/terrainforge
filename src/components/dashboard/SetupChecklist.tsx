@@ -55,7 +55,18 @@ export const SetupChecklist: React.FC = () => {
   const completedCount = steps.filter((s) => s.complete).length;
   const allComplete = completedCount === steps.length;
   const dismissed = localStorage.getItem('tf-setup-dismissed') === 'true';
-  const [localDismissed, setLocalDismissed] = useState(dismissed);
+  const [localDismissed, setLocalDismissed] = useState(() => {
+    if (dismissed) return true;
+    // Existing users: if they already have projects + crew + equipment (steps 1-3 done)
+    // but never saw the checklist, auto-dismiss — they're not new users.
+    const dataSteps = steps.slice(0, 3);
+    if (dataSteps.every((s) => s.complete) && !localStorage.getItem('tf-setup-seen')) {
+      localStorage.setItem('tf-setup-dismissed', 'true');
+      return true;
+    }
+    localStorage.setItem('tf-setup-seen', 'true');
+    return false;
+  });
 
   if (localDismissed) return null;
 

@@ -327,7 +327,9 @@ export const Schedule: React.FC = () => {
   const [photoGallery, setPhotoGallery] = useState<{ entryId: string; photos: Array<CrewPhoto & { url: string }> } | null>(null);
 
   useEffect(() => {
-    const ids = entries.map(e => e.id);
+    // Only query Supabase for entries with valid UUID IDs (skip localStorage seed IDs like "se_001")
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const ids = entries.map(e => e.id).filter(id => uuidPattern.test(id));
     if (ids.length === 0) return;
     fetchChecklistProgressCounts(ids).then(setProgressCounts);
     // Fetch photo counts
@@ -344,6 +346,8 @@ export const Schedule: React.FC = () => {
   }, [entries]);
 
   async function handleViewPhotos(entryId: string) {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(entryId)) return;
     const photos = await fetchCrewPhotos(entryId);
     const withUrls = await Promise.all(
       photos.map(async (p) => ({ ...p, url: await getPhotoUrl(p.storagePath) }))
