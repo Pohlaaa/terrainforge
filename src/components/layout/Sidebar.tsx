@@ -160,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, mobileOpen 
               >
                 <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ backgroundColor: item.dotColor }}></span>
                 {!collapsed && <span style={{ flex: 1 }}>{item.label}</span>}
-                {!collapsed && (item.path === '/projects' || item.path === '/work-orders') && activeProjectId && (
+                {!collapsed && ['/projects', '/work-orders', '/manifest', '/schedule', '/equipment'].includes(item.path) && activeProjectId && (
                   <span style={{
                     width: '6px', height: '6px', borderRadius: '50%',
                     background: 'var(--green-l)', flexShrink: 0,
