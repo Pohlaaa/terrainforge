@@ -1181,6 +1181,83 @@ export async function fetchChecklistProgressCounts(
 
 // ===== DIAGNOSTICS =====
 
+// ===== SAMPLE DATA =====
+
+interface SampleIds {
+  projects: string[];
+  crew: string[];
+  equipment: string[];
+  materials: string[];
+}
+
+export async function insertSampleData(orgId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { getSampleProjects, getSampleCrew, getSampleEquipment, getSampleMaterials } = await import('@/lib/sampleData');
+    const ids: SampleIds = { projects: [], crew: [], equipment: [], materials: [] };
+
+    // Materials first (no deps)
+    for (const mat of getSampleMaterials()) {
+      const id = crypto.randomUUID();
+      const result = await createMaterial(mat, id, orgId);
+      if (result) ids.materials.push(id);
+    }
+
+    // Crew
+    for (const member of getSampleCrew()) {
+      const id = crypto.randomUUID();
+      const result = await createCrewMember(member, id, orgId);
+      if (result) ids.crew.push(id);
+    }
+
+    // Equipment
+    for (const equip of getSampleEquipment()) {
+      const id = crypto.randomUUID();
+      const result = await createEquipment(equip, id, orgId);
+      if (result) ids.equipment.push(id);
+    }
+
+    // Projects (with zones)
+    for (const proj of getSampleProjects()) {
+      const id = crypto.randomUUID();
+      const result = await createProject(proj, id, orgId);
+      if (result) ids.projects.push(id);
+    }
+
+    // Persist IDs for cleanup
+    localStorage.setItem('tf-sample-ids', JSON.stringify(ids));
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Unknown error' };
+  }
+}
+
+export async function clearSampleData(orgId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const raw = localStorage.getItem('tf-sample-ids');
+    if (!raw) return { success: true };
+    const ids: SampleIds = JSON.parse(raw);
+
+    // Delete in reverse dependency order: projects (zones cascade), equipment, crew, materials
+    for (const id of ids.projects) {
+      await deleteProject(id);
+    }
+    for (const id of ids.equipment) {
+      await deleteEquipment(id);
+    }
+    for (const id of ids.crew) {
+      await deleteCrewMember(id);
+    }
+    for (const id of ids.materials) {
+      await deleteMaterial(id);
+    }
+
+    localStorage.removeItem('tf-sample-ids');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Unknown error' };
+  }
+}
+
 export async function diagnoseUserRole(): Promise<void> {
   try {
     const { data: { user } } = await supabase.auth.getUser();

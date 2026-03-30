@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { toast } from '@/hooks/useToast';
+import { insertSampleData, clearSampleData } from '@/services/supabaseData';
 
 type SettingsSection = 'profile' | 'appearance' | 'notifications' | 'integrations' | 'team' | 'billing'
 
@@ -35,10 +36,10 @@ function applyTheme(newTheme: 'light' | 'dark' | 'system') {
 export const Settings: React.FC = () => {
   const { user } = useAuth()
   const { org, updateOrgName } = useOrgStore()
-  const { projects, setProjects, setActiveProject } = useProjectStore()
-  const { setMaterials } = useMaterialStore()
-  const { setCrew } = useCrewStore()
-  const { setEquipment } = useEquipmentStore()
+  const { projects, setProjects, setActiveProject, fetchProjects } = useProjectStore()
+  const { setMaterials, fetchMaterials } = useMaterialStore()
+  const { setCrew, fetchCrew } = useCrewStore()
+  const { setEquipment, fetchEquipment } = useEquipmentStore()
   const navigate = useNavigate()
 
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
@@ -48,7 +49,9 @@ export const Settings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [sampleLoading, setSampleLoading] = useState(false)
   const hasDemoData = projects.some(p => p.isDemo === true)
+  const hasSampleData = localStorage.getItem('tf-sample-ids') !== null
 
   // Sync org name when loaded async
   useEffect(() => {
@@ -112,6 +115,33 @@ export const Settings: React.FC = () => {
     setEquipment([])
     setShowClearConfirm(false)
     navigate('/')
+  }
+
+  async function handleLoadSampleData() {
+    if (!org?.id) { toast.error('No organization found'); return }
+    setSampleLoading(true)
+    const result = await insertSampleData(org.id)
+    if (result.success) {
+      await Promise.all([fetchProjects(), fetchCrew(), fetchEquipment(), fetchMaterials()])
+      toast.success('Sample company loaded — 3 projects, 6 crew, 5 equipment, 8 materials')
+    } else {
+      toast.error(`Failed to load sample data: ${result.error}`)
+    }
+    setSampleLoading(false)
+  }
+
+  async function handleClearSampleData() {
+    if (!org?.id) return
+    setSampleLoading(true)
+    const result = await clearSampleData(org.id)
+    if (result.success) {
+      await Promise.all([fetchProjects(), fetchCrew(), fetchEquipment(), fetchMaterials()])
+      toast.success('Sample data cleared')
+    } else {
+      toast.error(`Failed to clear sample data: ${result.error}`)
+    }
+    setSampleLoading(false)
+    setShowClearConfirm(false)
   }
 
   function handleThemeChange(newTheme: 'light' | 'dark' | 'system') {
@@ -185,8 +215,8 @@ export const Settings: React.FC = () => {
       </div>
 
       <SubHeader label="Data Management" />
-      {hasDemoData ? (
-        <div>
+      {hasDemoData && (
+        <div className="mb-4">
           <div className="text-[13px] text-[var(--text-secondary)] mb-3 leading-relaxed">
             Demo projects, materials, crew, and equipment were loaded automatically. Clear them when you're ready to use your own data.
           </div>
@@ -198,8 +228,35 @@ export const Settings: React.FC = () => {
             ⚠ Clear Demo Data
           </button>
         </div>
+      )}
+      {hasSampleData ? (
+        <div>
+          <div className="text-[13px] text-[var(--text-secondary)] mb-3 leading-relaxed">
+            Sample company data is loaded. Remove it when you're ready to use your own data.
+          </div>
+          <Button
+            variant="danger"
+            size="sm"
+            loading={sampleLoading}
+            onClick={() => setShowClearConfirm(true)}
+          >
+            Clear Sample Data
+          </Button>
+        </div>
       ) : (
-        <div className="text-[13px] text-[var(--text-tertiary)]">No demo data found — you're working with your own data.</div>
+        <div>
+          <div className="text-[13px] text-[var(--text-secondary)] mb-3 leading-relaxed">
+            Populate your workspace with a sample landscaping company — 3 projects, 6 crew members, equipment, and materials. You can clear it anytime.
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={sampleLoading}
+            onClick={handleLoadSampleData}
+          >
+            Load Sample Company
+          </Button>
+        </div>
       )}
     </div>
   )
@@ -418,11 +475,11 @@ export const Settings: React.FC = () => {
 
       <ConfirmDialog
         isOpen={showClearConfirm}
-        title="Clear Demo Data"
-        message="This will remove all demo projects, materials, crew, and equipment. Your account settings and billing will not be affected. This cannot be undone."
+        title={hasSampleData ? 'Clear Sample Data' : 'Clear Demo Data'}
+        message="This will remove all sample/demo projects, materials, crew, and equipment. Your account settings and billing will not be affected. This cannot be undone."
         confirmText="Start Fresh"
         confirmVariant="danger"
-        onConfirm={handleClearDemoData}
+        onConfirm={hasSampleData ? handleClearSampleData : handleClearDemoData}
         onCancel={() => setShowClearConfirm(false)}
       />
     </div>

@@ -5,6 +5,7 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useOrgStore } from '@/stores/orgStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { SkeletonKPI, SkeletonWidget } from '@/components/shared/Skeleton';
@@ -16,6 +17,7 @@ import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiDefinitions';
 import { updateSelectedKpis, updateWidgetLayout } from '@/services/preferences';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
+import { insertSampleData } from '@/services/supabaseData';
 import type { AppState } from '@/types';
 
 // Debounce helper for Supabase layout writes
@@ -210,7 +212,8 @@ export const Dashboard: React.FC = () => {
   const [kpiDragState, setKpiDragState] = useState<KpiDragState | null>(null);
   const kpiRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const { projects, isLoading, error } = useProjectStore();
+  const { projects, isLoading, error, fetchProjects } = useProjectStore();
+  const [sampleLoading, setSampleLoading] = useState(false);
 
   useEffect(() => {
     if (error) toast.error('Failed to load dashboard data');
@@ -219,6 +222,21 @@ export const Dashboard: React.FC = () => {
   const { equipment } = useEquipmentStore();
   const { materials } = useMaterialStore();
   const { user } = useAuth();
+  const orgId = useOrgStore((s) => s.org?.id);
+
+  const handleLoadSample = async () => {
+    if (!orgId) { toast.error('No organization found'); return; }
+    setSampleLoading(true);
+    const result = await insertSampleData(orgId);
+    if (result.success) {
+      await fetchProjects();
+      // Other stores will refresh on next page visit
+      toast.success('Sample company loaded!');
+    } else {
+      toast.error(`Failed: ${result.error}`);
+    }
+    setSampleLoading(false);
+  };
 
   const {
     kpiDrawerOpen,
@@ -442,6 +460,29 @@ export const Dashboard: React.FC = () => {
             actionLabel="Create Project"
             onAction={() => navigate('/projects')}
           />
+          {!localStorage.getItem('tf-sample-ids') && (
+            <div style={{ textAlign: 'center', paddingBottom: '24px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-4)' }}>— or —</span>
+              <br />
+              <button
+                onClick={handleLoadSample}
+                disabled={sampleLoading}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--green-l)',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  marginTop: '6px',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+              >
+                {sampleLoading ? 'Loading...' : 'Load a sample company to explore'}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <>
