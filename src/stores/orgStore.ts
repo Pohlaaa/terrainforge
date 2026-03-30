@@ -38,6 +38,7 @@ interface OrgRow {
   trial_ends_at: string | null;
   subscription_ends_at: string | null;
   stripe_customer_id: string | null;
+  shortcode: string | null;
 }
 
 // ── Mapping helper ────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ function mapOrgRow(row: OrgRow): Organization {
     trialEndsAt: row.trial_ends_at ?? null,
     subscriptionEndsAt: row.subscription_ends_at ?? null,
     stripeCustomerId: row.stripe_customer_id ?? null,
-    shortcode: (row as any).shortcode ?? null,
+    shortcode: row.shortcode ?? null,
   };
 }
 
@@ -91,7 +92,7 @@ export const useOrgStore = create<OrgStore>()(
           const { data, error } = await supabase
             .from('organizations')
             .select(
-              'id, name, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id'
+              'id, name, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, shortcode'
             )
             .eq('id', orgId)
             .single();

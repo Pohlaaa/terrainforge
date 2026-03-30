@@ -45,11 +45,13 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Crew login — no auth required (PIN is the auth) */}
+          {/* Crew login — requires Supabase auth, PIN selects which crew member */}
           <Route path="/crew/login" element={
-            <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-2)' }}>Loading...</div>}>
-              <CrewLogin />
-            </React.Suspense>
+            <ProtectedRoute>
+              <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-2)' }}>Loading...</div>}>
+                <CrewLogin />
+              </React.Suspense>
+            </ProtectedRoute>
           } />
 
           {/* Crew app routes — separate layout, no sidebar */}
