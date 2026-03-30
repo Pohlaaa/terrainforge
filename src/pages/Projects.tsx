@@ -92,6 +92,16 @@ export const Projects: React.FC = () => {
     return () => clearTimeout(t);
   }, []);
 
+  // View mode — persisted in localStorage
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
+    const saved = localStorage.getItem('tf-projects-view');
+    return (saved === 'list' || saved === 'cards') ? saved : 'cards';
+  });
+  const handleViewChange = (mode: 'cards' | 'list') => {
+    setViewMode(mode);
+    localStorage.setItem('tf-projects-view', mode);
+  };
+
   // Detail view tab state
   const [detailTab, setDetailTab] = useState<'zones' | 'materials' | 'crew'>('zones');
 
@@ -1046,123 +1056,169 @@ export const Projects: React.FC = () => {
           onAction={() => setShowNewModal(true)}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px]">
-          {projects.map((project) => {
-            const status = getProjectStatus(project);
-            const checks = Object.values(project.checklist);
-            const completedCount = checks.filter(Boolean).length;
-            const value = projectValues[project.id] ?? 0;
-
-            return (
-              <div
-                key={project.id}
-                className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden hover:shadow-md active:shadow-sm transition-shadow duration-200 flex flex-col cursor-pointer relative"
-                style={{ boxShadow: 'var(--shadow-sm)', borderLeft: project.id === activeProjectId ? '3px solid var(--green-l)' : undefined }}
-                onClick={() => setActiveProject(project.id)}
+        <>
+        {/* ── View toggle bar (v7) ────────────────────────────────────── */}
+        <div className="flex items-center justify-between mb-3">
+          <div
+            className="flex gap-0.5 p-0.5"
+            style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}
+          >
+            {(['cards', 'list'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => handleViewChange(mode)}
+                className="border-none cursor-pointer transition-all duration-100"
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  background: viewMode === mode ? 'var(--surface-card)' : 'transparent',
+                  color: viewMode === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  boxShadow: viewMode === mode ? 'var(--shadow-sm)' : 'none',
+                  minHeight: '28px',
+                }}
               >
-                {/* Card header */}
-                <div className="px-[16px] py-[14px] border-b border-[var(--border)] flex items-start justify-between gap-[8px]">
-                  <div className="min-w-0">
-                    <h3 className="text-[14px] font-[700] text-[var(--text)] truncate">
-                      {project.name}
-                    </h3>
-                    <p className="text-[11px] text-[var(--text-3)] mt-[2px] truncate">
-                      {project.client} · {project.address}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-[6px] flex-shrink-0">
-                    <Badge variant={status.variant}>{status.label}</Badge>
-                    {/* ··· overflow menu */}
-                    <div
-                      className="relative"
-                      ref={openMenuId === project.id ? menuRef : undefined}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <button
-                        className="w-[28px] h-[28px] flex items-center justify-center rounded-[8px] text-[var(--text-3)] hover:text-[var(--text)] hover:bg-[var(--surface3)] transition-colors"
-                        onClick={() => setOpenMenuId(openMenuId === project.id ? null : project.id)}
-                        aria-label="Project actions"
-                      >
-                        ···
-                      </button>
-                      {openMenuId === project.id && (
-                        <div
-                          className="absolute right-0 top-full mt-[4px] z-10 bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] shadow-md py-[4px] min-w-[120px]"
-                          style={{ boxShadow: 'var(--shadow-md)' }}
-                        >
-                          <button
-                            className="w-full text-left px-[12px] py-[8px] text-[12px] text-[var(--color-error)] hover:bg-[var(--surface3)] transition-colors"
-                            onClick={() => { setDeleteId(project.id); setOpenMenuId(null); }}
-                          >
-                            Delete Project
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card body */}
-                <div className="px-[16px] py-[14px] flex-1 flex flex-col gap-[12px]">
-                  {/* Value / Budget / Zones row */}
-                  <div className="flex gap-[12px]">
-                    <div className="flex-1">
-                      <div className="text-[9px] font-[700] text-[var(--text-4)] uppercase tracking-[0.05em] mb-[3px]">
-                        Est. Value
-                      </div>
-                      <div className="text-[16px] font-serif text-[var(--green-l)]">
-                        ${(value / 1000).toFixed(1)}k
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-[9px] font-[700] text-[var(--text-4)] uppercase tracking-[0.05em] mb-[3px]">
-                        Budget
-                      </div>
-                      <div className="text-[16px] font-serif text-[var(--text)]">
-                        ${(project.budget / 1000).toFixed(1)}k
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-[9px] font-[700] text-[var(--text-4)] uppercase tracking-[0.05em] mb-[3px]">
-                        Zones
-                      </div>
-                      <div className="text-[16px] font-serif text-[var(--text)]">
-                        {project.zones.length}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Checklist progress */}
-                  <ProgressBar completed={completedCount} total={checks.length} showPercentage />
-
-                  {/* Dates */}
-                  <div className="flex gap-[12px] text-[11px]">
-                    <div className="flex-1">
-                      <div className="text-[9px] font-[700] text-[var(--text-4)] uppercase tracking-[0.04em] mb-[3px]">
-                        Start
-                      </div>
-                      <div className="text-[var(--text-2)]">
-                        {project.startDate
-                          ? new Date(project.startDate).toLocaleDateString()
-                          : '—'}
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-[9px] font-[700] text-[var(--text-4)] uppercase tracking-[0.04em] mb-[3px]">
-                        Target
-                      </div>
-                      <div className="text-[var(--text-2)]">
-                        {project.targetDate
-                          ? new Date(project.targetDate).toLocaleDateString()
-                          : '—'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                {mode === 'cards' ? 'Cards' : 'List'}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+            {projects.length} project{projects.length !== 1 ? 's' : ''}
+          </span>
         </div>
+
+        {/* ── Card view (v7 dense 2-col) ─────────────────────────────── */}
+        {viewMode === 'cards' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-0" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+            {projects.map((project, idx) => {
+              const status = getProjectStatus(project);
+              const checks = Object.values(project.checklist);
+              const completedCount = checks.filter(Boolean).length;
+              const statusColor = status.variant === 'green' ? 'var(--status-green)'
+                : status.variant === 'amber' ? 'var(--status-amber)'
+                : status.variant === 'blue' ? 'var(--status-blue)'
+                : 'var(--status-gray)';
+
+              return (
+                <div
+                  key={project.id}
+                  className="relative cursor-pointer transition-colors duration-75"
+                  style={{
+                    background: 'var(--surface-card)',
+                    padding: '12px 14px',
+                    borderBottom: '1px solid var(--border-default)',
+                    borderRight: idx % 2 === 0 ? '1px solid var(--border-default)' : 'none',
+                  }}
+                  onClick={() => setActiveProject(project.id)}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; }}
+                >
+                  {/* Left accent bar */}
+                  <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: statusColor }} />
+
+                  {/* Row 1: name + badge */}
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div className="text-[14px] font-bold leading-tight min-w-0" style={{ color: 'var(--text-primary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {project.name}
+                    </div>
+                    <Badge variant={status.variant}>{status.label}</Badge>
+                  </div>
+
+                  {/* Address */}
+                  <div className="text-[12px] truncate mb-2" style={{ color: 'var(--text-tertiary)' }}>
+                    {project.address || project.client || '—'}
+                  </div>
+
+                  {/* Inline meta */}
+                  <div className="flex gap-3 text-[12px] mb-2">
+                    <span>
+                      <span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>Budget </span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>${(project.budget / 1000).toFixed(project.budget >= 1000 ? 0 : 1)}K</span>
+                    </span>
+                    <span>
+                      <span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>Zones </span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{project.zones.length}</span>
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-[4px] rounded-sm overflow-hidden" style={{ background: 'var(--surface-bg)' }}>
+                      <div className="h-full rounded-sm" style={{ width: `${checks.length > 0 ? (completedCount / checks.length) * 100 : 0}%`, background: statusColor }} />
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                      {completedCount}/{checks.length}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── List view (v7 dense rows) ──────────────────────────────── */}
+        {viewMode === 'list' && (
+          <div className="flex flex-col" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+            {projects.map((project) => {
+              const status = getProjectStatus(project);
+              const checks = Object.values(project.checklist);
+              const completedCount = checks.filter(Boolean).length;
+              const statusColor = status.variant === 'green' ? 'var(--status-green)'
+                : status.variant === 'amber' ? 'var(--status-amber)'
+                : status.variant === 'blue' ? 'var(--status-blue)'
+                : 'var(--status-gray)';
+
+              return (
+                <div
+                  key={project.id}
+                  className="flex items-center gap-3 relative cursor-pointer transition-colors duration-75"
+                  style={{
+                    background: 'var(--surface-card)',
+                    padding: '10px 16px',
+                    borderBottom: '1px solid var(--border-light)',
+                    minHeight: '44px',
+                  }}
+                  onClick={() => setActiveProject(project.id)}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; }}
+                >
+                  {/* Accent bar */}
+                  <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: statusColor }} />
+
+                  {/* Name + address */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[14px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{project.name}</div>
+                    <div className="text-[12px] truncate" style={{ color: 'var(--text-tertiary)' }}>{project.address || project.client || '—'}</div>
+                  </div>
+
+                  {/* Meta columns */}
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <div className="text-right" style={{ minWidth: '52px' }}>
+                      <div className="text-[13px] font-bold" style={{ color: 'var(--text-primary)' }}>${(project.budget / 1000).toFixed(project.budget >= 1000 ? 0 : 1)}K</div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>Budget</div>
+                    </div>
+                    <div className="text-right" style={{ minWidth: '36px' }}>
+                      <div className="text-[13px] font-bold" style={{ color: 'var(--text-primary)' }}>{project.zones.length}</div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>Zones</div>
+                    </div>
+                    {/* Progress */}
+                    <div style={{ width: '60px', flexShrink: 0 }}>
+                      <div className="h-[4px] rounded-sm overflow-hidden" style={{ background: 'var(--surface-bg)' }}>
+                        <div className="h-full rounded-sm" style={{ width: `${checks.length > 0 ? (completedCount / checks.length) * 100 : 0}%`, background: statusColor }} />
+                      </div>
+                      <div className="text-right mt-0.5" style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)' }}>{completedCount}/{checks.length}</div>
+                    </div>
+                  </div>
+
+                  {/* Chevron */}
+                  <svg className="flex-shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-disabled)" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        </>
       )}
 
       {/* New Project Modal — redesigned with AI Quick Create + Zone Builder */}
