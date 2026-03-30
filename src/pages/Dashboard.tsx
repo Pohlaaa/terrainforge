@@ -245,17 +245,19 @@ const WelcomeBanner: React.FC<{ hasProjects: boolean }> = ({ hasProjects }) => {
       <button
         onClick={dismiss}
         style={{
-          background: 'none',
-          border: 'none',
-          color: 'var(--text-3)',
-          fontSize: '16px',
+          background: 'var(--surface3)',
+          border: '1px solid var(--border)',
+          borderRadius: '6px',
+          color: 'var(--text-2)',
+          fontSize: '14px',
+          fontWeight: 600,
           cursor: 'pointer',
-          padding: '4px',
+          padding: '4px 8px',
           lineHeight: 1,
           flexShrink: 0,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-3)'; }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--text-3)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-2)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
         aria-label="Dismiss welcome banner"
       >
         ✕

@@ -25,6 +25,19 @@ import { useBillingGate } from '@/hooks/useBillingGate';
 import { ToastContainer } from '@/components/shared/Toast';
 import { useUIStore } from '@/stores/uiStore';
 import { fetchUserPreferences } from '@/services/preferences';
+import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiDefinitions';
+
+// Map onboarding priority labels → KPI library IDs
+const PRIORITY_TO_KPI: Record<string, string> = {
+  'Project Tracking': 'active_projects',
+  'Budget & Estimates': 'pipeline_value',
+  'Crew Management': 'crew_available',
+  'Material Inventory': 'low_stock_alerts',
+  'Equipment Tracking': 'fleet_available',
+  'Client Comms': 'active_projects', // no direct match, fallback
+  'Invoicing': 'pipeline_value',     // no direct match, fallback
+  'Weather Planning': 'active_projects', // no direct match, fallback
+};
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -92,7 +105,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     if (!user?.id || prefsLoaded) return;
     fetchUserPreferences(user.id).then((prefs) => {
       if (prefs?.selectedKpis && prefs.selectedKpis.length > 0) {
-        useUIStore.getState().setSelectedKpis(prefs.selectedKpis);
+        const validKpiIds = new Set(KPI_LIBRARY.map(k => k.id));
+        // Translate onboarding priority labels to KPI IDs, pass through valid IDs
+        const resolved = prefs.selectedKpis
+          .map(k => validKpiIds.has(k) ? k : PRIORITY_TO_KPI[k])
+          .filter((k): k is string => k !== undefined);
+        // Deduplicate and ensure we have at least some KPIs
+        const unique = [...new Set(resolved)];
+        useUIStore.getState().setSelectedKpis(unique.length > 0 ? unique : DEFAULT_SELECTED_KPIS);
       }
       setPrefsLoaded(true);
     });

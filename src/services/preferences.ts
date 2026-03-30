@@ -98,15 +98,24 @@ export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
     }
 
     // No preferences row — check if this is a pre-onboarding user who already has an org
-    // membership. If so, skip onboarding; if not, they're genuinely new.
+    // membership AND has data (projects). If so, skip onboarding; if not, they're genuinely new.
     const { data: memberData, error: memberError } = await supabase
       .from('organization_members')
-      .select('id')
+      .select('org_id')
       .eq('user_id', userId)
       .maybeSingle()
     if (!memberError && memberData) {
-      // Pre-existing user — treat as onboarding complete
-      return true
+      // Has org membership — check if they have any projects (distinguishes
+      // pre-onboarding veterans from brand-new signups who just got auto-enrolled)
+      const { count } = await supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', memberData.org_id)
+      if (count && count > 0) {
+        return true // Existing user with data — skip onboarding
+      }
+      // Has membership but no projects — genuinely new user, show onboarding
+      return false
     }
 
     return false
