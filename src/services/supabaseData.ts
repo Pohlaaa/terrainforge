@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert } from '@/types'
+import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry } from '@/types'
 
 // ===== ERROR REPORTING =====
 
@@ -835,6 +835,80 @@ export async function addMaintenanceEntry(equipId: string, entry: Omit<Maintenan
   } catch (err: any) {
     console.error('addMaintenanceEntry error:', err.message)
     return null
+  }
+}
+
+// ===== SCHEDULE ENTRIES =====
+
+export async function fetchScheduleEntries(
+  orgId: string,
+  startDate: string,
+  endDate: string
+): Promise<ScheduleEntry[]> {
+  try {
+    const { data, error } = await supabase
+      .from('schedule_entries')
+      .select('*')
+      .eq('org_id', orgId)
+      .gte('scheduled_date', startDate)
+      .lte('scheduled_date', endDate)
+      .order('scheduled_date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map((row) => toCamelCase(row) as ScheduleEntry);
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'schedule_entries', err);
+    return [];
+  }
+}
+
+export async function createScheduleEntry(
+  data: Omit<ScheduleEntry, 'id' | 'createdAt' | 'updatedAt'>,
+  id: string,
+  orgId: string
+): Promise<void> {
+  try {
+    const snakeData = toSnakeCase(data as Record<string, any>);
+    snakeData.id = id;
+    snakeData.org_id = orgId;
+
+    const { error } = await supabase.from('schedule_entries').insert([snakeData]);
+    if (error) throw error;
+  } catch (err: any) {
+    onSupabaseError('INSERT', 'schedule_entries', err);
+  }
+}
+
+export async function updateScheduleEntry(
+  id: string,
+  updates: Partial<ScheduleEntry>
+): Promise<void> {
+  try {
+    const snakeData = toSnakeCase(updates as Record<string, any>);
+    snakeData.updated_at = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('schedule_entries')
+      .update(snakeData)
+      .eq('id', id);
+
+    if (error) throw error;
+  } catch (err: any) {
+    onSupabaseError('UPDATE', 'schedule_entries', err);
+  }
+}
+
+export async function deleteScheduleEntry(id: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('schedule_entries')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  } catch (err: any) {
+    onSupabaseError('DELETE', 'schedule_entries', err);
   }
 }
 

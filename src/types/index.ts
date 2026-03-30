@@ -293,9 +293,28 @@ export interface WorkOrder {
   createdAt: string;
 }
 
+// ── Scheduling ────────────────────────────────────────────────────────────────
+
+export type ScheduleEntryStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface ScheduleEntry {
+  id: string;
+  orgId: string;
+  projectId: string;
+  crewMemberId: string;
+  equipmentId: string | null;
+  scheduledDate: string;       // 'YYYY-MM-DD'
+  startTime: string | null;    // 'HH:MM'
+  endTime: string | null;      // 'HH:MM'
+  notes: string;
+  status: ScheduleEntryStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Dashboard customization types ─────────────────────────────────────────────
 
-export type WidgetType = 'projects' | 'crew' | 'fleet' | 'alerts' | 'map';
+export type WidgetType = 'projects' | 'crew' | 'fleet' | 'alerts' | 'map' | 'schedule';
 
 export interface WidgetConfig {
   id: string;
