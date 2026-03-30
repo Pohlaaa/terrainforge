@@ -1,37 +1,49 @@
 # TerrainForge — Execution Model
 
 > **Purpose**: How we build, test, and ship code. Covers the full loop from sprint prompt through testing.
-> **Audience**: Orchestrator, Claude Code, and Charlie.
-> **Last updated**: 2026-03-29
+> **Audience**: Claude Code (VSCode), Cowork, and Charlie.
+> **Last updated**: 2026-03-30
 
 ---
 
-## 1. Development Environments
+## 1. Two-Mode Workflow
 
-### VSCode + Claude Code Extension (PRIMARY — use for all coding sprints)
-Charlie has VSCode installed with the Claude Code extension. This is the primary execution environment for all sprint work going forward.
+### VSCode + Claude Code (PRIMARY — planning, execution, and testing)
+Claude Code in VSCode is the primary environment for ALL sprint work: planning, writing sprint prompts, writing migrations, executing code, and generating post-sprint test/merge instructions.
 
-**Why VSCode over Cowork for code execution**:
-- Lower token usage — Claude Code in VSCode has direct file access without MCP overhead
-- Better context — VSCode extension can read/write files natively, run terminal commands, and see build output
-- Persistent workspace — no session timeout, no context window limits during long coding runs
-- Extension features — inline diff review, integrated terminal, git integration
+**Why VSCode owns everything**:
+- Direct file access — reads/writes `.claude/` docs and `src/` code natively
+- Lower token usage — no MCP overhead, no cross-session copy-pasting
+- Full lifecycle — plan a sprint, write the prompt, execute it, all in one session
+- Integrated terminal — git, npm, build output all in one place
+- No context-switching tax — Charlie doesn't relay between Cowork and VSCode
 
 **Setup** (one-time):
 1. Open VSCode in the terrainforge directory: `code C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge`
 2. Claude Code extension reads `CLAUDE.md` at project root automatically
-3. Sprint kickoff: paste the kickoff prompt into Claude Code chat
 
-**Sprint kickoff prompt for VSCode Claude Code**:
-```
-Read .claude/CODE_GUIDE.md and .claude/SPRINT_[N]_PROMPTS.md, then execute all tasks autonomously. Branch: sprint-[N]-[description]. One commit per task. Create PR when done using "C:\Program Files\GitHub CLI\gh.exe".
-```
+**What Code does**:
+- Reads ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md to plan sprints
+- Writes SPRINT_[N]_PROMPTS.md with all tasks, types, file paths, test cases
+- Writes SQL migration files in `supabase/migrations/`
+- Executes sprint code (branch, implement, build, commit, PR)
+- Writes hotfix prompts when tests fail
+- Updates CONTEXT.md, ORCHESTRATOR.md after sprints
+- Provides the post-sprint command block for Charlie to merge/build/test
 
-### Cowork (for Orchestrator + UI Design + remote dispatch)
-- Sprint planning, file production, coordination
+### Cowork (STRATEGIC only — not for sprint work)
+Use Cowork for:
+- Business strategy, roadmap decisions, milestone evaluation
+- Non-code deliverables (pitch decks, marketing docs, presentations)
 - UI Design preview production
 - Remote dispatch from phone (see REMOTE_WORKFLOW.md)
-- NOT for coding sprints — use VSCode Claude Code instead
+- Onboarding a new Cowork session when context is needed
+
+Cowork does NOT:
+- Plan or write sprint prompts (Code does this now)
+- Write SQL migrations (Code does this now)
+- Coordinate sprint execution (Code does this now)
+- Interact with git or the codebase (causes index.lock and path issues)
 
 ### Key Paths
 | Context | Path |
@@ -122,13 +134,13 @@ cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
 git merge [sprint-branch-name]
 npm run build
 ```
-If build fails: report to Orchestrator, who writes a hotfix prompt.
+If build fails: report to Claude Code, which writes and executes a hotfix prompt.
 
 ### Step 2: Start Local Dev Server
 ```powershell
 npm run dev
 ```
-Open `http://localhost:5173` in an incognito browser window (avoids cached state).
+Open `http://localhost:3000` in an incognito browser window (avoids cached state).
 
 ### Step 3: Sprint-Specific Tests
 Every sprint prompt includes a **"What to Test"** section at the bottom. This section lists:
@@ -152,12 +164,12 @@ Every sprint prompt includes a **"What to Test"** section at the bottom. This se
 ```
 
 ### Step 4: Report Results
-Charlie reports back to Orchestrator:
+Charlie reports back to Claude Code in VSCode:
 - PASS — all tests passed, ready to deploy
 - PARTIAL — some issues found (list them)
 - FAIL — blocking issues (list them)
 
-If PARTIAL or FAIL: Orchestrator writes a hotfix prompt (`SPRINT_[N]_5_HOTFIX.md`), Code executes it, repeat.
+If PARTIAL or FAIL: Code writes a hotfix prompt (`SPRINT_[N]_5_HOTFIX.md`), executes it, repeat.
 
 ### Step 5: Deploy (when ready)
 ```powershell
@@ -175,12 +187,13 @@ npx netlify-cli deploy --prod --dir=dist
 Sprints that add DB features include migration files.
 
 ### Where Migrations Live
-- Sprint prompt includes full SQL inline
-- Also saved to `supabase/migrations/[NNN]_[description].sql`
+- **ALWAYS** as a `.sql` file in `supabase/migrations/[NNN]_[description].sql`
+- Sprint prompt docs (`.claude/SPRINT_*.md`) REFERENCE the migration file — they do NOT embed the SQL inline
+- This keeps all SQL in one canonical location and matches the project file structure
 
 ### Charlie's Steps
-1. Open Supabase SQL Editor (https://supabase.com/dashboard)
-2. Copy/paste the migration SQL
+1. Open the migration file at `supabase/migrations/[NNN]_[description].sql`
+2. Copy/paste into Supabase SQL Editor (https://supabase.com/dashboard)
 3. Run it
 4. Verify: check table/column/policy exists in the Table Editor
 5. THEN merge the sprint PR and test locally
@@ -188,8 +201,9 @@ Sprints that add DB features include migration files.
 ### Migration Rules (for Orchestrator writing prompts)
 - Every migration is idempotent: `CREATE TABLE IF NOT EXISTS`, `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$`
 - Include RLS policies in the same migration
-- Include CHECK constraints
+- Include CHECK constraints — NEVER use Postgres ENUM types
 - Note which migration must run before testing
+- **NEVER embed SQL in markdown docs** — always write a `.sql` file and reference it
 
 ---
 
@@ -207,8 +221,17 @@ See `REMOTE_WORKFLOW.md` for full detail. Summary:
 
 ## 7. File Inventory — What Code Reads
 
-When Code starts a sprint, it reads files in this order:
+### For Sprint Planning (Code now handles this)
+| Priority | File | Purpose |
+|----------|------|---------|
+| 1 | `CLAUDE.md` (project root) | Architecture rules, naming, what NOT to do |
+| 2 | `.claude/ORCHESTRATOR.md` | Full project knowledge base, session model, Supabase rules |
+| 3 | `.claude/ROADMAP.md` | Milestone plan, what to build next |
+| 4 | `.claude/CONTEXT.md` | Current sprint state, open bugs, git state |
+| 5 | `.claude/CONSIDERATIONS.md` | Backlog items, design decisions pending |
+| 6 | `.claude/EXECUTION.md` | This file — workflow, testing protocol |
 
+### For Sprint Execution
 | Priority | File | Purpose |
 |----------|------|---------|
 | 1 | `CLAUDE.md` (project root) | Architecture rules, naming, what NOT to do |
@@ -218,44 +241,36 @@ When Code starts a sprint, it reads files in this order:
 | 5 | `.claude/AI_PRODUCT.md` | If sprint has AI tasks |
 | 6 | `.claude/TESTING/FINDINGS.md` | Open bugs to avoid regressing |
 
-Code does NOT need to read: ORCHESTRATOR.md, ROADMAP.md, BUSINESS.md, MARKETING.md, OPERATIONS.md. Those are for Orchestrator planning sessions.
+### For Strategic/Business (Cowork only)
+BUSINESS.md, MARKETING.md, OPERATIONS.md — not needed for sprint work.
 
 ---
 
 ## 8. Sprint Lifecycle — Complete Workflow
 
-This is the repeatable loop for every sprint. Charlie executes steps marked with (C). Orchestrator handles (O). Claude Code handles (CC).
+This is the repeatable loop for every sprint. Charlie executes steps marked with **(C)**. Claude Code handles **(CC)** — both planning and execution now live in VSCode.
 
-### Phase A: Plan (O — Orchestrator in Cowork)
-1. (O) Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md
-2. (O) Write SPRINT_[N]_PROMPTS.md with all tasks, types, file paths, and test section
-3. (O) Write SQL migration file if sprint adds DB features
-4. (O) Update CONTEXT.md with sprint status
+### Phase A: Plan (CC — Claude Code in VSCode)
+1. (CC) Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md
+2. (CC) Write SPRINT_[N]_PROMPTS.md with all tasks, types, file paths, and test section
+3. (CC) Write SQL migration file in `supabase/migrations/` if sprint adds DB features
+4. (CC) Update CONTEXT.md with sprint status
+5. (CC) Tell Charlie: "Sprint [N] is planned. Run migration [NNN] in Supabase SQL Editor, then tell me to execute."
 
-### Phase B: Pre-Flight (C — Charlie in PowerShell)
-1. (C) Verify clean git state:
-   ```powershell
-   cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
-   git status          # should be clean or only untracked .claude/ files
-   git log --oneline -3  # confirm you're on main at the right commit
-   ```
-2. (C) Run SQL migration in Supabase SQL Editor (if sprint has one)
-3. (C) Verify build passes before handing off: `npm run build`
+### Phase B: Pre-Flight (C — Charlie)
+1. (C) Run SQL migration in Supabase SQL Editor if sprint has one (open the `.sql` file from `supabase/migrations/`)
+2. (C) Tell Code to execute
 
 ### Phase C: Execute (CC — Claude Code in VSCode)
-1. (C) Open VSCode with terrainforge folder
-2. (C) Paste the kickoff prompt into Claude Code:
-   ```
-   Read .claude/CODE_GUIDE.md and .claude/SPRINT_[N]_PROMPTS.md, then execute all tasks autonomously. Branch: sprint-[N]-[description]. One commit per task. Create PR when done using "C:\Program Files\GitHub CLI\gh.exe".
-   ```
-3. (CC) Claude Code reads files, creates branch, implements, builds, commits per task, pushes, creates PR
-4. (C) Wait for PR creation confirmation — do NOT interact with Claude Code during execution
+1. (CC) Read CODE_GUIDE.md + SPRINT_[N]_PROMPTS.md
+2. (CC) Create branch, implement all tasks, build, commit per task, push, create PR
+3. (C) Wait for PR creation confirmation — do NOT interact with Claude Code during execution
 
 ### Phase D: Merge, Build, Launch, Test (C — Charlie in PowerShell + Browser)
 
-**IMPORTANT**: After Claude Code finishes a sprint, Orchestrator ALWAYS provides the full post-sprint command block below (with the actual branch name filled in). Charlie copies and pastes the entire block into PowerShell.
+After Code finishes, it provides the post-sprint command block with the branch name filled in. Charlie copy-pastes it into PowerShell.
 
-**Post-sprint command block** (Orchestrator fills in `[branch]` each time):
+**Post-sprint command block template**:
 ```powershell
 cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
 git checkout main
@@ -268,21 +283,20 @@ npm run dev
 
 After pasting:
 1. (C) Confirm build passes (zero errors)
-2. (C) Open `http://localhost:5173` in incognito (avoids cached localStorage state)
-3. (C) Run through test cases in `.claude/TESTING/SPRINT_[N]_TESTS.md`
-4. (C) Report results to Orchestrator: PASS / PARTIAL / FAIL
+2. (C) Open `http://localhost:3000` in incognito (avoids cached localStorage state)
+3. (C) Run through test cases from the "What to Test" section of the sprint prompt
+4. (C) Report results to Code: PASS / PARTIAL / FAIL
 
-### Phase F: Fix if Needed
-1. (O) If PARTIAL or FAIL: write SPRINT_[N]_5_HOTFIX.md
-2. (C) Paste hotfix kickoff into VSCode Claude Code
-3. (CC) Execute hotfix, create PR
-4. (C) Merge, re-test — repeat until PASS
+### Phase E: Fix if Needed (CC — Claude Code in VSCode)
+1. (CC) If PARTIAL or FAIL: write SPRINT_[N]_5_HOTFIX.md, then execute it
+2. (CC) Create PR for hotfix
+3. (C) Merge, re-test — repeat until PASS
 
-### Phase G: Wrap Up
-1. (O) Update CONTEXT.md with sprint results
+### Phase F: Wrap Up (CC + C)
+1. (CC) Update CONTEXT.md and ORCHESTRATOR.md with sprint results
 2. (C) Commit untracked .claude/ docs:
    ```powershell
-   git add .claude/ supabase/migrations/
+   git add .claude/ supabase/migrations/ CLAUDE.md
    git commit -m "docs: add Sprint [N] orchestration files"
    git push origin main
    ```
@@ -294,3 +308,5 @@ After pasting:
 - **Run SQL migration BEFORE sprint execution** — Code's Supabase CRUD functions will fail otherwise
 - **Build before AND after** — pre-flight build catches existing issues, post-merge build catches sprint regressions
 - **Use incognito for testing** — Zustand persist middleware caches old state in localStorage
+- **SQL files live in `supabase/migrations/`** — never embed SQL inline in markdown docs
+- **Frontend type values must exactly match DB CHECK constraint values** — mismatches cause silent INSERT failures

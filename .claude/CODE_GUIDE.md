@@ -1,13 +1,35 @@
-# TerrainForge — Claude Code Execution Guide
+# TerrainForge — Claude Code Guide
 
-> **For Claude Code sessions.** Read this file + the sprint prompt file, then execute autonomously.
-> Replaces: SPRINT_EXECUTION.md, DEPLOYMENT_BRIEF.md, SPRINT_12_DEPLOYMENT_BRIEF.md
+> **For Claude Code sessions in VSCode.** Code owns the full sprint lifecycle: planning, execution, testing support, and documentation updates.
+> Last updated: 2026-03-30
 
 ---
 
-## Kickoff
+## Your Role
 
-Charlie starts a sprint with one prompt:
+You are the primary development environment for TerrainForge. You handle:
+- **Sprint planning**: Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md → write SPRINT_[N]_PROMPTS.md
+- **Migration authoring**: Write SQL files in `supabase/migrations/` (NEVER inline SQL in markdown)
+- **Sprint execution**: Branch, implement, build, commit, PR
+- **Hotfix writing + execution**: When tests fail, write and run the fix
+- **Doc updates**: Update CONTEXT.md and ORCHESTRATOR.md after sprints
+- **Post-sprint support**: Provide Charlie with the merge/build/test command block
+
+Cowork (the Anthropic desktop app) is only used for strategic/business work — NOT for sprint planning or coordination.
+
+---
+
+## Sprint Planning Mode
+
+When Charlie asks you to plan a sprint:
+1. Read: ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md
+2. Write: `.claude/SPRINT_[N]_PROMPTS.md` following the template in `.claude/SPRINT_TEMPLATE.md`
+3. Write: `supabase/migrations/[NNN]_[description].sql` if the sprint needs DB changes
+4. Tell Charlie: "Sprint [N] is planned. Run migration [NNN] in Supabase SQL Editor, then tell me to execute."
+
+## Sprint Execution Mode
+
+When Charlie says to execute:
 ```
 Read .claude/CODE_GUIDE.md and .claude/SPRINT_[N]_PROMPTS.md, then execute all tasks autonomously. Branch: sprint-[N]-[description]. One commit per task. Create PR when done using "C:\Program Files\GitHub CLI\gh.exe".
 ```
@@ -85,8 +107,16 @@ git push origin sprint-[N]-[description]
 
 ---
 
-## Context Files to Read Per Sprint
+## Context Files
 
+### For Planning
+1. `ORCHESTRATOR.md` — full project knowledge base, Supabase rules, session model
+2. `ROADMAP.md` — milestone plan, what to build next
+3. `CONTEXT.md` — current state, open bugs, git state
+4. `CONSIDERATIONS.md` — backlog items, design decisions
+5. `EXECUTION.md` — workflow, testing protocol, lifecycle phases
+
+### For Execution
 1. This file (`CODE_GUIDE.md`) — execution workflow
 2. `SPRINT_[N]_PROMPTS.md` — sprint tasks
 3. `DESIGN_SYSTEM.md` — if the sprint involves visual changes
@@ -108,5 +138,18 @@ git push origin sprint-[N]-[description]
 
 After all tasks complete:
 1. Verify `npm run build` passes with zero errors
-2. Create PR with summary of all changes
-3. Report completion with table: Task | Change | Files modified
+2. Push branch and create PR
+3. **Provide Charlie with the post-sprint command block** (fill in actual branch name):
+   ```powershell
+   cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
+   git checkout main
+   git merge [branch]
+   git push origin main
+   git branch -d [branch]
+   npm run build
+   npm run dev
+   ```
+4. Tell Charlie to open `http://localhost:3000` in incognito and run through the test checklist
+5. Wait for Charlie's test report: PASS / PARTIAL / FAIL
+6. If PARTIAL or FAIL: write a hotfix prompt, execute it, provide new merge block
+7. After PASS: update CONTEXT.md with sprint results

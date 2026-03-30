@@ -1,6 +1,6 @@
 # Sprint 15 Test Cases — Scheduling Module
 
-Run `npm run dev` and open `http://localhost:5173`. Log in with your test account.
+Run `npm run dev` and open `http://localhost:3000`. Log in with your test account.
 
 ## Pre-Flight
 
@@ -123,22 +123,4 @@ TESTING NOTE: This is material library. Adding a material also fails with an in-
 - [n] Equipment Manager loads and functions normally - TESTING NOTE: Failed to add equipment with an in-app load error warning
 - [x] Work Orders page loads (check if active project filter still works) - TESTING NOTE: loads fine without an active project, lets you pick a project then fails. with an active project selected, clicking the work orders page fails
 - [N] Material Library: all three tabs load content
-- [Y] Browser refresh on /schedule preserves the current week view
-- [Y] Schedule entries persist across page refreshes (localStorage via Zustand persist)
-
-## Edge Cases
-
-- [Y] Create an entry with no start/end time → chip still renders, no time shown in tooltip
-- [Y] Delete all entries for a day → cell returns to empty state with "+" hover indicator
-- [Y] Rapidly click Prev/Next week 10 times → no crash, dates stay correct
-- [Y] Shrink browser to mobile width → schedule grid scrolls horizontally (overflow-x: auto)
-- [Y] With 5+ crew members → table remains scrollable and readable
-
----
-
-## Status After Testing
-
-- Sprint 15 tested by: Charlie
-- Date: _3/29
-- Result: [ ] PASS / [X] FAIL
-- Notes: Most tests passed. See line by line or bucket testing notes
+- [Y] Browser refresh on /schedule preserves the cur

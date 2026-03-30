@@ -2,7 +2,7 @@
 
 > **What this file is**: The complete knowledge base for the Orchestrator session. Any new Cowork session that reads this file can immediately take over project coordination. This is the single source of truth for how we work.
 >
-> **Last updated**: 2026-03-29 (post Sprint 13.5)
+> **Last updated**: 2026-03-30 (two-mode workflow model)
 
 ---
 
@@ -30,7 +30,7 @@
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18 + Vite + TypeScript |
-| State | Zustand (6 stores) + Supabase sync |
+| State | Zustand (7 stores) + Supabase sync |
 | Auth | Supabase Auth (email/password) |
 | Database | Supabase PostgreSQL, 15 tables, 55+ RLS policies |
 | Styling | Tailwind CSS + CSS custom properties |
@@ -42,39 +42,35 @@
 
 ---
 
-## 2. Session Model
+## 2. Session Model (Two-Mode)
 
-Three active sessions, each with a distinct role:
+As of Sprint 16.5, we use a two-mode model. VSCode Claude Code handles everything sprint-related. Cowork is reserved for strategic/business work only.
 
-### Orchestrator (Cowork — you)
-- Sprint planning and coordination
+### Claude Code in VSCode (PRIMARY — planning + execution)
+- Reads ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md to plan sprints
 - Writes sprint prompt files (`.claude/SPRINT_[N]_PROMPTS.md`)
-- Writes SQL migrations for Charlie to run
-- Tracks project state and priorities
-- Reads Code transcripts to monitor progress
-- Uses auto-memory for cross-session continuity
-
-### UI Design (Cowork)
-- Produces HTML design previews (`design-preview-vN.html`)
-- Defines visual specs: colors, spacing, animations, interactions
-- Has folder access — can read `.claude/` files and the codebase
-- **Does NOT write application code** — delivers specs for sprint prompts
-- Latest preview: `.claude/design/design-preview-v7-tablet-density.html`
-
-### Claude Code (autonomous execution)
-- Writes ALL application code (React, Zustand, CSS, services)
-- Runs from `SPRINT_[N]_PROMPTS.md` + `CODE_GUIDE.md`
-- Per-task cycle: implement → build → commit → next task
-- Creates PRs via `gh` CLI
+- Writes SQL migration files in `supabase/migrations/`
+- Executes all sprint code (branch, implement, build, commit, PR)
+- Writes hotfix prompts and executes them
+- Updates CONTEXT.md, ORCHESTRATOR.md after sprints
+- Provides the post-sprint command block for Charlie
 - The ONLY entity that touches files in `src/`
+- Per-task cycle: implement → build → commit → next task
+
+### Cowork (STRATEGIC only)
+- Business strategy, roadmap decisions, milestone evaluation
+- Non-code deliverables (pitch decks, marketing docs, presentations)
+- UI Design preview production (HTML design previews)
+- Remote dispatch from phone (see REMOTE_WORKFLOW.md)
+- Does NOT plan sprints, write sprint prompts, write SQL, or touch code
 
 ### Charlie's role in the loop
-- Merges PRs in PowerShell: `git merge <branch>`
-- Runs SQL migrations in Supabase SQL Editor
-- Tests locally: `npm run dev` → `localhost:5173`
+- Runs SQL migrations in Supabase SQL Editor (from `supabase/migrations/` files)
+- Merges sprint branches in PowerShell (command block provided by Code)
+- Tests locally: `npm run dev` → `localhost:3000` (incognito)
+- Reports test results back to Code: PASS / PARTIAL / FAIL
 - Deploys to prod: `git push origin main`
-- Reports test results back to Orchestrator
-- **After Code finishes**: Orchestrator always provides the full post-sprint command block (merge + build + launch) — Charlie copy-pastes it. See EXECUTION.md Phase D.
+- Commits `.claude/` doc updates after sprints
 
 ---
 
@@ -83,14 +79,14 @@ Three active sessions, each with a distinct role:
 ### Sprint Lifecycle
 
 ```
-1. Plan    → Orchestrator writes SPRINT_[N]_PROMPTS.md
-2. Design  → UI Design delivers preview HTML (if visual sprint)
-3. Execute → Charlie pastes kickoff into Code
-4. Build   → Code creates branch, implements, commits, opens PR
-5. Merge   → Charlie: git merge <branch-name>
-6. Test    → Charlie: npm run dev → localhost:3000
-7. Fix     → If issues: Orchestrator writes hotfix prompt, repeat 3-6
-8. Deploy  → Charlie: git push origin HEAD:main (when ready)
+1. Plan    → Code reads ROADMAP/CONTEXT/CONSIDERATIONS, writes SPRINT_[N]_PROMPTS.md + migration SQL
+2. Pre-fly → Charlie runs SQL migration in Supabase (if any)
+3. Execute → Code creates branch, implements, builds, commits, opens PR
+4. Merge   → Charlie: pastes post-sprint command block into PowerShell
+5. Test    → Charlie: localhost:3000 in incognito, runs test checklist
+6. Fix     → If issues: Code writes + executes hotfix prompt, repeat 4-5
+7. Wrap    → Code updates CONTEXT.md, Charlie commits .claude/ docs
+8. Deploy  → Charlie: git push origin main (when ready)
 ```
 
 ### Sprint Prompt Quality Bar
@@ -114,7 +110,7 @@ Template: `.claude/SPRINT_TEMPLATE.md`
 
 ### Deploy Rules
 - Auto-deploy is **OFF** on Netlify (build minute budget renews 4/19)
-- ALWAYS test locally first: `npm run dev` → `localhost:5173` (free, costs zero build minutes)
+- ALWAYS test locally first: `npm run dev` → `localhost:3000` (free, costs zero build minutes)
 - Deploy only when local testing passes
 - Batch deploys — merge everything, test once, deploy once
 
@@ -134,7 +130,11 @@ These were learned through painful silent failures across Sprints 5-13:
 ### Silent Failure Patterns
 - **RLS violations return 0 rows** — no error thrown, no exception. You just get empty data back.
 - **CHECK constraint violations** on INSERT return an error object, but our catch blocks previously swallowed them. Sprint 13 added toast notifications.
-- When debugging persistence: check RLS policies FIRST, then CHECK constraints, then column mappings.
+- **Enum mismatch (22P02)** — Postgres ENUM types reject values not in the enum. If the frontend TypeScript type and the DB enum have different values, INSERT/UPDATE silently fails. Sprint 16.5 replaced all ENUMs with TEXT + CHECK constraints to eliminate this permanently.
+- When debugging persistence: check RLS policies FIRST, then enum/CHECK constraints, then column mappings.
+
+### Critical Rule: No Postgres ENUMs
+**NEVER use Postgres ENUM types.** Always use TEXT columns with CHECK constraints. ENUMs are rigid (ALTER TYPE ADD VALUE is not transactional), create mismatch risk with frontend types, and are a recurring source of silent write failures. Sprint 16.5 migration 006 converted all existing ENUMs to TEXT + CHECK. All future migrations must follow this pattern.
 
 ### Field Mapping (supabaseData.ts)
 - Frontend uses camelCase, Supabase uses snake_case
@@ -143,6 +143,9 @@ These were learned through painful silent failures across Sprints 5-13:
 - `client` field is stripped before INSERT (DB expects `client_id` UUID FK, unused)
 - Checklist stored as JSONB
 - Materials stored as JSONB on projects table (added Sprint 13, migration 004)
+
+### org_id Filtering Rule
+**Every fetch function in supabaseData.ts MUST filter by org_id.** RLS policies enforce org isolation on the DB side, but queries without `.eq('org_id', orgId)` return empty results (RLS silently blocks). Sprint 16 fixed this for fetchProjects, fetchMaterials, fetchEquipment, and fetchCrew. All future fetch functions must accept `orgId: string` as a parameter and include the filter.
 
 ### CHECK Constraints to Remember
 - `zones.area_sqft CHECK (area_sqft > 0)` — send NULL not 0
@@ -155,6 +158,10 @@ Run manually in Supabase SQL Editor. Files in `supabase/migrations/`:
 - `002_stripe_billing.sql` — Stripe columns
 - `003_fix_rls_policies.sql` — org INSERT + self-membership INSERT
 - `004_project_materials_jsonb.sql` — materials JSONB on projects
+- `005_scheduling.sql` — schedule_entries + crew_status tables
+- `006_fix_enum_mismatch.sql` — Replace all ENUM columns with TEXT + CHECK constraints
+
+**Migration authoring rule**: SQL always lives as a `.sql` file in `supabase/migrations/`. Sprint prompt docs (`.claude/SPRINT_*.md`) REFERENCE the file — never embed SQL inline in markdown. This keeps all SQL in one canonical location.
 
 ---
 
@@ -165,7 +172,7 @@ Run manually in Supabase SQL Editor. Files in `supabase/migrations/`:
 src/
 ├── pages/          13 files, 5,882 LOC  (route components)
 ├── components/     25 files, 3,018 LOC  (dashboard, layout, pdf, shared, ui)
-├── stores/          6 files, 1,823 LOC  (Zustand: project, material, equipment, crew, org, ui)
+├── stores/          7 files, ~2,100 LOC (Zustand: project, material, equipment, crew, org, ui, schedule)
 ├── services/        5 files, 1,332 LOC  (supabaseData, supabase, anthropic, stripe, preferences)
 ├── lib/             9 files, 1,127 LOC  (business logic, KPI definitions, alerts)
 ├── hooks/           7 files,   597 LOC  (useMapbox, useAddressAutocomplete, useBillingGate, etc.)

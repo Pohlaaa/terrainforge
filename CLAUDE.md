@@ -3,29 +3,26 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2–25 employees).
 
-## The Four Phases
-- **Phase 1 (NOW):** Contractor-facing MVP — project tracking, material library, manifest engine, work orders, crew/equipment management, price research, Stripe billing
-- **Phase 2 (NEXT):** Operations & Integrations — scheduling, time tracking, client portal, QuickBooks/Stripe payouts, mobile field access
-- **Phase 3 (LATER):** 3D Design Studio — landscape-editor.html prototype becomes an integrated Three.js design tool tied to the manifest engine
-- **Phase 4:** Scale & Marketplace — supplier marketplace, subcontractor network, white-label
+## Milestone Roadmap
 
-**Phase rationale:** Phase 2 (Operations) was reprioritized over the 3D Design Studio because it delivers direct operational value to the contractor's daily workflow — scheduling, time tracking, and client invoicing are what keeps customers retained and drives word-of-mouth. The 3D studio is a differentiator but is not a retention driver at the current stage.
+| Milestone | Goal | Gate | Status |
+|-----------|------|------|--------|
+| M1 "Worth the Demo" | Full contractor workflow + scheduling | All pages live, billing, multi-tenant, scheduling | **ACTIVE** |
+| M2 Operations | Time tracking, client portal, integrations | 5+ paying customers | Next |
+| M3 3D Design Studio | Three.js design tool tied to manifest engine | 20+ customers, 90% retention | Future |
+| M4 Scale & Marketplace | Supplier marketplace, subcontractor network | $15K+ MRR stable | Future |
 
-## Current Status (2026-03-29) — Phase 1 MVP Complete ✅
-- Auth: Working (Supabase email/password, protected routes, session persistence, email confirmation)
-- Onboarding: 4-step wizard (business type, company info, priorities, AI KPI config) — triggers on new signup only
-- All 10 pages: Fully wired to Zustand stores with real data from Supabase (Dashboard, Projects, Materials, Manifest, WorkOrders, PriceResearch, Crew, Equipment, Settings, Billing + Onboarding)
-- Database: 15 tables live, 55+ RLS policies, full multi-tenancy (org_id isolation)
-- PDF Export: ManifestPDF.tsx and CrewPacketPDF.tsx built, export buttons wired
-- Stripe Billing: Live — Billing page, checkout session, customer portal, webhook handler (3 Edge Functions)
-- Claude API: Wired to Price Research (24hr localStorage cache) and AI project quick-create (Claude Haiku)
-- Trial banner + billing gate: Active in AppLayout and ProtectedRoute
-- Skeleton loading states + unified toast notification system: All pages
-- Dashboard: KPI customization drawer, drag-and-drop widget system, Mapbox map widget
-- Sprints 1–11 complete (60+ tasks total). Phase 1 gate: All technical criteria met; pilot user pending
+## Current Status (2026-03-30) — M1 "Worth the Demo" Active
+- Auth, onboarding, all 10+ pages wired to Zustand stores + Supabase
+- Database: 15 tables, 55+ RLS policies, full multi-tenancy (org_id isolation)
+- PDF export, Stripe billing, Claude AI features, Mapbox maps all live
+- Dashboard: KPI customization, drag-and-drop widgets, schedule widget, map widget
+- Weekly scheduling with drag-and-drop (Sprint 15), edit modal + equipment assignment (Sprint 16)
+- Sprints 1–16 complete (70+ tasks). Sprint 16.5 hotfix pending (enum mismatch fix)
+- Pre-existing bugs: material add, equipment add fail with DB enum mismatch — Sprint 16.5 fixes this
 
 ## Tech Stack
-React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features)
+React 18 + Vite + TypeScript | Zustand 7 stores (localStorage + Supabase sync) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)
 
 ## Architecture Rules
 
@@ -35,7 +32,7 @@ React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase
 - `src/components/shared/` — Reusable UI blocks (Modal, Badge, DataTable, KPICard, etc.)
 - `src/components/pdf/` — @react-pdf/renderer PDF templates (ManifestPDF, CrewPacketPDF)
 - `src/components/ui/` — Atomic form elements (Button, Input, Select, Checkbox, Textarea)
-- `src/stores/` — Zustand stores, one per data domain (project, material, crew, equipment, ui)
+- `src/stores/` — Zustand stores, one per data domain (project, material, crew, equipment, ui, org, schedule)
 - `src/services/` — External API clients (supabase, stripe, anthropic)
 - `src/lib/` — Pure business logic functions (manifest engine, work orders, alerts, constants)
 - `src/hooks/` — Custom React hooks (useAsync, useForm)
@@ -73,6 +70,15 @@ React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase
 - Every data table has `org_id` — RLS policies enforce tenant isolation
 - 4 roles: admin, designer, foreman, client (in `org_role` enum)
 - Admins: full CRUD | Designers: read + create | Foremen: read | Clients: limited read
+- RLS violations return 0 rows silently — no error thrown. When debugging empty data, check RLS policies FIRST.
+
+## Migrations (supabase/migrations/)
+- `001_initial_schema.sql` — full schema, RLS
+- `002_stripe_billing.sql` — Stripe columns
+- `003_fix_rls_policies.sql` — org + self-membership INSERT
+- `004_project_materials_jsonb.sql` — materials JSONB on projects
+- `005_scheduling.sql` — schedule_entries + crew_status tables
+- `006_fix_enum_mismatch.sql` — Replace all ENUM columns with TEXT + CHECK constraints
 
 ## Business Logic (src/lib/)
 - **manifest.ts:** `computeQty()`, `generateManifest()`, `computeProjectCostRaw()` — material quantities from zone area/perimeter, reserve %, cost rollup
@@ -90,6 +96,11 @@ React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase
 - Don't skip the snake_case ↔ camelCase mapping when touching Supabase data
 - Don't create Zustand stores without the `persist` middleware pattern
 - Don't use relative paths when `@/` alias is available
+- **NEVER use Postgres ENUM types** — always use TEXT columns with CHECK constraints. ENUMs cause silent write failures (22P02) when frontend values don't match. CHECK constraints are flexible and can be updated with ALTER TABLE. Sprint 16.5 migration 006 converted all existing ENUMs.
+- **Every fetch function in supabaseData.ts MUST filter by org_id** — RLS policies enforce org isolation, but queries without `.eq('org_id', orgId)` return empty results (RLS silently blocks). Always accept `orgId: string` as a parameter.
+- **Frontend type values must exactly match DB column CHECK constraint values** — if `MaterialCategory` has `'seed'`, the DB CHECK must also allow `'seed'`, not `'turf_seed'`. Mismatches cause silent INSERT failures.
+- **Don't add new widgets to DEFAULT_WIDGET_LAYOUT without a merge function** — existing users have cached layouts in localStorage. The Zustand persist `merge` function must detect and append missing widget types.
+- **Don't embed SQL in markdown docs** — all migrations go in `supabase/migrations/[NNN]_[description].sql`. Sprint prompt files reference the SQL file, never inline it.
 
 ## Core Principles
 1. **Ship working software over perfect architecture** — Phase 1 must be demoable and sellable
@@ -101,24 +112,4 @@ React 18 + Vite + TypeScript | Zustand (localStorage + Supabase sync) | Supabase
 ## Specialized Instruction Files
 Reference these when working in a specific mode:
 - `.claude/PROJECT_MANAGEMENT.md` — sprint planning, phase tracking, PM advisory behavior
-- `.claude/DEVELOPMENT.md` — expanded code standards and patterns (includes PDF component patterns)
-- `.claude/AI_PRODUCT.md` — AI integration strategy and feature patterns
-- `.claude/CODEBASE_MANAGEMENT.md` — refactoring discipline, feature integration, tech debt
-- `.claude/DESIGN.md` — design system, UI iteration process
-- `.claude/DEPLOYMENT.md` — Netlify/Supabase, environments, scaling triggers
-- `.claude/BUSINESS.md` — pricing model, Stripe integration, unit economics, legal
-- `.claude/MARKETING.md` — ICP, value props, demo playbook, materials
-- `.claude/OPERATIONS.md` — Phase 2 scope: scheduling, time tracking, client portal, integrations
-- `.claude/SPRINT_1_PROMPTS.md` — all Sprint 1 prompts (complete)
-- `.claude/SPRINT_2_PROMPTS.md` — all Sprint 2 prompts (complete)
-- `.claude/SPRINT_3_PROMPTS.md` — Sprint 3 prompts: Stripe billing + Claude API wiring
-- `.claude/SPRINT_4_PROMPTS.md` — Sprint 4 prompts: Self-test & workflow polish
-- `.claude/CONSIDERATIONS.md` — Running backlog of UX improvements, feature gaps, and strategic items (not sprint-ready)
-
-## Dashboard Update Requirement
-**After every sprint task, update `PROJECT_DASHBOARD.html`:**
-1. Move completed task from `currentSprint.tasks` to `completedWork` array
-2. Update `lastUpdated` to today's date
-3. If all sprint tasks complete, update `currentSprint` to the next sprint
-4. If a Phase gate criterion is newly met, check it in the relevant phase's `gateChecklist`
-This must be part of every commit — do not skip it.
+- `.claude/DEVELOPMENT.md` — expanded code standards and patterns (

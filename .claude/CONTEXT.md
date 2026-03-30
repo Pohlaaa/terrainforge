@@ -3,16 +3,17 @@
 > Living document — updated after each sprint. Read for current status.
 > For full project knowledge: read `ORCHESTRATOR.md`
 > For roadmap and milestones: read `ROADMAP.md`
-> Last updated: 2026-03-29 (post Sprint 15.5)
+> Last updated: 2026-03-30 (two-mode workflow, Sprint 16.5 pending)
 
 ---
 
 ## Current Status
 
 **Milestone 1: "Worth the Demo"** — ACTIVE
-**Last completed**: Sprint 15.5 — Scheduling module (manager side) + hotfix (merged, build passing, tested PASS)
-**Active sprint**: None — planning Sprint 16
-**Git state**: Main at `c9c1d07` + Sprint 15.5 merge, fully pushed to origin/main. Untracked .claude/ docs pending commit.
+**Last completed**: Sprint 16 — Fix + Polish (org_id filters, edit modal, equipment assignment, lazy-load Debug)
+**Pending**: Sprint 16.5 hotfix — enum mismatch fix (migration 006 ready, code changes needed)
+**Workflow model**: Two-mode (VSCode Claude Code = planning + execution, Cowork = strategic only)
+**Git state**: Untracked .claude/ docs + migration 006 pending commit.
 
 ---
 
@@ -67,7 +68,7 @@ These are NOT Sprint 15 regressions — they existed before and were surfaced du
 ```
 terrainforge/
 ├── src/                         ← Application code (90+ files, ~18K lines)
-├── supabase/migrations/         ← 5 SQL migration files (001-005)
+├── supabase/migrations/         ← 6 SQL migration files (001-006)
 ├── .claude/
 │   ├── ORCHESTRATOR.md          ← Full knowledge base for Orchestrator sessions
 │   ├── ROADMAP.md               ← Milestone-based roadmap
@@ -94,7 +95,7 @@ terrainforge/
 
 ## Key Technical Details
 
-- **Dev server**: `npm run dev` → `localhost:5173` (Vite default port)
+- **Dev server**: `npm run dev` → `localhost:3000` (Vite default port)
 - **Git push**: `git push origin main` (Netlify watches `main`, NOT `master`)
 - **Netlify auto-deploy**: OFF (budget renews 4/19)
 - **Supabase**: Multi-tenant with RLS. Admin role passes all checks.
@@ -119,9 +120,16 @@ terrainforge/
 
 ## How to Use This File
 
-New session starting work:
+### VSCode Claude Code session (planning + execution):
 1. Read `ORCHESTRATOR.md` for full knowledge base
 2. Read `ROADMAP.md` for milestone plan and current milestone
 3. Read this file for current sprint state
-4. Check `.claude/auto-memory/` for preferences
-5. You're ready to work
+4. Read `EXECUTION.md` for the sprint lifecycle workflow
+5. You're ready to plan or execute
+
+### Cowork session (strategic only):
+1. Read `ORCHESTRATOR.md` for full knowledge base
+2. Read `ROADMAP.md` for milestone plan
+3. Read this file for current state
+4. You handle: business strategy, roadmap decisions, non-code deliverables, UI design
+5. You do NOT handle: sprint planning, sprint execution, SQL migrations, code
