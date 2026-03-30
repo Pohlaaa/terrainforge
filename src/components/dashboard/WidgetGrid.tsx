@@ -16,6 +16,7 @@ interface WidgetGridProps {
   onReorder: (fromIndex: number, toIndex: number) => void;
   onToggleCollapsed: (widgetId: string) => void;
   onToggleVisibility: (widgetId: string) => void;
+  onToggleSize?: (widgetId: string) => void;
 }
 
 interface DragState {
@@ -70,6 +71,7 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
   onReorder,
   onToggleCollapsed,
   onToggleVisibility,
+  onToggleSize,
 }) => {
   const prefersReducedMotion =
     typeof window !== 'undefined' &&
@@ -142,13 +144,12 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
         const displayTitle = getWidgetHeaderTitle(widget, appState);
         const titleOverride = { ...widget, title: displayTitle };
 
-        // Map and schedule widgets span full width
-        const spanFull = widget.type === 'map' || widget.type === 'schedule';
+        const isFullWidth = widget.size === 'full';
 
         return (
           <div
             key={widget.id}
-            style={spanFull ? { gridColumn: '1 / -1' } : undefined}
+            style={isFullWidth ? { gridColumn: '1 / -1' } : undefined}
           >
             {showPlaceholder && (
               <div
@@ -171,6 +172,22 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
                 ...transformStyle,
               }}
             >
+              {/* Size toggle in edit mode */}
+              {editMode && onToggleSize && (
+                <div className="flex justify-end mb-1">
+                  <button
+                    onClick={() => onToggleSize(widget.id)}
+                    className="text-[11px] font-semibold border-none cursor-pointer transition-colors px-2 py-1"
+                    style={{
+                      background: 'var(--surface-hover)',
+                      color: 'var(--text-secondary)',
+                      borderRadius: 'var(--radius-sm)',
+                    }}
+                  >
+                    {isFullWidth ? '◧ Half Width' : '▣ Full Width'}
+                  </button>
+                </div>
+              )}
               <WidgetCard
                 config={titleOverride}
                 editMode={editMode}

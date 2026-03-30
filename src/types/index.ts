@@ -323,6 +323,8 @@ export interface WidgetConfig {
   visible: boolean;
   collapsed: boolean;
   order: number;
+  /** 'full' spans both columns, 'half' takes one column. Default: 'half'. */
+  size?: 'half' | 'full';
 }
 
 export interface KPIDefinition {

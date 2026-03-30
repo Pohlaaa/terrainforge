@@ -231,6 +231,7 @@ export const Dashboard: React.FC = () => {
     reorderWidgets,
     toggleWidgetVisibility,
     toggleWidgetCollapsed,
+    toggleWidgetSize,
   } = useUIStore();
 
   const appState: AppState = { projects, crew, equipment, materials };
@@ -584,6 +585,7 @@ export const Dashboard: React.FC = () => {
             onReorder={handleReorder}
             onToggleCollapsed={toggleWidgetCollapsed}
             onToggleVisibility={handleVisibilityToggle}
+            onToggleSize={toggleWidgetSize}
           />
         </div>
     </div>

@@ -30,6 +30,7 @@ interface UIStore {
   reorderWidgets: (fromIndex: number, toIndex: number) => void
   toggleWidgetVisibility: (widgetId: string) => void
   toggleWidgetCollapsed: (widgetId: string) => void
+  toggleWidgetSize: (widgetId: string) => void
   resetWidgetLayout: () => void
 }
 
@@ -92,6 +93,12 @@ export const useUIStore = create<UIStore>()(
         set((state) => ({
           widgetLayout: state.widgetLayout.map((w) =>
             w.id === widgetId ? { ...w, collapsed: !w.collapsed } : w,
+          ),
+        })),
+      toggleWidgetSize: (widgetId) =>
+        set((state) => ({
+          widgetLayout: state.widgetLayout.map((w) =>
+            w.id === widgetId ? { ...w, size: w.size === 'full' ? 'half' : 'full' } : w,
           ),
         })),
       resetWidgetLayout: () => set({ widgetLayout: DEFAULT_WIDGET_LAYOUT }),
