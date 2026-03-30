@@ -77,7 +77,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // Fetch org data once the user is known, then fetch all domain data
   useEffect(() => {
     if (user?.id) {
-      console.log('[TF-DEBUG] AppLayout useEffect, user.id:', user?.id)
       fetchOrg(user.id).then(() => {
         fetchProjects();
         fetchCrew();

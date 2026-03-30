@@ -80,7 +80,6 @@ export async function fetchProjects(orgId: string): Promise<Project[]> {
       `)
       .eq('org_id', orgId)
 
-    console.log('[TF-DEBUG] fetchProjects query response:', { data: data?.length, error })
     if (error) throw error
 
     return (data || []).map(project => {
@@ -145,8 +144,6 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     if (snakeData.start_date === '') snakeData.start_date = null
     if (snakeData.target_date === '') snakeData.target_date = null
 
-    console.log('[TF-DEBUG] createProject payload:', JSON.stringify(snakeData, null, 2))
-    console.log('[TF-DEBUG] createProject lat/lng:', snakeData.lat, snakeData.lng)
 
     const { data, error } = await supabase
       .from('projects')
@@ -154,7 +151,6 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
       .select()
       .single()
 
-    console.log('[TF-DEBUG] createProject response:', { data, error })
     if (error) throw error
 
     // Persist project-level materials if provided
@@ -217,17 +213,14 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
 
 export async function deleteProject(id: string): Promise<boolean> {
   try {
-    console.log('[TF-DEBUG] deleteProject: attempting delete for id', id)
     const { error } = await supabase
       .from('projects')
       .delete()
       .eq('id', id)
 
     if (error) {
-      console.log('[TF-DEBUG] deleteProject: failed —', error)
       throw error
     }
-    console.log('[TF-DEBUG] deleteProject: success')
     return true
   } catch (err: any) {
     onSupabaseError('DELETE', 'projects', err)
@@ -456,20 +449,16 @@ export async function updateMaterial(id: string, updates: Partial<Material>): Pr
 
 export async function deleteMaterial(id: string): Promise<boolean> {
   try {
-    console.log('[TF-DEBUG] deleteMaterial: attempting delete for id', id)
     const { error } = await supabase
       .from('materials')
       .delete()
       .eq('id', id)
 
     if (error) {
-      console.log('[TF-DEBUG] deleteMaterial: failed —', error)
       throw error
     }
-    console.log('[TF-DEBUG] deleteMaterial: success')
     return true
   } catch (err: any) {
-    console.error('[TF-DEBUG] deleteMaterial: failed —', err.message)
     return false
   }
 }
@@ -789,20 +778,16 @@ export async function updateEquipment(id: string, updates: Partial<Equipment>): 
 
 export async function deleteEquipment(id: string): Promise<boolean> {
   try {
-    console.log('[TF-DEBUG] deleteEquipment: attempting delete for id', id)
     const { error } = await supabase
       .from('equipment')
       .delete()
       .eq('id', id)
 
     if (error) {
-      console.log('[TF-DEBUG] deleteEquipment: failed —', error)
       throw error
     }
-    console.log('[TF-DEBUG] deleteEquipment: success')
     return true
   } catch (err: any) {
-    console.error('[TF-DEBUG] deleteEquipment: failed —', err.message)
     return false
   }
 }

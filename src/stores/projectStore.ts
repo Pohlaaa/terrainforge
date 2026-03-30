@@ -202,11 +202,9 @@ export const useProjectStore = create<ProjectStore>()(
       fetchProjects: async () => {
         const orgId = useOrgStore.getState().org?.id
         if (!orgId) return
-        console.log('[TF-DEBUG] fetchProjects called')
         set({ isLoading: true, error: null })
         try {
           const projects = await db.fetchProjects(orgId)
-          console.log('[TF-DEBUG] fetchProjects returned', projects.length, 'projects')
           // Populate projectMaterials map from the JSONB materials field on each project
           const projectMaterials: Record<string, ProjectMaterialEntry[]> = {}
           for (const p of projects) {
@@ -221,9 +219,7 @@ export const useProjectStore = create<ProjectStore>()(
       },
       addProject: async (projectData) => {
         const orgId = useOrgStore.getState().org?.id
-        console.log('[TF-DEBUG] addProject called, orgId:', orgId)
         if (!orgId) {
-          console.error('[TF-DEBUG] addProject: no org_id available')
           return null
         }
         const newProject: Project = {
@@ -233,12 +229,9 @@ export const useProjectStore = create<ProjectStore>()(
           zones: projectData.zones ?? []
         }
         set((state) => ({ projects: [...state.projects, newProject] }))
-        console.log('[TF-DEBUG] addProject sending to Supabase, project id:', newProject.id)
         try {
           const result = await db.createProject(projectData, newProject.id, orgId)
-          console.log('[TF-DEBUG] addProject Supabase result:', result)
           if (!result) {
-            console.error('[TF-DEBUG] addProject: Supabase write failed, rolling back')
             set((state) => ({
               projects: state.projects.filter((p) => p.id !== newProject.id),
               error: 'Failed to save project. Please try again.'
@@ -248,7 +241,6 @@ export const useProjectStore = create<ProjectStore>()(
           await get().fetchProjects()
           return newProject.id
         } catch (err: any) {
-          console.error('[TF-DEBUG] addProject error:', err)
           set((state) => ({
             projects: state.projects.filter((p) => p.id !== newProject.id),
             error: err.message
@@ -266,7 +258,6 @@ export const useProjectStore = create<ProjectStore>()(
         try {
           const result = await db.updateProject(id, updates)
           if (!result) {
-            console.error('[TF-DEBUG] updateProject: Supabase write failed, rolling back', id)
             if (previous) {
               set((state) => ({
                 projects: state.projects.map((p) => p.id === id ? previous : p),
@@ -277,7 +268,6 @@ export const useProjectStore = create<ProjectStore>()(
           }
           await get().fetchProjects()
         } catch (err: any) {
-          console.error('[TF-DEBUG] updateProject error:', err)
           if (previous) {
             set((state) => ({
               projects: state.projects.map((p) => p.id === id ? previous : p),
@@ -290,7 +280,6 @@ export const useProjectStore = create<ProjectStore>()(
         try {
           const success = await db.deleteProject(id)
           if (!success) {
-            console.error('[TF-DEBUG] deleteProject: Supabase delete failed for', id)
             set((state) => ({ error: 'Failed to delete project. Please try again.' }))
             return
           }
@@ -300,7 +289,6 @@ export const useProjectStore = create<ProjectStore>()(
           }))
           await get().fetchProjects()
         } catch (err: any) {
-          console.error('[TF-DEBUG] deleteProject error:', err)
           set((state) => ({ error: err.message }))
         }
       },

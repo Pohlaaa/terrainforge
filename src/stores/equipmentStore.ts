@@ -273,7 +273,6 @@ export const useEquipmentStore = create<EquipmentStore>()(
       addEquipment: async (equipData) => {
         const orgId = useOrgStore.getState().org?.id
         if (!orgId) {
-          console.error('[TF-DEBUG] addEquipment: no org_id available')
           return
         }
         const newEquipment: Equipment = {
@@ -284,7 +283,6 @@ export const useEquipmentStore = create<EquipmentStore>()(
         try {
           const result = await db.createEquipment(equipData, newEquipment.id, orgId)
           if (!result) {
-            console.error('[TF-DEBUG] addEquipment: Supabase write failed, rolling back')
             set((state) => ({
               equipment: state.equipment.filter((e) => e.id !== newEquipment.id),
               error: 'Failed to save equipment. Please try again.'
@@ -293,7 +291,6 @@ export const useEquipmentStore = create<EquipmentStore>()(
           }
           await get().fetchEquipment()
         } catch (err: any) {
-          console.error('[TF-DEBUG] addEquipment error:', err)
           set((state) => ({
             equipment: state.equipment.filter((e) => e.id !== newEquipment.id),
             error: err.message
@@ -316,7 +313,6 @@ export const useEquipmentStore = create<EquipmentStore>()(
         try {
           const success = await db.deleteEquipment(id)
           if (!success) {
-            console.error('[TF-DEBUG] deleteEquipment: Supabase delete failed for', id)
             set((state) => ({ error: 'Failed to delete equipment. Please try again.' }))
             return
           }
@@ -325,7 +321,6 @@ export const useEquipmentStore = create<EquipmentStore>()(
           }))
           await get().fetchEquipment()
         } catch (err: any) {
-          console.error('[TF-DEBUG] deleteEquipment error:', err)
           set((state) => ({ error: err.message }))
         }
       },

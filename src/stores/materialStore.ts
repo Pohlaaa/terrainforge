@@ -397,7 +397,6 @@ export const useMaterialStore = create<MaterialStore>()(
       addMaterial: async (materialData) => {
         const orgId = useOrgStore.getState().org?.id
         if (!orgId) {
-          console.error('[TF-DEBUG] addMaterial: no org_id available')
           return
         }
         const newMaterial: Material = {
@@ -408,7 +407,6 @@ export const useMaterialStore = create<MaterialStore>()(
         try {
           const result = await db.createMaterial(materialData, newMaterial.id, orgId)
           if (!result) {
-            console.error('[TF-DEBUG] addMaterial: Supabase write failed, rolling back')
             set((state) => ({
               materials: state.materials.filter((m) => m.id !== newMaterial.id),
               error: 'Failed to save material. Please try again.'
@@ -417,7 +415,6 @@ export const useMaterialStore = create<MaterialStore>()(
           }
           await get().fetchMaterials()
         } catch (err: any) {
-          console.error('[TF-DEBUG] addMaterial error:', err)
           set((state) => ({
             materials: state.materials.filter((m) => m.id !== newMaterial.id),
             error: err.message
@@ -440,7 +437,6 @@ export const useMaterialStore = create<MaterialStore>()(
         try {
           const success = await db.deleteMaterial(id)
           if (!success) {
-            console.error('[TF-DEBUG] deleteMaterial: Supabase delete failed for', id)
             set((state) => ({ error: 'Failed to delete material. Please try again.' }))
             return
           }
@@ -449,7 +445,6 @@ export const useMaterialStore = create<MaterialStore>()(
           }))
           await get().fetchMaterials()
         } catch (err: any) {
-          console.error('[TF-DEBUG] deleteMaterial error:', err)
           set((state) => ({ error: err.message }))
         }
       },

@@ -81,7 +81,6 @@ export const useOrgStore = create<OrgStore>()(
       error: null,
 
       fetchOrg: async (orgId: string) => {
-        console.log('[TF-DEBUG] fetchOrg called with orgId:', orgId)
         set({ isLoading: true, error: null });
 
         try {
@@ -94,7 +93,6 @@ export const useOrgStore = create<OrgStore>()(
             .eq('id', orgId)
             .single();
 
-          console.log('[TF-DEBUG] fetchOrg SELECT result:', { data, error })
 
           if (error) {
             if (error.code === 'PGRST116') {
@@ -116,7 +114,6 @@ export const useOrgStore = create<OrgStore>()(
                 .select('id, name, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id')
                 .single()
 
-              console.log('[TF-DEBUG] fetchOrg INSERT result:', { newOrg, insertError })
               if (insertError) {
                 // Row may have been created by a concurrent trigger — fall back to safe defaults
                 console.error('fetchOrg: org INSERT failed', insertError)
@@ -127,12 +124,10 @@ export const useOrgStore = create<OrgStore>()(
                 const { error: memberError } = await supabase
                   .from('organization_members')
                   .insert([{ org_id: orgId, user_id: orgId, role: 'admin' }])
-                console.log('[TF-DEBUG] fetchOrg org_members INSERT result:', { memberError })
                 if (memberError) {
                   console.error('fetchOrg: organization_members INSERT failed', memberError)
                 }
                 set({ org: mapOrgRow(newOrg as OrgRow), isLoading: false })
-                console.log('[TF-DEBUG] fetchOrg set org:', useOrgStore.getState().org)
               }
             } else {
               // Network or other error — keep any cached org, surface error
@@ -143,7 +138,6 @@ export const useOrgStore = create<OrgStore>()(
           }
 
           set({ org: mapOrgRow(data as OrgRow), isLoading: false });
-          console.log('[TF-DEBUG] fetchOrg set org:', useOrgStore.getState().org)
         } catch (err) {
           set({
             isLoading: false,
@@ -161,7 +155,6 @@ export const useOrgStore = create<OrgStore>()(
           .update({ name })
           .eq('id', orgId)
         if (error) {
-          console.error('[TF-DEBUG] updateOrgName failed', error)
         }
       },
 

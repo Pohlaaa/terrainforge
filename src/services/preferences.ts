@@ -29,7 +29,6 @@ export async function fetchUserPreferences(userId: string): Promise<UserPreferen
       .eq('user_id', userId)
       .maybeSingle()
     if (error) {
-      console.error('[TF-DEBUG] fetchUserPreferences error:', error)
       return null
     }
     if (!data) return null
@@ -46,15 +45,12 @@ export async function upsertUserPreferences(
 ): Promise<UserPreferences | null> {
   try {
     const payload = toSnakeCase({ ...prefs, userId, orgId })
-    console.log('[TF-DEBUG] upsertUserPreferences payload:', payload)
     const { data, error } = await supabase
       .from('user_preferences')
       .upsert(payload, { onConflict: 'user_id' })
       .select()
       .single()
-    console.log('[TF-DEBUG] upsertUserPreferences response:', { data, error })
     if (error) {
-      console.error('[TF-DEBUG] upsertUserPreferences error:', error)
       return null
     }
     return toCamelCase(data as Record<string, unknown>) as unknown as UserPreferences
@@ -95,7 +91,6 @@ export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
       .select('onboarding_completed_at')
       .eq('user_id', userId)
       .maybeSingle()
-    console.log('[TF-DEBUG] hasCompletedOnboarding result:', { data, error })
 
     // Preferences row exists — use onboarding_completed_at as the source of truth
     if (!error && data) {
@@ -109,7 +104,6 @@ export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
       .select('id')
       .eq('user_id', userId)
       .maybeSingle()
-    console.log('[TF-DEBUG] hasCompletedOnboarding org membership check:', { memberData, memberError })
     if (!memberError && memberData) {
       // Pre-existing user — treat as onboarding complete
       return true
