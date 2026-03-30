@@ -1,3 +1,4 @@
+import 'mapbox-gl/dist/mapbox-gl.css';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Map as MapboxMap } from 'mapbox-gl';
 import { useAddressAutocomplete, type AddressSuggestion } from '@/hooks/useAddressAutocomplete';

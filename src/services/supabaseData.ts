@@ -1,6 +1,17 @@
 import { supabase } from './supabase'
 import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert } from '@/types'
 
+// ===== ERROR REPORTING =====
+
+type ErrorReporter = (operation: string, table: string, error: any) => void;
+let onSupabaseError: ErrorReporter = (op, table, err) => {
+  console.error(`[TF-SUPABASE] ${op} on ${table} failed:`, err?.message || err, err?.details || '', err?.hint || '');
+};
+
+export function setSupabaseErrorReporter(reporter: ErrorReporter) {
+  onSupabaseError = reporter;
+}
+
 // ===== CASE CONVERSION HELPERS =====
 
 function toCamelCase(obj: Record<string, any>): Record<string, any> {
@@ -103,6 +114,14 @@ export async function fetchProjects(): Promise<Project[]> {
         camelProject.checklist = JSON.parse(camelProject.checklist)
       }
 
+      // Parse project-level materials from JSONB
+      if (typeof camelProject.materials === 'string') {
+        try { camelProject.materials = JSON.parse(camelProject.materials) } catch { camelProject.materials = [] }
+      }
+      if (!Array.isArray(camelProject.materials)) {
+        camelProject.materials = []
+      }
+
       return camelProject as Project
     })
   } catch (err: any) {
@@ -113,7 +132,7 @@ export async function fetchProjects(): Promise<Project[]> {
 
 export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, id: string, orgId: string): Promise<Project | null> {
   try {
-    const { zones, ...projectData } = project
+    const { zones, materials: projectMaterials, ...projectData } = project as any
     const snakeData = toSnakeCase(projectData) as any
     snakeData.id = id
     snakeData.org_id = orgId
@@ -137,10 +156,21 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
     console.log('[TF-DEBUG] createProject response:', { data, error })
     if (error) throw error
 
+    // Persist project-level materials if provided
+    if (projectMaterials && projectMaterials.length > 0) {
+      await supabase
+        .from('projects')
+        .update({ materials: projectMaterials })
+        .eq('id', id)
+    }
+
     // Write zones to the zones table now that the project row exists
     if (zones && zones.length > 0) {
       for (const { id: _zoneId, createdAt: _createdAt, ...zoneData } of zones) {
-        await createZone(id, zoneData, orgId)
+        const result = await createZone(id, zoneData, orgId)
+        if (!result) {
+          console.warn(`[TF-SUPABASE] Zone "${zoneData.name}" failed to persist for project ${id}`)
+        }
       }
     }
 
@@ -149,7 +179,7 @@ export async function createProject(project: Omit<Project, 'id' | 'createdAt'>, 
       zones: []
     } as unknown as Project
   } catch (err: any) {
-    console.error('createProject error:', err)
+    onSupabaseError('INSERT', 'projects', err)
     return null
   }
 }
@@ -179,7 +209,7 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     project.zones = []
     return project
   } catch (err: any) {
-    console.error('updateProject error:', err.message)
+    onSupabaseError('UPDATE', 'projects', err)
     return null
   }
 }
@@ -199,7 +229,7 @@ export async function deleteProject(id: string): Promise<boolean> {
     console.log('[TF-DEBUG] deleteProject: success')
     return true
   } catch (err: any) {
-    console.error('[TF-DEBUG] deleteProject: failed —', err.message)
+    onSupabaseError('DELETE', 'projects', err)
     return false
   }
 }
@@ -218,6 +248,9 @@ export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'cre
     snakeData.perimeter_lnft = snakeData.perimeter; delete snakeData.perimeter
     snakeData.sequence_number = snakeData.sequence; delete snakeData.sequence
     snakeData.crew_assignment = snakeData.crew; delete snakeData.crew
+    // CHECK constraints reject 0 but pass on NULL — coerce 0/falsy to null
+    if (!snakeData.area_sqft || snakeData.area_sqft <= 0) snakeData.area_sqft = null
+    if (!snakeData.perimeter_lnft || snakeData.perimeter_lnft <= 0) snakeData.perimeter_lnft = null
 
     const { data, error } = await supabase
       .from('zones')
@@ -233,7 +266,7 @@ export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'cre
       equipment: []
     } as unknown as Zone
   } catch (err: any) {
-    console.error('createZone error:', err.message)
+    onSupabaseError('INSERT', 'zones', err)
     return null
   }
 }
@@ -266,7 +299,7 @@ export async function updateZone(zoneId: string, updates: Partial<Zone>): Promis
       equipment: []
     } as unknown as Zone
   } catch (err: any) {
-    console.error('updateZone error:', err.message)
+    onSupabaseError('UPDATE', 'zones', err)
     return null
   }
 }
@@ -281,7 +314,7 @@ export async function deleteZone(zoneId: string): Promise<boolean> {
     if (error) throw error
     return true
   } catch (err: any) {
-    console.error('deleteZone error:', err.message)
+    onSupabaseError('DELETE', 'zones', err)
     return false
   }
 }
@@ -802,5 +835,45 @@ export async function addMaintenanceEntry(equipId: string, entry: Omit<Maintenan
   } catch (err: any) {
     console.error('addMaintenanceEntry error:', err.message)
     return null
+  }
+}
+
+// ===== DIAGNOSTICS =====
+
+export async function diagnoseUserRole(): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.warn('[TF-DIAG] No authenticated user');
+      return;
+    }
+
+    const { data: memberships, error } = await supabase
+      .from('organization_members')
+      .select('org_id, role')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.warn('[TF-DIAG] Could not fetch memberships:', error.message);
+      return;
+    }
+
+    console.log('[TF-DIAG] User roles:', memberships);
+
+    if (memberships && memberships.length > 0) {
+      const hasAdmin = memberships.some((m: any) => m.role === 'admin');
+      const hasForeman = memberships.some((m: any) => m.role === 'foreman');
+
+      if (!hasAdmin && !hasForeman) {
+        console.warn('[TF-DIAG] ⚠️  User has no admin or foreman role. Zone and crew operations will be blocked by RLS.');
+        console.warn('[TF-DIAG] Current roles:', memberships.map((m: any) => m.role).join(', '));
+        console.warn('[TF-DIAG] Fix: Run in Supabase SQL Editor:');
+        console.warn(`[TF-DIAG]   UPDATE organization_members SET role = 'admin' WHERE user_id = '${user.id}';`);
+      }
+    } else {
+      console.warn('[TF-DIAG] ⚠️  User has NO organization memberships. All RLS checks will fail.');
+    }
+  } catch (err: any) {
+    console.warn('[TF-DIAG] Role check failed:', err.message);
   }
 }

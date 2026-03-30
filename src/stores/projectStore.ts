@@ -5,6 +5,14 @@ import { computeProjectCostRaw } from '@/lib/manifest'
 import { useMaterialStore } from './materialStore'
 import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
+import { supabase } from '@/services/supabase'
+import { toast } from '@/hooks/useToast'
+
+// Wire up Supabase error reporter — shows toasts and structured console logs
+db.setSupabaseErrorReporter((operation, table, error) => {
+  console.error(`[TF-SUPABASE] ${operation} on ${table} failed:`, error);
+  toast.error(`Database error on ${table}: ${error?.message || 'Unknown error'}. Check console.`);
+});
 
 interface ProjectStore {
   projects: Project[]
@@ -18,7 +26,7 @@ interface ProjectStore {
   reset: () => void
   setProjects: (projects: Project[]) => void
   setActiveProject: (id: string | null) => void
-  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => Promise<void>
+  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => Promise<string | null>
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>
   deleteProject: (id: string) => Promise<void>
   addZone: (projectId: string, zone: Omit<Zone, 'id' | 'createdAt'>) => Promise<void>
@@ -29,7 +37,7 @@ interface ProjectStore {
   getActiveProject: () => Project | null
   getProjectCost: (projectId: string) => number
   // Project material actions
-  addProjectMaterial: (projectId: string, entry: Omit<ProjectMaterialEntry, 'id'>) => void
+  addProjectMaterial: (projectId: string, entry: Omit<ProjectMaterialEntry, 'id'>) => Promise<void>
   updateProjectMaterial: (projectId: string, entryId: string, updates: Partial<ProjectMaterialEntry>) => void
   removeProjectMaterial: (projectId: string, entryId: string) => void
   // Project crew actions
@@ -197,7 +205,14 @@ export const useProjectStore = create<ProjectStore>()(
         try {
           const projects = await db.fetchProjects()
           console.log('[TF-DEBUG] fetchProjects returned', projects.length, 'projects')
-          set({ projects, isLoading: false })
+          // Populate projectMaterials map from the JSONB materials field on each project
+          const projectMaterials: Record<string, ProjectMaterialEntry[]> = {}
+          for (const p of projects) {
+            if (Array.isArray((p as any).materials) && (p as any).materials.length > 0) {
+              projectMaterials[p.id] = (p as any).materials
+            }
+          }
+          set({ projects, isLoading: false, projectMaterials })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })
         }
@@ -207,7 +222,7 @@ export const useProjectStore = create<ProjectStore>()(
         console.log('[TF-DEBUG] addProject called, orgId:', orgId)
         if (!orgId) {
           console.error('[TF-DEBUG] addProject: no org_id available')
-          return
+          return null
         }
         const newProject: Project = {
           ...projectData,
@@ -226,15 +241,17 @@ export const useProjectStore = create<ProjectStore>()(
               projects: state.projects.filter((p) => p.id !== newProject.id),
               error: 'Failed to save project. Please try again.'
             }))
-            return
+            return null
           }
           await get().fetchProjects()
+          return newProject.id
         } catch (err: any) {
           console.error('[TF-DEBUG] addProject error:', err)
           set((state) => ({
             projects: state.projects.filter((p) => p.id !== newProject.id),
             error: err.message
           }))
+          return null
         }
       },
       updateProject: async (id, updates) => {
@@ -369,7 +386,7 @@ export const useProjectStore = create<ProjectStore>()(
         const materials = useMaterialStore.getState().materials
         return computeProjectCostRaw(project, materials)
       },
-      addProjectMaterial: (projectId, entry) => {
+      addProjectMaterial: async (projectId, entry) => {
         const newEntry: ProjectMaterialEntry = { ...entry, id: crypto.randomUUID() }
         set((state) => ({
           projectMaterials: {
@@ -377,6 +394,12 @@ export const useProjectStore = create<ProjectStore>()(
             [projectId]: [...(state.projectMaterials[projectId] ?? []), newEntry],
           },
         }))
+        // Persist to Supabase — write the full updated array to projects.materials
+        const allEntries = [...(get().projectMaterials[projectId] ?? []), newEntry]
+        await supabase
+          .from('projects')
+          .update({ materials: allEntries })
+          .eq('id', projectId)
       },
       updateProjectMaterial: (projectId, entryId, updates) => {
         set((state) => ({

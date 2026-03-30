@@ -1,3 +1,4 @@
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import type { Map as MapboxMap, Marker } from 'mapbox-gl';
 import type { Project } from '@/types';
@@ -150,14 +151,24 @@ export function useMapbox({
           'border:3px solid white',
           'box-shadow:0 2px 8px rgba(0,0,0,0.3)',
           'cursor:pointer',
-          'transition:transform 0.15s ease',
+          'transition:width 0.15s ease,height 0.15s ease,margin 0.15s ease',
           'display:flex',
           'align-items:center',
           'justify-content:center',
         ].join(';');
 
-        el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.15)'; });
-        el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
+        el.addEventListener('mouseenter', () => {
+          el.style.width = '38px';
+          el.style.height = '38px';
+          el.style.marginLeft = '-3px';
+          el.style.marginTop = '-3px';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.width = '32px';
+          el.style.height = '32px';
+          el.style.marginLeft = '0';
+          el.style.marginTop = '0';
+        });
 
         const budgetStr = project.budget
           ? `$${(project.budget / 1000).toFixed(1)}k`
