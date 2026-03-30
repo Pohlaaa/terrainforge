@@ -1057,7 +1057,7 @@ export const Projects: React.FC = () => {
               <div
                 key={project.id}
                 className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden hover:shadow-md active:shadow-sm transition-shadow duration-200 flex flex-col cursor-pointer relative"
-                style={{ boxShadow: 'var(--shadow-sm)' }}
+                style={{ boxShadow: 'var(--shadow-sm)', borderLeft: project.id === activeProjectId ? '3px solid var(--green-l)' : undefined }}
                 onClick={() => setActiveProject(project.id)}
               >
                 {/* Card header */}
