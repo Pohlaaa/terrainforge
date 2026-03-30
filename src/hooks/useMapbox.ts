@@ -81,6 +81,7 @@ export function useMapbox({
           center,
           zoom,
           fadeDuration: prefersReducedMotion ? 0 : 300,
+          scrollZoom: false, // Prevent scroll capture — user must ctrl+scroll or pinch
         });
 
         mapRef.current = mapInstance;
@@ -168,17 +169,23 @@ export function useMapbox({
           'justify-content:center',
         ].join(';');
 
+        // Hover: enlarge pin + show popup
         el.addEventListener('mouseenter', () => {
           el.style.width = '38px';
           el.style.height = '38px';
           el.style.marginLeft = '-3px';
           el.style.marginTop = '-3px';
+          // Open popup on hover (marker set below)
+          (el as any).__tfMarker?.togglePopup();
         });
         el.addEventListener('mouseleave', () => {
           el.style.width = '32px';
           el.style.height = '32px';
           el.style.marginLeft = '0';
           el.style.marginTop = '0';
+          // Close popup on leave
+          const m = (el as any).__tfMarker;
+          if (m?.getPopup()?.isOpen()) m.togglePopup();
         });
 
         const budgetStr = project.budget
@@ -205,6 +212,9 @@ export function useMapbox({
           .setLngLat([project.lng!, project.lat!])
           .setPopup(popup)
           .addTo(mapInstance);
+
+        // Store ref on DOM element for hover handler
+        (el as any).__tfMarker = marker;
 
         el.addEventListener('click', () => {
           onProjectClickRef.current?.(project.id);
