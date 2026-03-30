@@ -128,7 +128,7 @@ If build fails: report to Orchestrator, who writes a hotfix prompt.
 ```powershell
 npm run dev
 ```
-Open `http://localhost:3000` in an incognito browser window (avoids cached state).
+Open `http://localhost:5173` in an incognito browser window (avoids cached state).
 
 ### Step 3: Sprint-Specific Tests
 Every sprint prompt includes a **"What to Test"** section at the bottom. This section lists:
@@ -251,25 +251,24 @@ This is the repeatable loop for every sprint. Charlie executes steps marked with
 3. (CC) Claude Code reads files, creates branch, implements, builds, commits per task, pushes, creates PR
 4. (C) Wait for PR creation confirmation — do NOT interact with Claude Code during execution
 
-### Phase D: Merge (C — Charlie in PowerShell)
-1. (C) Merge and push:
-   ```powershell
-   git checkout main
-   git merge sprint-[N]-[description]
-   git push origin main
-   ```
-2. (C) Delete the sprint branch:
-   ```powershell
-   git branch -d sprint-[N]-[description]
-   ```
+### Phase D: Merge, Build, Launch, Test (C — Charlie in PowerShell + Browser)
 
-### Phase E: Test (C — Charlie in Browser)
-1. (C) Build and start dev server:
-   ```powershell
-   npm run build
-   npm run dev
-   ```
-2. (C) Open `http://localhost:5173` in incognito (avoids cached state)
+**IMPORTANT**: After Claude Code finishes a sprint, Orchestrator ALWAYS provides the full post-sprint command block below (with the actual branch name filled in). Charlie copies and pastes the entire block into PowerShell.
+
+**Post-sprint command block** (Orchestrator fills in `[branch]` each time):
+```powershell
+cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
+git checkout main
+git merge [branch]
+git push origin main
+git branch -d [branch]
+npm run build
+npm run dev
+```
+
+After pasting:
+1. (C) Confirm build passes (zero errors)
+2. (C) Open `http://localhost:5173` in incognito (avoids cached localStorage state)
 3. (C) Run through test cases in `.claude/TESTING/SPRINT_[N]_TESTS.md`
 4. (C) Report results to Orchestrator: PASS / PARTIAL / FAIL
 
