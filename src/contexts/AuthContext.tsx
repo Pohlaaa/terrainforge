@@ -56,10 +56,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           useEquipmentStore.persist.clearStorage()
         }
         if (_event === 'SIGNED_IN' && session) {
-          useProjectStore.getState().fetchProjects()
-          useCrewStore.getState().fetchCrew()
-          useMaterialStore.getState().fetchMaterials()
-          useEquipmentStore.getState().fetchEquipment()
+          // Org must be loaded first — fetch functions need orgId
+          useOrgStore.getState().fetchOrg(session.user.id).then(() => {
+            useProjectStore.getState().fetchProjects()
+            useCrewStore.getState().fetchCrew()
+            useMaterialStore.getState().fetchMaterials()
+            useEquipmentStore.getState().fetchEquipment()
+          })
           diagnoseUserRole()
         }
         setSession(session)

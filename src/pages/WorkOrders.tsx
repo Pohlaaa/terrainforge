@@ -47,6 +47,12 @@ export const WorkOrders: React.FC = () => {
     return map;
   }, [project, materials]);
 
+  // Zone id → name map for dependency labels (must be before early returns — Rules of Hooks)
+  const zoneNameMap = useMemo(
+    () => Object.fromEntries((project?.zones ?? []).map(z => [z.id, z.name])),
+    [project?.zones]
+  );
+
   function toggleStep(zoneId: string, stepN: number) {
     setCompletedSteps(prev => {
       const zoneSet = new Set(prev[zoneId] ?? []);
@@ -163,12 +169,6 @@ export const WorkOrders: React.FC = () => {
   // Overall completion stats
   const totalSteps = Array.from(zoneSteps.values()).reduce((s, steps) => s + steps.length, 0);
   const totalDone = Object.values(completedSteps).reduce((s, set) => s + set.size, 0);
-
-  // Zone id → name map for dependency labels
-  const zoneNameMap = useMemo(
-    () => Object.fromEntries(project.zones.map(z => [z.id, z.name])),
-    [project.zones]
-  );
 
   return (
     <div>

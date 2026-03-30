@@ -719,12 +719,13 @@ export async function createEquipment(equip: Omit<Equipment, 'id'>, id: string, 
     // Field fixups: frontend name → DB column name
     if ('serial' in snakeData) { snakeData.serial_number = snakeData.serial; delete snakeData.serial }
     if ('plate' in snakeData) { snakeData.license_plate = snakeData.plate; delete snakeData.plate }
-    if ('last_service' in snakeData) { snakeData.last_service_date = snakeData.last_service; delete snakeData.last_service }
-    if ('next_service' in snakeData) { snakeData.next_service_date = snakeData.next_service; delete snakeData.next_service }
+    if ('last_service' in snakeData) { snakeData.last_service_date = snakeData.last_service || null; delete snakeData.last_service }
+    if ('next_service' in snakeData) { snakeData.next_service_date = snakeData.next_service || null; delete snakeData.next_service }
     if ('value' in snakeData) { snakeData.equipment_value = snakeData.value; delete snakeData.value }
     if ('insurance' in snakeData) { snakeData.insurance_provider = snakeData.insurance; delete snakeData.insurance }
-    if ('reg_expiry' in snakeData) { snakeData.registration_expiry = snakeData.reg_expiry; delete snakeData.reg_expiry }
-    if ('inspection_due' in snakeData) { snakeData.inspection_due_date = snakeData.inspection_due; delete snakeData.inspection_due }
+    if ('insurance_expiry' in snakeData && !snakeData.insurance_expiry) snakeData.insurance_expiry = null
+    if ('reg_expiry' in snakeData) { snakeData.registration_expiry = snakeData.reg_expiry || null; delete snakeData.reg_expiry }
+    if ('inspection_due' in snakeData) { snakeData.inspection_due_date = snakeData.inspection_due || null; delete snakeData.inspection_due }
     // Strip FK string fields — DB expects UUID, frontend stores string refs
     delete snakeData.assigned_project
     delete snakeData.operator
@@ -757,12 +758,13 @@ export async function updateEquipment(id: string, updates: Partial<Equipment>): 
     // Field fixups
     if ('serial' in snakeData) { snakeData.serial_number = snakeData.serial; delete snakeData.serial }
     if ('plate' in snakeData) { snakeData.license_plate = snakeData.plate; delete snakeData.plate }
-    if ('last_service' in snakeData) { snakeData.last_service_date = snakeData.last_service; delete snakeData.last_service }
-    if ('next_service' in snakeData) { snakeData.next_service_date = snakeData.next_service; delete snakeData.next_service }
+    if ('last_service' in snakeData) { snakeData.last_service_date = snakeData.last_service || null; delete snakeData.last_service }
+    if ('next_service' in snakeData) { snakeData.next_service_date = snakeData.next_service || null; delete snakeData.next_service }
     if ('value' in snakeData) { snakeData.equipment_value = snakeData.value; delete snakeData.value }
     if ('insurance' in snakeData) { snakeData.insurance_provider = snakeData.insurance; delete snakeData.insurance }
-    if ('reg_expiry' in snakeData) { snakeData.registration_expiry = snakeData.reg_expiry; delete snakeData.reg_expiry }
-    if ('inspection_due' in snakeData) { snakeData.inspection_due_date = snakeData.inspection_due; delete snakeData.inspection_due }
+    if ('insurance_expiry' in snakeData && !snakeData.insurance_expiry) snakeData.insurance_expiry = null
+    if ('reg_expiry' in snakeData) { snakeData.registration_expiry = snakeData.reg_expiry || null; delete snakeData.reg_expiry }
+    if ('inspection_due' in snakeData) { snakeData.inspection_due_date = snakeData.inspection_due || null; delete snakeData.inspection_due }
     if ('assigned_project' in snakeData) delete snakeData.assigned_project
     if ('operator' in snakeData) delete snakeData.operator
 
