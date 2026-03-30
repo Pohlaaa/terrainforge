@@ -1,9 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
+import { useMaterialStore } from '@/stores/materialStore';
+import { useOrgStore } from '@/stores/orgStore';
+import { fetchAllCrewStatuses, fetchChecklistProgressCounts } from '@/services/supabaseData';
+import { generateSteps } from '@/lib/workorders';
 import type { ScheduleEntry, ScheduleEntryStatus } from '@/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -285,6 +289,35 @@ export const Schedule: React.FC = () => {
   const { projects } = useProjectStore();
   const { crew } = useCrewStore();
   const { equipment } = useEquipmentStore();
+  const { materials } = useMaterialStore();
+  const orgId = useOrgStore((s) => s.org?.id);
+
+  // Crew status indicators
+  const [crewStatuses, setCrewStatuses] = useState<Record<string, string>>({});
+  // Checklist progress counts per entry
+  const [progressCounts, setProgressCounts] = useState<Record<string, number>>({});
+
+  // Poll crew statuses every 30 seconds
+  useEffect(() => {
+    if (!orgId) return;
+    const load = () => {
+      fetchAllCrewStatuses(orgId).then((list) => {
+        const map: Record<string, string> = {};
+        for (const { crewMemberId, status } of list) map[crewMemberId] = status;
+        setCrewStatuses(map);
+      });
+    };
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, [orgId]);
+
+  // Fetch checklist progress counts for visible entries
+  useEffect(() => {
+    const ids = entries.map(e => e.id);
+    if (ids.length === 0) return;
+    fetchChecklistProgressCounts(ids).then(setProgressCounts);
+  }, [entries]);
 
   // Week navigation
   const [weekStart, setWeekStart] = useState(() => isoDate(getMonday(new Date())));
@@ -493,6 +526,26 @@ export const Schedule: React.FC = () => {
                       }}>
                         {member.name.charAt(0)}
                       </div>
+                      {(() => {
+                        const st = crewStatuses[member.id];
+                        const statusColors: Record<string, string> = {
+                          en_route: '#60A5FA',
+                          on_site: 'var(--green-l)',
+                          on_break: '#FCD34D',
+                          done: '#A78BFA',
+                        };
+                        const color = st ? statusColors[st] : null;
+                        if (!color) return null;
+                        return (
+                          <span
+                            title={st.replace('_', ' ')}
+                            style={{
+                              width: '8px', height: '8px', borderRadius: '50%',
+                              background: color, flexShrink: 0,
+                            }}
+                          />
+                        );
+                      })()}
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px' }}>
                         {member.name}
                       </span>
@@ -587,6 +640,24 @@ export const Schedule: React.FC = () => {
                               >
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
                                   {projName}
+                                  {(() => {
+                                    const done = progressCounts[entry.id];
+                                    if (!done) return null;
+                                    const proj = projects.find(p => p.id === entry.projectId);
+                                    const total = proj
+                                      ? proj.zones.reduce((s, z) => s + generateSteps(z, materials).length, 0)
+                                      : 0;
+                                    if (total === 0) return null;
+                                    return (
+                                      <span style={{
+                                        fontSize: '9px', fontFamily: 'monospace', marginLeft: '4px',
+                                        color: done >= total ? 'var(--green-l)' : 'inherit',
+                                        opacity: done >= total ? 1 : 0.7,
+                                      }}>
+                                        {done}/{total}
+                                      </span>
+                                    );
+                                  })()}
                                 </span>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }}
