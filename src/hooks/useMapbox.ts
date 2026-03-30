@@ -84,7 +84,18 @@ export function useMapbox({
         });
 
         mapRef.current = mapInstance;
-        mapInstance.on('load', () => setLoaded(true));
+        mapInstance.on('load', () => {
+          setLoaded(true);
+          // Trigger resize after a short delay to fix initial scale
+          setTimeout(() => mapInstance.resize(), 100);
+        });
+
+        // Container resize observer — fixes map scale when layout changes
+        const resizeObserver = new ResizeObserver(() => {
+          mapInstance.resize();
+        });
+        resizeObserver.observe(container.current!);
+        mapInstance.once('remove', () => resizeObserver.disconnect());
 
         // Theme change observer
         const observer = new MutationObserver(() => {
