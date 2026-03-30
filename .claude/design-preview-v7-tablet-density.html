@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TerrainForge v7 — Tablet Density & Layout Fixes</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --surface-bg: #FAFAFA;
+  --surface-card: #FFFFFF;
+  --surface-hover: #F3F4F6;
+  --surface-active: #E5E7EB;
+  --surface-selected: #D1FAE5;
+  --surface-bg-subtle: #F5F7F5;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-disabled: #D1D5DB;
+  --brand-primary: #2D6A4F;
+  --brand-primary-hover: #245A42;
+  --brand-primary-bg: #D1FAE5;
+  --brand-primary-light: #E8F5EE;
+  --brand-secondary: #D4A843;
+  --brand-secondary-bg: #FEF3C7;
+  --border-light: #F3F4F6;
+  --border-default: #E5E7EB;
+  --border-strong: #D1D5DB;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-hover: 0 4px 8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-panel: 0 8px 24px rgba(0,0,0,0.12);
+  --status-green: #16A34A;
+  --status-green-bg: #DCFCE7;
+  --status-amber: #F59E0B;
+  --status-amber-bg: #FEF3C7;
+  --status-red: #DC2626;
+  --status-red-bg: #FEE2E2;
+  --status-blue: #2563EB;
+  --status-blue-bg: #DBEAFE;
+  --status-gray: #9CA3AF;
+  --status-gray-bg: #F3F4F6;
+  --sidebar-bg: #0F172A;
+  --sidebar-hover: #1E293B;
+  --sidebar-active: #334155;
+  --sidebar-text: #E2E8F0;
+  --sidebar-text-muted: #94A3B8;
+  --sidebar-border: #1E293B;
+  --sidebar-accent: #34D399;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme="dark"] {
+  --surface-bg: #0F172A;
+  --surface-card: #1E293B;
+  --surface-hover: #334155;
+  --surface-active: #475569;
+  --surface-selected: #064E3B;
+  --surface-bg-subtle: #162032;
+  --text-primary: #F1F5F9;
+  --text-secondary: #CBD5E1;
+  --text-tertiary: #64748B;
+  --text-disabled: #475569;
+  --brand-primary: #34D399;
+  --brand-primary-hover: #6EE7B7;
+  --brand-primary-bg: #064E3B;
+  --brand-primary-light: #0A3D2E;
+  --brand-secondary: #D4A843;
+  --border-light: #1E293B;
+  --border-default: #334155;
+  --border-strong: #475569;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 8px rgba(0,0,0,0.3);
+  --shadow-panel: 0 8px 24px rgba(0,0,0,0.4);
+  --status-green-bg: #064E3B;
+  --status-amber-bg: #78350F;
+  --status-red-bg: #7F1D1D;
+  --status-blue-bg: #1E3A5F;
+  --status-gray-bg: #1E293B;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  line-height: 1.5;
+  transition: background 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================
+   TOP NAV
+   ============================================ */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-default);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 12px;
+}
+
+.tab-row {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-row::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s ease;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab-btn:hover { background: var(--surface-hover); color: var(--text-secondary); }
+.tab-btn.active {
+  background: var(--brand-primary-bg);
+  color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ctrl-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.12s ease;
+}
+.ctrl-btn:hover { background: var(--surface-hover); }
+
+/* Device frame */
+.device-frame {
+  max-width: 1024px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.device-label {
+  text-align: center;
+  padding: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--surface-bg-subtle);
+  border-bottom: 1px solid var(--border-default);
+}
+
+/* ============================================
+   SECTION PANELS
+   ============================================ */
+.section-panel {
+  display: none;
+  padding: 20px;
+}
+.section-panel.active { display: block; }
+
+.section-heading {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.section-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.issue-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--status-red-bg);
+  border: 1px solid var(--status-red);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+.issue-callout.fix {
+  background: var(--status-green-bg);
+  border-color: var(--status-green);
+}
+.issue-callout svg { flex-shrink: 0; margin-top: 1px; }
+
+/* ============================================
+   MOCK APP SHELL
+   ============================================ */
+.app-shell {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-bg);
+  max-height: 680px;
+}
+
+.mock-sidebar {
+  width: 64px;
+  background: var(--sidebar-bg);
+  flex-shrink: 0;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ms-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--sidebar-active);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--sidebar-accent);
+}
+.ms-item {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sidebar-text-muted);
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+.ms-item.active { background: var(--sidebar-active); color: white; }
+.ms-item:hover:not(.active) { background: var(--sidebar-hover); }
+
+.mock-main {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* ============================================
+   DASHBOARD — Compact Greeting
+   ============================================ */
+.greeting-compact {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface-card);
+}
+.gc-left h2 {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.gc-left .gc-stats {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.gc-left .gc-stats strong { color: var(--brand-primary); }
+.gc-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.gc-right .temp { font-weight: 700; font-size: 15px; }
+
+/* ============================================
+   KPI Strip — inline compact
+   ============================================ */
+.kpi-strip {
+  display: flex;
+  gap: 1px;
+  background: var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+}
+.kpi-strip-item {
+  flex: 1;
+  background: var(--surface-card);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  position: relative;
+  min-width: 0;
+}
+.kpi-strip-item:hover { background: var(--surface-hover); }
+.kpi-strip-item:active { background: var(--surface-active); }
+
+.ksi-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.ksi-value {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.ksi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ksi-change {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.ksi-change.up { color: var(--status-green); }
+.ksi-change.down { color: var(--status-red); }
+
+.ksi-spark {
+  height: 20px;
+  margin-top: 4px;
+  opacity: 0.5;
+}
+.ksi-spark svg { width: 100%; height: 100%; }
+.kpi-strip-item:hover .ksi-spark { opacity: 1; }
+
+.ksi-chevron {
+  position: absolute;
+  top: 10px;
+  right: 8px;
+  color: var(--text-disabled);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.kpi-strip-item:hover .ksi-chevron { opacity: 1; }
+
+/* ============================================
+   Dashboard content grid
+   ============================================ */
+.dash-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.dash-content > * {
+  border-bottom: 1px solid var(--border-default);
+  border-right: 1px solid var(--border-default);
+}
+.dash-content > *:nth-child(2n) { border-right: none; }
+
+/* Widget compact */
+.widget-compact { background: var(--surface-card); }
+
+.wc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+.wc-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.wc-viewall {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.wc-viewall:hover { background: var(--brand-primary-bg); }
+
+.wc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background 0.08s ease;
+  min-height: 44px;
+}
+.wc-item:last-child { border-bottom: none; }
+.wc-item:hover { background: var(--surface-hover); }
+.wc-item:active { background: var(--surface-active); }
+
+.wci-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.wci-content { flex: 1; min-width: 0; }
+.wci-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wci-sub { font-size: 11px; color: var(--text-tertiary); }
+.wci-right { flex-shrink: 0; text-align: right; }
+.wci-value { font-size: 12px; font-weight: 700; }
+.wci-meta { font-size: 10px; color: var(--text-tertiary); }
+
+.mini-radial { width: 32px; height: 32px; flex-shrink: 0; }
+.mini-radial .r-bg { fill: none; stroke: var(--border-default); stroke-width: 3.5; }
+.mini-radial .r-fill { fill: none; stroke-width: 3.5; stroke-linecap: round; }
+.mini-radial .r-text { font-size: 8px; font-weight: 800; fill: var(--text-primary); text-anchor: middle; dominant-baseline: central; }
+
+.wci-chevron { color: var(--text-disabled); flex-shrink: 0; }
+.wc-item:hover .wci-chevron { color: var(--brand-primary); }
+
+/* ============================================
+   Map widget compact
+   ============================================ */
+.map-widget-compact {
+  background: var(--surface-card);
+  grid-column: 1 / -1;
+}
+
+.map-compact-container {
+  height: 220px;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-compact-bg {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.map-compact-bg.street {
+  background: linear-gradient(135deg, #D4E6D9 0%, #B8D4BE 25%, #C8DEC8 50%, #D0E4D2 75%, #E0EEE2 100%);
+}
+[data-theme="dark"] .map-compact-bg.street {
+  background: linear-gradient(135deg, #1a2e28 0%, #1e3530 25%, #22352c 50%, #1a2e28 75%, #162620 100%);
+}
+.map-compact-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 35%, rgba(255,255,255,0.25) 35%, rgba(255,255,255,0.25) 37%, transparent 37%),
+    linear-gradient(90deg, transparent 58%, rgba(255,255,255,0.2) 58%, rgba(255,255,255,0.2) 60%, transparent 60%),
+    linear-gradient(90deg, transparent 80%, rgba(255,255,255,0.15) 80%, rgba(255,255,255,0.15) 82%, transparent 82%),
+    linear-gradient(0deg, transparent 25%, rgba(255,255,255,0.2) 25%, rgba(255,255,255,0.2) 27%, transparent 27%),
+    linear-gradient(0deg, transparent 55%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0.2) 57%, transparent 57%),
+    linear-gradient(0deg, transparent 78%, rgba(255,255,255,0.15) 78%, rgba(255,255,255,0.15) 80%, transparent 80%);
+}
+
+.cpin {
+  position: absolute;
+  cursor: pointer;
+  z-index: 2;
+  transition: transform 0.15s var(--spring);
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+}
+.cpin:active { transform: scale(1.3); z-index: 5; }
+
+.cpin-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 2px solid white;
+}
+.cpin-dot.green { background: var(--status-green); }
+.cpin-dot.blue { background: var(--status-blue); }
+.cpin-dot.amber { background: var(--status-amber); }
+.cpin-dot.red { background: var(--status-red); }
+.cpin-dot.gray { background: var(--status-gray); }
+
+.cpin-popup {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.92);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  min-width: 180px;
+  box-shadow: var(--shadow-panel);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.15s var(--spring);
+  z-index: 10;
+}
+.cpin-popup::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--surface-card);
+}
+.cpin.open .cpin-popup {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) scale(1);
+}
+.cpop-name { font-size: 13px; font-weight: 700; }
+.cpop-addr { font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; }
+.cpop-meta { display: flex; justify-content: space-between; font-size: 11px; }
+.cpop-meta-label { color: var(--text-tertiary); }
+.cpop-meta-val { font-weight: 600; }
+.cpop-bar { height: 3px; background: var(--surface-bg); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.cpop-fill { height: 100%; border-radius: 2px; }
+
+.map-legend-c {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  box-shadow: var(--shadow-sm);
+  z-index: 4;
+}
+.mlc-item { display: flex; align-items: center; gap: 3px; }
+.mlc-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+.map-toggle-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 2px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  box-shadow: var(--shadow-sm);
+  z-index: 4;
+}
+.mto-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+  color: var(--text-tertiary);
+  min-height: 26px;
+}
+.mto-btn.active { background: var(--brand-primary-bg); color: var(--brand-primary); }
+
+/* ============================================
+   PROJECTS PAGE
+   ============================================ */
+.projects-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-card);
+}
+.ph-left { display: flex; align-items: center; gap: 10px; }
+.ph-title { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+.ph-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--surface-bg);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.ph-actions { display: flex; gap: 8px; align-items: center; }
+.ph-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  background: var(--surface-bg);
+  cursor: pointer;
+  min-height: 40px;
+}
+.btn-primary-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  background: var(--brand-primary);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.view-toggle-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-card);
+}
+.vt-pills {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+.vt-pill {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: none;
+  color: var(--text-tertiary);
+  min-height: 28px;
+}
+.vt-pill.active { background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+
+.sort-pill {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Project Cards — Dense 2-col */
+.project-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.project-grid > * {
+  border-bottom: 1px solid var(--border-default);
+  border-right: 1px solid var(--border-default);
+}
+.project-grid > *:nth-child(2n) { border-right: none; }
+
+.pcard {
+  background: var(--surface-card);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.08s ease;
+  position: relative;
+}
+.pcard:hover { background: var(--surface-hover); }
+.pcard:active { background: var(--surface-active); }
+
+.pcard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.pcard[data-status="green"]::before { background: var(--status-green); }
+.pcard[data-status="blue"]::before { background: var(--status-blue); }
+.pcard[data-status="amber"]::before { background: var(--status-amber); }
+.pcard[data-status="red"]::before { background: var(--status-red); }
+.pcard[data-status="gray"]::before { background: var(--status-gray); }
+
+.pc-row1 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.pc-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+.pc-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pc-badge.green { background: var(--status-green-bg); color: var(--status-green); }
+.pc-badge.blue { background: var(--status-blue-bg); color: var(--status-blue); }
+.pc-badge.amber { background: var(--status-amber-bg); color: var(--status-amber); }
+.pc-badge.red { background: var(--status-red-bg); color: var(--status-red); }
+.pc-badge.gray { background: var(--status-gray-bg); color: var(--status-gray); }
+
+.pc-address {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pc-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.pc-meta-item { display: flex; align-items: center; gap: 3px; }
+.pc-meta-label { color: var(--text-tertiary); font-weight: 500; }
+.pc-meta-value { font-weight: 700; }
+
+.pc-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pc-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--surface-bg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pc-fill { height: 100%; border-radius: 2px; }
+.pc-fill.green { background: var(--status-green); }
+.pc-fill.blue { background: var(--status-blue); }
+.pc-fill.amber { background: var(--status-amber); }
+.pc-fill.gray { background: var(--status-gray); }
+.pc-pct { font-size: 11px; font-weight: 700; color: var(--text-tertiary); white-space: nowrap; }
+
+/* Project List View */
+.project-list { display: flex; flex-direction: column; }
+
+.plist-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-card);
+  cursor: pointer;
+  transition: background 0.08s ease;
+  min-height: 44px;
+  position: relative;
+}
+.plist-item:hover { background: var(--surface-hover); }
+.plist-item:active { background: var(--surface-active); }
+
+.plist-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.plist-item[data-status="green"]::before { background: var(--status-green); }
+.plist-item[data-status="blue"]::before { background: var(--status-blue); }
+.plist-item[data-status="amber"]::before { background: var(--status-amber); }
+.plist-item[data-status="red"]::before { background: var(--status-red); }
+
+.pli-content { flex: 1; min-width: 0; }
+.pli-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pli-addr { font-size: 12px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pli-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.pli-stat { text-align: right; min-width: 52px; }
+.pli-stat-val { font-size: 13px; font-weight: 700; }
+.pli-stat-label { font-size: 10px; color: var(--text-tertiary); }
+
+.pli-progress { width: 60px; flex-shrink: 0; }
+.pli-bar { height: 4px; background: var(--surface-bg); border-radius: 2px; overflow: hidden; }
+.pli-fill { height: 100%; border-radius: 2px; }
+.pli-pct { font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-align: right; margin-top: 2px; }
+
+.pli-chevron { color: var(--text-disabled); flex-shrink: 0; }
+.plist-item:hover .pli-chevron { color: var(--brand-primary); }
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 640px) {
+  .top-bar { padding: 8px 12px; }
+  .section-panel { padding: 12px; }
+  .project-grid { grid-template-columns: 1fr; }
+  .dash-content { grid-template-columns: 1fr; }
+}
+
+@media (pointer: coarse) {
+  .pcard:hover { background: var(--surface-card); }
+  .pcard:active { background: var(--surface-active); }
+  .wc-item:hover { background: none; }
+  .wc-item:active { background: var(--surface-active); }
+  .kpi-strip-item:hover { background: var(--surface-card); }
+  .kpi-strip-item:active { background: var(--surface-active); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Toast */
+.nav-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--brand-primary);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  box-shadow: var(--shadow-panel);
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 300;
+  transition: transform 0.25s var(--spring);
+  white-space: nowrap;
+}
+.nav-toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="tab-row">
+    <button class="tab-btn active" onclick="showSection('dashboard')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="tab-btn" onclick="showSection('projects')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Projects
+    </button>
+    <button class="tab-btn" onclick="showSection('list')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      List View
+    </button>
+    <button class="tab-btn" onclick="showSection('spacing')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+      Spacing Guide
+    </button>
+  </div>
+  <div class="controls-row">
+    <button class="ctrl-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+  </div>
+</div>
+
+<!-- ========== 1. DASHBOARD ========== -->
+<div class="section-panel active" id="section-dashboard">
+  <div class="section-heading">Dashboard — Compact & Dense</div>
+  <div class="section-desc">KPIs folded into an inline strip. Map zoomed to metro area with proportional pins. Widgets use the full grid with tight rows.</div>
+
+  <div class="issue-callout fix">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+    <span><strong>Fixed:</strong> KPIs compressed from 4 giant vertical cards → single inline strip. Map zoomed to project area. Widget padding reduced 40%. Greeting made compact.</span>
+  </div>
+
+  <div class="device-frame">
+    <div class="device-label">Tablet — 1024px</div>
+    <div class="app-shell">
+      <div class="mock-sidebar">
+        <div class="ms-logo">TF</div>
+        <div class="ms-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+      </div>
+
+      <div class="mock-main">
+        <!-- Compact Greeting -->
+        <div class="greeting-compact">
+          <div class="gc-left">
+            <h2>Good evening, Charlie</h2>
+            <div class="gc-stats"><strong>8</strong> projects &middot; <strong>$467K</strong> value &middot; <strong>2</strong> need attention</div>
+          </div>
+          <div class="gc-right">
+            <span class="temp">68°</span>
+            <span>⛅</span>
+          </div>
+        </div>
+
+        <!-- KPI Strip -->
+        <div class="kpi-strip">
+          <div class="kpi-strip-item" onclick="toast('Active Projects → Projects page')">
+            <div class="ksi-row">
+              <div class="ksi-value">8</div>
+              <div class="ksi-label">Projects</div>
+            </div>
+            <div class="ksi-change up">+3 this mo.</div>
+            <div class="ksi-spark">
+              <svg viewBox="0 0 80 20" preserveAspectRatio="none">
+                <path d="M0,16 L10,14 L20,15 L30,12 L40,10 L50,11 L60,8 L70,6 L80,3" fill="none" stroke="var(--brand-primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+              </svg>
+            </div>
+            <svg class="ksi-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+          <div class="kpi-strip-item" onclick="toast('Pipeline Value → Projects (sort: value)')">
+            <div class="ksi-row">
+              <div class="ksi-value">$467K</div>
+              <div class="ksi-label">Value</div>
+            </div>
+            <div class="ksi-change up">+$42K</div>
+            <div class="ksi-spark">
+              <svg viewBox="0 0 80 20" preserveAspectRatio="none">
+                <path d="M0,14 L10,16 L20,12 L30,10 L40,11 L50,8 L60,9 L70,5 L80,3" fill="none" stroke="var(--brand-primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+              </svg>
+            </div>
+            <svg class="ksi-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+          <div class="kpi-strip-item" onclick="toast('Crew Available → Crew Manager')">
+            <div class="ksi-row">
+              <div class="ksi-value">3</div>
+              <div class="ksi-label">Crew Avail.</div>
+            </div>
+            <div class="ksi-change" style="color:var(--text-tertiary)">of 8 total</div>
+            <div class="ksi-spark">
+              <svg viewBox="0 0 80 20" preserveAspectRatio="none">
+                <path d="M0,10 L10,10 L20,10 L30,8 L40,8 L50,8 L60,6 L70,6 L80,6" fill="none" stroke="var(--brand-primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+              </svg>
+            </div>
+            <svg class="ksi-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+          <div class="kpi-strip-item" onclick="toast('Fleet → Equipment Manager')">
+            <div class="ksi-row">
+              <div class="ksi-value">12</div>
+              <div class="ksi-label">Fleet</div>
+            </div>
+            <div class="ksi-change down">2 maint.</div>
+            <div class="ksi-spark">
+              <svg viewBox="0 0 80 20" preserveAspectRatio="none">
+                <path d="M0,6 L10,7 L20,6 L30,8 L40,7 L50,9 L60,8 L70,10 L80,9" fill="none" stroke="var(--brand-primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+              </svg>
+            </div>
+            <svg class="ksi-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        </div>
+
+        <!-- Dashboard widgets -->
+        <div class="dash-content">
+          <!-- Map — spans both columns -->
+          <div class="map-widget-compact">
+            <div class="wc-header">
+              <span class="wc-title">Project Map</span>
+              <button class="wc-viewall" onclick="toast('View All → Map page')">Map View <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
+            </div>
+            <div class="map-compact-container">
+              <div class="map-compact-bg street">
+                <div class="cpin" style="left:20%;top:30%" onclick="togglePin(this)">
+                  <div class="cpin-dot green"></div>
+                  <div class="cpin-popup">
+                    <div class="cpop-name">Thompson Residence</div>
+                    <div class="cpop-addr">2418 Oak Valley Dr</div>
+                    <div class="cpop-meta"><span class="cpop-meta-label">Budget</span><span class="cpop-meta-val">$42.5K</span></div>
+                    <div class="cpop-bar"><div class="cpop-fill" style="width:72%;background:var(--status-green)"></div></div>
+                  </div>
+                </div>
+                <div class="cpin" style="left:45%;top:20%" onclick="togglePin(this)">
+                  <div class="cpin-dot amber"></div>
+                  <div class="cpin-popup">
+                    <div class="cpop-name">Cedar Park HOA</div>
+                    <div class="cpop-addr">1100 Cedar Bend Dr</div>
+                    <div class="cpop-meta"><span class="cpop-meta-label">Budget</span><span class="cpop-meta-val">$68.2K</span></div>
+                    <div class="cpop-bar"><div class="cpop-fill" style="width:45%;background:var(--status-amber)"></div></div>
+                  </div>
+                </div>
+                <div class="cpin" style="left:65%;top:50%" onclick="togglePin(this)">
+                  <div class="cpin-dot blue"></div>
+                  <div class="cpin-popup">
+                    <div class="cpop-name">Lakeway Estates</div>
+                    <div class="cpop-addr">3205 Lakeway Blvd</div>
+                    <div class="cpop-meta"><span class="cpop-meta-label">Budget</span><span class="cpop-meta-val">$28.9K</span></div>
+                    <div class="cpop-bar"><div class="cpop-fill" style="width:15%;background:var(--status-blue)"></div></div>
+                  </div>
+                </div>
+                <div class="cpin" style="left:35%;top:60%" onclick="togglePin(this)">
+                  <div class="cpin-dot red"></div>
+                  <div class="cpin-popup">
+                    <div class="cpop-name">Barton Hills Reno</div>
+                    <div class="cpop-addr">805 Barton Hills Dr</div>
+                    <div class="cpop-meta"><span class="cpop-meta-label">Budget</span><span class="cpop-meta-val">$35.4K</span></div>
+                    <div class="cpop-bar"><div class="cpop-fill" style="width:38%;background:var(--status-red)"></div></div>
+                  </div>
+                </div>
+                <div class="cpin" style="left:80%;top:35%" onclick="togglePin(this)">
+                  <div class="cpin-dot gray"></div>
+                  <div class="cpin-popup">
+                    <div class="cpop-name">Bee Cave Office Park</div>
+                    <div class="cpop-addr">12400 Bee Cave Pkwy</div>
+                    <div class="cpop-meta"><span class="cpop-meta-label">Budget</span><span class="cpop-meta-val">$92.0K</span></div>
+                    <div class="cpop-bar"><div class="cpop-fill" style="width:0%;background:var(--status-gray)"></div></div>
+                  </div>
+                </div>
+
+                <div class="map-legend-c">
+                  <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-green)"></div> On Track</div>
+                  <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-blue)"></div> In Progress</div>
+                  <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-amber)"></div> Attention</div>
+                  <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-red)"></div> Blocked</div>
+                  <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-gray)"></div> Not Started</div>
+                </div>
+                <div class="map-toggle-overlay">
+                  <button class="mto-btn active">Map</button>
+                  <button class="mto-btn">Satellite</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Projects Widget -->
+          <div class="widget-compact">
+            <div class="wc-header">
+              <span class="wc-title">Projects</span>
+              <button class="wc-viewall" onclick="toast('View All → Projects page')">All <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
+            </div>
+            <div class="wc-item" onclick="toast('Thompson → detail')">
+              <div class="wci-dot" style="background:var(--status-green)"></div>
+              <div class="wci-content"><div class="wci-name">Thompson Residence</div><div class="wci-sub">Patio + retaining wall</div></div>
+              <div class="mini-radial"><svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-green)" stroke-dasharray="100" stroke-dashoffset="28" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">72</text></svg></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="wc-item" onclick="toast('Cedar Park → detail')">
+              <div class="wci-dot" style="background:var(--status-amber)"></div>
+              <div class="wci-content"><div class="wci-name">Cedar Park HOA</div><div class="wci-sub">Common area landscape</div></div>
+              <div class="mini-radial"><svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-amber)" stroke-dasharray="100" stroke-dashoffset="55" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">45</text></svg></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="wc-item" onclick="toast('Lakeway → detail')">
+              <div class="wci-dot" style="background:var(--status-blue)"></div>
+              <div class="wci-content"><div class="wci-name">Lakeway Estates</div><div class="wci-sub">Front yard redesign</div></div>
+              <div class="mini-radial"><svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-blue)" stroke-dasharray="100" stroke-dashoffset="85" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">15</text></svg></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          </div>
+
+          <!-- Alerts Widget -->
+          <div class="widget-compact">
+            <div class="wc-header">
+              <span class="wc-title">Alerts</span>
+              <button class="wc-viewall" onclick="toast('View All → Alerts')">All <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
+            </div>
+            <div class="wc-item" onclick="toast('Low stock → Materials')">
+              <div class="wci-dot" style="background:var(--status-red)"></div>
+              <div class="wci-content"><div class="wci-name">Low stock: Flagstone</div><div class="wci-sub">45 sqft remaining</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="wc-item" onclick="toast('Cert expiring → Crew')">
+              <div class="wci-dot" style="background:var(--status-amber)"></div>
+              <div class="wci-content"><div class="wci-name">Cert: M. Rodriguez</div><div class="wci-sub">Pesticide — 12 days</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="wc-item" onclick="toast('Maintenance → Equipment')">
+              <div class="wci-dot" style="background:var(--status-amber)"></div>
+              <div class="wci-content"><div class="wci-name">Maint: Bobcat E35</div><div class="wci-sub">250 hrs since service</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          </div>
+
+          <!-- Crew Widget -->
+          <div class="widget-compact">
+            <div class="wc-header">
+              <span class="wc-title">Crew</span>
+              <button class="wc-viewall" onclick="toast('View All → Crew Manager')">All <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
+            </div>
+            <div class="wc-item" onclick="toast('Team Alpha → detail')">
+              <div class="wci-dot" style="background:var(--status-green)"></div>
+              <div class="wci-content"><div class="wci-name">Team Alpha</div><div class="wci-sub">4 members &middot; Thompson</div></div>
+              <div class="wci-right"><div class="wci-value" style="color:var(--status-green)">Active</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="wc-item" onclick="toast('Team Bravo → detail')">
+              <div class="wci-dot" style="background:var(--status-green)"></div>
+              <div class="wci-content"><div class="wci-name">Team Bravo</div><div class="wci-sub">3 members &middot; Cedar Park</div></div>
+              <div class="wci-right"><div class="wci-value" style="color:var(--status-green)">Active</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="wc-item" onclick="toast('Team Charlie → detail')">
+              <div class="wci-dot" style="background:var(--status-gray)"></div>
+              <div class="wci-content"><div class="wci-name">Team Charlie</div><div class="wci-sub">3 members &middot; Unassigned</div></div>
+              <div class="wci-right"><div class="wci-value" style="color:var(--text-tertiary)">Available</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          </div>
+
+          <!-- Fleet Widget -->
+          <div class="widget-compact">
+            <div class="wc-header">
+              <span class="wc-title">Fleet</span>
+              <button class="wc-viewall" onclick="toast('View All → Equipment')">All <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
+            </div>
+            <div class="wc-item" onclick="toast('Bobcat E35 → detail')">
+              <div class="wci-dot" style="background:var(--status-green)"></div>
+              <div class="wci-content"><div class="wci-name">Bobcat E35</div><div class="wci-sub">Mini excavator</div></div>
+              <div class="wci-right"><div class="wci-value">250 hrs</div><div class="wci-meta">Thompson</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="wc-item" onclick="toast('F-250 → detail')">
+              <div class="wci-dot" style="background:var(--status-green)"></div>
+              <div class="wci-content"><div class="wci-name">F-250 Crew Cab</div><div class="wci-sub">Truck</div></div>
+              <div class="wci-right"><div class="wci-value">3.2K mi</div><div class="wci-meta">In transit</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="wc-item" onclick="toast('Compactor → detail')">
+              <div class="wci-dot" style="background:var(--status-red)"></div>
+              <div class="wci-content"><div class="wci-name">Plate Compactor</div><div class="wci-sub">In maintenance</div></div>
+              <div class="wci-right"><div class="wci-value" style="color:var(--status-red)">Overdue</div><div class="wci-meta">Est. 2 days</div></div>
+              <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 2. PROJECTS — Dense Card Grid ========== -->
+<div class="section-panel" id="section-projects">
+  <div class="section-heading">Projects — Dense 2-Column Cards</div>
+  <div class="section-desc">Full names (2-line wrap instead of truncation), inline meta, no wasted vertical stacking. Accent bars replace status badges for visual scanning.</div>
+
+  <div class="issue-callout fix">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+    <span><strong>Fixed:</strong> 3-col → 2-col grid. Names allowed to wrap 2 lines. EST VALUE / BUDGET / ZONES from stacked labels → inline row. START/TARGET row removed when empty. Card padding reduced from 20px → 12px.</span>
+  </div>
+
+  <div class="device-frame">
+    <div class="device-label">Tablet — 1024px &middot; Card View</div>
+    <div class="app-shell">
+      <div class="mock-sidebar">
+        <div class="ms-logo">TF</div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ms-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      </div>
+
+      <div class="mock-main">
+        <div class="projects-header">
+          <div class="ph-left"><span class="ph-title">Projects</span><span class="ph-count">8</span></div>
+          <div class="ph-actions">
+            <div class="ph-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> Search...</div>
+            <button class="btn-primary-sm">+ New</button>
+          </div>
+        </div>
+
+        <div class="view-toggle-bar">
+          <div class="vt-pills">
+            <button class="vt-pill active">Cards</button>
+            <button class="vt-pill" onclick="showSection('list')">List</button>
+            <button class="vt-pill">Board</button>
+          </div>
+          <div class="sort-pill">Sort: Recent <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+        </div>
+
+        <div class="project-grid">
+          <div class="pcard" data-status="blue" onclick="toast('Test Zone → detail')">
+            <div class="pc-row1"><div class="pc-name">Test Zone Project</div><div class="pc-badge blue">In Progress</div></div>
+            <div class="pc-address">300 Detroit Street, Ann Arbor, MI</div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Value</span> <span class="pc-meta-value">$0</span></div><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$400K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">2</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:38%"></div></div><span class="pc-pct">3/8</span></div>
+          </div>
+
+          <div class="pcard" data-status="blue" onclick="toast('Backyard Patio → detail')">
+            <div class="pc-row1"><div class="pc-name">Backyard Patio with Firepit</div><div class="pc-badge blue">In Progress</div></div>
+            <div class="pc-address">3456 California Ave, St. Louis, MO</div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:13%"></div></div><span class="pc-pct">1/8</span></div>
+          </div>
+
+          <div class="pcard" data-status="blue" onclick="toast('Commercial Parking → detail')">
+            <div class="pc-row1"><div class="pc-name">Commercial Parking Lot Landscape</div><div class="pc-badge blue">In Progress</div></div>
+            <div class="pc-address">6445 Richfield Pkwy, Richfield, MN</div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:50%"></div></div><span class="pc-pct">4/8</span></div>
+          </div>
+
+          <div class="pcard" data-status="blue" onclick="toast('Retaining Wall → detail')">
+            <div class="pc-row1"><div class="pc-name">Retaining Wall with Drainage</div><div class="pc-badge blue">In Progress</div></div>
+            <div class="pc-address">781 Bayard Ave, Saint Paul, MN</div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4.8K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:13%"></div></div><span class="pc-pct">1/8</span></div>
+          </div>
+
+          <div class="pcard" data-status="gray" onclick="toast('Commercial Parking Lot → detail')">
+            <div class="pc-row1"><div class="pc-name">Commercial Parking Lot Landscape</div><div class="pc-badge gray">Planning</div></div>
+            <div class="pc-address">Bemis Lane, Levant, ME 04456</div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div><span class="pc-pct">0/8</span></div>
+          </div>
+
+          <div class="pcard" data-status="gray" onclick="toast('Pohl Front Yard → detail')">
+            <div class="pc-row1"><div class="pc-name">Pohl Front Yard</div><div class="pc-badge gray">Planning</div></div>
+            <div class="pc-address">603 Hamline Ave S, Saint Paul, MN</div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">1</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div><span class="pc-pct">0/8</span></div>
+          </div>
+
+          <div class="pcard" data-status="gray" onclick="toast('Backyard Patio with Firepit → detail')">
+            <div class="pc-row1"><div class="pc-name">Backyard Patio with Firepit</div><div class="pc-badge gray">Planning</div></div>
+            <div class="pc-address">6701 Richfield Pkwy, Richfield, MN</div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$8.5K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div><span class="pc-pct">0/8</span></div>
+          </div>
+
+          <div class="pcard" data-status="blue" onclick="toast('Retaining Wall with Drainage → detail')">
+            <div class="pc-row1"><div class="pc-name">Retaining Wall with Drainage</div><div class="pc-badge blue">In Progress</div></div>
+            <div class="pc-address">124 Lexington Blvd, Delaware, OH</div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4.8K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:88%"></div></div><span class="pc-pct">7/8</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3. LIST VIEW ========== -->
+<div class="section-panel" id="section-list">
+  <div class="section-heading">Projects — List View (Recommended for Tablet)</div>
+  <div class="section-desc">Maximum information density. Full project names, budget, and progress visible in a single scannable row. Best view for 8+ projects on tablet.</div>
+
+  <div class="issue-callout fix">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+    <span><strong>Recommended:</strong> Add a List view toggle alongside Cards and Board. At tablet scale, List should be the default — it shows more projects per screen with zero truncation.</span>
+  </div>
+
+  <div class="device-frame">
+    <div class="device-label">Tablet — 1024px &middot; List View</div>
+    <div class="app-shell">
+      <div class="mock-sidebar">
+        <div class="ms-logo">TF</div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ms-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      </div>
+
+      <div class="mock-main">
+        <div class="projects-header">
+          <div class="ph-left"><span class="ph-title">Projects</span><span class="ph-count">8</span></div>
+          <div class="ph-actions">
+            <div class="ph-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> Search...</div>
+            <button class="btn-primary-sm">+ New</button>
+          </div>
+        </div>
+
+        <div class="view-toggle-bar">
+          <div class="vt-pills">
+            <button class="vt-pill" onclick="showSection('projects')">Cards</button>
+            <button class="vt-pill active">List</button>
+            <button class="vt-pill">Board</button>
+          </div>
+          <div class="sort-pill">Sort: Recent <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+        </div>
+
+        <div class="project-list">
+          <div class="plist-item" data-status="blue" onclick="toast('Test Zone → detail')">
+            <div class="pli-content"><div class="pli-name">Test Zone Project</div><div class="pli-addr">300 Detroit Street, Ann Arbor, MI</div></div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$400K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">2</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:38%;background:var(--status-green)"></div></div><div class="pli-pct">3/8</div></div></div>
+            <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="plist-item" data-status="blue" onclick="toast('Backyard Patio with Firepit → detail')">
+            <div class="pli-content"><div class="pli-name">Backyard Patio with Firepit</div><div class="pli-addr">3456 California Avenue, St. Louis, MO</div></div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:13%;background:var(--status-green)"></div></div><div class="pli-pct">1/8</div></div></div>
+            <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="plist-item" data-status="blue" onclick="toast('Commercial Parking Lot Landscape → detail')">
+            <div class="pli-content"><div class="pli-name">Commercial Parking Lot Landscape</div><div class="pli-addr">6445 Richfield Parkway, Richfield, MN</div></div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:50%;background:var(--status-green)"></div></div><div class="pli-pct">4/8</div></div></div>
+            <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="plist-item" data-status="blue" onclick="toast('Retaining Wall with Drainage → detail')">
+            <div class="pli-content"><div class="pli-name">Retaining Wall with Drainage</div><div class="pli-addr">781 Bayard Avenue, Saint Paul, MN</div></div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$4.8K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:13%;background:var(--status-green)"></div></div><div class="pli-pct">1/8</div></div></div>
+            <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="plist-item" data-status="amber" onclick="toast('Commercial Parking Lot Landscape → detail')">
+            <div class="pli-content"><div class="pli-name">Commercial Parking Lot Landscape</div><div class="pli-addr">Bemis Lane, Levant, Maine 04456</div></div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div></div>
+            <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="plist-item" data-status="amber" onclick="toast('Pohl Front Yard → detail')">
+            <div class="pli-content"><div class="pli-name">Pohl Front Yard</div><div class="pli-addr">603 Hamline Avenue South, Saint Paul, MN</div></div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$4K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">1</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div></div>
+            <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="plist-item" data-status="amber" onclick="toast('Backyard Patio with Firepit → detail')">
+            <div class="pli-content"><div class="pli-name">Backyard Patio with Firepit</div><div class="pli-addr">6701 Richfield Parkway, Richfield, MN</div></div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$8.5K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div></div>
+            <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="plist-item" data-status="blue" onclick="toast('Retaining Wall with Drainage → detail')">
+            <div class="pli-content"><div class="pli-name">Retaining Wall with Drainage</div><div class="pli-addr">124 Lexington Boulevard, Delaware, OH</div></div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$4.8K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:88%;background:var(--status-green)"></div></div><div class="pli-pct">7/8</div></div></div>
+            <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 4. SPACING GUIDE ========== -->
+<div class="section-panel" id="section-spacing">
+  <div class="section-heading">Spacing & Density Guide</div>
+  <div class="section-desc">Reference for implementing density changes across all pages. The core pattern: reduce card padding, use border-based grids instead of gap-based grids, and go horizontal with metadata.</div>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+    <div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:var(--status-red);">Before — Current Issues</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        &bull; Card padding: 20px (too airy)<br>
+        &bull; Grid gaps: 16px (wastes space)<br>
+        &bull; KPI cards: full-height standalone<br>
+        &bull; Meta layout: stacked vertically<br>
+        &bull; Project names: truncated at 1 line<br>
+        &bull; 3-column grid on tablet (too tight)<br>
+        &bull; Map: zoomed to continent<br>
+        &bull; Empty START/TARGET rows showing
+      </div>
+    </div>
+    <div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:var(--status-green);">After — Fixes Applied</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        &bull; Card padding: 12-14px (tight but readable)<br>
+        &bull; Grid: border-separated (0 gap, border dividers)<br>
+        &bull; KPIs: inline strip, 4-across, ~56px tall<br>
+        &bull; Meta layout: inline horizontal row<br>
+        &bull; Project names: 2-line wrap with clamp<br>
+        &bull; 2-column grid on tablet + list view option<br>
+        &bull; Map: zoomed to metro/project cluster<br>
+        &bull; Empty fields hidden, not displayed
+      </div>
+    </div>
+  </div>
+
+  <div style="font-size:14px;font-weight:700;margin-bottom:12px;">Density Tokens — Implementation Reference</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+    <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Widget Item</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+        Padding: 8px 14px<br>Min height: 44px<br>Icon: 6px dot<br>Name: 13px/600<br>Sub: 11px tertiary
+      </div>
+    </div>
+    <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Project Card</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+        Padding: 12px 14px<br>Name: 14px/700 (2-line clamp)<br>Accent: 3px left bar<br>Meta: inline, 12px<br>Progress: 4px bar
+      </div>
+    </div>
+    <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">KPI Strip</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+        Padding: 10px 12px<br>Value: 20px/800<br>Label: 11px/600<br>Sparkline: 20px tall<br>Border-separated
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;padding:16px;background:var(--brand-primary-bg);border:1px solid var(--brand-primary);border-radius:var(--radius-md);">
+    <div style="font-size:14px;font-weight:700;color:var(--brand-primary);margin-bottom:6px;">Key Principle: Border Grids vs Gap Grids</div>
+    <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+      Instead of <code style="background:var(--surface-bg);padding:2px 6px;border-radius:4px;font-size:12px;">display: grid; gap: 16px</code>, use <code style="background:var(--surface-bg);padding:2px 6px;border-radius:4px;font-size:12px;">gap: 0</code> with <code style="background:var(--surface-bg);padding:2px 6px;border-radius:4px;font-size:12px;">border-bottom</code> and <code style="background:var(--surface-bg);padding:2px 6px;border-radius:4px;font-size:12px;">border-right</code> on children. This eliminates visible whitespace between items while maintaining visual separation. The map and widgets already share borders, creating a dense, app-like feel instead of a dashboard-with-cards feel.
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="nav-toast" id="navToast"></div>
+
+<script>
+function showSection(id) {
+  document.querySelectorAll('.section-panel').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.querySelector('.ctrl-btn');
+  if (html.getAttribute('data-theme') === 'dark') {
+    html.setAttribute('data-theme', 'light');
+    btn.textContent = '🌙';
+  } else {
+    html.setAttribute('data-theme', 'dark');
+    btn.textContent = '☀️';
+  }
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('navToast');
+  t.textContent = '→ ' + msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function togglePin(pin) {
+  const wasOpen = pin.classList.contains('open');
+  document.querySelectorAll('.cpin').forEach(p => p.classList.remove('open'));
+  if (!wasOpen) pin.classList.add('open');
+  if (event) event.stopPropagation();
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.cpin').forEach(p => p.classList.remove('open'));
+});
+</script>
+
+</body>
+</html>

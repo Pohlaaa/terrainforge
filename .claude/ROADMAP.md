@@ -130,12 +130,17 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 |--------|-----------|-------|
 | 14 | Cleanup | File consolidation, orphaned code removal (**COMPLETE**) |
 | 15/15.5 | M1 | Scheduling module (manager side) + hotfix (**COMPLETE**) |
-| 16 | M1 | Bug fixes + scheduling enhancements + remaining manager polish |
-| 17-19 | M1 | Crew app foundation — auth, today's schedule, work order checklist, photo upload |
-| 20 | M1 | Manager ↔ crew integration — real-time sync, status signals, demo polish |
-| 21-22 | M2 | Onboarding flow, empty states, settings, help tooltips |
-| 23-24 | M3 | Stripe completion, landing page, deploy, outreach |
-| 25+ | M4 | Time tracking, client portal, CSV, invoicing, crew app enhancements |
+| 16/16.5 | M1 | Bug fixes, ENUM→TEXT migration, scheduling enhancements (**COMPLETE**) |
+| 17-18 | M1 | Crew app — route tree, schedule, checklist, photo proof, status signals (**COMPLETE**) |
+| 19-20 | M1 | UI polish, demo readiness, manager-crew integration (**COMPLETE**) |
+| 21 | M1 | Layout shell — icon rail + top nav bar (**COMPLETE**) |
+| 22 | M1 | Navigation consolidation — 5 groups with sub-tabs (**COMPLETE**) |
+| 23 | M1 | Crew PIN auth — PIN login, org shortcode (**COMPLETE**) |
+| 24 | M1 | Dashboard + Projects v7 redesign — KPI strip, dense cards, list view (**COMPLETE**) |
+| 25/25.5/25.6 | M1 | Polish + demo prep — sidebar, widgets, map, KPI fixes (**COMPLETE**) |
+| 26-27 | M2 | Onboarding flow, empty states, settings, help tooltips |
+| 28-29 | M3 | Stripe completion, landing page, deploy, outreach |
+| 30+ | M4 | Time tracking, client portal, CSV, invoicing, crew app enhancements |
 
 *Sprint numbers are estimates. Actual scope depends on sprint outcomes and user feedback.*
 
@@ -150,6 +155,10 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 2026-03-29 | Added guided onboarding as Milestone 2 | First-run experience is a blocker for self-serve signups; can't scale with demo-only acquisition |
 | 2026-03-29 | Crew-facing app added to Milestone 1 | Manager schedules, crew executes — the two sides complete the loop. A scheduling tool without crew visibility is half a product. Same React app, separate route tree (`/crew/*`), shared Supabase backend. |
 | 2026-03-29 | Sprint 15/15.5 shipped scheduling | Manager-side scheduling complete. Weekly grid, drag-and-drop, dashboard widget, project integration, Supabase CRUD, conflict detection. 3 pre-existing bugs discovered during regression testing (materials, equipment, work orders). |
+| 2026-03-30 | M1 extended: Sprints 21-25 for UI overhaul, nav consolidation, crew auth | App was feature-complete but messy — needed v7 design, simplified nav, real crew auth before demo |
+| 2026-03-30 | Navigation consolidated to 5 groups | Dashboard, Jobs, Resources, Manifest, Settings. Reduces 9+ sidebar items to 5 top-level. |
+| 2026-03-30 | Crew auth: same app, role-based routing with PIN | Single URL/deploy. /crew/* route tree. PIN login for crew, Supabase auth for managers. |
+| 2026-03-30 | M1 complete: Sprints 21-25.6 all shipped | UI overhaul, nav consolidation, crew PIN auth, v7 redesign, widget polish all done. Ready for gate evaluation. |
 
 ---
 

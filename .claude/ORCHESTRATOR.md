@@ -258,16 +258,30 @@ Full sprint archive in `.claude/archive/SPRINT_HISTORY.md`. Key milestones:
 | 14 | Cleanup | File consolidation, orphaned code removal, archive organization |
 | 15 | Scheduling (M1) | Weekly schedule page, drag-and-drop, dashboard widget, project integration, Supabase CRUD |
 | 15.5 | Hotfix | Widget localStorage migration, conflict indicator fix, occupied cell assignment |
+| 16 | Fix + Polish | org_id filters, schedule edit modal, equipment assignment, lazy-load Debug |
+| 16.5 | Hotfix | ENUM→TEXT migration, equipment date nulls, Work Orders hooks fix, sign-in data loading race |
+| 17 | Crew App (M1) | Crew-facing route tree, CrewLayout, today's schedule, work order checklist, status signals, crew RLS |
+| 18 | Crew Persistence (M1) | Checklist persistence, photo proof uploads, manager schedule status dots + progress counts |
+| 19 | UI Polish (M1) | Card shadows, border-radius standardization, focus rings, PageHeader adoption, touch targets |
+| 20 | Demo Ready (M1) | Manager photo gallery, active project indicators, Settings polish, crew map links |
+| 21 | Layout Shell (M1) | 64px icon rail + top nav bar, MobileSidebar, v7 radius tokens |
+| 22 | Nav Consolidation (M1) | 5 nav groups, SubTabBar, simplified TopNav dropdown |
+| 23 | Crew PIN Auth (M1) | PIN login, org shortcode, CrewLogin page, 8-hour sessions, migration 009 |
+| 24 | v7 Redesign (M1) | Dashboard KPI strip, Projects dense 2-col cards + list view toggle |
+| 25 | Polish + Demo Prep (M1) | Responsive expanded sidebar, merged customize, widget 2-col, map fixes |
+| 25.5 | Hotfix | KPI strip shows all, widget grid 2-col, map hover popups, sidebar sub-tabs |
+| 25.6 | Hotfix | KPI compute fixes, map scroll re-enabled, widget half/full size toggle |
 
 ---
 
 ## 9. Current State (update after each sprint)
 
-**Last completed**: Sprint 15.5 (all tests passing)
-**Milestone**: M1 "Worth the Demo" — ACTIVE
-**All features working**: Auth, projects, zones, materials, crew, equipment, work orders, billing, PDF export, AI creation, maps, dashboard customization, **weekly scheduling with drag-and-drop**
-**Pre-existing bugs**: Material add, equipment add, and work orders with active project all fail with in-app errors (likely RLS — see CONSIDERATIONS.md)
-**Next**: Sprint 16 — planning now
+**Last completed**: Sprint 25 + hotfixes 25.5/25.6 (all tests passing)
+**Milestone**: M1 "Worth the Demo" — COMPLETE (pending gate evaluation)
+**All features working**: Auth, projects, zones, materials, crew, equipment, work orders, billing, PDF export, AI creation, maps, dashboard KPI strip, widget grid (2-col with resize), weekly scheduling, **crew app with PIN auth + checklist + photo proof + status signals**, **v7 UI overhaul (icon rail, top nav, sub-tabs, dense cards, list view)**
+**No known blocking bugs.**
+**Key decisions made (2026-03-30)**: Navigation consolidated to 5 groups. Crew auth = same app, role-based routing with PIN. Schedule under Jobs group.
+**Next**: M1 gate evaluation → M2 (Onboarding & Trial Experience)
 **Workflow**: VSCode Claude Code for execution, Cowork for orchestration. Full lifecycle documented in EXECUTION.md.
 
 ---
