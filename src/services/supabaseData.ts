@@ -397,7 +397,7 @@ export async function fetchMaterials(orgId: string): Promise<Material[]> {
     return (data || []).map(material => {
       const m = toCamelCase(material) as any
       // Map DB column names → frontend field names
-      m.unit = m.unitType ?? m.unit
+      // After migration 006: DB column is `unit` (TEXT), no longer `unit_type` (ENUM)
       m.reserveOverride = m.reserveOverridePct ?? m.reserveOverride ?? null
       return m as Material
     })
@@ -413,7 +413,7 @@ export async function createMaterial(material: Omit<Material, 'id'>, id: string,
     snakeData.id = id
     snakeData.org_id = orgId
     // Field fixups: frontend name → DB column name
-    if ('unit' in snakeData) { snakeData.unit_type = snakeData.unit; delete snakeData.unit }
+    // After migration 006: DB column is `unit` (TEXT), matches frontend — no rename needed
     if ('reserve_override' in snakeData) { snakeData.reserve_override_pct = snakeData.reserve_override; delete snakeData.reserve_override }
 
     const { data, error } = await supabase
@@ -435,7 +435,7 @@ export async function updateMaterial(id: string, updates: Partial<Material>): Pr
   try {
     const snakeData = toSnakeCase(updates) as any
     // Field fixups
-    if ('unit' in snakeData) { snakeData.unit_type = snakeData.unit; delete snakeData.unit }
+    // After migration 006: DB column is `unit` (TEXT), matches frontend — no rename needed
     if ('reserve_override' in snakeData) { snakeData.reserve_override_pct = snakeData.reserve_override; delete snakeData.reserve_override }
 
     const { data, error } = await supabase
