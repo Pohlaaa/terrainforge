@@ -54,7 +54,7 @@ function App() {
                     <Route path="/work-orders" element={<ErrorBoundary><WorkOrders /></ErrorBoundary>} />
                     <Route path="/price-research" element={<ErrorBoundary><PriceResearch /></ErrorBoundary>} />
                     <Route path="/schedule" element={<ErrorBoundary><Schedule /></ErrorBoundary>} />
-                    <Route path="/crew" element={<ErrorBoundary><CrewManager /></ErrorBoundary>} />
+                    <Route path="/crew-manager" element={<ErrorBoundary><CrewManager /></ErrorBoundary>} />
                     <Route path="/equipment" element={<ErrorBoundary><EquipmentManager /></ErrorBoundary>} />
                     <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
                     <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
