@@ -36,6 +36,54 @@ export interface Project {
     equipment: boolean;
   };
   zones: Zone[];
+
+  // ── M1.5 Project Intelligence fields (all nullable) ──────────────────────
+
+  // Step 1: Client info (inline)
+  clientName?: string | null;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+  propertyType?: PropertyType | null;
+
+  // Project classification
+  projectType?: ProjectType | null;
+  scopeSize?: ScopeSize | null;
+  description?: string | null;
+
+  // Step 2: Site intelligence
+  climateZone?: string | null;
+  soilType?: string | null;
+  permitZone?: string | null;
+  hoaFlag?: boolean;
+  slopeGrade?: string | null;
+  existingVegetation?: string | null;
+  sunExposure?: SunExposure | null;
+  drainagePattern?: string | null;
+
+  // Access & logistics
+  gateCode?: string | null;
+  parkingRestrictions?: string | null;
+  permittedHours?: string | null;
+  utilityLocations?: string | null;
+  hoaRules?: string | null;
+
+  // Step 5: Budget breakdown
+  laborBudget?: number | null;
+  materialsBudget?: number | null;
+  equipmentBudget?: number | null;
+  subcontractorBudget?: number | null;
+  overheadPct?: number | null;
+  clientQuote?: number | null;
+  profitMargin?: number | null;
+  estimatedHours?: number | null;
+
+  // Step 6: Compliance
+  complianceNotes?: string | null;
+  permitStatus?: PermitStatus | null;
+
+  // Step 7: Wizard state
+  wizardStep?: number;
+  wizardCompletedAt?: string | null;
 }
 
 export interface Zone {
@@ -407,3 +455,63 @@ export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled'
 
 /** Mirrors the subscription_tier column on the organizations table. */
 export type SubscriptionTier = 'starter' | 'pro' | 'business';
+
+// ── Project Intelligence (M1.5) ─────────────────────────────────────────────
+
+export type ProjectType =
+  | 'full_install' | 'renovation' | 'hardscape' | 'softscape'
+  | 'drainage' | 'irrigation' | 'maintenance' | 'mixed';
+
+export type ScopeSize = 'small' | 'medium' | 'large' | 'commercial';
+
+export type PropertyType =
+  | 'residential' | 'commercial' | 'hoa' | 'municipal' | 'multi_family' | 'other';
+
+export type SunExposure = 'full_sun' | 'partial_shade' | 'full_shade' | 'mixed';
+
+export type PermitStatus = 'not_started' | 'applied' | 'approved' | 'denied' | 'not_required';
+
+export type TaskPhase =
+  | 'demo_prep' | 'rough_grade' | 'hardscape' | 'softscape'
+  | 'irrigation' | 'lighting' | 'cleanup_punchlist' | 'custom';
+
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'blocked';
+
+export type SiteConditionType =
+  | 'slope' | 'soil' | 'drainage' | 'vegetation' | 'sun_exposure'
+  | 'utilities' | 'access' | 'hazard' | 'custom';
+
+export interface ProjectTask {
+  id: string;
+  orgId: string;
+  projectId: string;
+  zoneId: string | null;
+  name: string;
+  description: string | null;
+  phase: TaskPhase;
+  sequenceNumber: number;
+  status: TaskStatus;
+  assignedCrewId: string | null;
+  estimatedHours: number | null;
+  actualHours: number | null;
+  dependsOn: string[];
+  scheduledDate: string | null;
+  completedAt: string | null;
+  aiGenerated: boolean;
+  aiConfidence: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectSiteCondition {
+  id: string;
+  orgId: string;
+  projectId: string;
+  conditionType: SiteConditionType;
+  label: string;
+  value: string;
+  aiInferred: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
