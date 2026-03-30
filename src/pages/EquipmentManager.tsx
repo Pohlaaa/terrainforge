@@ -374,7 +374,7 @@ export const EquipmentManager: React.FC = () => {
           { label: 'Maintenance', value: stats.maintenance, color: 'text-[var(--amber-l)]' },
           { label: 'Out of Service', value: stats.outOfService, color: 'text-[var(--red-l)]' },
         ].map((stat, idx) => (
-          <div key={idx} className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[12px]">
+          <div key={idx} className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[12px] card-shadow">
             <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[6px]">
               {stat.label}
             </div>

@@ -204,7 +204,7 @@ export const WorkOrders: React.FC = () => {
       </div>
 
       {/* ── Project header ────────────────────────────────────────────────── */}
-      <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px] mb-[20px]">
+      <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] p-[16px] mb-[20px] card-shadow">
         <div className="flex items-start justify-between gap-[16px] flex-wrap mb-[12px]">
           <div>
             <h2 className="font-serif text-[20px] text-[var(--text)] mb-[2px]">{project.name}</h2>
@@ -251,7 +251,7 @@ export const WorkOrders: React.FC = () => {
             return (
               <div
                 key={zone.id}
-                className={`border rounded-[10px] overflow-hidden transition-colors duration-200 ${
+                className={`border rounded-[10px] overflow-hidden transition-colors duration-200 card-shadow ${
                   allDone
                     ? 'border-[var(--green-l)] bg-[rgba(45,106,79,.06)]'
                     : 'border-[var(--border)] bg-[var(--surface2)]'

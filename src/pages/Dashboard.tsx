@@ -429,7 +429,7 @@ export const Dashboard: React.FC = () => {
         {/* LEFT COLUMN: KPIs + Customize */}
         <div className="flex flex-col gap-[12px]">
           {projects.length === 0 ? (
-            <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px' }}>
+            <div className="card-shadow" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '10px' }}>
               <EmptyState
                 icon={<ProjectsIcon />}
                 title="Welcome to TerrainForge"

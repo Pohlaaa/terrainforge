@@ -273,7 +273,7 @@ export const CrewManager: React.FC = () => {
             return (
               <div
                 key={member.id}
-                className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden flex flex-col"
+                className="bg-[var(--surface2)] border border-[var(--border)] rounded-[10px] overflow-hidden flex flex-col card-shadow"
               >
                 {/* Card header */}
                 <div className="px-[16px] py-[13px] border-b border-[var(--border)] flex items-center justify-between gap-[10px]">

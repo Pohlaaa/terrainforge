@@ -183,8 +183,14 @@ body {
   background: linear-gradient(180deg, #0F172A 0%, #0A1120 100%);
 }
 
+/* Consistent shadow for all card containers */
+.card-shadow {
+  box-shadow: var(--shadow-card);
+}
+
 /* Consistent hover effect for all clickable cards */
 .card-hover {
+  box-shadow: var(--shadow-card);
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
