@@ -379,9 +379,9 @@ export const MaterialLibrary: React.FC = () => {
 
   // ── Tabs ─────────────────────────────────────────────────────────────────────
   const tabs = [
-    { id: 'library', label: 'Material Library' },
     { id: 'inventory', label: `Inventory On Hand${lowStockCount > 0 ? ` (${lowStockCount} low)` : ''}` },
     { id: 'suppliers', label: 'Suppliers' },
+    { id: 'library', label: 'Material Library' },
   ];
 
   const adjustingMaterial = adjustMaterialId ? materials.find(m => m.id === adjustMaterialId) : null;
