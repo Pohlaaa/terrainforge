@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
-import type { ScheduleEntry } from '@/types';
+import { useEquipmentStore } from '@/stores/equipmentStore';
+import type { ScheduleEntry, ScheduleEntryStatus } from '@/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -76,31 +77,46 @@ function StatusBadge({ status }: { status: ScheduleEntry['status'] }) {
 interface AssignModalProps {
   crewMemberId: string;
   date: string;
+  existingEntry?: ScheduleEntry | null;
   onClose: () => void;
 }
 
-const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, onClose }) => {
+const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, existingEntry, onClose }) => {
   const { projects } = useProjectStore();
-  const { addEntry } = useScheduleStore();
-  const [projectId, setProjectId] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [notes, setNotes] = useState('');
+  const { equipment } = useEquipmentStore();
+  const { addEntry, updateEntry } = useScheduleStore();
+  const [projectId, setProjectId] = useState(existingEntry?.projectId ?? '');
+  const [startTime, setStartTime] = useState(existingEntry?.startTime ?? '');
+  const [endTime, setEndTime] = useState(existingEntry?.endTime ?? '');
+  const [notes, setNotes] = useState(existingEntry?.notes ?? '');
+  const [status, setStatus] = useState<ScheduleEntryStatus>(existingEntry?.status ?? 'scheduled');
+  const [equipmentId, setEquipmentId] = useState<string | null>(existingEntry?.equipmentId ?? null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleAssign() {
+  async function handleSubmit() {
     if (!projectId) return;
     setSubmitting(true);
-    await addEntry({
-      projectId,
-      crewMemberId,
-      equipmentId: null,
-      scheduledDate: date,
-      startTime: startTime || null,
-      endTime: endTime || null,
-      notes,
-      status: 'scheduled',
-    });
+    if (existingEntry) {
+      await updateEntry(existingEntry.id, {
+        projectId,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        notes,
+        status,
+        equipmentId,
+      });
+    } else {
+      await addEntry({
+        projectId,
+        crewMemberId,
+        equipmentId,
+        scheduledDate: date,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        notes,
+        status: 'scheduled',
+      });
+    }
     setSubmitting(false);
     onClose();
   }
@@ -119,7 +135,7 @@ const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, onClose }
         borderRadius: '12px', padding: '24px', width: '380px', maxWidth: '90vw',
       }}>
         <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>
-          Assign to Schedule
+          {existingEntry ? 'Edit Assignment' : 'Assign to Schedule'}
         </div>
         <div style={{ fontSize: '12px', color: 'var(--text-3)', marginBottom: '20px' }}>
           {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -141,6 +157,25 @@ const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, onClose }
               <option value="">— Select a project —</option>
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
+              Equipment (optional)
+            </label>
+            <select
+              value={equipmentId ?? ''}
+              onChange={e => setEquipmentId(e.target.value || null)}
+              style={{
+                width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+                borderRadius: '8px', color: 'var(--text)', padding: '9px 12px', fontSize: '13px', outline: 'none',
+              }}
+            >
+              <option value="">— None —</option>
+              {equipment.filter(eq => eq.status === 'available' || eq.id === existingEntry?.equipmentId).map(eq => (
+                <option key={eq.id} value={eq.id}>{eq.name} ({eq.type})</option>
               ))}
             </select>
           </div>
@@ -192,6 +227,27 @@ const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, onClose }
               placeholder="Task notes..."
             />
           </div>
+
+          {existingEntry && (
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
+                Status
+              </label>
+              <select
+                value={status}
+                onChange={e => setStatus(e.target.value as ScheduleEntryStatus)}
+                style={{
+                  width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: '8px', color: 'var(--text)', padding: '9px 12px', fontSize: '13px', outline: 'none',
+                }}
+              >
+                <option value="scheduled">Scheduled</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
@@ -205,7 +261,7 @@ const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, onClose }
             Cancel
           </button>
           <button
-            onClick={handleAssign}
+            onClick={handleSubmit}
             disabled={!projectId || submitting}
             style={{
               padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
@@ -213,7 +269,7 @@ const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, onClose }
               opacity: !projectId ? 0.5 : 1,
             }}
           >
-            {submitting ? 'Assigning…' : 'Assign'}
+            {submitting ? (existingEntry ? 'Saving…' : 'Assigning…') : (existingEntry ? 'Save' : 'Assign')}
           </button>
         </div>
       </div>
@@ -228,6 +284,7 @@ export const Schedule: React.FC = () => {
   const { entries, moveEntry, deleteEntry, getEntriesForCrewMember, hasConflict } = useScheduleStore();
   const { projects } = useProjectStore();
   const { crew } = useCrewStore();
+  const { equipment } = useEquipmentStore();
 
   // Week navigation
   const [weekStart, setWeekStart] = useState(() => isoDate(getMonday(new Date())));
@@ -235,6 +292,7 @@ export const Schedule: React.FC = () => {
 
   // Modal state
   const [modalTarget, setModalTarget] = useState<{ crewMemberId: string; date: string } | null>(null);
+  const [editEntry, setEditEntry] = useState<ScheduleEntry | null>(null);
 
   // Drag state
   const [dragEntryId, setDragEntryId] = useState<string | null>(null);
@@ -302,6 +360,11 @@ export const Schedule: React.FC = () => {
   const projectMap = useMemo(
     () => Object.fromEntries(projects.map(p => [p.id, p.name])),
     [projects]
+  );
+
+  const equipmentMap = useMemo(
+    () => Object.fromEntries(equipment.map(eq => [eq.id, eq.name])),
+    [equipment]
   );
 
   return (
@@ -499,7 +562,8 @@ export const Schedule: React.FC = () => {
                                 draggable
                                 onDragStart={(e) => handleDragStart(e, entry.id)}
                                 onDragEnd={handleDragEnd}
-                                title={`${projName}${entry.startTime ? ' · ' + entry.startTime : ''}${entry.notes ? '\n' + entry.notes : ''}`}
+                                onClick={(e) => { e.stopPropagation(); setEditEntry(entry); setModalTarget({ crewMemberId: entry.crewMemberId, date: entry.scheduledDate }); }}
+                                title={`${projName}${equipmentMap[entry.equipmentId ?? ''] ? ' · ' + equipmentMap[entry.equipmentId ?? ''] : ''}${entry.startTime ? ' · ' + entry.startTime : ''}${entry.notes ? '\n' + entry.notes : ''}`}
                                 style={{
                                   background: colors.bg,
                                   border: `1px solid ${colors.border}`,
@@ -565,12 +629,13 @@ export const Schedule: React.FC = () => {
         </div>
       )}
 
-      {/* Assignment Modal */}
+      {/* Assignment / Edit Modal */}
       {modalTarget && (
         <AssignModal
           crewMemberId={modalTarget.crewMemberId}
           date={modalTarget.date}
-          onClose={() => setModalTarget(null)}
+          existingEntry={editEntry}
+          onClose={() => { setModalTarget(null); setEditEntry(null); }}
         />
       )}
 
