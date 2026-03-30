@@ -278,7 +278,22 @@ const Billing: React.FC = () => {
         </div>
       )}
 
-      {/* Trial ending soon */}
+      {/* Trial status — informational (> 7 days remaining) */}
+      {trialActive && !showUrgentBanner && (
+        <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[var(--status-blue-bg)] border border-[rgba(37,99,235,.3)] flex items-center gap-[12px]">
+          <span className="text-[18px] flex-shrink-0">ℹ️</span>
+          <div>
+            <div className="text-[13px] font-[600] text-[var(--status-blue)]">
+              You're on a <strong>14-day free trial</strong>{daysRemaining !== null ? ` — ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining` : ''}
+            </div>
+            <div className="text-[11px] text-[var(--text-3)] mt-[2px]">
+              Choose a plan below to continue after your trial ends.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trial ending soon (urgent) */}
       {showUrgentBanner && (
         <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[rgba(251,146,60,.1)] border border-[rgba(251,146,60,.4)] flex items-center gap-[12px]">
           <span className="text-[18px] flex-shrink-0">⚠️</span>
@@ -289,6 +304,26 @@ const Billing: React.FC = () => {
             <div className="text-[11px] text-[var(--text-3)] mt-[2px]">
               Subscribe below to keep access to all your projects and data.
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active subscription */}
+      {subStatus === 'active' && (
+        <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[var(--status-green-bg)] border border-[rgba(22,163,74,.3)] flex items-center gap-[12px]">
+          <span className="text-[18px] flex-shrink-0">✅</span>
+          <div className="text-[13px] font-[600] text-[var(--status-green)]">
+            Your <strong className="capitalize">{subTier}</strong> plan is active.
+          </div>
+        </div>
+      )}
+
+      {/* Canceled */}
+      {subStatus === 'canceled' && (
+        <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[var(--status-amber-bg)] border border-[rgba(245,158,11,.3)] flex items-center gap-[12px]">
+          <span className="text-[18px] flex-shrink-0">⚠️</span>
+          <div className="text-[13px] font-[600] text-[var(--status-amber)]">
+            Your subscription has been canceled. Choose a plan below to reactivate.
           </div>
         </div>
       )}
