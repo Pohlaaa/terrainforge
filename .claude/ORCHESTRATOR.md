@@ -71,9 +71,10 @@ Three active sessions, each with a distinct role:
 ### Charlie's role in the loop
 - Merges PRs in PowerShell: `git merge <branch>`
 - Runs SQL migrations in Supabase SQL Editor
-- Tests locally: `npm run dev` → `localhost:3000`
-- Deploys to prod: `git push origin HEAD:main`
+- Tests locally: `npm run dev` → `localhost:5173`
+- Deploys to prod: `git push origin main`
 - Reports test results back to Orchestrator
+- **After Code finishes**: Orchestrator always provides the full post-sprint command block (merge + build + launch) — Charlie copy-pastes it. See EXECUTION.md Phase D.
 
 ---
 
@@ -113,7 +114,7 @@ Template: `.claude/SPRINT_TEMPLATE.md`
 
 ### Deploy Rules
 - Auto-deploy is **OFF** on Netlify (build minute budget renews 4/19)
-- ALWAYS test locally first: `npm run dev` → `localhost:3000` (free, costs zero build minutes)
+- ALWAYS test locally first: `npm run dev` → `localhost:5173` (free, costs zero build minutes)
 - Deploy only when local testing passes
 - Batch deploys — merge everything, test once, deploy once
 
@@ -247,15 +248,20 @@ Full sprint archive in `.claude/archive/SPRINT_HISTORY.md`. Key milestones:
 | 10-11 | Polish | Dashboard customization, widget drag-drop, micro-interactions |
 | 12-13 | Visual & Maps | Mapbox integration, address geocoding, KPI navigation, empty states |
 | 13.5 | Persistence | Zone/material persistence fixes, error toasts, role diagnostics |
+| 14 | Cleanup | File consolidation, orphaned code removal, archive organization |
+| 15 | Scheduling (M1) | Weekly schedule page, drag-and-drop, dashboard widget, project integration, Supabase CRUD |
+| 15.5 | Hotfix | Widget localStorage migration, conflict indicator fix, occupied cell assignment |
 
 ---
 
 ## 9. Current State (update after each sprint)
 
-**Last completed**: Sprint 13.5 (all tests passing)
-**All features working**: Auth, projects, zones, materials, crew, equipment, work orders, billing, PDF export, AI creation, maps, dashboard customization
-**Open non-blocking issues**: See CONSIDERATIONS.md
-**Next**: UI iteration based on v7 design preview, then deploy
+**Last completed**: Sprint 15.5 (all tests passing)
+**Milestone**: M1 "Worth the Demo" — ACTIVE
+**All features working**: Auth, projects, zones, materials, crew, equipment, work orders, billing, PDF export, AI creation, maps, dashboard customization, **weekly scheduling with drag-and-drop**
+**Pre-existing bugs**: Material add, equipment add, and work orders with active project all fail with in-app errors (likely RLS — see CONSIDERATIONS.md)
+**Next**: Sprint 16 — planning now
+**Workflow**: VSCode Claude Code for execution, Cowork for orchestration. Full lifecycle documented in EXECUTION.md.
 
 ---
 
@@ -269,3 +275,4 @@ If this session runs out of context, start a new one with:
 4. Ask Charlie: "I'm up to speed. What are we working on?"
 
 That's it. No context loss.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            

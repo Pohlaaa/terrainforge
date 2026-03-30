@@ -31,9 +31,10 @@ The old phase model assumed "build features → get customers → build more fea
 **What's missing (sprint work)**:
 
 ### Manager-Side (the main app)
-- [ ] **Scheduling & Calendar view** — Weekly view showing crew assignments per project per day. Drag-and-drop to reassign. "Today's schedule" summary on Dashboard. This is the feature that makes them open the app daily.
+- [x] **Scheduling & Calendar view** — Weekly schedule page, drag-and-drop, dashboard widget, project integration, Supabase CRUD. **DONE Sprint 15/15.5.**
+- [x] **Material Library tab reorder** — Inventory first, library last. **DONE Sprint 15.**
 - [ ] **Active project context fix** — Sidebar icon + Work Orders filtering by selected project.
-- [ ] **Material Library tab reorder** — Inventory first, library last.
+- [ ] **Pre-existing bug fixes** — Material add, equipment add, work orders crash with active project (likely RLS).
 - [ ] **Remove Debug page** from production routing.
 - [ ] **UI polish pass** — v7 design preview items, consistent card styling, transition smoothness.
 
@@ -128,7 +129,8 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | Sprint | Milestone | Theme |
 |--------|-----------|-------|
 | 14 | Cleanup | File consolidation, orphaned code removal (**COMPLETE**) |
-| 15-16 | M1 | Scheduling module (manager side) + active project fix + UI polish |
+| 15/15.5 | M1 | Scheduling module (manager side) + hotfix (**COMPLETE**) |
+| 16 | M1 | Bug fixes + scheduling enhancements + remaining manager polish |
 | 17-19 | M1 | Crew app foundation — auth, today's schedule, work order checklist, photo upload |
 | 20 | M1 | Manager ↔ crew integration — real-time sync, status signals, demo polish |
 | 21-22 | M2 | Onboarding flow, empty states, settings, help tooltips |
@@ -147,6 +149,7 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 2026-03-29 | Moved scheduling from Phase 2 to Milestone 1 (pre-launch) | Scheduling is the daily-use hook that makes the product indispensable, not a post-launch add-on |
 | 2026-03-29 | Added guided onboarding as Milestone 2 | First-run experience is a blocker for self-serve signups; can't scale with demo-only acquisition |
 | 2026-03-29 | Crew-facing app added to Milestone 1 | Manager schedules, crew executes — the two sides complete the loop. A scheduling tool without crew visibility is half a product. Same React app, separate route tree (`/crew/*`), shared Supabase backend. |
+| 2026-03-29 | Sprint 15/15.5 shipped scheduling | Manager-side scheduling complete. Weekly grid, drag-and-drop, dashboard widget, project integration, Supabase CRUD, conflict detection. 3 pre-existing bugs discovered during regression testing (materials, equipment, work orders). |
 
 ---
 
