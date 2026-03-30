@@ -8,6 +8,7 @@ import { useMaterialStore } from '@/stores/materialStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { fetchAllCrewStatuses, fetchChecklistProgressCounts } from '@/services/supabaseData';
 import { generateSteps } from '@/lib/workorders';
+import { PageHeader } from '@/components/layout/PageHeader';
 import type { ScheduleEntry, ScheduleEntryStatus } from '@/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -402,15 +403,7 @@ export const Schedule: React.FC = () => {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '22px', fontFamily: 'var(--serif)', color: 'var(--text)', marginBottom: '4px' }}>
-          Schedule
-        </div>
-        <p style={{ fontSize: '13px', color: 'var(--text-3)' }}>
-          Assign crew to projects by day. Drag chips to reschedule.
-        </p>
-      </div>
+      <PageHeader title="Schedule" subtitle="Assign crew to projects by day. Drag chips to reschedule." />
 
       {/* Week nav bar */}
       <div style={{

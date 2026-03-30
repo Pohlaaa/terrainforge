@@ -11,6 +11,7 @@ import { CrewPacketPDF } from '@/components/pdf/CrewPacketPDF';
 import { useCrewStore } from '@/stores/crewStore';
 import { useNavigate } from 'react-router-dom';
 import { EmptyState, WorkOrdersIcon } from '@/components/shared/EmptyState';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -135,8 +136,7 @@ export const WorkOrders: React.FC = () => {
   if (!project) {
     return (
       <div>
-        <div className="text-[22px] font-serif text-[var(--text)] mb-[6px]">Work Orders</div>
-        <p className="text-[13px] text-[var(--text-3)] mb-[24px]">Select a project to view its installation steps and export a crew packet.</p>
+        <PageHeader title="Work Orders" subtitle="Select a project to view its installation steps and export a crew packet." />
         {projects.length === 0 ? (
           <EmptyState
             icon={<WorkOrdersIcon />}

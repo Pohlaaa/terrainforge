@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { Skeleton } from '@/components/shared/Skeleton';
+import { PageHeader } from '@/components/layout/PageHeader';
 import {
   generateManifest,
   computeQty,
@@ -211,8 +212,7 @@ export const ManifestEngine: React.FC = () => {
   if (!project) {
     return (
       <div>
-        <div className="text-[22px] font-serif text-[var(--text)] mb-[6px]">Manifest Engine</div>
-        <p className="text-[13px] text-[var(--text-3)] mb-[24px]">Select a project to calculate material quantities, review costs, and export a PDF manifest.</p>
+        <PageHeader title="Manifest Engine" subtitle="Select a project to calculate material quantities, review costs, and export a PDF manifest." />
         {projects.length === 0 ? (
           <div className="text-center py-[64px] text-[var(--text-3)]">
             <div className="text-[40px] mb-[12px] opacity-30">📋</div>
