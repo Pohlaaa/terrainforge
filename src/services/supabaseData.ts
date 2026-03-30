@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry } from '@/types'
+import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry, ProjectTask, ProjectSiteCondition } from '@/types'
 
 // ===== ERROR REPORTING =====
 
@@ -1278,5 +1278,185 @@ export async function diagnoseUserRole(): Promise<void> {
     }
   } catch (err: any) {
     console.warn('[TF-DIAG] Role check failed:', err.message);
+  }
+}
+
+// ===== PROJECT TASKS =====
+
+export async function fetchProjectTasks(
+  orgId: string,
+  projectId: string
+): Promise<ProjectTask[]> {
+  try {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('project_id', projectId)
+      .order('sequence_number', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map((row) => {
+      const camel = toCamelCase(row) as ProjectTask;
+      // Ensure depends_on comes back as an array even if null
+      if (!camel.dependsOn) camel.dependsOn = [];
+      return camel;
+    });
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'project_tasks', err);
+    return [];
+  }
+}
+
+export async function createProjectTask(
+  task: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'>,
+  id: string,
+  orgId: string
+): Promise<ProjectTask | null> {
+  try {
+    const snakeData = toSnakeCase(task as unknown as Record<string, any>);
+    snakeData.id = id;
+    snakeData.org_id = orgId;
+    // depends_on is a UUID[] — keep as-is
+    snakeData.depends_on = task.dependsOn || [];
+
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .insert([snakeData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    const result = toCamelCase(data) as ProjectTask;
+    if (!result.dependsOn) result.dependsOn = [];
+    return result;
+  } catch (err: any) {
+    onSupabaseError('INSERT', 'project_tasks', err);
+    return null;
+  }
+}
+
+export async function updateProjectTask(
+  id: string,
+  updates: Partial<ProjectTask>
+): Promise<ProjectTask | null> {
+  try {
+    const snakeData = toSnakeCase(updates as unknown as Record<string, any>);
+    if (updates.dependsOn !== undefined) {
+      snakeData.depends_on = updates.dependsOn;
+    }
+
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .update(snakeData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    const result = toCamelCase(data) as ProjectTask;
+    if (!result.dependsOn) result.dependsOn = [];
+    return result;
+  } catch (err: any) {
+    onSupabaseError('UPDATE', 'project_tasks', err);
+    return null;
+  }
+}
+
+export async function deleteProjectTask(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('project_tasks')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (err: any) {
+    onSupabaseError('DELETE', 'project_tasks', err);
+    return false;
+  }
+}
+
+// ===== PROJECT SITE CONDITIONS =====
+
+export async function fetchProjectSiteConditions(
+  orgId: string,
+  projectId: string
+): Promise<ProjectSiteCondition[]> {
+  try {
+    const { data, error } = await supabase
+      .from('project_site_conditions')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map((row) => toCamelCase(row) as ProjectSiteCondition);
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'project_site_conditions', err);
+    return [];
+  }
+}
+
+export async function createProjectSiteCondition(
+  condition: Omit<ProjectSiteCondition, 'id' | 'createdAt' | 'updatedAt'>,
+  id: string,
+  orgId: string
+): Promise<ProjectSiteCondition | null> {
+  try {
+    const snakeData = toSnakeCase(condition as unknown as Record<string, any>);
+    snakeData.id = id;
+    snakeData.org_id = orgId;
+
+    const { data, error } = await supabase
+      .from('project_site_conditions')
+      .insert([snakeData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return toCamelCase(data) as ProjectSiteCondition;
+  } catch (err: any) {
+    onSupabaseError('INSERT', 'project_site_conditions', err);
+    return null;
+  }
+}
+
+export async function updateProjectSiteCondition(
+  id: string,
+  updates: Partial<ProjectSiteCondition>
+): Promise<ProjectSiteCondition | null> {
+  try {
+    const snakeData = toSnakeCase(updates as unknown as Record<string, any>);
+
+    const { data, error } = await supabase
+      .from('project_site_conditions')
+      .update(snakeData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return toCamelCase(data) as ProjectSiteCondition;
+  } catch (err: any) {
+    onSupabaseError('UPDATE', 'project_site_conditions', err);
+    return null;
+  }
+}
+
+export async function deleteProjectSiteCondition(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('project_site_conditions')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (err: any) {
+    onSupabaseError('DELETE', 'project_site_conditions', err);
+    return false;
   }
 }
