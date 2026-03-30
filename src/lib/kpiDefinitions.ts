@@ -183,4 +183,5 @@ export const DEFAULT_WIDGET_LAYOUT: WidgetConfig[] = [
   { id: 'widget-crew', type: 'crew', title: 'Crew Utilization', visible: true, collapsed: false, order: 2 },
   { id: 'widget-fleet', type: 'fleet', title: 'Fleet Status', visible: true, collapsed: false, order: 3 },
   { id: 'widget-map', type: 'map', title: 'Project Map', visible: false, collapsed: false, order: 4 },
+  { id: 'widget-schedule', type: 'schedule', title: "Today's Schedule", visible: true, collapsed: false, order: 5 },
 ];

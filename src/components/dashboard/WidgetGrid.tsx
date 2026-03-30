@@ -6,6 +6,7 @@ import { ProjectsWidget } from './widgets/ProjectsWidget';
 import { CrewWidget } from './widgets/CrewWidget';
 import { FleetWidget } from './widgets/FleetWidget';
 import { MapWidget } from './widgets/MapWidget';
+import { ScheduleWidget } from './widgets/ScheduleWidget';
 import { getAllAlerts } from '@/lib/alerts';
 
 interface WidgetGridProps {
@@ -37,6 +38,8 @@ function renderWidgetContent(widget: WidgetConfig, appState: AppState) {
       return <FleetWidget appState={appState} />;
     case 'map':
       return <MapWidget projects={appState.projects} />;
+    case 'schedule':
+      return <ScheduleWidget />;
     default:
       return null;
   }
