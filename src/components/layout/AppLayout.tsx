@@ -24,7 +24,7 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useBillingGate } from '@/hooks/useBillingGate';
 import { ToastContainer } from '@/components/shared/Toast';
 import { useUIStore } from '@/stores/uiStore';
-import { fetchUserPreferences } from '@/services/preferences';
+import { fetchUserPreferences, hasCompletedOnboarding } from '@/services/preferences';
 import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiDefinitions';
 
 // Map onboarding priority labels → KPI library IDs
@@ -106,7 +106,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   useEffect(() => {
     if (!user?.id || prefsLoaded) return;
-    fetchUserPreferences(user.id).then((prefs) => {
+    fetchUserPreferences(user.id).then(async (prefs) => {
       if (prefs?.selectedKpis && prefs.selectedKpis.length > 0) {
         const validKpiIds = new Set(KPI_LIBRARY.map(k => k.id));
         // Translate onboarding priority labels to KPI IDs, pass through valid IDs
@@ -117,10 +117,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         const unique = [...new Set(resolved)];
         useUIStore.getState().setSelectedKpis(unique.length > 0 ? unique : DEFAULT_SELECTED_KPIS);
       } else if (!prefs?.onboardingCompletedAt) {
-        // No prefs row or no onboarding timestamp — genuinely new user.
-        // Redirect to onboarding so they don't land on an empty dashboard.
-        navigate('/onboarding', { replace: true });
-        return;
+        // No prefs row or no onboarding timestamp — check if this is a
+        // genuinely new user vs an existing user from before onboarding existed.
+        // hasCompletedOnboarding checks org membership + projects as fallback.
+        const done = await hasCompletedOnboarding(user!.id);
+        if (!done) {
+          navigate('/onboarding', { replace: true });
+          return;
+        }
       }
       setPrefsLoaded(true);
     });
