@@ -167,12 +167,4 @@ git branch -d sprint-10.5-hotfix
 git branch -d sprint-11-ship-it
 git branch -d sprint-12-polish
 git branch -d sprint-12.5-fixes
-git branch -d sprint-13-fixes
-git branch -d fix-map-pins
-
-# Verify clean state
-git branch
-git worktree list
-```
-
-Expected result: only `main` and a few active worktree branches remain.
+git branch -d sp

@@ -87,5 +87,4 @@ These are the open design questions and features to explore:
 
 - React 18 + Vite + TypeScript + Zustand + Supabase + Netlify
 - CSS custom properties for theming
-- Mapbox GL JS for maps
-- Design tokens should map to CSS variables already in `src/index.css`
+- Mapb

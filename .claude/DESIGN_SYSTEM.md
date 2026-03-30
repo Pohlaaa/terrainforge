@@ -1,7 +1,21 @@
-# TerrainForge — Design System v2
+# TerrainForge — Design System
+
+> **Last updated**: 2026-03-30 (consolidated from DESIGN_SYSTEM + DESIGN)
+> **Active design preview**: `.claude/design/design-preview-v7-tablet-density.html`
+> **Historical previews**: `.claude/archive/design/`
+
+## Design Identity
+
+TerrainForge is a professional tool for people who work outdoors. The design should feel sturdy, focused, and modern — not like a generic SaaS dashboard. Dark theme is the primary experience. Green is the brand color. Density matters — landscapers are checking this on a tablet at a job site.
+
+### Decisions That Are Final
+- Dark mode as default (brand decision)
+- Inter as the typeface (clean, legible at small sizes, free)
+- Green (#2D6A4F) as the primary brand color
+- High information density (professionals want data visible, not hidden behind clicks)
 
 ## Design Philosophy
-TerrainForge should feel like a premium native app, not a web dashboard. Inspired by Linear (speed, clarity), Monday (visual status), and Asana (view flexibility) — but adapted for contractors on tablets in the field. Every design decision passes the "muddy hands test": can a contractor standing in a yard, holding a tablet in one hand, use this feature without frustration?
+Inspired by Linear (speed, clarity), Monday (visual status), and Asana (view flexibility) — adapted for contractors on tablets in the field. Every design decision passes the "muddy hands test": can a contractor standing in a yard, holding a tablet in one hand, use this feature without frustration?
 
 ## Core Principles
 
@@ -313,11 +327,24 @@ Single view, but with customizable widget ordering (future). Current layout:
 @media (min-width: 1024px) { ... }
 ```
 
-## Implementation Priority
-1. Color tokens + typography (foundation for everything)
-2. Card component (used on every page)
-3. Detail panel pattern (replaces page navigation)
-4. Status badges + progress bars (visual tracking)
-5. View toggle (card/list/board)
-6. Motion system (polish layer)
-7. Empty states (UX completeness)
+## Implementation Color Reference (from src/index.css)
+
+> The token names above (--surface-bg, --text-primary, etc.) are the design spec names. The **actual CSS variable names in the codebase** may differ. Always check `src/index.css` as the source of truth. Known codebase variables include:
+
+```css
+/* Codebase variables (dark theme default) */
+--green: #2D6A4F;       --green-l: #74C69D;
+--surface: #111810;      --surface2: #161E14;    --surface3: #1E2B1A;
+--border: #2A3D26;
+--text: #F0F4EE;         --text-2: #A8BAA3;      --text-3: #6B7E67;   --text-4: #3D4F3A;
+--red: #E05C5C;          --amber: #D4A44C;       --blue: #4A8DB5;
+```
+
+When writing sprint prompts with visual tasks, reference the actual variable names from `src/index.css`, not the design spec names.
+
+## How to Iterate on Design
+
+1. **Identify scope** — Is this a theme change (update CSS variables), a component change (update shared component), or a layout change (update the page)?
+2. **Minimal surface area** — Change the CSS variable if possible before touching components
+3. **Consistency check** — If changing a color, check all places that use that variable
+4. **Show the change** — Take a screenshot or describe exactly what changed

@@ -109,7 +109,34 @@ React 18 + Vite + TypeScript | Zustand 7 stores (localStorage + Supabase sync) |
 4. **Charlie is a BSA, not a full-time engineer** — Explain tradeoffs, flag risks, make recommendations explicit
 5. **Budget-conscious scaling** — Minimize infrastructure cost until revenue justifies growth
 
-## Specialized Instruction Files
-Reference these when working in a specific mode:
-- `.claude/PROJECT_MANAGEMENT.md` — sprint planning, phase tracking, PM advisory behavior
-- `.claude/DEVELOPMENT.md` — expanded code standards and patterns (
+## Codebase Quality Rules
+- Prefer editing existing files over creating new ones
+- Check if a shared component exists in `src/components/shared/` before building a new one
+- Dead code gets deleted, not commented out
+- File size soft limits: page 300 LOC, component 200 LOC, store 400 LOC, service 500 LOC
+- Don't add a dependency for something that takes <30 lines to write
+- New Supabase table checklist: RLS INSERT policy, RLS SELECT policy, org_id column, NOT NULL defaults, no UNIQUE conflicts with retry logic
+- Import order: React → third-party → @/types → @/stores → @/lib → @/components → local
+
+## .claude/ File Map
+After the Sprint 25 consolidation, only these files are active:
+
+### For Sprint Planning + Execution (Claude Code reads these)
+- `.claude/CODE_GUIDE.md` — execution workflow, sprint lifecycle, testing protocol
+- `.claude/CONTEXT.md` — current state, open bugs, git state
+- `.claude/ROADMAP.md` — milestone plan, what to build next
+- `.claude/CONSIDERATIONS.md` — backlog items, design decisions
+- `.claude/ORCHESTRATOR.md` — full project knowledge base, Supabase rules
+- `.claude/DESIGN_SYSTEM.md` — design tokens (for visual sprints)
+- `.claude/SPRINT_TEMPLATE.md` — template for new sprint prompts
+
+### Business/Strategy (Cowork only — Code does not read these)
+- `.claude/business/BUSINESS.md` — pricing, unit economics
+- `.claude/business/MARKETING.md` — ICP, channels, demo playbook
+- `.claude/business/AI_PRODUCT.md` — AI integration strategy
+
+### Subdirectories
+- `.claude/archive/` — completed sprint prompts, old design previews, superseded docs
+- `.claude/design/` — active design preview (v7)
+- `.claude/TESTING/` — QA findings, test protocol, sprint test results
+- `.claude/SQL/` — sprint-specific SQL reference files

@@ -94,5 +94,4 @@ Netlify keeps the last 25 deploys. If a production deploy breaks something:
 ## Performance Budget
 - Initial JS bundle: <500KB gzipped
 - Largest contentful paint: <2.5s on 4G
-- Time to interactive: <4s
-- Check bundle size after adding major dependencies: `npm run build && npx bundlesize`
+- Time to interact

@@ -89,5 +89,4 @@ export async function callClaude(prompt: string, model = 'claude-haiku-4-5-20251
 
 ## What AI Should NOT Do in TerrainForge
 - Make financial commitments (billing, contracts, invoicing) — these are user-controlled
-- Auto-submit work orders or manifests — always require user approval
-- Store raw prompts or completions in Supabase — only store the structured output
+- Auto-submit work orders or manifests — always require user ap

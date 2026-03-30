@@ -94,5 +94,4 @@ When Charlie requests a design change, follow this order:
 ## Accessibility Minimums
 - All interactive elements must be keyboard-accessible
 - Contrast ratio: AA minimum (4.5:1 for normal text) — the dark theme already satisfies this
-- Error states can't rely on color alone — always include text
-- Loading states: show skeleton or spinner, never leave blank content
+- Error states can't rely on color alon

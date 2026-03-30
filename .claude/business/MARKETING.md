@@ -73,4 +73,4 @@ Priority order — build these as the product becomes stable:
 - GIE+EXPO — large trade show, good for demo booth once product is proven
 
 ## Referral Program (Phase 2)
-Once 10+ customers are active: "Give $50, Get $50" — customer gets account credit for each referral that converts. Keep it simple.
+Once 10+ customers are active: "Give $50, Get $50" — cus

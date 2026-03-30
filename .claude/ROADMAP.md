@@ -3,7 +3,7 @@
 > **Purpose**: Replaces the old Phase 1-4 model. Milestones are outcome-driven with clear gates.
 > **Created**: 2026-03-29
 > **Owner**: Charlie (Business Systems Analyst II)
-> **Last updated**: 2026-03-29
+> **Last updated**: 2026-03-30
 
 ---
 
@@ -96,10 +96,31 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 **Goal**: Monthly churn <5%. Users would feel pain if they had to switch away.
 
 **What to build (prioritized by retention impact)**:
-- [ ] **Time tracking** — Clock in/out per project (crew app). Tied to payroll. Once they track time here, switching cost is very high. Foreman clocks in/out; manager sees labor cost vs. estimate in real-time.
-- [ ] **Client portal** — Contractors can share project status with homeowners. Professional look, upsell opportunity.
+
+### Time Tracking (highest retention driver)
+- [ ] Foreman clock-in/clock-out per project zone
+- [ ] Manual time entry for back-fill or correction
+- [ ] Time summary per project: total hours worked vs. estimated
+- [ ] Labor cost tracking: hours x hourly rate → actual labor cost per project
+- [ ] Export time records as CSV for payroll processing
+- **DB**: `time_entries` table (id, org_id, project_id, zone_id, crew_member_id, clock_in, clock_out, notes, approved_by). New `hourly_rate` field on `crew_members`.
+
+### Client Portal
+- [ ] Invite a client to view a specific project (email invite → limited-access login)
+- [ ] Client sees: project timeline, manifest summary (no internal costs), photo uploads
+- [ ] Client can approve a manifest/proposal (triggers status change)
+- [ ] Contractor can send a PDF summary directly from the portal
+- **Architecture**: Uses existing `org_role = 'client'` in auth + RLS. Route: `/portal/:projectId`. Separate layout without sidebar.
+
+### Invoicing + QuickBooks
+- [ ] Generate invoice from completed project (materials + labor cost summary)
+- [ ] Send invoice via email (PDF attachment)
+- [ ] Mark invoices as paid/outstanding, invoice status dashboard
+- [ ] QuickBooks Online OAuth integration — push invoice line items to QBO
+- **DB**: `invoices` table + `invoice_line_items` table. Keep Stripe for subscription billing; QBO is for client invoicing.
+
+### Additional M4 Items
 - [ ] **CSV import/export** — Bulk data operations. Critical for onboarding contractors migrating from spreadsheets.
-- [ ] **Invoicing + QuickBooks** — Generate invoices from completed projects. QB Online OAuth integration.
 - [ ] **Push notifications** — Schedule changes (manager → crew app), low stock alerts, crew availability updates.
 - [ ] **Crew app enhancements** — GPS check-in (verify crew is on-site), equipment checkout/return logging, daily summary reports auto-generated from crew activity.
 
@@ -114,7 +135,7 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 **Goal**: $15K+ MRR. Product is the market leader for landscaping contractor operations.
 
 **What to build**:
-- [ ] **PWA for crew app** — Offline time entries, camera uploads, homescreen install. The crew app becomes a true mobile-first experience. Service worker caches today's schedule + work orders for field use without connectivity.
+- [ ] **PWA for crew app** — Offline time entries, camera uploads, homescreen install. Service worker caches today's schedule + work orders for field use without connectivity. Implementation: `manifest.json` + service worker via `vite-plugin-pwa`. Mobile layouts: sidebar hidden on <768px, bottom navigation instead. No separate native app — PWA gets 80% of value at 10% of effort.
 - [ ] **3D Design Studio** — AI-driven landscape design tool. The "wow" feature that separates TerrainForge from every competitor.
 - [ ] **Marketplace** — Supplier directory, equipment rental partners, subcontractor network.
 - [ ] **Multi-language (Spanish)** — Critical for landscaping workforce demographics. Crew app is the highest priority for translation — field workers may be Spanish-primary.
@@ -154,23 +175,4 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 2026-03-29 | Moved scheduling from Phase 2 to Milestone 1 (pre-launch) | Scheduling is the daily-use hook that makes the product indispensable, not a post-launch add-on |
 | 2026-03-29 | Added guided onboarding as Milestone 2 | First-run experience is a blocker for self-serve signups; can't scale with demo-only acquisition |
 | 2026-03-29 | Crew-facing app added to Milestone 1 | Manager schedules, crew executes — the two sides complete the loop. A scheduling tool without crew visibility is half a product. Same React app, separate route tree (`/crew/*`), shared Supabase backend. |
-| 2026-03-29 | Sprint 15/15.5 shipped scheduling | Manager-side scheduling complete. Weekly grid, drag-and-drop, dashboard widget, project integration, Supabase CRUD, conflict detection. 3 pre-existing bugs discovered during regression testing (materials, equipment, work orders). |
-| 2026-03-30 | M1 extended: Sprints 21-25 for UI overhaul, nav consolidation, crew auth | App was feature-complete but messy — needed v7 design, simplified nav, real crew auth before demo |
-| 2026-03-30 | Navigation consolidated to 5 groups | Dashboard, Jobs, Resources, Manifest, Settings. Reduces 9+ sidebar items to 5 top-level. |
-| 2026-03-30 | Crew auth: same app, role-based routing with PIN | Single URL/deploy. /crew/* route tree. PIN login for crew, Supabase auth for managers. |
-| 2026-03-30 | M1 complete: Sprints 21-25.6 all shipped | UI overhaul, nav consolidation, crew PIN auth, v7 redesign, widget polish all done. Ready for gate evaluation. |
-
----
-
-## How This File Gets Updated
-
-After each sprint:
-1. Orchestrator marks completed items
-2. Updates sprint-to-milestone mapping
-3. Adds any new decisions to the decision log
-4. Adjusts estimates based on velocity
-
-After each milestone gate review:
-1. Charlie evaluates whether the gate criteria are met
-2. If not met, Orchestrator identifies remaining gaps and plans additional sprints
-3. If met, Orchestrator begins planning the next milestone's first sprint
+| 2026-03-29 | Sprint 15/15.5 shipped scheduling | Manager-side scheduling complete. Weekly grid, drag-and-drop, dashboard widget, project integration, Supabase

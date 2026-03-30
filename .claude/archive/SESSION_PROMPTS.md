@@ -78,6 +78,4 @@ After reading the context files, tell me the current project state and ask what 
 | Run tests, report results | Charlie (PowerShell + browser) |
 | Business strategy | Cowork |
 | Pitch deck / marketing | Cowork |
-| UI design preview | Cowork |
-| Roadmap evaluation | Cowork |
-| Working from phone | Cowork |
+| UI design pre

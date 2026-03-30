@@ -1,7 +1,7 @@
 # TerrainForge — Claude Code Guide
 
 > **For Claude Code sessions in VSCode.** Code owns the full sprint lifecycle: planning, execution, testing support, and documentation updates.
-> Last updated: 2026-03-30
+> Last updated: 2026-03-30 (consolidated from CODE_GUIDE + EXECUTION)
 
 ---
 
@@ -19,31 +19,74 @@ Cowork (the Anthropic desktop app) is only used for strategic/business work — 
 
 ---
 
-## Sprint Planning Mode
+## Context Files
 
-When Charlie asks you to plan a sprint:
-1. Read: ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md
-2. Write: `.claude/SPRINT_[N]_PROMPTS.md` following the template in `.claude/SPRINT_TEMPLATE.md`
-3. Write: `supabase/migrations/[NNN]_[description].sql` if the sprint needs DB changes
-4. Tell Charlie: "Sprint [N] is planned. Run migration [NNN] in Supabase SQL Editor, then tell me to execute."
+### For Planning
+1. `ORCHESTRATOR.md` — full project knowledge base, Supabase rules, session model
+2. `ROADMAP.md` — milestone plan, what to build next
+3. `CONTEXT.md` — current state, open bugs, git state
+4. `CONSIDERATIONS.md` — backlog items, design decisions
 
-## Sprint Execution Mode
+### For Execution
+1. This file (`CODE_GUIDE.md`) — execution workflow
+2. `SPRINT_[N]_PROMPTS.md` — sprint tasks (the actual work)
+3. `DESIGN_SYSTEM.md` — if the sprint involves visual changes
+4. `TESTING/FINDINGS.md` — open bugs and known issues
+5. `business/AI_PRODUCT.md` — if the sprint involves AI features
 
-When Charlie says to execute:
+---
+
+## Sprint Lifecycle (Complete Workflow)
+
+Charlie executes steps marked **(C)**. Claude Code handles **(CC)**.
+
+### Phase A: Plan (CC)
+1. Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md
+2. Write SPRINT_[N]_PROMPTS.md with all tasks, types, file paths, and test section
+3. Write SQL migration file in `supabase/migrations/` if sprint adds DB features
+4. Update CONTEXT.md with sprint status
+5. Tell Charlie: "Sprint [N] is planned. Run migration [NNN] in Supabase SQL Editor, then tell me to execute."
+
+### Phase B: Pre-Flight (C)
+1. Run SQL migration in Supabase SQL Editor if sprint has one
+2. Tell Code to execute
+
+### Phase C: Execute (CC)
+1. Read this file + SPRINT_[N]_PROMPTS.md
+2. Create branch, implement all tasks, build, commit per task, push, create PR
+3. Charlie should NOT interact with Code during execution
+
+### Phase D: Merge + Test (C)
+Charlie pastes the post-sprint command block (provided by Code with branch name filled in):
+```powershell
+cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
+git checkout main
+git merge [branch]
+git push origin main
+git branch -d [branch]
+npm run build
+npm run dev
 ```
-Read .claude/CODE_GUIDE.md and .claude/SPRINT_[N]_PROMPTS.md, then execute all tasks autonomously. Branch: sprint-[N]-[description]. One commit per task. Create PR when done using "C:\Program Files\GitHub CLI\gh.exe".
-```
+Then: open `http://localhost:3000` in incognito, run test checklist, report PASS / PARTIAL / FAIL.
+
+### Phase E: Fix if Needed (CC)
+If PARTIAL or FAIL: write SPRINT_[N]_5_HOTFIX.md, execute it, provide new merge block. Repeat until PASS.
+
+### Phase F: Wrap Up (CC + C)
+1. (CC) Update CONTEXT.md and ORCHESTRATOR.md with sprint results
+2. (C) Commit .claude/ docs: `git add .claude/ supabase/migrations/ CLAUDE.md && git commit -m "docs: add Sprint [N] orchestration files" && git push origin main`
 
 ---
 
 ## Per-Task Execution Cycle
 
 1. **Read** the task from the sprint prompt file
-2. **Implement** changes across all specified files
-3. **Build** — `npm run build`. If TypeScript errors, fix before proceeding.
-4. **Commit** — format: `S[sprint]-[task]: [description]`
-5. **Next task** — repeat until all tasks complete
-6. **PR** — create one PR for the entire sprint branch
+2. **Read** all target files + referenced components/stores before writing anything
+3. **Implement** changes across all specified files
+4. **Build** — `npm run build`. Fix TypeScript errors before proceeding.
+5. **Commit** — format: `S[sprint]-[task]: [description]`
+6. **Next task** — repeat until all tasks complete
+7. **PR** — create one PR for the entire sprint branch
 
 ### Git Workflow
 ```bash
@@ -63,6 +106,8 @@ git push origin sprint-[N]-[description]
 
 ## Code Standards
 
+> Full architecture rules, naming conventions, and "What NOT to Do" are in `CLAUDE.md` at project root. This section covers execution-specific standards only.
+
 ### TypeScript
 - No `any` types — use interfaces from `src/types/index.ts`
 - Imports use `@/` alias: `import { Project } from '@/types'`
@@ -70,12 +115,12 @@ git push origin sprint-[N]-[description]
 
 ### Supabase
 - ALL writes go through `src/services/supabaseData.ts`
-- Always include `org_id` on inserts
+- Always include `org_id` on inserts and fetches
 - Use `onSupabaseError()` for error reporting (wired to toast notifications)
 - Field mapping: frontend camelCase ↔ DB snake_case via `toSnakeCase()`/`toCamelCase()`
 - Special mappings: `totalArea` → `total_area_sqft`, `area` → `area_sqft`, `perimeter` → `perimeter_lnft`
-- `client` field stripped before INSERT (DB expects `client_id` FK, unused)
 - Send NULL (not 0) for optional numeric fields with CHECK constraints
+- NEVER use Postgres ENUM types — always TEXT + CHECK constraints
 
 ### Styling
 - CSS custom properties only: `var(--brand-primary)`, `var(--surface-card)`, etc.
@@ -97,6 +142,17 @@ git push origin sprint-[N]-[description]
 
 ---
 
+## SQL Migration Protocol
+
+- Write migration files to `supabase/migrations/[NNN]_[description].sql`
+- Each migration is idempotent (`IF NOT EXISTS`, `DROP IF EXISTS + CREATE`)
+- Include RLS policies and CHECK constraints in the same migration
+- NEVER use Postgres ENUM types — always TEXT + CHECK
+- Sprint prompt docs REFERENCE the file — never embed SQL inline in markdown
+- Charlie runs migrations manually in Supabase SQL Editor BEFORE testing
+
+---
+
 ## What Code Should NOT Do
 
 - Don't start a dev server (`npm run dev`) — Charlie tests locally
@@ -104,52 +160,17 @@ git push origin sprint-[N]-[description]
 - Don't run SQL against Supabase — Charlie runs migrations manually
 - Don't modify `.env.local` or any secrets file
 - Don't delete files outside `src/` without explicit instruction
+- Don't make product decisions — execute what's in the sprint prompt
 
 ---
 
-## Context Files
+## Key Rules (Learned the Hard Way)
 
-### For Planning
-1. `ORCHESTRATOR.md` — full project knowledge base, Supabase rules, session model
-2. `ROADMAP.md` — milestone plan, what to build next
-3. `CONTEXT.md` — current state, open bugs, git state
-4. `CONSIDERATIONS.md` — backlog items, design decisions
-5. `EXECUTION.md` — workflow, testing protocol, lifecycle phases
-
-### For Execution
-1. This file (`CODE_GUIDE.md`) — execution workflow
-2. `SPRINT_[N]_PROMPTS.md` — sprint tasks
-3. `DESIGN_SYSTEM.md` — if the sprint involves visual changes
-4. `TESTING/FINDINGS.md` — open bugs and known issues
-5. `AI_PRODUCT.md` — if the sprint involves AI features
-
----
-
-## SQL Migrations
-
-- Write migration files to `supabase/migrations/[NNN]_[description].sql`
-- Each migration is idempotent (`IF NOT EXISTS`, `DROP IF EXISTS + CREATE`)
-- Note in commit message: "SQL migration required — run [filename] in Supabase SQL Editor"
-- Charlie runs these manually BEFORE testing
-
----
-
-## Post-Sprint
-
-After all tasks complete:
-1. Verify `npm run build` passes with zero errors
-2. Push branch and create PR
-3. **Provide Charlie with the post-sprint command block** (fill in actual branch name):
-   ```powershell
-   cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
-   git checkout main
-   git merge [branch]
-   git push origin main
-   git branch -d [branch]
-   npm run build
-   npm run dev
-   ```
-4. Tell Charlie to open `http://localhost:3000` in incognito and run through the test checklist
-5. Wait for Charlie's test report: PASS / PARTIAL / FAIL
-6. If PARTIAL or FAIL: write a hotfix prompt, execute it, provide new merge block
-7. After PASS: update CONTEXT.md with sprint results
+- **Never interact with Claude Code during sprint execution** — causes context breaks and partial commits
+- **Always verify `git status` is clean before starting** — stale locks, phantom branches, and CRLF noise cause cascading failures
+- **Close Claude Code sessions before running git commands** — prevents index.lock conflicts
+- **Run SQL migration BEFORE sprint execution** — Code's Supabase CRUD functions will fail otherwise
+- **Build before AND after** — pre-flight catches existing issues, post-merge catches sprint regressions
+- **Use incognito for testing** — Zustand persist middleware caches old state in localStorage
+- **Frontend type values must exactly match DB CHECK constraint values** — mismatches cause silent INSERT failures
+- **Don't add widgets to DEFAULT_WIDGET_LAYOUT without a merge function** — existing users have cached layouts

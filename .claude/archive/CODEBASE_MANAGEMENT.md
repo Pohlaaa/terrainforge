@@ -71,5 +71,4 @@ When a store needs a new shape that's incompatible with the persisted version:
 ## Documentation Standard
 - Public functions in `src/lib/` get a JSDoc comment with params and return value
 - Complex business rules get an inline comment explaining the *why*, not the *what*
-- New environment variables get added to `.env.example` immediately
-- Database schema changes get documented in `supabase/README.md`
+- New environment variables get added to `.env.example` imme

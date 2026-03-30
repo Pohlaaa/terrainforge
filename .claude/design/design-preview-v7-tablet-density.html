@@ -164,7 +164,7 @@ body {
 }
 .ctrl-btn:hover { background: var(--surface-hover); }
 
-/* Device frame for previews */
+/* Device frame */
 .device-frame {
   max-width: 1024px;
   margin: 0 auto;
@@ -205,38 +205,6 @@ body {
   line-height: 1.6;
 }
 
-/* Before / After toggle */
-.ba-toggle {
-  display: flex;
-  gap: 4px;
-  background: var(--surface-bg-subtle);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  margin-bottom: 16px;
-  width: fit-content;
-}
-.ba-btn {
-  padding: 6px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  background: none;
-  color: var(--text-tertiary);
-  transition: all 0.12s ease;
-  min-height: 32px;
-}
-.ba-btn.active {
-  background: var(--surface-card);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
-}
-.ba-btn.before { color: var(--status-red); }
-.ba-btn.before.active { background: var(--status-red-bg); color: var(--status-red); }
-.ba-btn.after.active { background: var(--status-green-bg); color: var(--status-green); }
-
 .issue-callout {
   display: flex;
   align-items: flex-start;
@@ -257,7 +225,7 @@ body {
 .issue-callout svg { flex-shrink: 0; margin-top: 1px; }
 
 /* ============================================
-   MOCK APP SHELL — simulates the actual app
+   MOCK APP SHELL
    ============================================ */
 .app-shell {
   display: flex;
@@ -268,7 +236,6 @@ body {
   max-height: 680px;
 }
 
-/* Sidebar mock */
 .mock-sidebar {
   width: 64px;
   background: var(--sidebar-bg);
@@ -306,7 +273,6 @@ body {
 .ms-item.active { background: var(--sidebar-active); color: white; }
 .ms-item:hover:not(.active) { background: var(--sidebar-hover); }
 
-/* Mock main content */
 .mock-main {
   flex: 1;
   overflow-y: auto;
@@ -314,10 +280,8 @@ body {
 }
 
 /* ============================================
-   1. DASHBOARD — BEFORE vs AFTER
+   DASHBOARD — Compact Greeting
    ============================================ */
-
-/* -- Greeting (compact) -- */
 .greeting-compact {
   padding: 14px 16px;
   border-bottom: 1px solid var(--border-default);
@@ -347,7 +311,9 @@ body {
 }
 .gc-right .temp { font-weight: 700; font-size: 15px; }
 
-/* -- KPI Strip (inline compact) -- */
+/* ============================================
+   KPI Strip — inline compact
+   ============================================ */
 .kpi-strip {
   display: flex;
   gap: 1px;
@@ -393,17 +359,14 @@ body {
 .ksi-change.up { color: var(--status-green); }
 .ksi-change.down { color: var(--status-red); }
 
-/* Sparkline inline (tiny, 24px tall) */
 .ksi-spark {
   height: 20px;
   margin-top: 4px;
   opacity: 0.5;
 }
 .ksi-spark svg { width: 100%; height: 100%; }
-
 .kpi-strip-item:hover .ksi-spark { opacity: 1; }
 
-/* Chevron indicator */
 .ksi-chevron {
   position: absolute;
   top: 10px;
@@ -414,7 +377,9 @@ body {
 }
 .kpi-strip-item:hover .ksi-chevron { opacity: 1; }
 
-/* -- Dashboard content grid -- */
+/* ============================================
+   Dashboard content grid
+   ============================================ */
 .dash-content {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -427,9 +392,7 @@ body {
 .dash-content > *:nth-child(2n) { border-right: none; }
 
 /* Widget compact */
-.widget-compact {
-  background: var(--surface-card);
-}
+.widget-compact { background: var(--surface-card); }
 
 .wc-header {
   display: flex;
@@ -461,7 +424,6 @@ body {
 }
 .wc-viewall:hover { background: var(--brand-primary-bg); }
 
-/* Widget list items — dense */
 .wc-item {
   display: flex;
   align-items: center;
@@ -490,12 +452,7 @@ body {
 .wci-value { font-size: 12px; font-weight: 700; }
 .wci-meta { font-size: 10px; color: var(--text-tertiary); }
 
-/* Mini radial */
-.mini-radial {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
+.mini-radial { width: 32px; height: 32px; flex-shrink: 0; }
 .mini-radial .r-bg { fill: none; stroke: var(--border-default); stroke-width: 3.5; }
 .mini-radial .r-fill { fill: none; stroke-width: 3.5; stroke-linecap: round; }
 .mini-radial .r-text { font-size: 8px; font-weight: 800; fill: var(--text-primary); text-anchor: middle; dominant-baseline: central; }
@@ -503,7 +460,9 @@ body {
 .wci-chevron { color: var(--text-disabled); flex-shrink: 0; }
 .wc-item:hover .wci-chevron { color: var(--brand-primary); }
 
-/* -- Map widget (compact, zoomed in) -- */
+/* ============================================
+   Map widget compact
+   ============================================ */
 .map-widget-compact {
   background: var(--surface-card);
   grid-column: 1 / -1;
@@ -539,7 +498,6 @@ body {
     linear-gradient(0deg, transparent 78%, rgba(255,255,255,0.15) 78%, rgba(255,255,255,0.15) 80%, transparent 80%);
 }
 
-/* Compact map pins — smaller, proportional */
 .cpin {
   position: absolute;
   cursor: pointer;
@@ -562,7 +520,6 @@ body {
 .cpin-dot.red { background: var(--status-red); }
 .cpin-dot.gray { background: var(--status-gray); }
 
-/* Pin popup — compact */
 .cpin-popup {
   position: absolute;
   bottom: calc(100% + 6px);
@@ -601,7 +558,6 @@ body {
 .cpop-bar { height: 3px; background: var(--surface-bg); border-radius: 2px; margin-top: 6px; overflow: hidden; }
 .cpop-fill { height: 100%; border-radius: 2px; }
 
-/* Map legend compact */
 .map-legend-c {
   position: absolute;
   bottom: 8px;
@@ -621,7 +577,6 @@ body {
 .mlc-item { display: flex; align-items: center; gap: 3px; }
 .mlc-dot { width: 6px; height: 6px; border-radius: 50%; }
 
-/* Map style toggle overlay */
 .map-toggle-overlay {
   position: absolute;
   top: 8px;
@@ -649,10 +604,8 @@ body {
 .mto-btn.active { background: var(--brand-primary-bg); color: var(--brand-primary); }
 
 /* ============================================
-   2. PROJECTS PAGE — BEFORE vs AFTER
+   PROJECTS PAGE
    ============================================ */
-
-/* Projects Header */
 .projects-header {
   display: flex;
   align-items: center;
@@ -661,11 +614,7 @@ body {
   border-bottom: 1px solid var(--border-default);
   background: var(--surface-card);
 }
-.ph-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.ph-left { display: flex; align-items: center; gap: 10px; }
 .ph-title { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
 .ph-count {
   font-size: 12px;
@@ -706,7 +655,6 @@ body {
   white-space: nowrap;
 }
 
-/* View toggle */
 .view-toggle-bar {
   display: flex;
   align-items: center;
@@ -745,7 +693,7 @@ body {
   gap: 4px;
 }
 
-/* --- Project Cards — DENSE 2-col --- */
+/* Project Cards — Dense 2-col */
 .project-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -767,7 +715,6 @@ body {
 .pcard:hover { background: var(--surface-hover); }
 .pcard:active { background: var(--surface-active); }
 
-/* Green accent bar */
 .pcard::before {
   content: '';
   position: absolute;
@@ -793,7 +740,6 @@ body {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.3;
-  /* Allow 2 lines before truncating */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -824,7 +770,6 @@ body {
   text-overflow: ellipsis;
 }
 
-/* Inline meta — horizontal, not stacked */
 .pc-meta {
   display: flex;
   gap: 12px;
@@ -835,7 +780,6 @@ body {
 .pc-meta-label { color: var(--text-tertiary); font-weight: 500; }
 .pc-meta-value { font-weight: 700; }
 
-/* Progress bar */
 .pc-progress-row {
   display: flex;
   align-items: center;
@@ -852,6 +796,7 @@ body {
 .pc-fill.green { background: var(--status-green); }
 .pc-fill.blue { background: var(--status-blue); }
 .pc-fill.amber { background: var(--status-amber); }
+.pc-fill.gray { background: var(--status-gray); }
 .pc-pct { font-size: 11px; font-weight: 700; color: var(--text-tertiary); white-space: nowrap; }
 
 /* Project List View */
@@ -908,31 +853,6 @@ body {
 .plist-item:hover .pli-chevron { color: var(--brand-primary); }
 
 /* ============================================
-   3. SPACING COMPARISON
-   ============================================ */
-.spacing-compare {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.spacing-box {
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-.spacing-label {
-  padding: 8px 12px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--border-default);
-}
-.spacing-label.before { background: var(--status-red-bg); color: var(--status-red); }
-.spacing-label.after { background: var(--status-green-bg); color: var(--status-green); }
-
-/* ============================================
    RESPONSIVE
    ============================================ */
 @media (max-width: 640px) {
@@ -940,7 +860,6 @@ body {
   .section-panel { padding: 12px; }
   .project-grid { grid-template-columns: 1fr; }
   .dash-content { grid-template-columns: 1fr; }
-  .spacing-compare { grid-template-columns: 1fr; }
 }
 
 @media (pointer: coarse) {
@@ -959,7 +878,7 @@ body {
   }
 }
 
-/* Navigation toast */
+/* Toast */
 .nav-toast {
   position: fixed;
   bottom: 20px;
@@ -978,28 +897,6 @@ body {
   white-space: nowrap;
 }
 .nav-toast.show { transform: translateX(-50%) translateY(0); }
-
-/* ============================================
-   ANNOTATION OVERLAYS — red problem markers
-   ============================================ */
-.annotation {
-  position: absolute;
-  padding: 3px 8px;
-  font-size: 10px;
-  font-weight: 700;
-  border-radius: 4px;
-  z-index: 20;
-  pointer-events: none;
-  line-height: 1.3;
-}
-.annotation.problem {
-  background: rgba(220, 38, 38, 0.9);
-  color: white;
-}
-.annotation.fix {
-  background: rgba(22, 163, 74, 0.9);
-  color: white;
-}
 </style>
 </head>
 <body>
@@ -1029,7 +926,7 @@ body {
   </div>
 </div>
 
-<!-- ========== 1. DASHBOARD — Redesigned ========== -->
+<!-- ========== 1. DASHBOARD ========== -->
 <div class="section-panel active" id="section-dashboard">
   <div class="section-heading">Dashboard — Compact & Dense</div>
   <div class="section-desc">KPIs folded into an inline strip. Map zoomed to metro area with proportional pins. Widgets use the full grid with tight rows.</div>
@@ -1042,27 +939,15 @@ body {
   <div class="device-frame">
     <div class="device-label">Tablet — 1024px</div>
     <div class="app-shell">
-      <!-- Sidebar -->
       <div class="mock-sidebar">
         <div class="ms-logo">TF</div>
-        <div class="ms-item active">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        </div>
-        <div class="ms-item">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        </div>
-        <div class="ms-item">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-        </div>
-        <div class="ms-item">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-        </div>
-        <div class="ms-item">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-        </div>
+        <div class="ms-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+        <div class="ms-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
       </div>
 
-      <!-- Main Content -->
       <div class="mock-main">
         <!-- Compact Greeting -->
         <div class="greeting-compact">
@@ -1076,7 +961,7 @@ body {
           </div>
         </div>
 
-        <!-- KPI Strip — compact inline -->
+        <!-- KPI Strip -->
         <div class="kpi-strip">
           <div class="kpi-strip-item" onclick="toast('Active Projects → Projects page')">
             <div class="ksi-row">
@@ -1135,9 +1020,9 @@ body {
           </div>
         </div>
 
-        <!-- Dashboard widgets grid -->
+        <!-- Dashboard widgets -->
         <div class="dash-content">
-          <!-- Map Widget — spans both columns -->
+          <!-- Map — spans both columns -->
           <div class="map-widget-compact">
             <div class="wc-header">
               <span class="wc-title">Project Map</span>
@@ -1145,7 +1030,6 @@ body {
             </div>
             <div class="map-compact-container">
               <div class="map-compact-bg street">
-                <!-- Pins — zoomed to metro, proportional size -->
                 <div class="cpin" style="left:20%;top:30%" onclick="togglePin(this)">
                   <div class="cpin-dot green"></div>
                   <div class="cpin-popup">
@@ -1155,7 +1039,6 @@ body {
                     <div class="cpop-bar"><div class="cpop-fill" style="width:72%;background:var(--status-green)"></div></div>
                   </div>
                 </div>
-
                 <div class="cpin" style="left:45%;top:20%" onclick="togglePin(this)">
                   <div class="cpin-dot amber"></div>
                   <div class="cpin-popup">
@@ -1165,7 +1048,6 @@ body {
                     <div class="cpop-bar"><div class="cpop-fill" style="width:45%;background:var(--status-amber)"></div></div>
                   </div>
                 </div>
-
                 <div class="cpin" style="left:65%;top:50%" onclick="togglePin(this)">
                   <div class="cpin-dot blue"></div>
                   <div class="cpin-popup">
@@ -1175,7 +1057,6 @@ body {
                     <div class="cpop-bar"><div class="cpop-fill" style="width:15%;background:var(--status-blue)"></div></div>
                   </div>
                 </div>
-
                 <div class="cpin" style="left:35%;top:60%" onclick="togglePin(this)">
                   <div class="cpin-dot red"></div>
                   <div class="cpin-popup">
@@ -1185,7 +1066,6 @@ body {
                     <div class="cpop-bar"><div class="cpop-fill" style="width:38%;background:var(--status-red)"></div></div>
                   </div>
                 </div>
-
                 <div class="cpin" style="left:80%;top:35%" onclick="togglePin(this)">
                   <div class="cpin-dot gray"></div>
                   <div class="cpin-popup">
@@ -1196,7 +1076,6 @@ body {
                   </div>
                 </div>
 
-                <!-- Legend -->
                 <div class="map-legend-c">
                   <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-green)"></div> On Track</div>
                   <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-blue)"></div> In Progress</div>
@@ -1204,7 +1083,6 @@ body {
                   <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-red)"></div> Blocked</div>
                   <div class="mlc-item"><div class="mlc-dot" style="background:var(--status-gray)"></div> Not Started</div>
                 </div>
-
                 <div class="map-toggle-overlay">
                   <button class="mto-btn active">Map</button>
                   <button class="mto-btn">Satellite</button>
@@ -1221,35 +1099,20 @@ body {
             </div>
             <div class="wc-item" onclick="toast('Thompson → detail')">
               <div class="wci-dot" style="background:var(--status-green)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Thompson Residence</div>
-                <div class="wci-sub">Patio + retaining wall</div>
-              </div>
-              <div class="mini-radial">
-                <svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-green)" stroke-dasharray="100" stroke-dashoffset="28" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">72</text></svg>
-              </div>
+              <div class="wci-content"><div class="wci-name">Thompson Residence</div><div class="wci-sub">Patio + retaining wall</div></div>
+              <div class="mini-radial"><svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-green)" stroke-dasharray="100" stroke-dashoffset="28" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">72</text></svg></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
             <div class="wc-item" onclick="toast('Cedar Park → detail')">
               <div class="wci-dot" style="background:var(--status-amber)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Cedar Park HOA</div>
-                <div class="wci-sub">Common area landscape</div>
-              </div>
-              <div class="mini-radial">
-                <svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-amber)" stroke-dasharray="100" stroke-dashoffset="55" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">45</text></svg>
-              </div>
+              <div class="wci-content"><div class="wci-name">Cedar Park HOA</div><div class="wci-sub">Common area landscape</div></div>
+              <div class="mini-radial"><svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-amber)" stroke-dasharray="100" stroke-dashoffset="55" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">45</text></svg></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
             <div class="wc-item" onclick="toast('Lakeway → detail')">
               <div class="wci-dot" style="background:var(--status-blue)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Lakeway Estates</div>
-                <div class="wci-sub">Front yard redesign</div>
-              </div>
-              <div class="mini-radial">
-                <svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-blue)" stroke-dasharray="100" stroke-dashoffset="85" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">15</text></svg>
-              </div>
+              <div class="wci-content"><div class="wci-name">Lakeway Estates</div><div class="wci-sub">Front yard redesign</div></div>
+              <div class="mini-radial"><svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.9"/><circle class="r-fill" cx="18" cy="18" r="15.9" stroke="var(--status-blue)" stroke-dasharray="100" stroke-dashoffset="85" transform="rotate(-90 18 18)"/><text class="r-text" x="18" y="18">15</text></svg></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
           </div>
@@ -1262,26 +1125,17 @@ body {
             </div>
             <div class="wc-item" onclick="toast('Low stock → Materials')">
               <div class="wci-dot" style="background:var(--status-red)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Low stock: Flagstone</div>
-                <div class="wci-sub">45 sqft remaining</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">Low stock: Flagstone</div><div class="wci-sub">45 sqft remaining</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
             <div class="wc-item" onclick="toast('Cert expiring → Crew')">
               <div class="wci-dot" style="background:var(--status-amber)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Cert: M. Rodriguez</div>
-                <div class="wci-sub">Pesticide — 12 days</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">Cert: M. Rodriguez</div><div class="wci-sub">Pesticide — 12 days</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
             <div class="wc-item" onclick="toast('Maintenance → Equipment')">
               <div class="wci-dot" style="background:var(--status-amber)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Maint: Bobcat E35</div>
-                <div class="wci-sub">250 hrs since service</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">Maint: Bobcat E35</div><div class="wci-sub">250 hrs since service</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
           </div>
@@ -1294,28 +1148,19 @@ body {
             </div>
             <div class="wc-item" onclick="toast('Team Alpha → detail')">
               <div class="wci-dot" style="background:var(--status-green)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Team Alpha</div>
-                <div class="wci-sub">4 members &middot; Thompson</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">Team Alpha</div><div class="wci-sub">4 members &middot; Thompson</div></div>
               <div class="wci-right"><div class="wci-value" style="color:var(--status-green)">Active</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
             <div class="wc-item" onclick="toast('Team Bravo → detail')">
               <div class="wci-dot" style="background:var(--status-green)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Team Bravo</div>
-                <div class="wci-sub">3 members &middot; Cedar Park</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">Team Bravo</div><div class="wci-sub">3 members &middot; Cedar Park</div></div>
               <div class="wci-right"><div class="wci-value" style="color:var(--status-green)">Active</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
             <div class="wc-item" onclick="toast('Team Charlie → detail')">
               <div class="wci-dot" style="background:var(--status-gray)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Team Charlie</div>
-                <div class="wci-sub">3 members &middot; Unassigned</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">Team Charlie</div><div class="wci-sub">3 members &middot; Unassigned</div></div>
               <div class="wci-right"><div class="wci-value" style="color:var(--text-tertiary)">Available</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
@@ -1329,28 +1174,19 @@ body {
             </div>
             <div class="wc-item" onclick="toast('Bobcat E35 → detail')">
               <div class="wci-dot" style="background:var(--status-green)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Bobcat E35</div>
-                <div class="wci-sub">Mini excavator</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">Bobcat E35</div><div class="wci-sub">Mini excavator</div></div>
               <div class="wci-right"><div class="wci-value">250 hrs</div><div class="wci-meta">Thompson</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
             <div class="wc-item" onclick="toast('F-250 → detail')">
               <div class="wci-dot" style="background:var(--status-green)"></div>
-              <div class="wci-content">
-                <div class="wci-name">F-250 Crew Cab</div>
-                <div class="wci-sub">Truck</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">F-250 Crew Cab</div><div class="wci-sub">Truck</div></div>
               <div class="wci-right"><div class="wci-value">3.2K mi</div><div class="wci-meta">In transit</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
             <div class="wc-item" onclick="toast('Compactor → detail')">
               <div class="wci-dot" style="background:var(--status-red)"></div>
-              <div class="wci-content">
-                <div class="wci-name">Plate Compactor</div>
-                <div class="wci-sub">In maintenance</div>
-              </div>
+              <div class="wci-content"><div class="wci-name">Plate Compactor</div><div class="wci-sub">In maintenance</div></div>
               <div class="wci-right"><div class="wci-value" style="color:var(--status-red)">Overdue</div><div class="wci-meta">Est. 2 days</div></div>
               <svg class="wci-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
             </div>
@@ -1383,15 +1219,9 @@ body {
 
       <div class="mock-main">
         <div class="projects-header">
-          <div class="ph-left">
-            <span class="ph-title">Projects</span>
-            <span class="ph-count">8</span>
-          </div>
+          <div class="ph-left"><span class="ph-title">Projects</span><span class="ph-count">8</span></div>
           <div class="ph-actions">
-            <div class="ph-search">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              Search...
-            </div>
+            <div class="ph-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> Search...</div>
             <button class="btn-primary-sm">+ New</button>
           </div>
         </div>
@@ -1407,132 +1237,59 @@ body {
 
         <div class="project-grid">
           <div class="pcard" data-status="blue" onclick="toast('Test Zone → detail')">
-            <div class="pc-row1">
-              <div class="pc-name">Test Zone Project</div>
-              <div class="pc-badge blue">In Progress</div>
-            </div>
+            <div class="pc-row1"><div class="pc-name">Test Zone Project</div><div class="pc-badge blue">In Progress</div></div>
             <div class="pc-address">300 Detroit Street, Ann Arbor, MI</div>
-            <div class="pc-meta">
-              <div class="pc-meta-item"><span class="pc-meta-label">Value</span> <span class="pc-meta-value">$0</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$400K</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">2</span></div>
-            </div>
-            <div class="pc-progress-row">
-              <div class="pc-bar"><div class="pc-fill green" style="width:38%"></div></div>
-              <span class="pc-pct">3/8</span>
-            </div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Value</span> <span class="pc-meta-value">$0</span></div><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$400K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">2</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:38%"></div></div><span class="pc-pct">3/8</span></div>
           </div>
 
           <div class="pcard" data-status="blue" onclick="toast('Backyard Patio → detail')">
-            <div class="pc-row1">
-              <div class="pc-name">Backyard Patio with Firepit</div>
-              <div class="pc-badge blue">In Progress</div>
-            </div>
+            <div class="pc-row1"><div class="pc-name">Backyard Patio with Firepit</div><div class="pc-badge blue">In Progress</div></div>
             <div class="pc-address">3456 California Ave, St. Louis, MO</div>
-            <div class="pc-meta">
-              <div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div>
-            </div>
-            <div class="pc-progress-row">
-              <div class="pc-bar"><div class="pc-fill green" style="width:13%"></div></div>
-              <span class="pc-pct">1/8</span>
-            </div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:13%"></div></div><span class="pc-pct">1/8</span></div>
           </div>
 
           <div class="pcard" data-status="blue" onclick="toast('Commercial Parking → detail')">
-            <div class="pc-row1">
-              <div class="pc-name">Commercial Parking Lot Landscape</div>
-              <div class="pc-badge blue">In Progress</div>
-            </div>
+            <div class="pc-row1"><div class="pc-name">Commercial Parking Lot Landscape</div><div class="pc-badge blue">In Progress</div></div>
             <div class="pc-address">6445 Richfield Pkwy, Richfield, MN</div>
-            <div class="pc-meta">
-              <div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div>
-            </div>
-            <div class="pc-progress-row">
-              <div class="pc-bar"><div class="pc-fill green" style="width:50%"></div></div>
-              <span class="pc-pct">4/8</span>
-            </div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:50%"></div></div><span class="pc-pct">4/8</span></div>
           </div>
 
           <div class="pcard" data-status="blue" onclick="toast('Retaining Wall → detail')">
-            <div class="pc-row1">
-              <div class="pc-name">Retaining Wall with Drainage</div>
-              <div class="pc-badge blue">In Progress</div>
-            </div>
+            <div class="pc-row1"><div class="pc-name">Retaining Wall with Drainage</div><div class="pc-badge blue">In Progress</div></div>
             <div class="pc-address">781 Bayard Ave, Saint Paul, MN</div>
-            <div class="pc-meta">
-              <div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4.8K</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div>
-            </div>
-            <div class="pc-progress-row">
-              <div class="pc-bar"><div class="pc-fill green" style="width:13%"></div></div>
-              <span class="pc-pct">1/8</span>
-            </div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4.8K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:13%"></div></div><span class="pc-pct">1/8</span></div>
           </div>
 
           <div class="pcard" data-status="gray" onclick="toast('Commercial Parking Lot → detail')">
-            <div class="pc-row1">
-              <div class="pc-name">Commercial Parking Lot Landscape</div>
-              <div class="pc-badge gray">Planning</div>
-            </div>
+            <div class="pc-row1"><div class="pc-name">Commercial Parking Lot Landscape</div><div class="pc-badge gray">Planning</div></div>
             <div class="pc-address">Bemis Lane, Levant, ME 04456</div>
-            <div class="pc-meta">
-              <div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div>
-            </div>
-            <div class="pc-progress-row">
-              <div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div>
-              <span class="pc-pct">0/8</span>
-            </div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$15K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div><span class="pc-pct">0/8</span></div>
           </div>
 
           <div class="pcard" data-status="gray" onclick="toast('Pohl Front Yard → detail')">
-            <div class="pc-row1">
-              <div class="pc-name">Pohl Front Yard</div>
-              <div class="pc-badge gray">Planning</div>
-            </div>
+            <div class="pc-row1"><div class="pc-name">Pohl Front Yard</div><div class="pc-badge gray">Planning</div></div>
             <div class="pc-address">603 Hamline Ave S, Saint Paul, MN</div>
-            <div class="pc-meta">
-              <div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4K</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">1</span></div>
-            </div>
-            <div class="pc-progress-row">
-              <div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div>
-              <span class="pc-pct">0/8</span>
-            </div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">1</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div><span class="pc-pct">0/8</span></div>
           </div>
 
           <div class="pcard" data-status="gray" onclick="toast('Backyard Patio with Firepit → detail')">
-            <div class="pc-row1">
-              <div class="pc-name">Backyard Patio with Firepit</div>
-              <div class="pc-badge gray">Planning</div>
-            </div>
+            <div class="pc-row1"><div class="pc-name">Backyard Patio with Firepit</div><div class="pc-badge gray">Planning</div></div>
             <div class="pc-address">6701 Richfield Pkwy, Richfield, MN</div>
-            <div class="pc-meta">
-              <div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$8.5K</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div>
-            </div>
-            <div class="pc-progress-row">
-              <div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div>
-              <span class="pc-pct">0/8</span>
-            </div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$8.5K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill gray" style="width:0%"></div></div><span class="pc-pct">0/8</span></div>
           </div>
 
           <div class="pcard" data-status="blue" onclick="toast('Retaining Wall with Drainage → detail')">
-            <div class="pc-row1">
-              <div class="pc-name">Retaining Wall with Drainage</div>
-              <div class="pc-badge blue">In Progress</div>
-            </div>
+            <div class="pc-row1"><div class="pc-name">Retaining Wall with Drainage</div><div class="pc-badge blue">In Progress</div></div>
             <div class="pc-address">124 Lexington Blvd, Delaware, OH</div>
-            <div class="pc-meta">
-              <div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4.8K</span></div>
-              <div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div>
-            </div>
-            <div class="pc-progress-row">
-              <div class="pc-bar"><div class="pc-fill green" style="width:88%"></div></div>
-              <span class="pc-pct">7/8</span>
-            </div>
+            <div class="pc-meta"><div class="pc-meta-item"><span class="pc-meta-label">Budget</span> <span class="pc-meta-value">$4.8K</span></div><div class="pc-meta-item"><span class="pc-meta-label">Zones</span> <span class="pc-meta-value">0</span></div></div>
+            <div class="pc-progress-row"><div class="pc-bar"><div class="pc-fill green" style="width:88%"></div></div><span class="pc-pct">7/8</span></div>
           </div>
         </div>
       </div>
@@ -1540,7 +1297,7 @@ body {
   </div>
 </div>
 
-<!-- ========== 3. LIST VIEW — Maximum Density ========== -->
+<!-- ========== 3. LIST VIEW ========== -->
 <div class="section-panel" id="section-list">
   <div class="section-heading">Projects — List View (Recommended for Tablet)</div>
   <div class="section-desc">Maximum information density. Full project names, budget, and progress visible in a single scannable row. Best view for 8+ projects on tablet.</div>
@@ -1562,10 +1319,7 @@ body {
 
       <div class="mock-main">
         <div class="projects-header">
-          <div class="ph-left">
-            <span class="ph-title">Projects</span>
-            <span class="ph-count">8</span>
-          </div>
+          <div class="ph-left"><span class="ph-title">Projects</span><span class="ph-count">8</span></div>
           <div class="ph-actions">
             <div class="ph-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> Search...</div>
             <button class="btn-primary-sm">+ New</button>
@@ -1584,81 +1338,42 @@ body {
         <div class="project-list">
           <div class="plist-item" data-status="blue" onclick="toast('Test Zone → detail')">
             <div class="pli-content"><div class="pli-name">Test Zone Project</div><div class="pli-addr">300 Detroit Street, Ann Arbor, MI</div></div>
-            <div class="pli-meta">
-              <div class="pli-stat"><div class="pli-stat-val">$400K</div><div class="pli-stat-label">Budget</div></div>
-              <div class="pli-stat"><div class="pli-stat-val">2</div><div class="pli-stat-label">Zones</div></div>
-              <div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:38%;background:var(--status-green)"></div></div><div class="pli-pct">3/8</div></div>
-            </div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$400K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">2</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:38%;background:var(--status-green)"></div></div><div class="pli-pct">3/8</div></div></div>
             <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
-
           <div class="plist-item" data-status="blue" onclick="toast('Backyard Patio with Firepit → detail')">
             <div class="pli-content"><div class="pli-name">Backyard Patio with Firepit</div><div class="pli-addr">3456 California Avenue, St. Louis, MO</div></div>
-            <div class="pli-meta">
-              <div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div>
-              <div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div>
-              <div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:13%;background:var(--status-green)"></div></div><div class="pli-pct">1/8</div></div>
-            </div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:13%;background:var(--status-green)"></div></div><div class="pli-pct">1/8</div></div></div>
             <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
-
           <div class="plist-item" data-status="blue" onclick="toast('Commercial Parking Lot Landscape → detail')">
             <div class="pli-content"><div class="pli-name">Commercial Parking Lot Landscape</div><div class="pli-addr">6445 Richfield Parkway, Richfield, MN</div></div>
-            <div class="pli-meta">
-              <div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div>
-              <div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div>
-              <div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:50%;background:var(--status-green)"></div></div><div class="pli-pct">4/8</div></div>
-            </div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:50%;background:var(--status-green)"></div></div><div class="pli-pct">4/8</div></div></div>
             <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
-
           <div class="plist-item" data-status="blue" onclick="toast('Retaining Wall with Drainage → detail')">
             <div class="pli-content"><div class="pli-name">Retaining Wall with Drainage</div><div class="pli-addr">781 Bayard Avenue, Saint Paul, MN</div></div>
-            <div class="pli-meta">
-              <div class="pli-stat"><div class="pli-stat-val">$4.8K</div><div class="pli-stat-label">Budget</div></div>
-              <div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div>
-              <div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:13%;background:var(--status-green)"></div></div><div class="pli-pct">1/8</div></div>
-            </div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$4.8K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:13%;background:var(--status-green)"></div></div><div class="pli-pct">1/8</div></div></div>
             <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
-
           <div class="plist-item" data-status="amber" onclick="toast('Commercial Parking Lot Landscape → detail')">
             <div class="pli-content"><div class="pli-name">Commercial Parking Lot Landscape</div><div class="pli-addr">Bemis Lane, Levant, Maine 04456</div></div>
-            <div class="pli-meta">
-              <div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div>
-              <div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div>
-              <div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div>
-            </div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$15K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div></div>
             <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
-
           <div class="plist-item" data-status="amber" onclick="toast('Pohl Front Yard → detail')">
             <div class="pli-content"><div class="pli-name">Pohl Front Yard</div><div class="pli-addr">603 Hamline Avenue South, Saint Paul, MN</div></div>
-            <div class="pli-meta">
-              <div class="pli-stat"><div class="pli-stat-val">$4K</div><div class="pli-stat-label">Budget</div></div>
-              <div class="pli-stat"><div class="pli-stat-val">1</div><div class="pli-stat-label">Zones</div></div>
-              <div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div>
-            </div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$4K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">1</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div></div>
             <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
-
           <div class="plist-item" data-status="amber" onclick="toast('Backyard Patio with Firepit → detail')">
             <div class="pli-content"><div class="pli-name">Backyard Patio with Firepit</div><div class="pli-addr">6701 Richfield Parkway, Richfield, MN</div></div>
-            <div class="pli-meta">
-              <div class="pli-stat"><div class="pli-stat-val">$8.5K</div><div class="pli-stat-label">Budget</div></div>
-              <div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div>
-              <div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div>
-            </div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$8.5K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:0%;background:var(--status-gray)"></div></div><div class="pli-pct">0/8</div></div></div>
             <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
-
           <div class="plist-item" data-status="blue" onclick="toast('Retaining Wall with Drainage → detail')">
             <div class="pli-content"><div class="pli-name">Retaining Wall with Drainage</div><div class="pli-addr">124 Lexington Boulevard, Delaware, OH</div></div>
-            <div class="pli-meta">
-              <div class="pli-stat"><div class="pli-stat-val">$4.8K</div><div class="pli-stat-label">Budget</div></div>
-              <div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div>
-              <div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:88%;background:var(--status-green)"></div></div><div class="pli-pct">7/8</div></div>
-            </div>
+            <div class="pli-meta"><div class="pli-stat"><div class="pli-stat-val">$4.8K</div><div class="pli-stat-label">Budget</div></div><div class="pli-stat"><div class="pli-stat-val">0</div><div class="pli-stat-label">Zones</div></div><div class="pli-progress"><div class="pli-bar"><div class="pli-fill" style="width:88%;background:var(--status-green)"></div></div><div class="pli-pct">7/8</div></div></div>
             <svg class="pli-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
         </div>
@@ -1706,31 +1421,19 @@ body {
     <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
       <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Widget Item</div>
       <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
-        Padding: 8px 14px<br>
-        Min height: 44px<br>
-        Icon: 6px dot<br>
-        Name: 13px/600<br>
-        Sub: 11px tertiary
+        Padding: 8px 14px<br>Min height: 44px<br>Icon: 6px dot<br>Name: 13px/600<br>Sub: 11px tertiary
       </div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
       <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Project Card</div>
       <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
-        Padding: 12px 14px<br>
-        Name: 14px/700 (2-line clamp)<br>
-        Accent: 3px left bar<br>
-        Meta: inline, 12px<br>
-        Progress: 4px bar
+        Padding: 12px 14px<br>Name: 14px/700 (2-line clamp)<br>Accent: 3px left bar<br>Meta: inline, 12px<br>Progress: 4px bar
       </div>
     </div>
     <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
       <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">KPI Strip</div>
       <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
-        Padding: 10px 12px<br>
-        Value: 20px/800<br>
-        Label: 11px/600<br>
-        Sparkline: 20px tall<br>
-        Border-separated
+        Padding: 10px 12px<br>Value: 20px/800<br>Label: 11px/600<br>Sparkline: 20px tall<br>Border-separated
       </div>
     </div>
   </div>
@@ -1738,7 +1441,7 @@ body {
   <div style="margin-top:24px;padding:16px;background:var(--brand-primary-bg);border:1px solid var(--brand-primary);border-radius:var(--radius-md);">
     <div style="font-size:14px;font-weight:700;color:var(--brand-primary);margin-bottom:6px;">Key Principle: Border Grids vs Gap Grids</div>
     <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
-      Instead of <code>display: grid; gap: 16px</code>, use <code>gap: 0</code> with <code>border-bottom</code> and <code>border-right</code> on children. This eliminates visible whitespace between items while maintaining visual separation. The map and widgets already share borders, creating a dense, app-like feel instead of a dashboard-with-cards feel.
+      Instead of <code style="background:var(--surface-bg);padding:2px 6px;border-radius:4px;font-size:12px;">display: grid; gap: 16px</code>, use <code style="background:var(--surface-bg);padding:2px 6px;border-radius:4px;font-size:12px;">gap: 0</code> with <code style="background:var(--surface-bg);padding:2px 6px;border-radius:4px;font-size:12px;">border-bottom</code> and <code style="background:var(--surface-bg);padding:2px 6px;border-radius:4px;font-size:12px;">border-right</code> on children. This eliminates visible whitespace between items while maintaining visual separation. The map and widgets already share borders, creating a dense, app-like feel instead of a dashboard-with-cards feel.
     </div>
   </div>
 </div>

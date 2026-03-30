@@ -16,14 +16,15 @@
 **Netlify site ID**: `d8efdf00-91f7-4717-aabd-d1c65372a634`
 **Netlify team**: `woodsrider82`
 
-### Phase Roadmap
+### Milestone Roadmap (see ROADMAP.md for full detail)
 
-| Phase | Goal | Gate | Status |
-|-------|------|------|--------|
-| Phase 1 | MVP — full contractor workflow | All 8 pages live, billing, multi-tenant | **COMPLETE** |
-| Phase 2 | Operations & Integrations | 5+ paying customers | Next |
-| Phase 3 | 3D Design Studio | 20+ customers, 90% retention | Future |
-| Phase 4 | Scale & Marketplace | $15K+ MRR stable | Future |
+| Milestone | Goal | Gate | Status |
+|-----------|------|------|--------|
+| M1 "Worth the Demo" | Full contractor workflow + scheduling + crew app | 15-min demo → "how do I sign up?" | **COMPLETE** (pending gate eval) |
+| M2 "First Impression" | Onboarding & trial experience | Signup-to-first-project in <5 min | Next |
+| M3 "First Revenue" | Launch & validation | 5 paying subs, $400+ MRR | Future |
+| M4 "Sticky" | Retention & expansion | <5% monthly churn, NPS >40 | Future |
+| M5 "Scale" | Growth & differentiation | $15K MRR, 20+ orgs | Future |
 
 ### Tech Stack
 
@@ -167,51 +168,23 @@ Run manually in Supabase SQL Editor. Files in `supabase/migrations/`:
 
 ## 5. Codebase Architecture
 
-### Source Structure (87 files, ~17K lines)
-```
-src/
-├── pages/          13 files, 5,882 LOC  (route components)
-├── components/     25 files, 3,018 LOC  (dashboard, layout, pdf, shared, ui)
-├── stores/          7 files, ~2,100 LOC (Zustand: project, material, equipment, crew, org, ui, schedule)
-├── services/        5 files, 1,332 LOC  (supabaseData, supabase, anthropic, stripe, preferences)
-├── lib/             9 files, 1,127 LOC  (business logic, KPI definitions, alerts)
-├── hooks/           7 files,   597 LOC  (useMapbox, useAddressAutocomplete, useBillingGate, etc.)
-├── types/           2 files,   504 LOC  (TypeScript interfaces)
-├── utils/           2 files,   ~90 LOC  (validation, dates)
-└── contexts/        1 file,    150 LOC  (AuthContext)
-```
+> Full architecture rules, naming conventions, file organization, and "What NOT to Do" are in `CLAUDE.md` at project root. That is the authoritative source for code standards. This section covers only what Orchestrator/Cowork sessions need to know.
 
-### Key Files to Know
-- `supabaseData.ts` (774 LOC) — ALL Supabase CRUD. Every write goes through here.
-- `projectStore.ts` (404 LOC) — Project state, addProject returns project ID
-- `Projects.tsx` (1,358 LOC) — Largest page, handles project CRUD + zone builder + AI creation
-- `useMapbox.ts` (215 LOC) — Map initialization + marker rendering
-- `AuthContext.tsx` (150 LOC) — Auth state + role diagnostic on login
-
-### Code Conventions
-- No `any` types — use `src/types/index.ts` interfaces
-- Colors via CSS custom properties: `var(--brand-primary)`, `var(--surface-card)`
-- Business logic in `src/lib/`, never in components
-- Supabase writes only through `supabaseData.ts`, always include `org_id`
-- Imports use `@/` alias, never relative paths
+### Key Files
+- `supabaseData.ts` — ALL Supabase CRUD. Every write goes through here.
+- `projectStore.ts` — Project state, addProject returns project ID
+- `Projects.tsx` — Largest page, handles project CRUD + zone builder + AI creation
+- `AuthContext.tsx` — Auth state + role diagnostic on login
+- `src/types/index.ts` — Single source of truth for all shared TypeScript interfaces
 
 ---
 
-## 6. Environment Variables
+## 6. Environment & Infrastructure
 
-| Variable | Required | Used In |
-|----------|----------|---------|
-| `VITE_SUPABASE_URL` | Yes | supabase.ts |
-| `VITE_SUPABASE_ANON_KEY` | Yes | supabase.ts |
-| `VITE_STRIPE_PK` | Yes | stripe.ts |
-| `VITE_STRIPE_PRICE_STARTER` | Yes | Billing.tsx |
-| `VITE_STRIPE_PRICE_PRO` | Yes | Billing.tsx |
-| `VITE_STRIPE_PRICE_BUSINESS` | Yes | Billing.tsx |
-| `VITE_ANTHROPIC_API_KEY` | Optional | anthropic.ts |
-| `VITE_MAPBOX_TOKEN` | Optional | useMapbox.ts, AddressInput.tsx |
-
-Set in `.env.local` (local) and Netlify dashboard (prod).
-Mapbox token: set in `.env.local` (local) and Netlify dashboard (prod) — do not commit
+- **Env vars**: Set in `.env.local` (local) and Netlify dashboard (prod). Full list in `CLAUDE.md`.
+- **Dev server**: `npm run dev` → `localhost:3000`
+- **Netlify auto-deploy**: OFF (build minute budget renews 4/19). Deploy manually after local testing.
+- **Scaling triggers**: Supabase Pro at >400MB or >40K MAU. Netlify Pro at >80GB bandwidth. Redis caching at >50 customers.
 
 ---
 
@@ -280,20 +253,37 @@ Full sprint archive in `.claude/archive/SPRINT_HISTORY.md`. Key milestones:
 **Milestone**: M1 "Worth the Demo" — COMPLETE (pending gate evaluation)
 **All features working**: Auth, projects, zones, materials, crew, equipment, work orders, billing, PDF export, AI creation, maps, dashboard KPI strip, widget grid (2-col with resize), weekly scheduling, **crew app with PIN auth + checklist + photo proof + status signals**, **v7 UI overhaul (icon rail, top nav, sub-tabs, dense cards, list view)**
 **No known blocking bugs.**
-**Key decisions made (2026-03-30)**: Navigation consolidated to 5 groups. Crew auth = same app, role-based routing with PIN. Schedule under Jobs group.
-**Next**: M1 gate evaluation → M2 (Onboarding & Trial Experience)
-**Workflow**: VSCode Claude Code for execution, Cowork for orchestration. Full lifecycle documented in EXECUTION.md.
+**Next**: M1 gate evaluation → begin M2 planning
+**Workflow**: VSCode Claude Code for planning + execution, Cowork for strategy + deliverables
 
 ---
 
-## 10. How to Start a New Orchestrator Session
+## 10. .claude/ File Map
 
-If this session runs out of context, start a new one with:
+After the Sprint 25 consolidation, the `.claude/` directory has a clean structure:
 
+### Active files (what Code reads)
+| File | Purpose |
+|------|---------|
+| `CONTEXT.md` | Current state — updated after each sprint |
+| `ROADMAP.md` | Milestone plan with module specs |
+| `ORCHESTRATOR.md` | This file — full knowledge base for Orchestrator/Cowork |
+| `CODE_GUIDE.md` | Execution workflow, sprint lifecycle, testing protocol |
+| `DESIGN_SYSTEM.md` | Design tokens, color system, component patterns |
+| `CONSIDERATIONS.md` | Backlog items not yet sprint-ready |
+| `SPRINT_TEMPLATE.md` | Template for writing new sprint prompts |
+
+### Subdirectories
+| Directory | Contents |
+|-----------|----------|
+| `business/` | BUSINESS.md, MARKETING.md, AI_PRODUCT.md — Cowork-only, Code never reads |
+| `archive/` | Completed sprint prompts, old design previews, superseded docs |
+| `design/` | Active design preview (v7) |
+| `TESTING/` | QA findings, test protocol, sprint test results |
+| `SQL/` | Sprint-specific SQL reference files |
+
+### How to start a new session
 1. Read this file (`ORCHESTRATOR.md`) — you now know everything
-2. Read `.claude/CONTEXT.md` — current sprint status
-3. Check auto-memory files — preferences, feedback, references
+2. Read `CONTEXT.md` — current sprint status
+3. Read `ROADMAP.md` — what milestone is active, what's next
 4. Ask Charlie: "I'm up to speed. What are we working on?"
-
-That's it. No context loss.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
