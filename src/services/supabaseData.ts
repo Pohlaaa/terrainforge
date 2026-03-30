@@ -646,7 +646,7 @@ export async function deleteCrewMember(id: string): Promise<boolean> {
 
 // ===== EQUIPMENT =====
 
-export async function fetchEquipment(): Promise<Equipment[]> {
+export async function fetchEquipment(orgId: string): Promise<Equipment[]> {
   try {
     const { data, error } = await supabase
       .from('equipment')
@@ -663,6 +663,7 @@ export async function fetchEquipment(): Promise<Equipment[]> {
           next_due_date
         )
       `)
+      .eq('org_id', orgId)
 
     if (error) throw error
 

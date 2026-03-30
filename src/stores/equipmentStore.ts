@@ -260,9 +260,11 @@ export const useEquipmentStore = create<EquipmentStore>()(
       reset: () => set({ equipment: [], isLoading: false, error: null }),
       setEquipment: (equipment) => set({ equipment }),
       fetchEquipment: async () => {
+        const orgId = useOrgStore.getState().org?.id
+        if (!orgId) return
         set({ isLoading: true, error: null })
         try {
-          const equipment = await db.fetchEquipment()
+          const equipment = await db.fetchEquipment(orgId)
           set({ equipment, isLoading: false })
         } catch (err: any) {
           set({ isLoading: false, error: err.message })
