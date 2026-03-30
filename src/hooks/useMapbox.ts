@@ -81,7 +81,7 @@ export function useMapbox({
           center,
           zoom,
           fadeDuration: prefersReducedMotion ? 0 : 300,
-          scrollZoom: false, // Prevent scroll capture — user must ctrl+scroll or pinch
+          scrollZoom: true,
         });
 
         mapRef.current = mapInstance;
