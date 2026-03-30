@@ -319,7 +319,7 @@ const Billing: React.FC = () => {
           <button
             onClick={handleManageBilling}
             disabled={openingPortal}
-            className="px-[12px] py-[7px] text-[12px] font-[600] bg-[#DC2626] text-white rounded-[6px] hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            className="px-[12px] py-[7px] text-[12px] font-[600] bg-[#DC2626] text-white rounded-[8px] hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
           >
             {openingPortal ? 'Opening…' : 'Update Card'}
           </button>
@@ -379,7 +379,7 @@ const Billing: React.FC = () => {
           <button
             onClick={handleManageBilling}
             disabled={openingPortal}
-            className="flex-shrink-0 px-[14px] py-[8px] text-[12px] font-[600] bg-[var(--surface)] border border-[var(--border)] rounded-[6px] text-[var(--text-2)] hover:text-[var(--text)] hover:border-[var(--green-l)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-shrink-0 px-[14px] py-[8px] text-[12px] font-[600] bg-[var(--surface)] border border-[var(--border)] rounded-[8px] text-[var(--text-2)] hover:text-[var(--text)] hover:border-[var(--green-l)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {openingPortal ? 'Opening…' : 'Manage Billing →'}
           </button>
@@ -457,7 +457,7 @@ const Billing: React.FC = () => {
               <button
                 onClick={() => !disabled && handleSubscribe(tier)}
                 disabled={disabled}
-                className={`w-full py-[10px] rounded-[7px] text-[13px] font-[700] transition-all ${
+                className={`w-full py-[10px] rounded-[8px] text-[13px] font-[700] transition-all ${
                   current
                     ? 'bg-[rgba(116,198,157,.15)] text-[var(--green-l)] cursor-default'
                     : disabled

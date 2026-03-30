@@ -324,7 +324,7 @@ export const WorkOrders: React.FC = () => {
                               return (
                                 <div
                                   key={zm.materialId}
-                                  className="flex items-center gap-[6px] bg-[var(--surface3)] px-[10px] py-[6px] rounded-[6px] text-[11px]"
+                                  className="flex items-center gap-[6px] bg-[var(--surface3)] px-[10px] py-[6px] rounded-[8px] text-[11px]"
                                 >
                                   <span className="w-[6px] h-[6px] rounded-full bg-[var(--green-l)] flex-shrink-0" />
                                   <span className="text-[var(--text-2)] truncate">
@@ -377,7 +377,7 @@ export const WorkOrders: React.FC = () => {
                               <li key={step.n}>
                                 <button
                                   onClick={() => toggleStep(zone.id, step.n)}
-                                  className={`w-full flex items-start gap-[10px] px-[10px] py-[9px] rounded-[7px] text-left border-none cursor-pointer transition-colors duration-150 ${
+                                  className={`w-full flex items-start gap-[10px] px-[10px] py-[9px] rounded-[8px] text-left border-none cursor-pointer transition-colors duration-150 ${
                                     done
                                       ? 'bg-[rgba(45,106,79,.12)]'
                                       : 'bg-[var(--surface3)] hover:bg-[rgba(255,255,255,.04)]'
@@ -407,7 +407,7 @@ export const WorkOrders: React.FC = () => {
 
                       {/* Zone notes */}
                       {zone.notes && (
-                        <div className="text-[11px] text-[var(--text-3)] bg-[var(--surface3)] px-[12px] py-[8px] rounded-[6px] border-l-[3px] border-[var(--border2)]">
+                        <div className="text-[11px] text-[var(--text-3)] bg-[var(--surface3)] px-[12px] py-[8px] rounded-[8px] border-l-[3px] border-[var(--border2)]">
                           <span className="font-[700] text-[var(--text-4)] uppercase text-[9px] tracking-[0.05em] mr-[6px]">Note</span>
                           {zone.notes}
                         </div>

@@ -570,7 +570,7 @@ export const Dashboard: React.FC = () => {
                   style={{
                     background: 'var(--surface-card)',
                     border: '1px solid var(--border-default)',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     padding: '6px 10px',
                     fontSize: '12px',
                     color: 'var(--text-secondary)',
@@ -594,7 +594,7 @@ export const Dashboard: React.FC = () => {
                 onClick={toggleEditMode}
                 style={{
                   padding: '6px 12px',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   fontSize: '12px',
                   fontWeight: 600,
                   minHeight: '44px',

@@ -682,7 +682,7 @@ export const Projects: React.FC = () => {
                   <button
                     key={key}
                     onClick={() => toggleChecklist(selectedProject.id, key)}
-                    className={`w-full flex items-center gap-[10px] px-[10px] py-[8px] rounded-[6px] text-[12px] text-left transition-colors duration-150 cursor-pointer border-none ${
+                    className={`w-full flex items-center gap-[10px] px-[10px] py-[8px] rounded-[8px] text-[12px] text-left transition-colors duration-150 cursor-pointer border-none ${
                       checked
                         ? 'bg-[rgba(45,106,79,.15)] text-[var(--green-l)]'
                         : 'bg-[var(--surface3)] text-[var(--text-2)] hover:bg-[rgba(255,255,255,.04)]'
@@ -785,7 +785,7 @@ export const Projects: React.FC = () => {
               {filteredMaterials.map((mat) => {
                 const alreadyAdded = assignedMaterials.some(e => e.materialId === mat.id);
                 return (
-                  <div key={mat.id} className={`flex items-center justify-between px-[12px] py-[8px] rounded-[6px] border transition-colors ${alreadyAdded ? 'opacity-50 bg-[var(--surface3)] border-[var(--border)]' : 'bg-[var(--surface3)] border-[var(--border)] hover:border-[var(--color-primary)] cursor-pointer'}`}
+                  <div key={mat.id} className={`flex items-center justify-between px-[12px] py-[8px] rounded-[8px] border transition-colors ${alreadyAdded ? 'opacity-50 bg-[var(--surface3)] border-[var(--border)]' : 'bg-[var(--surface3)] border-[var(--border)] hover:border-[var(--color-primary)] cursor-pointer'}`}
                     onClick={() => {
                       if (alreadyAdded) return;
                       const qty = parseFloat(matQty) || 1;
@@ -1079,7 +1079,7 @@ export const Projects: React.FC = () => {
                       onClick={e => e.stopPropagation()}
                     >
                       <button
-                        className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[var(--text-3)] hover:text-[var(--text)] hover:bg-[var(--surface3)] transition-colors"
+                        className="w-[28px] h-[28px] flex items-center justify-center rounded-[8px] text-[var(--text-3)] hover:text-[var(--text)] hover:bg-[var(--surface3)] transition-colors"
                         onClick={() => setOpenMenuId(openMenuId === project.id ? null : project.id)}
                         aria-label="Project actions"
                       >
@@ -1383,7 +1383,7 @@ export const Projects: React.FC = () => {
                         alignItems: 'center',
                         gap: '8px',
                         padding: '6px 8px',
-                        borderRadius: '6px',
+                        borderRadius: '8px',
                         cursor: 'pointer',
                         background: aiRecommended ? 'var(--brand-primary-bg)' : 'transparent',
                         border: aiRecommended ? '1px solid var(--brand-primary)' : '1px solid transparent',

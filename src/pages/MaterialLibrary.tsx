@@ -650,7 +650,7 @@ export const MaterialLibrary: React.FC = () => {
               <div className="text-[11px] font-[600] text-[var(--text-3)] uppercase tracking-[0.06em] mb-[6px]">
                 Preview ({csvPreview.length} rows)
               </div>
-              <div className="max-h-[200px] overflow-y-auto border border-[var(--border)] rounded-[6px]">
+              <div className="max-h-[200px] overflow-y-auto border border-[var(--border)] rounded-[8px]">
                 <table className="w-full text-[11px]">
                   <thead>
                     <tr className="bg-[var(--surface3)] text-[var(--text-3)] text-left">

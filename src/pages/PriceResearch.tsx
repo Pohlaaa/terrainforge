@@ -268,7 +268,7 @@ export const PriceResearch: React.FC = () => {
               Find current retail and wholesale prices near you — powered by Claude
             </p>
           </div>
-          <span className="flex-shrink-0 inline-flex items-center gap-[5px] bg-[rgba(124,58,237,.12)] border border-[rgba(124,58,237,.3)] rounded-[5px] px-[8px] py-[3px] text-[10px] font-[600] text-[#A78BFA] ml-[12px]">
+          <span className="flex-shrink-0 inline-flex items-center gap-[5px] bg-[rgba(124,58,237,.12)] border border-[rgba(124,58,237,.3)] rounded-[8px] px-[8px] py-[3px] text-[10px] font-[600] text-[#A78BFA] ml-[12px]">
             ✦ AI
           </span>
         </div>
@@ -333,7 +333,7 @@ export const PriceResearch: React.FC = () => {
                     <button
                       key={matId}
                       onClick={() => setMaterialType(isActive ? '' : name)}
-                      className={`inline-flex items-center rounded-[5px] px-[8px] py-[3px] text-[11px] border transition-colors cursor-pointer ${
+                      className={`inline-flex items-center rounded-[8px] px-[8px] py-[3px] text-[11px] border transition-colors cursor-pointer ${
                         isActive
                           ? 'bg-[rgba(116,198,157,.15)] border-[var(--green-l)] text-[var(--green-l)]'
                           : 'bg-[var(--surface3)] border-[var(--border)] text-[var(--text-2)] hover:border-[var(--green-l)] hover:text-[var(--green-l)]'

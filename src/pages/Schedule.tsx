@@ -621,7 +621,7 @@ export const Schedule: React.FC = () => {
                                   background: colors.bg,
                                   border: `1px solid ${colors.border}`,
                                   color: colors.text,
-                                  borderRadius: '6px',
+                                  borderRadius: '8px',
                                   padding: '4px 8px',
                                   fontSize: '11px',
                                   fontWeight: 600,
