@@ -8,6 +8,7 @@ import CrewLayout from '@/components/layout/CrewLayout'
 
 const CrewDashboard = React.lazy(() => import('@/pages/crew/CrewDashboard'))
 const CrewJobDetail = React.lazy(() => import('@/pages/crew/CrewJobDetail'))
+const CrewLogin = React.lazy(() => import('@/pages/crew/CrewLogin'))
 import Dashboard from '@/pages/Dashboard'
 import Projects from '@/pages/Projects'
 import MaterialLibrary from '@/pages/MaterialLibrary'
@@ -42,6 +43,13 @@ function App() {
             <ProtectedRoute>
               <Onboarding />
             </ProtectedRoute>
+          } />
+
+          {/* Crew login — no auth required (PIN is the auth) */}
+          <Route path="/crew/login" element={
+            <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-2)' }}>Loading...</div>}>
+              <CrewLogin />
+            </React.Suspense>
           } />
 
           {/* Crew app routes — separate layout, no sidebar */}

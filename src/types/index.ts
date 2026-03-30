@@ -95,6 +95,8 @@ export interface CrewMember {
   notes: string;
   bookedDates: string[];
   certs: CrewCert[];
+  /** PIN hash for crew login (SHA-256 hex). Null if no PIN set. */
+  pinHash: string | null;
 }
 
 export interface CrewCert {
@@ -396,6 +398,8 @@ export interface Organization {
   /** ISO timestamp — when paid access expires after cancellation. */
   subscriptionEndsAt: string | null;
   stripeCustomerId: string | null;
+  /** 6-char alphanumeric code for crew login (e.g., "A3F9K2"). */
+  shortcode: string | null;
 }
 
 // ── Billing ───────────────────────────────────────────────────────────────────

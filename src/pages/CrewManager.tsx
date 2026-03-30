@@ -14,6 +14,9 @@ import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
 import { EmptyState, CrewIcon } from '@/components/shared/EmptyState';
+import { hashPin, isValidPin } from '@/lib/pin';
+import { setCrewPinHash, clearCrewPinHash } from '@/services/supabaseData';
+import { useOrgStore } from '@/stores/orgStore';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -103,6 +106,7 @@ function formToMember(f: CrewForm): Omit<CrewMember, 'id'> {
     notes: f.notes.trim(),
     bookedDates: [],
     certs: [],
+    pinHash: null,
   };
 }
 
@@ -179,6 +183,60 @@ export const CrewManager: React.FC = () => {
     await deleteCrewMember(deleteId);
     toast.info('Crew member removed');
     setDeleteId(null);
+  }
+
+  // ── PIN management ──────────────────────────────────────────────────────────
+  const [pinModalId, setPinModalId] = useState<string | null>(null);
+  const [pinValue, setPinValue] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinSaving, setPinSaving] = useState(false);
+  const org = useOrgStore((s) => s.org);
+
+  const pinMember = pinModalId ? crew.find(m => m.id === pinModalId) : null;
+
+  function openPinModal(id: string) {
+    setPinModalId(id);
+    setPinValue('');
+    setPinError('');
+  }
+
+  function closePinModal() {
+    setPinModalId(null);
+    setPinValue('');
+    setPinError('');
+  }
+
+  async function handleSetPin() {
+    if (!pinModalId) return;
+    if (!isValidPin(pinValue)) {
+      setPinError('PIN must be 4-6 digits');
+      return;
+    }
+    setPinSaving(true);
+    const hash = await hashPin(pinValue);
+    const ok = await setCrewPinHash(pinModalId, hash);
+    if (ok) {
+      updateCrewMember(pinModalId, { pinHash: hash });
+      toast.success('PIN set successfully');
+      closePinModal();
+    } else {
+      setPinError('Failed to save PIN');
+    }
+    setPinSaving(false);
+  }
+
+  async function handleClearPin() {
+    if (!pinModalId) return;
+    setPinSaving(true);
+    const ok = await clearCrewPinHash(pinModalId);
+    if (ok) {
+      updateCrewMember(pinModalId, { pinHash: null });
+      toast.info('PIN removed');
+      closePinModal();
+    } else {
+      setPinError('Failed to clear PIN');
+    }
+    setPinSaving(false);
   }
 
   // Toggle a single day directly on the card
@@ -289,6 +347,14 @@ export const CrewManager: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex gap-[6px] flex-shrink-0">
+                    <Button
+                      variant={member.pinHash ? 'outline' : 'ghost'}
+                      size="xs"
+                      onClick={() => openPinModal(member.id)}
+                      title={member.pinHash ? 'PIN is set — click to change' : 'Set a PIN for crew login'}
+                    >
+                      {member.pinHash ? '🔒 PIN' : '🔑 Set PIN'}
+                    </Button>
                     <Button variant="ghost" size="xs" onClick={() => openEdit(member)}>Edit</Button>
                     <Button variant="danger" size="xs" onClick={() => setDeleteId(member.id)}>Delete</Button>
                   </div>
@@ -474,6 +540,60 @@ export const CrewManager: React.FC = () => {
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
       />
+
+      {/* ── PIN modal ───────────────────────────────────────────────────────── */}
+      <Modal
+        isOpen={pinModalId !== null}
+        onClose={closePinModal}
+        title={`${pinMember?.pinHash ? 'Change' : 'Set'} PIN — ${pinMember?.name ?? ''}`}
+      >
+        <div className="flex flex-col gap-[12px]">
+          <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+            Enter a 4-6 digit PIN for crew app login.
+            {org?.shortcode && (
+              <> Company code: <strong className="font-mono text-[var(--brand-primary)]">{org.shortcode}</strong></>
+            )}
+          </p>
+          <Input
+            label="PIN (4-6 digits)"
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            value={pinValue}
+            onChange={e => { setPinValue(e.target.value.replace(/\D/g, '')); setPinError(''); }}
+            placeholder="e.g. 1234"
+            error={pinError || undefined}
+          />
+          <div className="flex items-center gap-[8px]">
+            <Button variant="primary" onClick={handleSetPin} disabled={pinSaving}>
+              {pinSaving ? 'Saving…' : 'Set PIN'}
+            </Button>
+            {pinMember?.pinHash && (
+              <Button variant="danger" onClick={handleClearPin} disabled={pinSaving}>
+                Remove PIN
+              </Button>
+            )}
+            <Button variant="ghost" onClick={closePinModal}>Cancel</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Org shortcode display ────────────────────────────────────────────── */}
+      {org?.shortcode && (
+        <div className="mt-[16px] px-[16px] py-[12px] border border-[var(--border)] rounded-[10px]" style={{ background: 'var(--surface-card)' }}>
+          <div className="text-[11px] font-[700] uppercase tracking-[0.08em] mb-[4px]" style={{ color: 'var(--text-3)' }}>
+            Crew Login Code
+          </div>
+          <div className="flex items-center gap-[12px]">
+            <span className="text-[24px] font-mono font-[800] tracking-[0.15em]" style={{ color: 'var(--brand-primary)' }}>
+              {org.shortcode}
+            </span>
+            <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+              Share this code with crew members so they can log in at <strong>/crew</strong>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

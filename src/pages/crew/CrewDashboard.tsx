@@ -11,6 +11,7 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { fetchScheduleEntries } from '@/services/supabaseData';
 import { Badge } from '@/components/shared/Badge';
+import { getCrewSession, clearCrewSession } from '@/lib/pin';
 import type { ScheduleEntry } from '@/types';
 
 type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
@@ -40,9 +41,10 @@ export const CrewDashboard: React.FC = () => {
   const { crew } = useCrewStore();
   const orgId = useOrgStore((s) => s.org?.id);
 
-  const [crewMemberId, setCrewMemberId] = useState<string | null>(
-    () => localStorage.getItem('tf_crew_member_id')
-  );
+  // Check for valid crew session — redirect to login if none
+  const session = getCrewSession();
+  const crewMemberId = session?.crewMemberId || localStorage.getItem('tf_crew_member_id');
+
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
@@ -65,51 +67,59 @@ export const CrewDashboard: React.FC = () => {
     loadSchedule();
   }, [loadSchedule]);
 
-  function selectCrewMember(id: string) {
-    localStorage.setItem('tf_crew_member_id', id);
-    setCrewMemberId(id);
-  }
-
-  // ── Crew member picker ──────────────────────────────────────────────────
+  // If no crew member identified, redirect to crew login
   if (!crewMemberId || !crewMember) {
     return (
-      <div>
-        <h1 className="text-[22px] font-serif mb-[4px]" style={{ color: 'var(--text)' }}>
-          Who are you?
-        </h1>
-        <p className="text-[13px] mb-[20px]" style={{ color: 'var(--text-3)' }}>
-          Select your name to see today's schedule.
+      <div className="text-center py-8">
+        <h2 className="text-lg font-bold mb-2" style={{ color: 'var(--text)' }}>
+          Not logged in
+        </h2>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-3)' }}>
+          You need to log in to see your schedule.
         </p>
-        <div className="flex flex-col gap-[8px]">
-          {crew.map(c => (
-            <button
-              key={c.id}
-              onClick={() => selectCrewMember(c.id)}
-              className="flex items-center gap-[12px] px-[16px] rounded-[10px] border text-left cursor-pointer transition-all duration-150 card-hover"
-              style={{
-                minHeight: '56px',
-                background: 'var(--surface-card, var(--surface2))',
-                borderColor: 'var(--border)',
-              }}
-            >
-              <span
-                className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-[14px] font-[700] flex-shrink-0"
-                style={{ background: 'rgba(45,106,79,.2)', color: 'var(--green-l)' }}
-              >
-                {c.name.charAt(0).toUpperCase()}
-              </span>
-              <div>
-                <div className="text-[14px] font-[600]" style={{ color: 'var(--text)' }}>{c.name}</div>
-                <div className="text-[12px] capitalize" style={{ color: 'var(--text-3)' }}>{c.role}</div>
-              </div>
-            </button>
-          ))}
-          {crew.length === 0 && (
-            <p className="text-[13px]" style={{ color: 'var(--text-4)' }}>
-              No crew members found. Ask your manager to add you.
+        <button
+          onClick={() => { clearCrewSession(); navigate('/crew/login'); }}
+          className="px-4 py-2 text-sm font-semibold text-white border-none cursor-pointer"
+          style={{ background: 'var(--brand-primary)', borderRadius: 'var(--radius-md)' }}
+        >
+          Go to Login
+        </button>
+        {/* Fallback: legacy picker for existing sessions without PIN */}
+        {crew.length > 0 && (
+          <div className="mt-6">
+            <p className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
+              Or select your name (legacy):
             </p>
-          )}
-        </div>
+            <div className="flex flex-col gap-[8px] max-w-[320px] mx-auto">
+              {crew.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    localStorage.setItem('tf_crew_member_id', c.id);
+                    window.location.reload();
+                  }}
+                  className="flex items-center gap-[12px] px-[16px] rounded-[10px] border text-left cursor-pointer transition-all duration-150 card-hover"
+                  style={{
+                    minHeight: '56px',
+                    background: 'var(--surface-card, var(--surface2))',
+                    borderColor: 'var(--border)',
+                  }}
+                >
+                  <span
+                    className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-[14px] font-[700] flex-shrink-0"
+                    style={{ background: 'rgba(45,106,79,.2)', color: 'var(--green-l)' }}
+                  >
+                    {c.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div>
+                    <div className="text-[14px] font-[600]" style={{ color: 'var(--text)' }}>{c.name}</div>
+                    <div className="text-[12px] capitalize" style={{ color: 'var(--text-3)' }}>{c.role}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -223,8 +233,8 @@ export const CrewDashboard: React.FC = () => {
       <div className="mt-[24px] flex items-center justify-between">
         <button
           onClick={() => {
-            localStorage.removeItem('tf_crew_member_id');
-            setCrewMemberId(null);
+            clearCrewSession();
+            navigate('/crew/login');
           }}
           className="text-[12px] bg-transparent border-none cursor-pointer"
           style={{ color: 'var(--text-4)' }}
