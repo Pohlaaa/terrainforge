@@ -918,6 +918,61 @@ export async function deleteScheduleEntry(id: string): Promise<void> {
   }
 }
 
+// ===== CREW STATUS =====
+
+export async function fetchCrewStatus(crewMemberId: string): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from('crew_status')
+      .select('status')
+      .eq('crew_member_id', crewMemberId)
+      .single();
+    if (error) return 'off_duty';
+    return data?.status || 'off_duty';
+  } catch {
+    return 'off_duty';
+  }
+}
+
+export async function upsertCrewStatus(
+  orgId: string,
+  crewMemberId: string,
+  scheduleEntryId: string,
+  status: string,
+): Promise<void> {
+  try {
+    const { data: existing } = await supabase
+      .from('crew_status')
+      .select('id')
+      .eq('crew_member_id', crewMemberId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from('crew_status')
+        .update({
+          status,
+          schedule_entry_id: scheduleEntryId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('crew_status')
+        .insert([{
+          org_id: orgId,
+          crew_member_id: crewMemberId,
+          schedule_entry_id: scheduleEntryId,
+          status,
+        }]);
+      if (error) throw error;
+    }
+  } catch (err: any) {
+    onSupabaseError('UPSERT', 'crew_status', err);
+  }
+}
+
 // ===== DIAGNOSTICS =====
 
 export async function diagnoseUserRole(): Promise<void> {
