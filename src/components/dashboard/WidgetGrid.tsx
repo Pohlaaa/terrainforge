@@ -116,9 +116,39 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
     setDragState(null);
   };
 
+  // Map widget spans full width, others go in 2-col grid
+  const mapWidgets = visibleWidgets.filter((w) => w.type === 'map');
+  const gridWidgets = visibleWidgets.filter((w) => w.type !== 'map');
+
   return (
-    <div className="flex flex-col gap-[12px]">
-      {visibleWidgets.map((widget, index) => {
+    <div className="flex flex-col gap-0">
+      {/* Map widget — full width */}
+      {mapWidgets.map((widget) => {
+        const displayTitle = getWidgetHeaderTitle(widget, appState);
+        const titleOverride = { ...widget, title: displayTitle };
+        return (
+          <div key={widget.id}>
+            <WidgetCard
+              config={titleOverride}
+              editMode={editMode}
+              onToggleCollapse={() => onToggleCollapsed(widget.id)}
+              onToggleVisibility={() => onToggleVisibility(widget.id)}
+              dragHandleProps={{
+                onPointerDown: () => {},
+                onPointerMove: () => {},
+                onPointerUp: () => {},
+              }}
+              isDragging={false}
+            >
+              {renderWidgetContent(widget, appState)}
+            </WidgetCard>
+          </div>
+        );
+      })}
+
+      {/* Other widgets — 2 column grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-0" style={{ borderTop: mapWidgets.length > 0 ? '1px solid var(--border-default)' : undefined }}>
+      {gridWidgets.map((widget, index) => {
         const isDragging = Boolean(dragState?.dragging && dragState.dragIndex === index);
         const delta = dragState ? dragState.currentY - dragState.startY : 0;
 
@@ -196,6 +226,7 @@ export const WidgetGrid: React.FC<WidgetGridProps> = ({
           </div>
         );
       })}
+      </div>
     </div>
   );
 };
