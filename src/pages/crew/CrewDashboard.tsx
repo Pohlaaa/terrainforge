@@ -45,19 +45,25 @@ export const CrewDashboard: React.FC = () => {
   );
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
   const crewMember = crew.find(c => c.id === crewMemberId) || null;
 
   // Fetch today's schedule entries for the selected crew member
-  useEffect(() => {
+  const loadSchedule = React.useCallback(() => {
     if (!orgId || !crewMemberId) return;
     setLoading(true);
     const today = todayStr();
     fetchScheduleEntries(orgId, today, today).then((all) => {
       setEntries(all.filter(e => e.crewMemberId === crewMemberId));
       setLoading(false);
+      setLastFetched(new Date());
     });
   }, [orgId, crewMemberId]);
+
+  useEffect(() => {
+    loadSchedule();
+  }, [loadSchedule]);
 
   function selectCrewMember(id: string) {
     localStorage.setItem('tf_crew_member_id', id);
@@ -127,8 +133,18 @@ export const CrewDashboard: React.FC = () => {
 
   return (
     <div>
-      <div className="text-[13px] font-[600] mb-[2px]" style={{ color: 'var(--text-2)' }}>
-        {formatDate(today)}
+      <div className="flex items-center justify-between mb-[2px]">
+        <div className="text-[13px] font-[600]" style={{ color: 'var(--text-2)' }}>
+          {formatDate(today)}
+        </div>
+        <button
+          onClick={loadSchedule}
+          className="text-[16px] bg-transparent border-none cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+          style={{ color: 'var(--text-3)' }}
+          title="Refresh schedule"
+        >
+          ↻
+        </button>
       </div>
       <h1 className="text-[22px] font-serif mb-[20px]" style={{ color: 'var(--text)' }}>
         Hi, {crewMember.name}
@@ -203,16 +219,24 @@ export const CrewDashboard: React.FC = () => {
       )}
 
       {/* Switch crew member link */}
-      <button
-        onClick={() => {
-          localStorage.removeItem('tf_crew_member_id');
-          setCrewMemberId(null);
-        }}
-        className="mt-[24px] text-[12px] bg-transparent border-none cursor-pointer"
-        style={{ color: 'var(--text-4)' }}
-      >
-        Not {crewMember.name}? Switch crew member
-      </button>
+      {/* Footer */}
+      <div className="mt-[24px] flex items-center justify-between">
+        <button
+          onClick={() => {
+            localStorage.removeItem('tf_crew_member_id');
+            setCrewMemberId(null);
+          }}
+          className="text-[12px] bg-transparent border-none cursor-pointer"
+          style={{ color: 'var(--text-4)' }}
+        >
+          Not {crewMember.name}? Switch
+        </button>
+        {lastFetched && (
+          <span className="text-[11px]" style={{ color: 'var(--text-4)' }}>
+            Updated {lastFetched.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
+      </div>
     </div>
   );
 };
