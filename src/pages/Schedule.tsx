@@ -6,7 +6,8 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useOrgStore } from '@/stores/orgStore';
-import { fetchAllCrewStatuses, fetchChecklistProgressCounts } from '@/services/supabaseData';
+import { fetchAllCrewStatuses, fetchChecklistProgressCounts, fetchCrewPhotos, getPhotoUrl } from '@/services/supabaseData';
+import type { CrewPhoto } from '@/services/supabaseData';
 import { generateSteps } from '@/lib/workorders';
 import { PageHeader } from '@/components/layout/PageHeader';
 import type { ScheduleEntry, ScheduleEntryStatus } from '@/types';
@@ -314,11 +315,35 @@ export const Schedule: React.FC = () => {
   }, [orgId]);
 
   // Fetch checklist progress counts for visible entries
+  // Photo counts per entry
+  const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
+  // Photo gallery modal
+  const [photoGallery, setPhotoGallery] = useState<{ entryId: string; photos: Array<CrewPhoto & { url: string }> } | null>(null);
+
   useEffect(() => {
     const ids = entries.map(e => e.id);
     if (ids.length === 0) return;
     fetchChecklistProgressCounts(ids).then(setProgressCounts);
+    // Fetch photo counts
+    Promise.all(ids.map(async (id) => {
+      const photos = await fetchCrewPhotos(id);
+      return { id, count: photos.length };
+    })).then((results) => {
+      const counts: Record<string, number> = {};
+      for (const { id, count } of results) {
+        if (count > 0) counts[id] = count;
+      }
+      setPhotoCounts(counts);
+    });
   }, [entries]);
+
+  async function handleViewPhotos(entryId: string) {
+    const photos = await fetchCrewPhotos(entryId);
+    const withUrls = await Promise.all(
+      photos.map(async (p) => ({ ...p, url: await getPhotoUrl(p.storagePath) }))
+    );
+    setPhotoGallery({ entryId, photos: withUrls });
+  }
 
   // Week navigation
   const [weekStart, setWeekStart] = useState(() => isoDate(getMonday(new Date())));
@@ -652,6 +677,15 @@ export const Schedule: React.FC = () => {
                                     );
                                   })()}
                                 </span>
+                                {photoCounts[entry.id] > 0 && (
+                                  <span
+                                    onClick={(e) => { e.stopPropagation(); handleViewPhotos(entry.id); }}
+                                    title={`${photoCounts[entry.id]} photo(s)`}
+                                    style={{ fontSize: '9px', cursor: 'pointer', flexShrink: 0, opacity: 0.8 }}
+                                  >
+                                    📷{photoCounts[entry.id]}
+                                  </span>
+                                )}
                                 <button
                                   onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }}
                                   style={{
@@ -701,6 +735,57 @@ export const Schedule: React.FC = () => {
           existingEntry={editEntry}
           onClose={() => { setModalTarget(null); setEditEntry(null); }}
         />
+      )}
+
+      {/* Photo gallery modal */}
+      {photoGallery && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setPhotoGallery(null)}
+        >
+          <div
+            style={{
+              background: 'var(--surface-card)', borderRadius: '12px',
+              padding: '20px', maxWidth: '640px', width: '90vw', maxHeight: '80vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>
+                Job Photos ({photoGallery.photos.length})
+              </div>
+              <button
+                onClick={() => setPhotoGallery(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: '18px', cursor: 'pointer', padding: '4px' }}
+              >
+                ✕
+              </button>
+            </div>
+            {photoGallery.photos.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-3)', fontSize: '13px' }}>
+                No photos uploaded yet.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' }}>
+                {photoGallery.photos.map(p => (
+                  <div key={p.id} style={{ aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', background: 'var(--surface-hover)' }}>
+                    <img src={p.url} alt={p.caption || 'Job photo'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ))}
+              </div>
+            )}
+            {photoGallery.photos.length > 0 && (
+              <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-3)' }}>
+                Uploaded by crew during job execution
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       <style>{`
