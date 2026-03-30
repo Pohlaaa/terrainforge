@@ -98,6 +98,22 @@ export const useUIStore = create<UIStore>()(
     }),
     {
       name: 'tf_ui',
+      merge: (persistedState: any, currentState: UIStore) => {
+        const merged = { ...currentState, ...persistedState };
+        // Ensure new widgets added in future sprints are appended to cached layouts
+        if (merged.widgetLayout && Array.isArray(merged.widgetLayout)) {
+          const existingTypes = new Set(merged.widgetLayout.map((w: WidgetConfig) => w.type));
+          const missing = DEFAULT_WIDGET_LAYOUT.filter(w => !existingTypes.has(w.type));
+          if (missing.length > 0) {
+            const maxOrder = Math.max(...merged.widgetLayout.map((w: WidgetConfig) => w.order), -1);
+            merged.widgetLayout = [
+              ...merged.widgetLayout,
+              ...missing.map((w, i) => ({ ...w, order: maxOrder + 1 + i })),
+            ];
+          }
+        }
+        return merged;
+      },
     },
   ),
 )
