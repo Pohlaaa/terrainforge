@@ -4,6 +4,10 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/shared/ProtectedRoute'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import AppLayout from '@/components/layout/AppLayout'
+import CrewLayout from '@/components/layout/CrewLayout'
+
+const CrewDashboard = React.lazy(() => import('@/pages/crew/CrewDashboard'))
+const CrewJobDetail = React.lazy(() => import('@/pages/crew/CrewJobDetail'))
 import Dashboard from '@/pages/Dashboard'
 import Projects from '@/pages/Projects'
 import MaterialLibrary from '@/pages/MaterialLibrary'
@@ -37,6 +41,20 @@ function App() {
           <Route path="/onboarding" element={
             <ProtectedRoute>
               <Onboarding />
+            </ProtectedRoute>
+          } />
+
+          {/* Crew app routes — separate layout, no sidebar */}
+          <Route path="/crew/*" element={
+            <ProtectedRoute>
+              <CrewLayout>
+                <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-2)' }}>Loading...</div>}>
+                  <Routes>
+                    <Route path="/" element={<CrewDashboard />} />
+                    <Route path="/job/:entryId" element={<CrewJobDetail />} />
+                  </Routes>
+                </React.Suspense>
+              </CrewLayout>
             </ProtectedRoute>
           } />
 
