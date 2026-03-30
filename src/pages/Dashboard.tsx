@@ -478,16 +478,6 @@ export const Dashboard: React.FC = () => {
             })}
           </div>
 
-          {/* Customize KPIs link */}
-          <div className="flex items-center justify-between mt-3 mb-1">
-            <button
-              onClick={toggleKpiDrawer}
-              className="text-[11px] font-semibold bg-transparent border-none cursor-pointer transition-colors"
-              style={{ color: 'var(--brand-primary)', padding: '4px 0' }}
-            >
-              Customize KPIs
-            </button>
-          </div>
         </>
       )}
 
@@ -501,62 +491,76 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* ── Widget Grid (full width, v7) ─────────────────────────────────── */}
-      <div className="flex flex-col gap-[12px] mt-2">
+      <div className="flex flex-col gap-[12px] mt-3">
         <div className="flex items-center justify-between">
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Your Dashboard
+            Widgets
           </div>
-            <div className="flex items-center gap-[8px]">
-              {editMode && hiddenWidgets.length > 0 && (
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleVisibilityToggle(e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
+          <div className="flex items-center gap-[8px]">
+            {editMode && (
+              <>
+                <button
+                  onClick={toggleKpiDrawer}
+                  className="border-none cursor-pointer transition-colors"
                   style={{
-                    background: 'var(--surface-card)',
-                    border: '1px solid var(--border-default)',
+                    padding: '6px 12px',
                     borderRadius: '8px',
-                    padding: '6px 10px',
                     fontSize: '12px',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    minHeight: '44px',
+                    fontWeight: 600,
+                    minHeight: '36px',
+                    background: 'transparent',
+                    color: 'var(--brand-primary)',
                   }}
-                  defaultValue=""
-                  aria-label="Add widget"
                 >
-                  <option value="" disabled>
-                    + Add Widget
-                  </option>
-                  {hiddenWidgets.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.title}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button
-                onClick={toggleEditMode}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  minHeight: '44px',
-                  cursor: 'pointer',
-                  border: editMode ? 'none' : '1px solid var(--border-default)',
-                  background: editMode ? 'var(--color-primary)' : 'var(--surface-card)',
-                  color: editMode ? 'white' : 'var(--text-secondary)',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {editMode ? '✓ Done' : '✎ Edit Dashboard'}
-              </button>
-            </div>
+                  Edit KPIs
+                </button>
+                {hiddenWidgets.length > 0 && (
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleVisibilityToggle(e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                    style={{
+                      background: 'var(--surface-card)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: '8px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      minHeight: '36px',
+                    }}
+                    defaultValue=""
+                    aria-label="Add widget"
+                  >
+                    <option value="" disabled>+ Add Widget</option>
+                    {hiddenWidgets.map((w) => (
+                      <option key={w.id} value={w.id}>{w.title}</option>
+                    ))}
+                  </select>
+                )}
+              </>
+            )}
+            <button
+              onClick={toggleEditMode}
+              className="border-none cursor-pointer transition-all duration-150"
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 600,
+                minHeight: '36px',
+                border: editMode ? 'none' : '1px solid var(--border-default)',
+                background: editMode ? 'var(--brand-primary)' : 'var(--surface-card)',
+                color: editMode ? 'white' : 'var(--text-secondary)',
+              }}
+            >
+              {editMode ? '✓ Done' : '✎ Customize'}
+            </button>
           </div>
+        </div>
 
           <WidgetGrid
             widgets={widgetLayout}
