@@ -228,7 +228,7 @@ export const ManifestEngine: React.FC = () => {
                 <button
                   key={p.id}
                   onClick={() => setActiveProject(p.id)}
-                  className="text-left p-[16px] rounded-[10px] border border-[var(--border)] hover:border-[var(--color-primary)] bg-[var(--surface2)] transition-colors cursor-pointer"
+                  className="text-left p-[16px] rounded-[10px] border border-[var(--border)] bg-[var(--surface2)] cursor-pointer card-hover"
                 >
                   <div className="font-[600] text-[14px] text-[var(--text)] mb-[2px]">{p.name}</div>
                   <div className="text-[12px] text-[var(--text-3)] mb-[8px]">{p.client}</div>

@@ -79,7 +79,7 @@ export const CrewDashboard: React.FC = () => {
             <button
               key={c.id}
               onClick={() => selectCrewMember(c.id)}
-              className="flex items-center gap-[12px] px-[16px] rounded-[10px] border text-left cursor-pointer transition-colors"
+              className="flex items-center gap-[12px] px-[16px] rounded-[10px] border text-left cursor-pointer transition-all duration-150 card-hover"
               style={{
                 minHeight: '56px',
                 background: 'var(--surface-card, var(--surface2))',
@@ -158,7 +158,7 @@ export const CrewDashboard: React.FC = () => {
               <button
                 key={entry.id}
                 onClick={() => navigate(`/crew/job/${entry.id}`)}
-                className="flex items-center gap-[12px] px-[16px] py-[14px] rounded-[12px] border text-left cursor-pointer transition-colors"
+                className="flex items-center gap-[12px] px-[16px] py-[14px] rounded-[12px] border text-left cursor-pointer transition-all duration-150 card-hover"
                 style={{
                   minHeight: '80px',
                   background: 'var(--surface-card, var(--surface2))',
