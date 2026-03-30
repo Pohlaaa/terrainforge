@@ -9,12 +9,14 @@
  */
 
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgStore } from '@/stores/orgStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { ToastContainer } from '@/components/shared/Toast';
+import { clearCrewSession } from '@/lib/pin';
 
 interface CrewLayoutProps {
   children: React.ReactNode;
@@ -23,6 +25,7 @@ interface CrewLayoutProps {
 export const CrewLayout: React.FC<CrewLayoutProps> = ({ children }) => {
   const { user, signOut } = useAuth();
   const { crew } = useCrewStore();
+  const navigate = useNavigate();
   const fetchOrg = useOrgStore((s) => s.fetchOrg);
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
   const fetchCrew = useCrewStore((s) => s.fetchCrew);
@@ -85,14 +88,23 @@ export const CrewLayout: React.FC<CrewLayoutProps> = ({ children }) => {
           {crewMember?.name || ''}
         </span>
 
-        <button
-          onClick={handleSignOut}
-          disabled={signingOut}
-          className="text-[12px] bg-transparent border-none cursor-pointer min-h-[44px] px-[12px] py-[8px] transition-colors"
-          style={{ color: 'var(--sidebar-text-2, var(--text-3))' }}
-        >
-          {signingOut ? 'Signing out…' : 'Sign Out'}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { clearCrewSession(); navigate('/crew/login'); }}
+            className="text-[12px] bg-transparent border-none cursor-pointer min-h-[44px] px-[8px] py-[8px] transition-colors"
+            style={{ color: 'var(--sidebar-accent)' }}
+          >
+            Switch
+          </button>
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="text-[12px] bg-transparent border-none cursor-pointer min-h-[44px] px-[8px] py-[8px] transition-colors"
+            style={{ color: 'var(--sidebar-text-2, var(--text-3))' }}
+          >
+            {signingOut ? 'Signing out…' : 'Sign Out'}
+          </button>
+        </div>
       </div>
 
       {/* Content */}
