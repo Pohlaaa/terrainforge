@@ -32,6 +32,7 @@ const seedCrew: CrewMember[] = [
       { certId: 'cert-osha-10', label: 'OSHA 10 Hour', expiry: '2027-06-15' },
       { certId: 'cert-excavator', label: 'Excavator Operation', expiry: null },
     ],
+    pinHash: null,
   },
   {
     id: 'crew_002',
@@ -46,6 +47,7 @@ const seedCrew: CrewMember[] = [
       { certId: 'cert-osha-10', label: 'OSHA 10 Hour', expiry: '2026-08-20' },
       { certId: 'cert-irrigation', label: 'Irrigation Technician', expiry: '2027-03-10' },
     ],
+    pinHash: null,
   },
   {
     id: 'crew_003',
@@ -59,6 +61,7 @@ const seedCrew: CrewMember[] = [
     certs: [
       { certId: 'cert-osha-10', label: 'OSHA 10 Hour', expiry: '2026-05-01' },
     ],
+    pinHash: null,
   },
   {
     id: 'crew_004',
@@ -72,6 +75,7 @@ const seedCrew: CrewMember[] = [
     certs: [
       { certId: 'cert-pesticide-app', label: 'Pesticide Applicator License', expiry: '2026-12-31' },
     ],
+    pinHash: null,
   },
   {
     id: 'crew_005',
@@ -86,6 +90,7 @@ const seedCrew: CrewMember[] = [
       { certId: 'cert-electrician', label: 'Journeyman Electrician', expiry: '2027-09-15' },
       { certId: 'cert-irrigation', label: 'Irrigation Technician', expiry: '2026-10-20' },
     ],
+    pinHash: null,
   },
 ]
 

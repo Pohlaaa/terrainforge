@@ -51,6 +51,7 @@ function mapOrgRow(row: OrgRow): Organization {
     trialEndsAt: row.trial_ends_at ?? null,
     subscriptionEndsAt: row.subscription_ends_at ?? null,
     stripeCustomerId: row.stripe_customer_id ?? null,
+    shortcode: (row as any).shortcode ?? null,
   };
 }
 
@@ -68,6 +69,7 @@ function makeDefaultOrg(orgId: string): Organization {
     trialEndsAt: null, // unknown — don't gate when we can't confirm
     subscriptionEndsAt: null,
     stripeCustomerId: null,
+    shortcode: null,
   };
 }
 

@@ -103,6 +103,7 @@ function formToMember(f: CrewForm): Omit<CrewMember, 'id'> {
     notes: f.notes.trim(),
     bookedDates: [],
     certs: [],
+    pinHash: null,
   };
 }
 
