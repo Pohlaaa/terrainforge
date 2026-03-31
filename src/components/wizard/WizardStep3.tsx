@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
+import { generateTasksFromDescription } from '@/services/anthropic';
 import type { WizardData, WizardTask } from '@/pages/ProjectWizard';
 
 interface Props {
@@ -36,6 +37,48 @@ function createEmptyTask(seq: number): WizardTask {
 
 export const WizardStep3: React.FC<Props> = ({ data, onChange }) => {
   const tasks = data.tasks;
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [isAiGenerated, setIsAiGenerated] = useState(false);
+  const aiAttempted = useRef(false);
+
+  // Auto-generate tasks from description when step is first visited
+  useEffect(() => {
+    if (aiAttempted.current) return;
+    if (tasks.length > 0) return;
+    if (!data.description?.trim()) return;
+
+    aiAttempted.current = true;
+    setAiLoading(true);
+    setAiError('');
+
+    generateTasksFromDescription({
+      description: data.description,
+      projectType: data.projectType,
+      scopeSize: data.scopeSize,
+      propertyType: data.propertyType,
+    })
+      .then((result) => {
+        if (result && result.length > 0 && tasks.length === 0) {
+          const wizardTasks: WizardTask[] = result.map((t, i) => ({
+            tempId: crypto.randomUUID(),
+            name: t.name,
+            description: t.description || null,
+            phase: PHASES.some((p) => p.value === t.phase) ? t.phase : 'custom',
+            sequenceNumber: i,
+            estimatedHours: t.estimatedHours ?? null,
+          }));
+          onChange({ tasks: wizardTasks });
+          setIsAiGenerated(true);
+        }
+      })
+      .catch(() => {
+        setAiError('AI task generation failed. Add tasks manually.');
+      })
+      .finally(() => {
+        setAiLoading(false);
+      });
+  }, []); // only on mount
 
   const addTask = () => {
     onChange({ tasks: [...tasks, createEmptyTask(tasks.length)] });
@@ -79,9 +122,46 @@ export const WizardStep3: React.FC<Props> = ({ data, onChange }) => {
           Scope & Tasks
         </h3>
         <p className="text-[12px] text-[var(--text-4)] mb-[16px]">
-          Break the project into tasks grouped by phase. AI will generate tasks automatically in a future update — for now, add them manually.
+          Break the project into tasks grouped by phase.
+          {data.description && ' AI generates tasks from your job description — review and edit as needed.'}
         </p>
       </div>
+
+      {/* AI loading state */}
+      {aiLoading && (
+        <div
+          className="rounded-[8px] border px-[16px] py-[14px] flex items-center gap-[10px]"
+          style={{ backgroundColor: 'rgba(45,106,79,0.06)', borderColor: 'var(--green)' }}
+        >
+          <div className="w-[16px] h-[16px] border-2 border-[var(--green)] border-t-transparent rounded-full animate-spin" />
+          <span className="text-[13px] text-[var(--green-l)]">
+            AI is generating tasks from your project description...
+          </span>
+        </div>
+      )}
+
+      {/* AI error */}
+      {aiError && (
+        <div
+          className="rounded-[8px] border px-[16px] py-[10px] text-[12px]"
+          style={{ backgroundColor: 'rgba(224,92,92,0.08)', borderColor: 'var(--status-red)', color: 'var(--status-red)' }}
+        >
+          {aiError}
+        </div>
+      )}
+
+      {/* AI generated badge */}
+      {isAiGenerated && tasks.length > 0 && !aiLoading && (
+        <div
+          className="rounded-[8px] border px-[12px] py-[8px] text-[12px] flex items-center gap-[6px]"
+          style={{ backgroundColor: 'rgba(45,106,79,0.06)', borderColor: 'var(--green)', color: 'var(--green-l)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1L8.5 4.5L12.5 5L9.5 7.5L10.5 11.5L7 9.5L3.5 11.5L4.5 7.5L1.5 5L5.5 4.5L7 1Z" fill="currentColor" />
+          </svg>
+          AI-generated — review and edit these tasks before proceeding
+        </div>
+      )}
 
       {/* Phase summary chips */}
       {phaseGroups.length > 0 && (
@@ -104,7 +184,7 @@ export const WizardStep3: React.FC<Props> = ({ data, onChange }) => {
 
       {/* Task list */}
       <div className="space-y-[12px]">
-        {tasks.length === 0 && (
+        {tasks.length === 0 && !aiLoading && (
           <div
             className="rounded-[8px] border-2 border-dashed p-[24px] text-center"
             style={{ borderColor: 'var(--border)', color: 'var(--text-4)' }}
@@ -205,7 +285,7 @@ export const WizardStep3: React.FC<Props> = ({ data, onChange }) => {
               </button>
             </div>
 
-            {/* Optional description (collapsed by default, always visible for simplicity) */}
+            {/* Optional description */}
             <div className="mt-[8px] ml-[30px]">
               <input
                 className={`${inputClass} text-[12px]`}
@@ -227,7 +307,7 @@ export const WizardStep3: React.FC<Props> = ({ data, onChange }) => {
       </Button>
 
       {/* Quick-add presets */}
-      {tasks.length === 0 && (
+      {tasks.length === 0 && !aiLoading && (
         <div>
           <p className="text-[12px] text-[var(--text-3)] mb-[8px]">
             Or start with a common template:
