@@ -11,10 +11,10 @@
 
 ## Current Status
 
-**Milestone 1.5b: "Project Intelligence — Project Dashboard"** — STARTING
-**Last completed**: Sprint 32 — AI wizard refinements + pilot contractor feedback fixes
-**Status**: Wizard is AI-powered and contractor-tested. Project dashboard is next.
-**Current sprint**: Sprint 33 — Project dashboard page (M1.5b kickoff)
+**Milestone 1.5b: "Project Intelligence — Project Dashboard"** — IN PROGRESS
+**Last completed**: Sprint 33 — Project dashboard with 5 tabs (Overview, Tasks, Budget, Resources, Compliance)
+**Status**: Dashboard shipped and tested. Contractor positive on design. Sprint 34 for polish + materials.
+**Current sprint**: None active — batch checkpoint in Cowork
 **Git state**: Clean, main pushed to origin. Migrations 001–011 applied. Storage buckets `crew-photos` and `project-photos` both created.
 **SQL migration needed**: None (no new tables for Sprint 33 — dashboard reads existing data)
 
@@ -94,6 +94,7 @@ All M1 + M2 + M1.5a features complete:
 | 30 | M1.5a Wizard UI (1-3) | ProjectWizard page, WizardStepper, Steps 1-3 (job description, site, scope/tasks) |
 | 31 | M1.5a Wizard UI (4-7) | Steps 4-7 (resources, budget, compliance, review), route integration, Quick Create demotion |
 | 32 | Bridge Sprint | AI wizard integration (task gen, site inference), step reorder, equipment dropdown, auto-calc costs, permit UX |
+| 33 | M1.5b Dashboard | ProjectDashboard page at `/projects/:id` — 5 tabs (Overview, Tasks, Budget, Resources, Compliance), task status toggling, KPI cards, margin guidance |
 
 ---
 
@@ -120,10 +121,14 @@ From testing the wizard with a real contractor:
 
 ---
 
-## Known Gaps (M1.5a → M1.5b transition)
+## Known Gaps (M1.5b Wrap-Up)
 
-1. **No project detail page** — Current detail view is inline in Projects.tsx with tabs for zones/materials/crew. No `/projects/:id` route exists. M1.5b needs a full-page project dashboard.
-2. **No Zustand stores for M1.5 data** — Tasks, subs, conditions, docs, permits use direct supabaseData calls. Project dashboard needs stores for display/edit workflows.
-3. **Document upload UI** — project_documents table + CRUD exist but no file upload component yet.
-4. **Settings page** — Still the one remaining M2 item. Deferred to Sprint 35.
-5. **AI material estimates** — Quantities need improvement per contractor feedback. Wizard materials integration is a Sprint 34+ candidate.
+1. **AI badges missing on task view** — TasksTab has `aiGenerated` flag logic but badges not rendering. Sprint 34 fix.
+2. **No materials tab on dashboard** — Contractor wants to see/track specific materials and their costs per project. No dedicated Materials section exists yet. Sprint 34 priority.
+3. **Dashboard is read-only** — Can toggle task status, but can't edit budget, add tasks, add permits, or manage subs from dashboard. Edit workflows are Sprint 34/35 scope.
+4. **No Zustand stores for M1.5 data** — Direct supabaseData calls work but no caching/reactivity.
+5. **Document upload UI** — project_documents table + CRUD exist but no file upload component.
+6. **Material integration in wizard** — Contractor wants materials in wizard for pre-quote cost estimation.
+7. **Auto-estimated client quote** — AI suggests quote based on costs + recommended margin.
+8. **Settings page** — Still the one remaining M2 item.
+9. **Org-level sub/supplier directory** — Decision pending.

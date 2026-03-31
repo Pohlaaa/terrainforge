@@ -57,15 +57,21 @@ Prefix legend: `[ ]` open · `[x]` resolved · `[~]` in progress · `[?]` needs 
 - [x] **project-photos Storage bucket** — Created in Supabase Dashboard. Ready for M1.5b document upload.
 - [ ] **Zustand stores for M1.5 data** — Tasks, subs, conditions, docs, permits currently use direct supabaseData calls. Project dashboard will need dedicated stores for display/edit/reactivity.
 
-### Pilot Contractor Feedback (Sprint 32 scope)
-- [ ] **Equipment dropdown from library** — Step 4 should pull from org's equipment list with duration picker, not freeform text. Add "rental notes" field for equipment not in library. *Contractor feedback: "I shouldn't have to type my own equipment names."*
-- [ ] **Reorder: compliance before budget** — Move Step 6 (compliance) before Step 5 (budget). Permit costs affect the estimate. Current order: 1-2-3-4-5-6-7 → New order: 1-2-3-4-6-5-7.
-- [ ] **"No permits required" quick toggle** — Add prominent toggle at top of compliance step that collapses the checklist. Most small residential jobs need zero permits.
-- [ ] **Parking permits** — Add to permit checklist options.
-- [ ] **Auto-calculated costs** — AI should pre-populate budget from earlier steps: labor (crew size × hours × rates from crew library), materials (from manifest engine quantities × material costs), equipment (daily rates × duration from equipment library). Budget step becomes a review/adjust step, not data entry.
-- [ ] **AI margin recommendations** — After costs are calculated, AI suggests ways to improve margin: "Consider bulk ordering stone — saves ~12% at 50+ cuyd" or "Subbing out electrical saves $X vs. in-house."
-- [ ] **Org-level sub/supplier directory** — Shared contact list for subcontractors and material suppliers at the org level, not just per-project. Was M4 scope; contractor clearly wants it sooner. **Decision needed: pull into M1.5b or keep in M4?**
-- [ ] **Estimated vs. actual cost tracking** — Budget fields exist for estimates. Need actual cost columns + UI for tracking spend during project execution. M1.5b budget tab scope.
+### Pilot Contractor Feedback — Round 1 (addressed in Sprint 32)
+- [x] **Equipment dropdown from library** — Dropdown from org equipment with duration/daily rate. Done Sprint 32.
+- [x] **Reorder: compliance before budget** — Steps reordered 1-2-3-4-5(compliance)-6(budget)-7. Done Sprint 32.
+- [x] **"No permits required" quick toggle** — Prominent toggle collapses checklist. Done Sprint 32.
+- [x] **Parking permits** — Added to 9-item permit checklist. Done Sprint 32.
+- [x] **Auto-calculated costs** — Labor, equipment, sub, permit fees pre-populate budget step. All editable. Done Sprint 32.
+
+### Pilot Contractor Feedback — Round 2 (post-Sprint 32 testing)
+- [ ] **AI material quantity accuracy** — Paver sqft calculation was wrong. AI prompt tuning needed. Sprint 34.
+- [ ] **Materials in wizard** — Contractor wants material cost estimates in wizard before generating quote. Requires manifest engine integration into wizard flow. Sprint 34.
+- [ ] **Auto-estimated client quote** — AI suggests quote price based on costs + recommended margin (25-40% for landscaping). Sprint 34 candidate.
+- [ ] **AI margin recommendations** — AI suggests ways to improve margin based on cost breakdown. Deferred until real cost data patterns exist.
+- [ ] **Org-level sub/supplier directory** — Shared contact list at org level, not just per-project. Was M4 scope; contractor clearly wants it sooner. **Decision needed: pull into M1.5b or keep in M4?**
+- [ ] **Estimated vs. actual cost tracking** — Budget fields exist for estimates. Need actual cost tracking during project execution. M1.5b budget tab scope — Sprint 33 is building this.
+- [ ] **Scope & Tasks skip option** — Experienced crews skip tasks ~50% of the time. Consider a "skip for experienced crew" toggle or making Step 3 optional. Low priority — tasks still useful for training and documentation.
 
 ---
 

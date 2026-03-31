@@ -27,4 +27,4 @@ Copy this block, fill it in, paste it below the line.
 
 (Add new entries here. Oldest at bottom, newest at top.)
 
-<!-- M1.5a entries (Sprints 28-31) archived on 2026-03-30. See .claude/archive/sprint_log_archive.md -->
+<!-- Sprints 28-33 archived on 2026-03-30. See .claude/archive/sprint_log_archive.md -->
