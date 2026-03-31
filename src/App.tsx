@@ -10,6 +10,7 @@ const CrewDashboard = React.lazy(() => import('@/pages/crew/CrewDashboard'))
 const CrewJobDetail = React.lazy(() => import('@/pages/crew/CrewJobDetail'))
 import Dashboard from '@/pages/Dashboard'
 import Projects from '@/pages/Projects'
+const ProjectWizard = React.lazy(() => import('@/pages/ProjectWizard'))
 import MaterialLibrary from '@/pages/MaterialLibrary'
 import ManifestEngine from '@/pages/ManifestEngine'
 import WorkOrders from '@/pages/WorkOrders'
@@ -67,6 +68,13 @@ function App() {
                   <Routes>
                     <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
                     <Route path="/projects" element={<ErrorBoundary><Projects /></ErrorBoundary>} />
+                    <Route path="/projects/wizard" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-2)' }}>Loading wizard...</div>}>
+                          <ProjectWizard />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
                     <Route path="/materials" element={<ErrorBoundary><MaterialLibrary /></ErrorBoundary>} />
                     <Route path="/manifest" element={<ErrorBoundary><ManifestEngine /></ErrorBoundary>} />
                     <Route path="/work-orders" element={<ErrorBoundary><WorkOrders /></ErrorBoundary>} />

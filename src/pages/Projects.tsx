@@ -1042,9 +1042,14 @@ export const Projects: React.FC = () => {
         <div className="text-[13px] text-[var(--text-3)]">
           {projects.length} project{projects.length !== 1 ? 's' : ''}
         </div>
-        <Button variant="primary" onClick={() => setShowNewModal(true)}>
-          + New Project
-        </Button>
+        <div className="flex items-center gap-[8px]">
+          <Button variant="secondary" onClick={() => navigate('/projects/wizard')}>
+            Wizard
+          </Button>
+          <Button variant="primary" onClick={() => setShowNewModal(true)}>
+            + New Project
+          </Button>
+        </div>
       </div>
 
       {/* Empty state */}
