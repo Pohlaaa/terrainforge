@@ -185,8 +185,8 @@ export const ProjectDashboardTasks: React.FC<Props> = ({ tasks, onStatusChange }
                   {/* AI badge */}
                   {task.aiGenerated && (
                     <span
-                      className="px-[4px] py-[1px] rounded-[3px] text-[9px] font-[500] shrink-0"
-                      style={{ backgroundColor: 'rgba(45,106,79,0.1)', color: 'var(--green-l)' }}
+                      className="px-[6px] py-[2px] rounded-[4px] text-[10px] font-[600] shrink-0"
+                      style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: 'var(--status-blue, #3B82F6)' }}
                     >
                       AI
                     </span>

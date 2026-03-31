@@ -23,6 +23,7 @@ export interface WizardTask {
   phase: string;
   sequenceNumber: number;
   estimatedHours: number | null;
+  aiGenerated?: boolean;
 }
 
 export interface WizardSubcontractor {
@@ -299,7 +300,7 @@ export default function ProjectWizard() {
               dependsOn: [],
               scheduledDate: null,
               completedAt: null,
-              aiGenerated: false,
+              aiGenerated: task.aiGenerated ?? false,
               aiConfidence: null,
             },
             crypto.randomUUID(),

@@ -67,6 +67,7 @@ export const WizardStep3: React.FC<Props> = ({ data, onChange }) => {
             phase: PHASES.some((p) => p.value === t.phase) ? t.phase : 'custom',
             sequenceNumber: i,
             estimatedHours: t.estimatedHours ?? null,
+            aiGenerated: true,
           }));
           onChange({ tasks: wizardTasks });
           setIsAiGenerated(true);
