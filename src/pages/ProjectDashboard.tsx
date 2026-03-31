@@ -12,13 +12,15 @@ import { ProjectDashboardBudget } from '@/components/project-dashboard/BudgetTab
 import { ProjectDashboardResources } from '@/components/project-dashboard/ResourcesTab';
 import { ProjectDashboardCompliance } from '@/components/project-dashboard/ComplianceTab';
 import { ProjectDashboardMaterials } from '@/components/project-dashboard/MaterialsTab';
-import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ZoneMaterialDetail, TaskStatus } from '@/types';
+import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ZoneMaterialDetail, TaskStatus, TaskPhase } from '@/types';
 import {
   fetchProjectTasks,
   fetchProjectSubcontractors,
   fetchProjectPermits,
   fetchZoneMaterialDetails,
   updateProjectTask,
+  createProjectTask,
+  deleteProjectTask,
 } from '@/services/supabaseData';
 
 // ── Status helpers ───────────────────────────────────────────────────────────
@@ -136,6 +138,65 @@ export default function ProjectDashboard() {
         if (refreshed) setTasks(refreshed);
       }
     }
+  };
+
+  // Create a new task in a given phase
+  const handleTaskCreate = async (phase: string) => {
+    if (!orgId || !id) return;
+    const newId = crypto.randomUUID();
+    const maxSeq = tasks.reduce((max, t) => Math.max(max, t.sequenceNumber), -1);
+    const newTask: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'> = {
+      orgId,
+      projectId: id,
+      zoneId: null,
+      name: 'New Task',
+      description: null,
+      phase: phase as TaskPhase,
+      sequenceNumber: maxSeq + 1,
+      status: 'pending',
+      assignedCrewId: null,
+      estimatedHours: null,
+      actualHours: null,
+      dependsOn: [],
+      scheduledDate: null,
+      completedAt: null,
+      aiGenerated: false,
+      aiConfidence: null,
+    };
+    // Optimistic add
+    const optimistic: ProjectTask = {
+      ...newTask,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setTasks((prev) => [...prev, optimistic]);
+    const result = await createProjectTask(newTask, newId, orgId);
+    if (!result) {
+      setTasks((prev) => prev.filter((t) => t.id !== newId));
+    }
+  };
+
+  // Update a task's fields
+  const handleTaskUpdate = async (taskId: string, updates: Partial<ProjectTask>) => {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
+    try {
+      await updateProjectTask(taskId, updates);
+    } catch (err) {
+      console.error('Failed to update task:', err);
+      if (orgId && id) {
+        const refreshed = await fetchProjectTasks(orgId, id);
+        if (refreshed) setTasks(refreshed);
+      }
+    }
+  };
+
+  // Delete a task
+  const handleTaskDelete = async (taskId: string) => {
+    const prev = tasks;
+    setTasks((t) => t.filter((task) => task.id !== taskId));
+    const success = await deleteProjectTask(taskId);
+    if (!success) setTasks(prev);
   };
 
   // Handle project field updates from inline editing (budget, etc.)
@@ -267,7 +328,12 @@ export default function ProjectDashboard() {
           {activeTab === 'tasks' && (
             <ProjectDashboardTasks
               tasks={tasks}
+              projectId={id!}
+              orgId={orgId!}
               onStatusChange={handleTaskStatusChange}
+              onTaskCreate={handleTaskCreate}
+              onTaskUpdate={handleTaskUpdate}
+              onTaskDelete={handleTaskDelete}
             />
           )}
           {activeTab === 'budget' && (
