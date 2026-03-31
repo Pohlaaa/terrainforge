@@ -92,9 +92,11 @@ export interface WizardData {
   overheadPct: number | null;
   clientQuote: number | null;
 
-  // Step 6: Compliance
+  // Step 5: Compliance (now before budget)
+  noPermitsRequired: boolean;
   permitStatus: string | null;
   permitChecklist: string[];
+  permitFees: Record<string, number>;
   complianceNotes: string | null;
 }
 
@@ -138,8 +140,10 @@ const INITIAL_DATA: WizardData = {
   subcontractorBudget: null,
   overheadPct: null,
   clientQuote: null,
+  noPermitsRequired: false,
   permitStatus: null,
   permitChecklist: [],
+  permitFees: {},
   complianceNotes: null,
 };
 

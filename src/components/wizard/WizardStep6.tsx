@@ -14,98 +14,197 @@ const PERMIT_STATUS_OPTIONS = [
   { value: 'not_required', label: 'Not Required' },
 ];
 
+const PERMIT_OPTIONS = [
+  { key: 'grading', label: 'Grading / Excavation', desc: 'Required for significant earth moving' },
+  { key: 'building', label: 'Building Permit', desc: 'Structures, retaining walls over 4ft' },
+  { key: 'electrical', label: 'Electrical', desc: 'Landscape lighting, outlets' },
+  { key: 'plumbing', label: 'Plumbing / Irrigation', desc: 'Sprinkler systems, water features' },
+  { key: 'stormwater', label: 'Stormwater / Drainage', desc: 'Drainage modifications, impervious cover' },
+  { key: 'tree_removal', label: 'Tree Removal', desc: 'Protected species or size thresholds' },
+  { key: 'fence', label: 'Fence Permit', desc: 'New fences or height modifications' },
+  { key: 'parking', label: 'Parking Permit', desc: 'Street parking for equipment or dumpsters' },
+  { key: 'hoa_approval', label: 'HOA Approval', desc: 'Design review by homeowners association' },
+];
+
 const inputClass =
   'w-full bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] px-[12px] py-[10px] text-[13px] text-[var(--text)] placeholder:text-[var(--text-4)] focus:outline-none focus:border-[var(--green)] transition-colors';
 
 const labelClass = 'block text-[12px] font-[600] text-[var(--text-2)] mb-[6px]';
 
+function fmt(n: number): string {
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export const WizardStep6: React.FC<Props> = ({ data, onChange }) => {
+  const togglePermit = (key: string) => {
+    const isChecked = data.permitChecklist.includes(key);
+    const updated = isChecked
+      ? data.permitChecklist.filter((k) => k !== key)
+      : [...data.permitChecklist, key];
+
+    // Clean up fee if unchecked
+    const fees = { ...data.permitFees };
+    if (isChecked) delete fees[key];
+
+    onChange({ permitChecklist: updated, permitFees: fees });
+  };
+
+  const updateFee = (key: string, value: number | null) => {
+    const fees = { ...data.permitFees };
+    if (value != null && value > 0) {
+      fees[key] = value;
+    } else {
+      delete fees[key];
+    }
+    onChange({ permitFees: fees });
+  };
+
+  const totalPermitFees = Object.values(data.permitFees).reduce((sum, v) => sum + v, 0);
+
+  const handleNoPermitsToggle = (checked: boolean) => {
+    if (checked) {
+      onChange({
+        noPermitsRequired: true,
+        permitStatus: 'not_required',
+        permitChecklist: [],
+        permitFees: {},
+      });
+    } else {
+      onChange({
+        noPermitsRequired: false,
+        permitStatus: 'not_started',
+      });
+    }
+  };
+
   return (
     <div className="space-y-[24px]">
-      {/* Permit Status */}
-      <div>
-        <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
-          Permits
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
+      {/* No Permits Toggle */}
+      <div
+        className="rounded-[10px] border-2 px-[16px] py-[14px] cursor-pointer transition-all"
+        style={{
+          backgroundColor: data.noPermitsRequired ? 'rgba(45,106,79,0.08)' : 'var(--surface2)',
+          borderColor: data.noPermitsRequired ? 'var(--green)' : 'var(--border)',
+        }}
+        onClick={() => handleNoPermitsToggle(!data.noPermitsRequired)}
+      >
+        <label className="flex items-center gap-[12px] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={data.noPermitsRequired}
+            onChange={(e) => handleNoPermitsToggle(e.target.checked)}
+            className="w-[18px] h-[18px] accent-[var(--green)] shrink-0"
+          />
           <div>
-            <label className={labelClass}>Overall Permit Status</label>
-            <select
-              className={inputClass}
-              value={data.permitStatus || 'not_started'}
-              onChange={(e) => onChange({ permitStatus: e.target.value })}
-            >
-              {PERMIT_STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>Permit Zone / Jurisdiction</label>
-            <input
-              className={inputClass}
-              placeholder="e.g., City of Austin, Travis County"
-              value={data.permitZone || ''}
-              onChange={(e) => onChange({ permitZone: e.target.value || null })}
-            />
-            <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
-              Also editable in Step 2 (Site Intelligence). Permit fees flow into the budget step.
+            <span className="text-[14px] font-[600] text-[var(--text)]">
+              No permits required for this project
+            </span>
+            <p className="text-[12px] text-[var(--text-4)] mt-[2px]">
+              Toggle this on for small residential jobs that don't need any permits.
             </p>
           </div>
-        </div>
+        </label>
       </div>
 
-      {/* Common Permit Checklist */}
-      <div>
-        <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
-          Common Permits for Landscaping
-        </h3>
-        <p className="text-[12px] text-[var(--text-4)] mb-[16px]">
-          Check which permits apply to this project. Detailed permit tracking (dates, numbers, inspections) can be managed after project creation.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-[8px]">
-          {[
-            { key: 'grading', label: 'Grading / Excavation', desc: 'Required for significant earth moving' },
-            { key: 'building', label: 'Building Permit', desc: 'Structures, retaining walls over 4ft' },
-            { key: 'electrical', label: 'Electrical', desc: 'Landscape lighting, outlets' },
-            { key: 'plumbing', label: 'Plumbing / Irrigation', desc: 'Sprinkler systems, water features' },
-            { key: 'stormwater', label: 'Stormwater / Drainage', desc: 'Drainage modifications, impervious cover' },
-            { key: 'tree_removal', label: 'Tree Removal', desc: 'Protected species or size thresholds' },
-            { key: 'fence', label: 'Fence Permit', desc: 'New fences or height modifications' },
-            { key: 'hoa_approval', label: 'HOA Approval', desc: 'Design review by homeowners association' },
-          ].map((permit) => {
-            const isChecked = data.permitChecklist.includes(permit.key);
-            return (
-              <label
-                key={permit.key}
-                className="flex items-start gap-[10px] rounded-[8px] border px-[12px] py-[10px] cursor-pointer transition-colors"
-                style={{
-                  backgroundColor: isChecked ? 'rgba(45,106,79,0.08)' : 'var(--surface2)',
-                  borderColor: isChecked ? 'var(--green)' : 'var(--border)',
-                }}
-              >
+      {/* Everything below is hidden when no permits required */}
+      {!data.noPermitsRequired && (
+        <>
+          {/* Permit Status */}
+          <div>
+            <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
+              Permits
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
+              <div>
+                <label className={labelClass}>Overall Permit Status</label>
+                <select
+                  className={inputClass}
+                  value={data.permitStatus || 'not_started'}
+                  onChange={(e) => onChange({ permitStatus: e.target.value })}
+                >
+                  {PERMIT_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Permit Zone / Jurisdiction</label>
                 <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => {
-                    const updated = isChecked
-                      ? data.permitChecklist.filter((k) => k !== permit.key)
-                      : [...data.permitChecklist, permit.key];
-                    onChange({ permitChecklist: updated });
-                  }}
-                  className="mt-[2px] w-[16px] h-[16px] accent-[var(--green)] shrink-0"
+                  className={inputClass}
+                  placeholder="e.g., City of Austin, Travis County"
+                  value={data.permitZone || ''}
+                  onChange={(e) => onChange({ permitZone: e.target.value || null })}
                 />
-                <div>
-                  <span className="text-[13px] font-[500] text-[var(--text)]">{permit.label}</span>
-                  <p className="text-[11px] text-[var(--text-4)] mt-[1px]">{permit.desc}</p>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-      </div>
+                <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                  Also editable in Step 2 (Site Intelligence). Permit fees flow into the budget step.
+                </p>
+              </div>
+            </div>
+          </div>
 
-      {/* Compliance / Risk Notes */}
+          {/* Common Permit Checklist */}
+          <div>
+            <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
+              Common Permits for Landscaping
+            </h3>
+            <p className="text-[12px] text-[var(--text-4)] mb-[16px]">
+              Check which permits apply. Add the estimated fee per permit — these costs flow into the budget step.
+            </p>
+            <div className="space-y-[8px]">
+              {PERMIT_OPTIONS.map((permit) => {
+                const isChecked = data.permitChecklist.includes(permit.key);
+                return (
+                  <div key={permit.key}>
+                    <label
+                      className="flex items-start gap-[10px] rounded-[8px] border px-[12px] py-[10px] cursor-pointer transition-colors"
+                      style={{
+                        backgroundColor: isChecked ? 'rgba(45,106,79,0.08)' : 'var(--surface2)',
+                        borderColor: isChecked ? 'var(--green)' : 'var(--border)',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => togglePermit(permit.key)}
+                        className="mt-[2px] w-[16px] h-[16px] accent-[var(--green)] shrink-0"
+                      />
+                      <div className="flex-1">
+                        <span className="text-[13px] font-[500] text-[var(--text)]">{permit.label}</span>
+                        <p className="text-[11px] text-[var(--text-4)] mt-[1px]">{permit.desc}</p>
+                      </div>
+                      {isChecked && (
+                        <div className="shrink-0 flex items-center gap-[4px]" onClick={(e) => e.stopPropagation()}>
+                          <label className="text-[11px] text-[var(--text-3)]">Fee:</label>
+                          <input
+                            className="w-[90px] bg-[var(--surface)] border border-[var(--border)] rounded-[6px] px-[8px] py-[5px] text-[12px] text-[var(--text)] text-right focus:outline-none focus:border-[var(--green)]"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="$0"
+                            value={data.permitFees[permit.key] ?? ''}
+                            onChange={(e) =>
+                              updateFee(permit.key, e.target.value ? parseFloat(e.target.value) : null)
+                            }
+                          />
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Permit fee total */}
+            {totalPermitFees > 0 && (
+              <div className="flex justify-end text-[12px] text-[var(--text-3)] mt-[8px]">
+                Total permit fees: {fmt(totalPermitFees)}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Compliance / Risk Notes — always visible */}
       <div>
         <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
           Risk & Compliance Notes
