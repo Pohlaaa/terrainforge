@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry, ProjectTask, ProjectSiteCondition, ProjectSubcontractor, ProjectDocument, ProjectPermit } from '@/types'
+import type { Project, Zone, ZoneMaterial, ZoneMaterialDetail, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry, ProjectTask, ProjectSiteCondition, ProjectSubcontractor, ProjectDocument, ProjectPermit } from '@/types'
 
 // ===== ERROR REPORTING =====
 
@@ -373,6 +373,41 @@ export async function setZoneEquipment(zoneId: string, equipment: ZoneEquipment[
   } catch (err: any) {
     console.error('setZoneEquipment error:', err.message)
     return false
+  }
+}
+
+// ===== ZONE MATERIAL DETAILS (for Materials tab) =====
+
+export async function fetchZoneMaterialDetails(
+  projectId: string
+): Promise<ZoneMaterialDetail[]> {
+  try {
+    const { data, error } = await supabase
+      .from('zone_materials')
+      .select(`
+        zone_id,
+        material_id,
+        quantity,
+        zones!inner (id, name, project_id),
+        materials!inner (name, category, unit, cost)
+      `)
+      .eq('zones.project_id', projectId);
+
+    if (error) throw error;
+
+    return (data || []).map((row: any) => ({
+      zoneId: row.zone_id,
+      zoneName: row.zones?.name || '',
+      materialId: row.material_id,
+      materialName: row.materials?.name || '',
+      category: row.materials?.category || '',
+      quantity: row.quantity ?? 1,
+      unit: row.materials?.unit || '',
+      unitCost: row.materials?.cost ?? 0,
+    }));
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'zone_materials', err);
+    return [];
   }
 }
 

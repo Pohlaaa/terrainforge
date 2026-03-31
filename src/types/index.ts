@@ -105,6 +105,18 @@ export interface ZoneMaterial {
   name: string;
 }
 
+/** Zone material with full material details and quantity — used by Materials tab */
+export interface ZoneMaterialDetail {
+  zoneId: string;
+  zoneName: string;
+  materialId: string;
+  materialName: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+}
+
 export interface ZoneEquipment {
   equipId: string;
   name: string;

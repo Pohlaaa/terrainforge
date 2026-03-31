@@ -11,11 +11,13 @@ import { ProjectDashboardTasks } from '@/components/project-dashboard/TasksTab';
 import { ProjectDashboardBudget } from '@/components/project-dashboard/BudgetTab';
 import { ProjectDashboardResources } from '@/components/project-dashboard/ResourcesTab';
 import { ProjectDashboardCompliance } from '@/components/project-dashboard/ComplianceTab';
-import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, TaskStatus } from '@/types';
+import { ProjectDashboardMaterials } from '@/components/project-dashboard/MaterialsTab';
+import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ZoneMaterialDetail, TaskStatus } from '@/types';
 import {
   fetchProjectTasks,
   fetchProjectSubcontractors,
   fetchProjectPermits,
+  fetchZoneMaterialDetails,
   updateProjectTask,
 } from '@/services/supabaseData';
 
@@ -45,12 +47,13 @@ const PROJECT_TYPE_LABELS: Record<string, string> = {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-type TabId = 'overview' | 'tasks' | 'budget' | 'resources' | 'compliance';
+type TabId = 'overview' | 'tasks' | 'budget' | 'materials' | 'resources' | 'compliance';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'budget', label: 'Budget' },
+  { id: 'materials', label: 'Materials' },
   { id: 'resources', label: 'Resources' },
   { id: 'compliance', label: 'Compliance' },
 ];
@@ -70,7 +73,9 @@ export default function ProjectDashboard() {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [subcontractors, setSubcontractors] = useState<ProjectSubcontractor[]>([]);
   const [permits, setPermits] = useState<ProjectPermit[]>([]);
+  const [zoneMaterials, setZoneMaterials] = useState<ZoneMaterialDetail[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
 
   const project = useMemo(
     () => projects.find((p) => p.id === id) ?? null,
@@ -94,6 +99,13 @@ export default function ProjectDashboard() {
       })
       .catch((err) => console.error('Failed to load project data:', err))
       .finally(() => setLoadingData(false));
+
+    // Fetch zone materials separately (doesn't need orgId filter — filtered by project's zones)
+    setLoadingMaterials(true);
+    fetchZoneMaterialDetails(id)
+      .then((m) => setZoneMaterials(m ?? []))
+      .catch((err) => console.error('Failed to load zone materials:', err))
+      .finally(() => setLoadingMaterials(false));
   }, [orgId, id]);
 
   // Task status toggle handler
@@ -254,6 +266,12 @@ export default function ProjectDashboard() {
               tasks={tasks}
               subcontractors={subcontractors}
               permits={permits}
+            />
+          )}
+          {activeTab === 'materials' && (
+            <ProjectDashboardMaterials
+              materials={zoneMaterials}
+              loading={loadingMaterials}
             />
           )}
           {activeTab === 'resources' && (
