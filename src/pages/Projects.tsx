@@ -1116,7 +1116,7 @@ export const Projects: React.FC = () => {
                     borderBottom: '1px solid var(--border-default)',
                     borderRight: idx % 2 === 0 ? '1px solid var(--border-default)' : 'none',
                   }}
-                  onClick={() => setActiveProject(project.id)}
+                  onClick={() => navigate(`/projects/${project.id}`)}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; }}
                 >
@@ -1185,7 +1185,7 @@ export const Projects: React.FC = () => {
                     borderBottom: '1px solid var(--border-light)',
                     minHeight: '44px',
                   }}
-                  onClick={() => setActiveProject(project.id)}
+                  onClick={() => navigate(`/projects/${project.id}`)}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; }}
                 >

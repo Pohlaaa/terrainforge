@@ -11,6 +11,7 @@ const CrewJobDetail = React.lazy(() => import('@/pages/crew/CrewJobDetail'))
 import Dashboard from '@/pages/Dashboard'
 import Projects from '@/pages/Projects'
 const ProjectWizard = React.lazy(() => import('@/pages/ProjectWizard'))
+const ProjectDashboard = React.lazy(() => import('@/pages/ProjectDashboard'))
 import MaterialLibrary from '@/pages/MaterialLibrary'
 import ManifestEngine from '@/pages/ManifestEngine'
 import WorkOrders from '@/pages/WorkOrders'
@@ -72,6 +73,13 @@ function App() {
                       <ErrorBoundary>
                         <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-2)' }}>Loading wizard...</div>}>
                           <ProjectWizard />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/projects/:id" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-2)' }}>Loading project...</div>}>
+                          <ProjectDashboard />
                         </React.Suspense>
                       </ErrorBoundary>
                     } />

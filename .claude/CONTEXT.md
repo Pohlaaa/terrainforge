@@ -5,20 +5,18 @@
 > For roadmap and milestones: read `ROADMAP.md`
 > For execution workflow: read `CODE_GUIDE.md`
 > For M1.5 data model: read `DATA_MODEL_M1.5.md`
-> Last updated: 2026-03-30 (Sprint 31 complete — M1.5a Creation Wizard shipped)
+> Last updated: 2026-03-30 (Sprint 32 complete — AI wizard integration shipped)
 
 ---
 
 ## Current Status
 
-**Milestone 1.5a: "Project Intelligence — Creation Wizard"** — COMPLETE
-**Last completed**: Sprint 31 — Wizard Steps 4-7 + route integration + Quick Create demotion
-**Status**: Full 7-step project creation wizard shipped and tested. All M1.5a data layer and UI work done.
-**Current sprint**: None active — batch checkpoint in Cowork
-**Pending**: Cowork batch checkpoint → M1.5b planning (project dashboard) or bridge sprint (AI tuning + pilot testing)
-**Workflow model**: Two-mode (VSCode Claude Code = planning + execution, Cowork = strategic only)
+**Milestone 1.5b: "Project Intelligence — Project Dashboard"** — STARTING
+**Last completed**: Sprint 32 — AI wizard refinements + pilot contractor feedback fixes
+**Status**: Wizard is AI-powered and contractor-tested. Project dashboard is next.
+**Current sprint**: Sprint 33 — Project dashboard page (M1.5b kickoff)
 **Git state**: Clean, main pushed to origin. Migrations 001–011 applied. Storage buckets `crew-photos` and `project-photos` both created.
-**SQL migration needed**: None (010 + 011 applied)
+**SQL migration needed**: None (no new tables for Sprint 33 — dashboard reads existing data)
 
 ---
 
@@ -26,20 +24,21 @@
 
 All M1 + M2 + M1.5a features complete:
 
-**M1.5a — Project Intelligence Wizard (Sprints 28-31)**:
+**M1.5a — Project Intelligence Wizard (Sprints 28-32)**:
 - 7-step project creation wizard at `/projects/wizard`
 - Step 1: Job Description — name, type, scope, client info, natural language description
-- Step 2: Site Intelligence — address (Mapbox), site conditions, climate/permits, access logistics
-- Step 3: Scope & Tasks — task list with phases, hours, reorder, quick-add presets (Basic Hardscape, Full Install, Maintenance)
-- Step 4: Resources — crew size, equipment notes, subcontractor list with trade/cost/scope
-- Step 5: Timeline & Budget — dates, cost breakdown (labor/materials/equipment/subs), overhead %, client quote, profit/margin calculation with guidance messaging
-- Step 6: Compliance — permit status, 8-item permit checklist, risk notes
+- Step 2: Site Intelligence — address (Mapbox), AI-inferred climate zone + soil type + HOA, site conditions, access logistics
+- Step 3: Scope & Tasks — AI-generated task breakdown from description, phase-grouped, reorderable, quick-add presets
+- Step 4: Resources — crew size, equipment dropdown from org library with duration/daily rate, subcontractor list
+- Step 5: Compliance — "No permits required" toggle, 9-item permit checklist with per-permit fees, parking permit, risk notes
+- Step 6: Timeline & Budget — auto-calculated labor/equipment/sub costs from earlier steps, permit fees included, margin guidance
 - Step 7: Review & Create — full summary with section progress, one-tap creation
 - WizardStepper component with visual progress, clickable back-navigation, responsive labels
 - "+ New Project" defaults to wizard; old modal preserved as "Quick Create"
 - 5 new DB tables: project_tasks, project_site_conditions, project_subcontractors, project_documents, project_permits
 - 24 new CRUD functions in supabaseData.ts with full org_id isolation
 - 40+ new TypeScript interfaces and union types
+- AI integration: task generation from description, site condition inference from address (Claude Haiku)
 
 **M1 + M2 features** (unchanged from Sprint 27):
 - Auth (signup, login, logout, session persistence, email confirmation)
@@ -79,7 +78,7 @@ All M1 + M2 + M1.5a features complete:
 
 ---
 
-## Sprint History (Sprints 21-31)
+## Sprint History (Sprints 21-32)
 
 | Sprint | Theme | Key Changes |
 |--------|-------|-------------|
@@ -94,24 +93,37 @@ All M1 + M2 + M1.5a features complete:
 | 29 | M1.5a Resources | Migration 011 (subcontractors, documents, permits), interfaces, CRUD functions |
 | 30 | M1.5a Wizard UI (1-3) | ProjectWizard page, WizardStepper, Steps 1-3 (job description, site, scope/tasks) |
 | 31 | M1.5a Wizard UI (4-7) | Steps 4-7 (resources, budget, compliance, review), route integration, Quick Create demotion |
+| 32 | Bridge Sprint | AI wizard integration (task gen, site inference), step reorder, equipment dropdown, auto-calc costs, permit UX |
+
+---
+
+## Pilot Contractor Feedback (Sprint 32)
+
+From testing the wizard with a real contractor:
+
+**What worked well**:
+- AI correctly pulled soil type, climate zone, HOA from address
+- Timeline & Budget are the best features — contractors love the auto-calculation
+- AI task generation is good for the minimal input given
+
+**What needs improvement**:
+- AI material quantity estimates need work (e.g., paver sqft calculation was wrong)
+- Want materials incorporated into the wizard so costs can be estimated before generating a quote
+- Client quote should be auto-estimated based on costs to achieve recommended margin
+- Need more project conditions input before auto-generating tasks for accuracy
+- Scope & Tasks useful for training new crew, but experienced crews skip it ~50% of the time
+
+**Priority for M1.5b** (shaped by feedback):
+1. Budget tab is highest priority — contractor favorite feature
+2. Task tracker matters for training and project tracking
+3. Materials integration for cost estimation (wizard enhancement, defer to Sprint 34+)
 
 ---
 
 ## Known Gaps (M1.5a → M1.5b transition)
 
-1. **AI not wired to wizard** — Wizard has hints ("AI will use this...") but AI task generation, site condition inference, and crew recommendations are placeholder-only. Sprint 32 scope.
-2. **No Zustand stores for M1.5 data** — Tasks, subs, conditions, docs, permits use direct supabaseData calls. Project dashboard (M1.5b) will need stores for display/edit workflows.
-3. **Document upload UI** — project_documents table + CRUD exist but no file upload component in wizard or dashboard yet.
+1. **No project detail page** — Current detail view is inline in Projects.tsx with tabs for zones/materials/crew. No `/projects/:id` route exists. M1.5b needs a full-page project dashboard.
+2. **No Zustand stores for M1.5 data** — Tasks, subs, conditions, docs, permits use direct supabaseData calls. Project dashboard needs stores for display/edit workflows.
+3. **Document upload UI** — project_documents table + CRUD exist but no file upload component yet.
 4. **Settings page** — Still the one remaining M2 item. Deferred to Sprint 35.
-
-## Pilot Contractor Feedback (from first demo session)
-
-Sprint 32 must address before M1.5b:
-- Equipment step should pull from org library (dropdown), not manual text entry
-- Compliance step should come before budget step (permit costs affect estimate)
-- "No permits required" needs a quick toggle, not clicking through the checklist
-- Add parking permits to permit checklist
-- Costs should auto-calculate from project data (crew rates × hours, material costs, equipment daily rates)
-- AI should recommend margin improvements
-- Contractor wants org-level sub/supplier directory (was M4 — needs decision on timing)
-- Needs estimated vs. actual cost tracking during project execution (M1.5b budget tab)
+5. **AI material estimates** — Quantities need improvement per contractor feedback. Wizard materials integration is a Sprint 34+ candidate.
