@@ -67,8 +67,8 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
     { label: 'Site Intelligence', filled: !!data.address.trim() },
     { label: 'Scope & Tasks', filled: data.tasks.length > 0 },
     { label: 'Resources', filled: (data.crewSize ?? 0) > 0 || data.subcontractors.length > 0 },
-    { label: 'Timeline & Budget', filled: (data.clientQuote ?? 0) > 0 || !!data.startDate },
     { label: 'Compliance', filled: data.permitChecklist.length > 0 || !!data.complianceNotes },
+    { label: 'Timeline & Budget', filled: (data.clientQuote ?? 0) > 0 || !!data.startDate },
   ];
   const filledCount = sections.filter((s) => s.filled).length;
 
@@ -189,7 +189,30 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
         </div>
       )}
 
-      {/* Step 5: Financial Summary */}
+      {/* Step 5: Compliance */}
+      {(data.permitChecklist.length > 0 || data.complianceNotes) && (
+        <div className={sectionClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+          <h4 className={sectionHeadClass}>Compliance</h4>
+          {data.permitChecklist.length > 0 && (
+            <div className="flex gap-[4px] flex-wrap mb-[6px]">
+              {data.permitChecklist.map((key) => (
+                <span
+                  key={key}
+                  className="px-[8px] py-[2px] rounded-[4px] text-[11px] font-[500]"
+                  style={{ backgroundColor: 'rgba(45,106,79,0.1)', color: 'var(--green-l)' }}
+                >
+                  {key.replace(/_/g, ' ')}
+                </span>
+              ))}
+            </div>
+          )}
+          {data.complianceNotes && (
+            <p className="text-[12px] text-[var(--text-3)] italic">{data.complianceNotes}</p>
+          )}
+        </div>
+      )}
+
+      {/* Step 6: Financial Summary */}
       <div className={sectionClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
         <h4 className={sectionHeadClass}>Timeline & Budget</h4>
         {(data.startDate || data.targetDate) && (
@@ -215,29 +238,6 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
           </span>
         </div>
       </div>
-
-      {/* Step 6: Compliance */}
-      {(data.permitChecklist.length > 0 || data.complianceNotes) && (
-        <div className={sectionClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-          <h4 className={sectionHeadClass}>Compliance</h4>
-          {data.permitChecklist.length > 0 && (
-            <div className="flex gap-[4px] flex-wrap mb-[6px]">
-              {data.permitChecklist.map((key) => (
-                <span
-                  key={key}
-                  className="px-[8px] py-[2px] rounded-[4px] text-[11px] font-[500]"
-                  style={{ backgroundColor: 'rgba(45,106,79,0.1)', color: 'var(--green-l)' }}
-                >
-                  {key.replace(/_/g, ' ')}
-                </span>
-              ))}
-            </div>
-          )}
-          {data.complianceNotes && (
-            <p className="text-[12px] text-[var(--text-3)] italic">{data.complianceNotes}</p>
-          )}
-        </div>
-      )}
     </div>
   );
 };

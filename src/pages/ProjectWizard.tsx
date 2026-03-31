@@ -139,8 +139,8 @@ const WIZARD_STEPS = [
   { label: 'Site Intelligence', shortLabel: 'Site' },
   { label: 'Scope & Tasks', shortLabel: 'Tasks' },
   { label: 'Resources', shortLabel: 'Resources' },
-  { label: 'Timeline & Budget', shortLabel: 'Budget' },
   { label: 'Compliance', shortLabel: 'Permits' },
+  { label: 'Timeline & Budget', shortLabel: 'Budget' },
   { label: 'Review & Create', shortLabel: 'Review' },
 ];
 
@@ -366,8 +366,8 @@ export default function ProjectWizard() {
         {currentStep === 1 && <WizardStep2 data={data} onChange={handleChange} />}
         {currentStep === 2 && <WizardStep3 data={data} onChange={handleChange} />}
         {currentStep === 3 && <WizardStep4 data={data} onChange={handleChange} />}
-        {currentStep === 4 && <WizardStep5 data={data} onChange={handleChange} />}
-        {currentStep === 5 && <WizardStep6 data={data} onChange={handleChange} />}
+        {currentStep === 4 && <WizardStep6 data={data} onChange={handleChange} />}
+        {currentStep === 5 && <WizardStep5 data={data} onChange={handleChange} />}
         {currentStep === 6 && <WizardStep7 data={data} />}
       </div>
 

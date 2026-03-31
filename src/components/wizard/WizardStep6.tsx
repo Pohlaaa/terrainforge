@@ -49,7 +49,7 @@ export const WizardStep6: React.FC<Props> = ({ data, onChange }) => {
               onChange={(e) => onChange({ permitZone: e.target.value || null })}
             />
             <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
-              Also editable in Step 2 (Site Intelligence)
+              Also editable in Step 2 (Site Intelligence). Permit fees flow into the budget step.
             </p>
           </div>
         </div>
