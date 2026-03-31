@@ -3,7 +3,7 @@
 > **Purpose**: Upfront schema design for the Project Intelligence milestone (M1.5a creation wizard + M1.5b project dashboard). Design now, build incrementally across sprints 28-34.
 > **Created**: 2026-03-30
 > **Owner**: Charlie (BSA II)
-> **Status**: Draft — review before Sprint 28
+> **Status**: IMPLEMENTED — Migrations 010 + 011 applied. All tables and columns live in Supabase. TypeScript interfaces and CRUD functions in codebase.
 
 ---
 
@@ -410,9 +410,9 @@ CREATE POLICY "{table_name}_delete" ON {table_name}
 
 ---
 
-## TypeScript Interfaces (Preview)
+## TypeScript Interfaces
 
-These will be added to `src/types/index.ts` when the migration is built.
+All interfaces below are live in `src/types/index.ts` as of Sprint 29.
 
 ```typescript
 // ── Project Intelligence (M1.5) ─────────────────────────────────────────────
@@ -525,29 +525,21 @@ export interface ProjectPermit {
 
 ---
 
-## Migration Strategy
+## Migration History
 
-The full schema above will be split across 2-3 migrations, aligned with sprint scope:
+### Migration 010: `010_project_intelligence_core.sql` (Sprint 28) ✅ APPLIED
+- ALTER `projects` — added 30+ new columns (client inline, classification, site, budget, compliance, wizard state)
+- CREATE `project_tasks` + RLS (4 policies) + indexes + updated_at trigger
+- CREATE `project_site_conditions` + RLS (4 policies) + indexes + updated_at trigger
 
-### Migration 010: `project_intelligence_core.sql` (Sprint 28)
-- ALTER `projects` — add all new columns
-- CREATE `project_tasks` + RLS
-- CREATE `project_site_conditions` + RLS
-- Supabase Storage bucket `project-photos` (manual step)
+### Migration 011: `011_project_intelligence_resources.sql` (Sprint 29) ✅ APPLIED
+- CREATE `project_subcontractors` + RLS (4 policies) + indexes + updated_at trigger
+- CREATE `project_documents` + RLS (4 policies) + indexes (immutable — no updated_at)
+- CREATE `project_permits` + RLS (4 policies) + indexes + updated_at trigger
 
-**Why these first**: Steps 1-3 of the wizard (job description, site intelligence, scope/tasks) can ship with just the extended projects table, tasks, and site conditions. This is the M1.5a MVP.
-
-### Migration 011: `project_intelligence_resources.sql` (Sprint 29-30)
-- CREATE `project_subcontractors` + RLS
-- CREATE `project_documents` + RLS
-- CREATE `project_permits` + RLS
-
-**Why second**: Steps 4-6 of the wizard (resources, timeline/budget, compliance) and the project dashboard need subcontractors, documents, and permits. These ship once the core wizard flow is proven.
-
-### No migration needed for:
-- Budget columns on `projects` — included in migration 010
-- Wizard state columns — included in migration 010
-- TypeScript interfaces — code-only change, no DB migration
+### Manual step: `project-photos` Supabase Storage bucket ⚠️ NOT YET CREATED
+- Charlie needs to create this in Supabase Dashboard (Storage → New bucket → "project-photos", public: false)
+- Required before document upload UI can work in M1.5b
 
 ---
 
@@ -584,16 +576,23 @@ organizations (existing)
 
 ---
 
-## Checklist for Code (Sprint Execution)
+## Implementation Checklist (Post-M1.5a Verification)
 
-When building the migration in Code, verify:
+All items verified as of Sprint 31:
 
-- [ ] Every new table has `org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE`
-- [ ] Every new table has RLS enabled + 4 policies (SELECT, INSERT, UPDATE, DELETE)
-- [ ] All type columns use TEXT + CHECK, never ENUM
-- [ ] All new `projects` columns are nullable (won't break existing data)
-- [ ] Indexes on `org_id` and `project_id` for every new table
-- [ ] `updated_at` trigger added for tables that have `updated_at`
-- [ ] `supabaseData.ts` functions filter by `org_id` on every query
-- [ ] TypeScript interfaces added to `src/types/index.ts` with camelCase names
-- [ ] snake_case ↔ camelCase mapping in `supabaseData.ts` for all new columns
+- [x] Every new table has `org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE`
+- [x] Every new table has RLS enabled + 4 policies (SELECT, INSERT, UPDATE, DELETE)
+- [x] All type columns use TEXT + CHECK, never ENUM
+- [x] All new `projects` columns are nullable (won't break existing data)
+- [x] Indexes on `org_id` and `project_id` for every new table
+- [x] `updated_at` trigger added for tables that have `updated_at`
+- [x] `supabaseData.ts` functions filter by `org_id` on every query (24 new functions)
+- [x] TypeScript interfaces added to `src/types/index.ts` with camelCase names (40+ types)
+- [x] snake_case ↔ camelCase mapping in `supabaseData.ts` for all new columns
+
+## What M1.5b Still Needs (Sprint 32+)
+
+- [ ] Zustand stores for project_tasks, project_subcontractors, project_documents, project_site_conditions, project_permits (currently using direct supabaseData calls)
+- [ ] Document upload UI component + project-photos Storage bucket creation
+- [ ] AI integration: task generation from description, site condition inference from location, crew/equipment recommendations
+- [ ] Project dashboard tabs consuming the new CRUD functions for display/edit

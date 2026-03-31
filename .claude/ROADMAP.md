@@ -136,7 +136,11 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 
 **Gate**: Contractor describes a job → full project plan with tasks, materials, crew, and preliminary schedule in under 5 minutes. Pilot contractor confirms: "this saves me real time."
 
-**Estimated sprints**: 3-4 (Sprint 28-31)
+**Status**: **COMPLETE** (Sprints 28-31). Full wizard shipped. AI integration and pilot testing deferred to Sprint 32 bridge sprint.
+
+**What shipped**: 2 migrations (010-011), 5 new tables, 30+ new project columns, 24 CRUD functions, 9 wizard components, ProjectWizard page, route integration. "+ New Project" defaults to wizard; old modal preserved as Quick Create.
+
+**What's deferred to Sprint 32**: AI task generation from description, AI site condition inference from location, AI crew/equipment recommendations. Pilot contractor outreach.
 
 ---
 
@@ -258,11 +262,13 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 25/25.5/25.6 | M1 | Polish + demo prep — sidebar, widgets, map, KPI fixes (**COMPLETE**) |
 | 26/26.5/26.6 | M2 | First-run experience — setup checklist, empty states, sample data, tooltips (**COMPLETE**) |
 | 27/27.5/27.6 | M2 | Onboarding polish — KPI sync, welcome banner, billing banners, debug cleanup (**COMPLETE**) |
-| 28 | M1.5a | Project Intelligence kickoff — extended projects table, project_tasks, site conditions, wizard Steps 1-3 |
-| 29-30 | M1.5a | Wizard Steps 4-7 — resources, timeline/budget, compliance, review & create |
-| 31 | M1.5a | Wizard polish, AI tuning, pilot contractor testing |
-| 32-33 | M1.5b | Project dashboard — schedule, tasks, resources, budget, activity tabs |
-| 34 | M1.5b | Dashboard polish — documents, compliance, pilot feedback integration |
+| 28 | M1.5a | Data layer — migration 010 (projects ext + tasks + site conditions), TypeScript interfaces, CRUD (**COMPLETE**) |
+| 29 | M1.5a | Data layer — migration 011 (subcontractors, documents, permits), interfaces, CRUD (**COMPLETE**) |
+| 30 | M1.5a | Wizard UI Steps 1-3 — ProjectWizard page, WizardStepper, job desc, site intel, scope/tasks (**COMPLETE**) |
+| 31 | M1.5a | Wizard UI Steps 4-7 — resources, budget, compliance, review + route integration + Quick Create demotion (**COMPLETE**) |
+| 32 | Bridge | AI wizard integration + pilot contractor feedback fixes (step reorder, equipment dropdown, auto-calc costs, permit UX) |
+| 33-34 | M1.5b | Project dashboard — schedule, tasks, resources, budget, activity tabs + Zustand stores |
+| 35 | M1.5b | Dashboard polish — documents, compliance, pilot feedback integration |
 | 35 | M2/M3 | Settings page completion (last M2 item) + M3 production deploy prep |
 | 36-37 | M3 | Stripe completion, landing page, trial flow, outreach |
 | 38+ | M4 | Time tracking, client portal, CSV, invoicing, crew app enhancements |
@@ -279,6 +285,7 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 2026-03-29 | Moved scheduling from Phase 2 to Milestone 1 (pre-launch) | Scheduling is the daily-use hook that makes the product indispensable, not a post-launch add-on |
 | 2026-03-29 | Added guided onboarding as Milestone 2 | First-run experience is a blocker for self-serve signups; can't scale with demo-only acquisition |
 | 2026-03-29 | Crew-facing app added to Milestone 1 | Manager schedules, crew executes — the two sides complete the loop. A scheduling tool without crew visibility is half a product. Same React app, separate route tree (`/crew/*`), shared Supabase backend. |
+| 2026-03-30 | M1.5a complete — added Sprint 32 bridge sprint for AI + pilot testing | AI wizard integration and pilot testing were planned for Sprint 31 but wizard UI consumed the full sprint. Adding a bridge sprint keeps M1.5b focused on dashboard, not catching up on AI plumbing. |
 | 2026-03-30 | Inserted M1.5a/b between M2 and M3 | Project creation experience is the core value differentiator. Rushing to M3 (revenue) with a basic project form would undermine the product's "I need this" moment. |
 | 2026-03-30 | Split M1.5 into a (wizard) and b (dashboard) | Prevents scope gravity. Ship wizard first, pilot test it, let feedback shape which dashboard sections matter most before building all 8. |
 | 2026-03-30 | Design data model upfront for all of M1.5 | Full schema in DATA_MODEL_M1.5.md. Avoids migration churn from discovering missing columns mid-sprint. Build incrementally but design holistically. |

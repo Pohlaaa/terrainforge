@@ -47,12 +47,25 @@ Prefix legend: `[ ]` open · `[x]` resolved · `[~]` in progress · `[?]` needs 
 
 ## Project Intelligence (M1.5 — Active Planning)
 
-- [~] **AI creation wizard** — 7-step guided project creation replacing the basic form. Full spec in ROADMAP.md M1.5a section. Data model in DATA_MODEL_M1.5.md. Sprint 28-31 scope.
-- [~] **Project dashboard** — Project detail view becomes a full command center with tabs (schedule, tasks, resources, budget, activity, documents, compliance). Full spec in ROADMAP.md M1.5b section. Sprint 32-34 scope.
-- [ ] **Wizard "save and continue later"** — Wizard should support partial saves. `wizard_step` column on `projects` tracks progress. Auto-save after each step completion.
-- [ ] **AI task generation quality** — AI-generated task breakdowns need to be tested against real contractor job descriptions. Pilot contractor feedback will determine if phase categories and dependency modeling are accurate enough.
-- [ ] **Project template library** — After M1.5a ships, consider letting contractors save a completed wizard output as a reusable template. "Start from my patio template" instead of describing the job from scratch every time. M4 candidate.
-- [?] **Detail panel → full page transition** — M1.5b project dashboard may need to be a full page rather than the current slide-in detail panel. Decision depends on information density during Sprint 32 implementation.
+- [x] **AI creation wizard** — 7-step guided project creation. Full wizard shipped in Sprints 28-31. 9 components, 24 CRUD functions, 2 migrations. **COMPLETE.**
+- [~] **Project dashboard** — Project detail view becomes a full command center with tabs (schedule, tasks, resources, budget, activity, documents, compliance). Full spec in ROADMAP.md M1.5b section. Sprint 33-35 scope.
+- [ ] **AI wizard integration** — Wizard is built but AI isn't wired in yet. Task generation from description, site condition inference from address, crew/equipment recommendations all need Sprint 32 work. This is the "intelligence" in Project Intelligence.
+- [ ] **Wizard "save and continue later"** — `wizard_step` column exists on `projects` but partial save isn't implemented. Wizard currently only persists on final "Create." Sprint 32 or 33 candidate.
+- [ ] **AI task generation quality** — AI-generated task breakdowns need to be tested against real contractor job descriptions. Blocked until AI is wired to wizard (Sprint 32).
+- [ ] **Project template library** — Now that wizard is shipped, saving a completed wizard as a reusable template is more tangible. "Start from my patio template" instead of describing from scratch. M4 candidate.
+- [?] **Detail panel → full page transition** — M1.5b project dashboard may need to be a full page rather than the current slide-in detail panel. Decision depends on information density during Sprint 33 implementation.
+- [x] **project-photos Storage bucket** — Created in Supabase Dashboard. Ready for M1.5b document upload.
+- [ ] **Zustand stores for M1.5 data** — Tasks, subs, conditions, docs, permits currently use direct supabaseData calls. Project dashboard will need dedicated stores for display/edit/reactivity.
+
+### Pilot Contractor Feedback (Sprint 32 scope)
+- [ ] **Equipment dropdown from library** — Step 4 should pull from org's equipment list with duration picker, not freeform text. Add "rental notes" field for equipment not in library. *Contractor feedback: "I shouldn't have to type my own equipment names."*
+- [ ] **Reorder: compliance before budget** — Move Step 6 (compliance) before Step 5 (budget). Permit costs affect the estimate. Current order: 1-2-3-4-5-6-7 → New order: 1-2-3-4-6-5-7.
+- [ ] **"No permits required" quick toggle** — Add prominent toggle at top of compliance step that collapses the checklist. Most small residential jobs need zero permits.
+- [ ] **Parking permits** — Add to permit checklist options.
+- [ ] **Auto-calculated costs** — AI should pre-populate budget from earlier steps: labor (crew size × hours × rates from crew library), materials (from manifest engine quantities × material costs), equipment (daily rates × duration from equipment library). Budget step becomes a review/adjust step, not data entry.
+- [ ] **AI margin recommendations** — After costs are calculated, AI suggests ways to improve margin: "Consider bulk ordering stone — saves ~12% at 50+ cuyd" or "Subbing out electrical saves $X vs. in-house."
+- [ ] **Org-level sub/supplier directory** — Shared contact list for subcontractors and material suppliers at the org level, not just per-project. Was M4 scope; contractor clearly wants it sooner. **Decision needed: pull into M1.5b or keep in M4?**
+- [ ] **Estimated vs. actual cost tracking** — Budget fields exist for estimates. Need actual cost columns + UI for tracking spend during project execution. M1.5b budget tab scope.
 
 ---
 
@@ -86,7 +99,7 @@ Prefix legend: `[ ]` open · `[x]` resolved · `[~]` in progress · `[?]` needs 
 - [ ] **Competitor awareness:**
   - **Fieldwire** — Field management, task tracking, plan markup. Their weakness: not landscaping-specific, no manifest/material engine.
   - **Aurora Solar** — AI-driven design + proposal tool for solar. Relevant model: design tool that auto-generates a proposal/estimate. Analogue to our M5 3D Studio goal.
-- [?] **Pilot contractor program** — Begin informal outreach during M1.5a development. Show current app state, gather feedback. Critical for validating project creation wizard before building the full dashboard. **Decision needed: how to recruit 2-3 pilot contractors.**
+- [?] **Pilot contractor program** — Was planned during M1.5a but didn't happen. Now critical before M1.5b starts — need real contractor feedback on the wizard to shape dashboard priorities. **Decision needed: how to recruit 2-3 pilot contractors. Sprint 32 is the window.**
 
 ---
 
@@ -96,5 +109,7 @@ Prefix legend: `[ ]` open · `[x]` resolved · `[~]` in progress · `[?]` needs 
 - **CSV import/export** is a strong contractor ask — M4 scope, schedule after core operations features.
 - **Translation** is M5 unless a pilot user specifically requests it.
 - **Ad-supported tier** needs a business model decision before any engineering work. Flag for Charlie's review before M3 planning.
-- **M1.5 data model** (DATA_MODEL_M1.5.md) should be reviewed before Sprint 28 starts. Migration 010 is the first DB change since migration 009.
-- **Pilot testing** should start during M1.5a development — show the wizard to real contractors before building the full project dashboard (M1.5b).
+- **M1.5 data model** fully implemented — migrations 010 + 011 applied. DATA_MODEL_M1.5.md updated with implementation status.
+- **Pilot testing** didn't happen during M1.5a. Sprint 32 bridge sprint is the window. Show the wizard to real contractors before building the project dashboard (M1.5b).
+- **AI wiring** is the biggest gap between "wizard works" and "wizard is intelligent." Sprint 32 should prioritize this alongside pilot outreach.
+- **CONTEXT.md maintenance** — Code didn't update CONTEXT.md during Sprints 28-31. Cowork caught this at batch checkpoint. May need to reinforce in CODE_GUIDE.md or accept that Cowork handles the sync.

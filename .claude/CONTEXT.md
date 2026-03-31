@@ -4,87 +4,62 @@
 > For full project knowledge: read `ORCHESTRATOR.md`
 > For roadmap and milestones: read `ROADMAP.md`
 > For execution workflow: read `CODE_GUIDE.md`
-> Last updated: 2026-03-30 (Sprint 27 complete + hotfixes, M2 near complete)
+> For M1.5 data model: read `DATA_MODEL_M1.5.md`
+> Last updated: 2026-03-30 (Sprint 31 complete — M1.5a Creation Wizard shipped)
 
 ---
 
 ## Current Status
 
-**Milestone 2: "First Impression"** — NEAR COMPLETE
-**Last completed**: Sprint 27 + hotfixes 27.5/27.6/27.6b — Onboarding Polish & KPI Sync
-**Status**: Sprint 27 complete and tested. All hotfix items passing. One M2 item remaining: Settings page completion.
-**Current sprint**: None active — awaiting Cowork project plan review before next sprint
-**Pending**: Cowork plan adjustment → Sprint 28 planning → M2 gate evaluation or jump to M3
+**Milestone 1.5a: "Project Intelligence — Creation Wizard"** — COMPLETE
+**Last completed**: Sprint 31 — Wizard Steps 4-7 + route integration + Quick Create demotion
+**Status**: Full 7-step project creation wizard shipped and tested. All M1.5a data layer and UI work done.
+**Current sprint**: None active — batch checkpoint in Cowork
+**Pending**: Cowork batch checkpoint → M1.5b planning (project dashboard) or bridge sprint (AI tuning + pilot testing)
 **Workflow model**: Two-mode (VSCode Claude Code = planning + execution, Cowork = strategic only)
-**Git state**: Clean, main pushed to origin. Migrations 001–009 applied. Storage bucket `crew-photos` created.
-**SQL migration needed**: None (all applied)
+**Git state**: Clean, main pushed to origin. Migrations 001–011 applied. Storage buckets `crew-photos` and `project-photos` both created.
+**SQL migration needed**: None (010 + 011 applied)
 
 ---
 
 ## What's Working (Manager App)
 
-All Phase 1 MVP features complete:
+All M1 + M2 + M1.5a features complete:
+
+**M1.5a — Project Intelligence Wizard (Sprints 28-31)**:
+- 7-step project creation wizard at `/projects/wizard`
+- Step 1: Job Description — name, type, scope, client info, natural language description
+- Step 2: Site Intelligence — address (Mapbox), site conditions, climate/permits, access logistics
+- Step 3: Scope & Tasks — task list with phases, hours, reorder, quick-add presets (Basic Hardscape, Full Install, Maintenance)
+- Step 4: Resources — crew size, equipment notes, subcontractor list with trade/cost/scope
+- Step 5: Timeline & Budget — dates, cost breakdown (labor/materials/equipment/subs), overhead %, client quote, profit/margin calculation with guidance messaging
+- Step 6: Compliance — permit status, 8-item permit checklist, risk notes
+- Step 7: Review & Create — full summary with section progress, one-tap creation
+- WizardStepper component with visual progress, clickable back-navigation, responsive labels
+- "+ New Project" defaults to wizard; old modal preserved as "Quick Create"
+- 5 new DB tables: project_tasks, project_site_conditions, project_subcontractors, project_documents, project_permits
+- 24 new CRUD functions in supabaseData.ts with full org_id isolation
+- 40+ new TypeScript interfaces and union types
+
+**M1 + M2 features** (unchanged from Sprint 27):
 - Auth (signup, login, logout, session persistence, email confirmation)
 - 4-step onboarding wizard
 - 10+ pages wired to live Supabase data
-- AI smart project creation (natural language → form pre-fill)
+- AI smart project creation (natural language → form pre-fill) — original flow, not yet wired to wizard
 - AI material suggestions with click-to-add persistence
-- Zone creation with DB persistence (NULL handling for optional fields)
+- Zone creation with DB persistence
 - Address autocomplete with Mapbox geocoding + mini-map preview
-- Map widget with status-colored pins, hover popups, and ResizeObserver
+- Map widget with status-colored pins, hover popups
 - KPI strip (inline compact, all selected KPIs shown, mini sparklines)
 - Widget grid (2-column with half/full width toggle per widget)
 - PDF manifest + crew packet export
 - Stripe billing (checkout, portal, webhook stub)
-- Multi-tenancy with RLS isolation (55+ policies)
-- Error visibility (toast notifications on Supabase failures)
-- Role diagnostic on login
+- Multi-tenancy with RLS isolation (55+ policies, now 75+ with M1.5 tables)
 - Light/dark theme with design token system
 - Responsive tablet-first layout
-
-**UI Overhaul (Sprints 21-25)**:
-- v7 layout shell: 64px icon rail (collapsed) / 220px expanded sidebar with sub-tabs
-- 5-group navigation: Dashboard, Jobs (Projects/Schedule/Work Orders), Resources (Crew/Equipment/Materials), Manifest (Engine/Price Research), Settings (Settings/Billing)
-- SubTabBar component for grouped page navigation
-- TopNav with theme toggle, user dropdown, mobile hamburger
-- MobileSidebar with grouped navigation and section headers
-- TF logo navigates to Dashboard
-- Responsive sidebar: expanded (labels + sub-tabs) on xl+, icon-only on lg, hidden on mobile
-- v7 radius tokens (--radius-sm/md/lg/xl) and spring easing
-- Dashboard: compact greeting header, inline KPI strip, single "Customize" button
-- Projects: dense 2-column cards with accent bars, list view toggle (persisted)
-- Widget grid: 2-col layout with half/full width resize toggle
-
-**Crew App (Sprints 17-23)**:
-- Crew app at `/crew/*` with separate `CrewLayout` (no sidebar, mobile-first)
-- PIN-based crew login: company code → pick name → enter PIN → 8-hour session
-- CrewLogin page at `/crew/login`
-- Today's schedule dashboard with job cards
-- Work order checklist with tap-to-complete steps (persists to Supabase)
-- Photo proof of completion (camera upload to Supabase Storage)
-- Crew status signals (en route / on site / done) visible on manager schedule
-- Manager: Set PIN modal on Crew Manager page, org shortcode display
-- "Switch" button in crew layout for changing crew member
-
-**First-Run Experience (Sprints 26-27)**:
-- Setup Checklist on Dashboard (5-step progress tracker, auto-dismiss for existing users)
-- Enhanced empty state copy on 6 pages (action-oriented guidance)
-- "Load Sample Company" — inserts 3 projects, 6 crew, 5 equipment, 8 materials into Supabase
-- Tooltip + HelpIcon shared components (hover/tap, 4 positions, accessible)
-- 5 contextual help icons on Dashboard, Manifest, Price Research, Schedule, Setup Checklist
-- Schedule widget filters stale seed entries; Schedule page validates UUIDs before Supabase queries
-- Onboarding KPI selections sync to Dashboard (priority labels → KPI library IDs)
-- Welcome banner for first-time users (auto-hides after 3 visits, visible dismiss button)
-- Field help tooltips on New Project modal
-- Billing trial/past-due banners in AppLayout (dismissible, session-scoped)
-- Debug console logs removed from production code
-- New account onboarding redirect (AppLayout catches email-confirm entries that bypass Login.tsx)
-
-**Scheduling (Sprints 15-16)**:
-- Weekly schedule page with crew-by-day grid, assignment modal, drag-and-drop
-- Today's Schedule dashboard widget
-- Schedule entries + crew_status tables with Supabase CRUD
-- Conflict detection (double-booked crew)
+- v7 layout shell: icon rail, top nav, sub-tabs, dense cards, list view
+- Crew app: PIN auth, today's schedule, work order checklist, photo proof, status signals
+- First-run experience: setup checklist, sample data, tooltips, welcome banner, billing banners
 
 ---
 
@@ -99,10 +74,12 @@ All Phase 1 MVP features complete:
 - `007_crew_app_auth.sql` — crew_members auth linkage, crew_status extensions, crew RLS policies
 - `008_checklist_progress_photos.sql` — crew checklist persistence + photo metadata tables
 - `009_org_shortcode.sql` — org shortcode column with auto-generation trigger + crew login RLS
+- `010_project_intelligence_core.sql` — Extended projects table (30+ cols), project_tasks, project_site_conditions
+- `011_project_intelligence_resources.sql` — project_subcontractors, project_documents, project_permits
 
 ---
 
-## Sprint History (Sprints 21-27)
+## Sprint History (Sprints 21-31)
 
 | Sprint | Theme | Key Changes |
 |--------|-------|-------------|
@@ -110,47 +87,31 @@ All Phase 1 MVP features complete:
 | 22 | Nav Consolidation | 5 groups with SubTabBar, simplified TopNav dropdown |
 | 23 | Crew PIN Auth | PIN login, org shortcode, CrewLogin page, session management |
 | 24 | v7 Redesign | Dashboard KPI strip, Projects dense 2-col cards + list view |
-| 25 | Polish + Demo Prep | Responsive expanded sidebar, merged customize button, widget 2-col, map fixes |
-| 25.5 | Hotfix | KPI strip shows all, widget grid proper 2-col, map hover popups, sidebar sub-tabs |
-| 25.6 | Hotfix | KPI compute fixes, map scroll re-enabled, widget size toggle (half/full) |
-| 26 | First-Run Experience | Setup checklist, enhanced empty states, sample data loader, Tooltip/HelpIcon components |
-| 26.5 | Hotfix | Sample loader full store refresh, checklist auto-dismiss for existing users, UUID validation in Schedule |
-| 26.6 | Hotfix | Checklist dismiss on sample clear, schedule widget stale entry filtering |
-| 27 | Onboarding Polish | KPI sync from onboarding, welcome banner, field help, debug cleanup, billing banners |
-| 27.5 | Hotfix | KPI ID mapping attempt, onboarding redirect attempt, welcome dismiss styling |
-| 27.6/27.6b | Hotfix | Fixed all 3: KPI label→ID mapping, onboarding redirect via hasCompletedOnboarding, dismiss button contrast |
+| 25/25.5/25.6 | Polish + Demo Prep | Responsive expanded sidebar, merged customize button, widget 2-col, map fixes |
+| 26/26.5/26.6 | First-Run Experience | Setup checklist, enhanced empty states, sample data, tooltips |
+| 27/27.5/27.6 | Onboarding Polish | KPI sync, welcome banner, billing banners, debug cleanup |
+| 28 | M1.5a Data Layer | Migration 010 (projects extension + tasks + site conditions), TypeScript interfaces, CRUD functions |
+| 29 | M1.5a Resources | Migration 011 (subcontractors, documents, permits), interfaces, CRUD functions |
+| 30 | M1.5a Wizard UI (1-3) | ProjectWizard page, WizardStepper, Steps 1-3 (job description, site, scope/tasks) |
+| 31 | M1.5a Wizard UI (4-7) | Steps 4-7 (resources, budget, compliance, review), route integration, Quick Create demotion |
 
 ---
 
-## What's Not Started Yet
+## Known Gaps (M1.5a → M1.5b transition)
 
-- **M2 remaining** — Settings page completion (profile, company info, notification prefs)
-- **M2 gate evaluation** — contractor completes signup-to-first-project in <5 min without help
-- **M3: First Revenue** — production deploy, Stripe live mode, landing page, trial flow
-- **Debug page removal** from production routing (low priority, excluded in prod builds already)
+1. **AI not wired to wizard** — Wizard has hints ("AI will use this...") but AI task generation, site condition inference, and crew recommendations are placeholder-only. Sprint 32 scope.
+2. **No Zustand stores for M1.5 data** — Tasks, subs, conditions, docs, permits use direct supabaseData calls. Project dashboard (M1.5b) will need stores for display/edit workflows.
+3. **Document upload UI** — project_documents table + CRUD exist but no file upload component in wizard or dashboard yet.
+4. **Settings page** — Still the one remaining M2 item. Deferred to Sprint 35.
 
----
+## Pilot Contractor Feedback (from first demo session)
 
-## Open Issues
-
-### Milestone 1 & 2
-- No known blocking bugs. All Sprint 27 hotfix items passing.
-
-### Future Milestones
-- Multi-supplier support per material (M4)
-- CSV import/export (M4)
-- Time tracking, client portal (M4)
-- PWA for crew app (M5)
-
----
-
-## Key Technical Details
-
-- **Dev server**: `npm run dev` → `localhost:3000` (Vite)
-- **Git push**: `git push origin main` (Netlify watches `main`)
-- **Netlify auto-deploy**: OFF (budget renews 4/19)
-- **Supabase**: Multi-tenant with RLS. Admin role passes all checks.
-- **Zustand stores**: 7 stores with localStorage persistence
-- **Layout components**: IconRail, TopNav, SubTabBar, MobileSidebar, AppLayout
-- **Nav config**: `src/components/layout/navConfig.ts` (NavGroup structure)
-                                                                                                                                                                                                            
+Sprint 32 must address before M1.5b:
+- Equipment step should pull from org library (dropdown), not manual text entry
+- Compliance step should come before budget step (permit costs affect estimate)
+- "No permits required" needs a quick toggle, not clicking through the checklist
+- Add parking permits to permit checklist
+- Costs should auto-calculate from project data (crew rates × hours, material costs, equipment daily rates)
+- AI should recommend margin improvements
+- Contractor wants org-level sub/supplier directory (was M4 — needs decision on timing)
+- Needs estimated vs. actual cost tracking during project execution (M1.5b budget tab)
