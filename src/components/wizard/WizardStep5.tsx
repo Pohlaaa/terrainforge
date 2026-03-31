@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import type { WizardData } from '@/pages/ProjectWizard';
 
 interface Props {
@@ -11,19 +11,65 @@ const inputClass =
 
 const labelClass = 'block text-[12px] font-[600] text-[var(--text-2)] mb-[6px]';
 
+const DEFAULT_HOURLY_RATE = 35;
+
 function fmt(n: number | null | undefined): string {
   if (n == null) return '$0.00';
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
+  // ── Auto-calculated values from earlier steps ──────────────────────────────
+
+  // Labor: crew size × total task hours × hourly rate
+  const taskHoursSum = useMemo(
+    () => data.tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0),
+    [data.tasks]
+  );
+
+  const calcLabor = useMemo(() => {
+    const crew = data.crewSize ?? 1;
+    // taskHoursSum is the total estimated task-hours for the whole project
+    // Labor cost = total hours × rate (crew size is implicit in the hour estimates)
+    return taskHoursSum * DEFAULT_HOURLY_RATE;
+  }, [taskHoursSum, data.crewSize]);
+
+  // Equipment: sum of (daily rate × duration days)
+  const calcEquipment = useMemo(
+    () => data.equipmentSelections.reduce((sum, e) => sum + e.dailyRate * e.durationDays, 0),
+    [data.equipmentSelections]
+  );
+
+  // Subcontractors: sum of quoted costs
+  const calcSubs = useMemo(
+    () => data.subcontractors.reduce((sum, s) => sum + (s.quotedCost ?? 0), 0),
+    [data.subcontractors]
+  );
+
+  // Permit fees from compliance step
+  const totalPermitFees = useMemo(
+    () => Object.values(data.permitFees).reduce((sum, v) => sum + v, 0),
+    [data.permitFees]
+  );
+
+  // Pre-populate on mount if values are null (first visit to this step)
+  useEffect(() => {
+    const updates: Partial<WizardData> = {};
+    if (data.laborBudget == null && calcLabor > 0) updates.laborBudget = calcLabor;
+    if (data.equipmentBudget == null && calcEquipment > 0) updates.equipmentBudget = calcEquipment;
+    if (data.subcontractorBudget == null && calcSubs > 0) updates.subcontractorBudget = calcSubs;
+    if (data.estimatedHours == null && taskHoursSum > 0) updates.estimatedHours = taskHoursSum;
+    if (Object.keys(updates).length > 0) onChange(updates);
+  }, []); // only on mount
+
   // Computed financials
   const financials = useMemo(() => {
     const labor = data.laborBudget ?? 0;
     const materials = data.materialsBudget ?? 0;
     const equipment = data.equipmentBudget ?? 0;
     const subs = data.subcontractorBudget ?? 0;
-    const subtotal = labor + materials + equipment + subs;
+    const permits = totalPermitFees;
+    const subtotal = labor + materials + equipment + subs + permits;
     const overheadPct = data.overheadPct ?? 10;
     const overhead = subtotal * (overheadPct / 100);
     const totalCost = subtotal + overhead;
@@ -31,8 +77,8 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
     const profit = quote - totalCost;
     const marginPct = quote > 0 ? (profit / quote) * 100 : 0;
 
-    return { subtotal, overhead, totalCost, profit, marginPct };
-  }, [data.laborBudget, data.materialsBudget, data.equipmentBudget, data.subcontractorBudget, data.overheadPct, data.clientQuote]);
+    return { subtotal, overhead, totalCost, profit, marginPct, permits };
+  }, [data.laborBudget, data.materialsBudget, data.equipmentBudget, data.subcontractorBudget, data.overheadPct, data.clientQuote, totalPermitFees]);
 
   const marginColor =
     financials.profit > 0
@@ -80,15 +126,23 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
                 onChange({ estimatedHours: e.target.value ? parseFloat(e.target.value) : null })
               }
             />
+            {taskHoursSum > 0 && data.estimatedHours !== taskHoursSum && (
+              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                Task sum: {taskHoursSum}h
+              </p>
+            )}
           </div>
         </div>
       </div>
 
       {/* Cost Breakdown */}
       <div>
-        <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
+        <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
           Cost Breakdown
         </h3>
+        <p className="text-[12px] text-[var(--text-4)] mb-[16px]">
+          Pre-populated from earlier steps. All values are editable.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
           <div>
             <label className={labelClass}>Labor Cost</label>
@@ -103,7 +157,11 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
                 onChange({ laborBudget: e.target.value ? parseFloat(e.target.value) : null })
               }
             />
-            <p className="text-[11px] text-[var(--text-4)] mt-[4px]">Crew hours x rates</p>
+            {taskHoursSum > 0 && (
+              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                Calc: {taskHoursSum}h × ${DEFAULT_HOURLY_RATE}/hr = {fmt(calcLabor)}
+              </p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Materials Cost</label>
@@ -118,7 +176,9 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
                 onChange({ materialsBudget: e.target.value ? parseFloat(e.target.value) : null })
               }
             />
-            <p className="text-[11px] text-[var(--text-4)] mt-[4px]">From manifest / estimates</p>
+            <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+              Add materials in the project dashboard after creation.
+            </p>
           </div>
           <div>
             <label className={labelClass}>Equipment Rental</label>
@@ -133,6 +193,13 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
                 onChange({ equipmentBudget: e.target.value ? parseFloat(e.target.value) : null })
               }
             />
+            {data.equipmentSelections.length > 0 && (
+              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                Calc: {data.equipmentSelections.map((e) =>
+                  `${e.name} ${e.durationDays}d${e.dailyRate > 0 ? ` × $${e.dailyRate}` : ' (Rate TBD)'}`
+                ).join(', ')} = {fmt(calcEquipment)}
+              </p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Subcontractor Costs</label>
@@ -147,6 +214,11 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
                 onChange({ subcontractorBudget: e.target.value ? parseFloat(e.target.value) : null })
               }
             />
+            {data.subcontractors.length > 0 && calcSubs > 0 && (
+              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                From {data.subcontractors.length} sub{data.subcontractors.length > 1 ? 's' : ''}: {fmt(calcSubs)}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -195,9 +267,27 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
         </h4>
         <div className="space-y-[8px]">
           <div className="flex justify-between text-[13px]">
-            <span className="text-[var(--text-2)]">Direct Costs (Labor + Materials + Equipment + Subs)</span>
-            <span className="text-[var(--text)] font-[500]">{fmt(financials.subtotal)}</span>
+            <span className="text-[var(--text-2)]">Labor</span>
+            <span className="text-[var(--text)] font-[500]">{fmt(data.laborBudget)}</span>
           </div>
+          <div className="flex justify-between text-[13px]">
+            <span className="text-[var(--text-2)]">Materials</span>
+            <span className="text-[var(--text)] font-[500]">{fmt(data.materialsBudget)}</span>
+          </div>
+          <div className="flex justify-between text-[13px]">
+            <span className="text-[var(--text-2)]">Equipment</span>
+            <span className="text-[var(--text)] font-[500]">{fmt(data.equipmentBudget)}</span>
+          </div>
+          <div className="flex justify-between text-[13px]">
+            <span className="text-[var(--text-2)]">Subcontractors</span>
+            <span className="text-[var(--text)] font-[500]">{fmt(data.subcontractorBudget)}</span>
+          </div>
+          {financials.permits > 0 && (
+            <div className="flex justify-between text-[13px]">
+              <span className="text-[var(--text-2)]">Permit Fees</span>
+              <span className="text-[var(--text)] font-[500]">{fmt(financials.permits)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-[13px]">
             <span className="text-[var(--text-2)]">Overhead ({data.overheadPct ?? 10}%)</span>
             <span className="text-[var(--text)] font-[500]">{fmt(financials.overhead)}</span>
