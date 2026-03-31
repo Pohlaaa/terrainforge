@@ -5,11 +5,14 @@ import { WizardStepper } from '@/components/wizard/WizardStepper';
 import { WizardStep1 } from '@/components/wizard/WizardStep1';
 import { WizardStep2 } from '@/components/wizard/WizardStep2';
 import { WizardStep3 } from '@/components/wizard/WizardStep3';
-import { WizardStepPlaceholder } from '@/components/wizard/WizardStepPlaceholder';
+import { WizardStep4 } from '@/components/wizard/WizardStep4';
+import { WizardStep5 } from '@/components/wizard/WizardStep5';
+import { WizardStep6 } from '@/components/wizard/WizardStep6';
+import { WizardStep7 } from '@/components/wizard/WizardStep7';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import type { Project, ProjectTask } from '@/types';
-import { createProjectTask } from '@/services/supabaseData';
+import { createProjectTask, createProjectSubcontractor } from '@/services/supabaseData';
 
 // ── Wizard data shape (local state until project is created) ────────────────
 
@@ -20,6 +23,16 @@ export interface WizardTask {
   phase: string;
   sequenceNumber: number;
   estimatedHours: number | null;
+}
+
+export interface WizardSubcontractor {
+  tempId: string;
+  companyName: string;
+  contactName: string | null;
+  phone: string | null;
+  trade: string | null;
+  scopeDescription: string | null;
+  quotedCost: number | null;
 }
 
 export interface WizardData {
@@ -54,7 +67,27 @@ export interface WizardData {
   // Step 3: Scope & Tasks
   tasks: WizardTask[];
 
-  // Steps 4-7 will be added in Sprint 31
+  // Step 4: Resources
+  crewSize: number | null;
+  crewNotes: string | null;
+  equipmentNotes: string | null;
+  subcontractors: WizardSubcontractor[];
+
+  // Step 5: Timeline & Budget
+  startDate: string | null;
+  targetDate: string | null;
+  estimatedHours: number | null;
+  laborBudget: number | null;
+  materialsBudget: number | null;
+  equipmentBudget: number | null;
+  subcontractorBudget: number | null;
+  overheadPct: number | null;
+  clientQuote: number | null;
+
+  // Step 6: Compliance
+  permitStatus: string | null;
+  permitChecklist: string[];
+  complianceNotes: string | null;
 }
 
 const INITIAL_DATA: WizardData = {
@@ -83,6 +116,22 @@ const INITIAL_DATA: WizardData = {
   utilityLocations: null,
   hoaRules: null,
   tasks: [],
+  crewSize: null,
+  crewNotes: null,
+  equipmentNotes: null,
+  subcontractors: [],
+  startDate: null,
+  targetDate: null,
+  estimatedHours: null,
+  laborBudget: null,
+  materialsBudget: null,
+  equipmentBudget: null,
+  subcontractorBudget: null,
+  overheadPct: null,
+  clientQuote: null,
+  permitStatus: null,
+  permitChecklist: [],
+  complianceNotes: null,
 };
 
 const WIZARD_STEPS = [
@@ -113,10 +162,6 @@ export default function ProjectWizard() {
     switch (currentStep) {
       case 0:
         return data.name.trim().length > 0;
-      case 1:
-        return true; // Address is optional
-      case 2:
-        return true; // Tasks are optional at this stage
       default:
         return true;
     }
@@ -143,28 +188,38 @@ export default function ProjectWizard() {
     setIsCreating(true);
 
     try {
+      // Compute budget total for the legacy budget field
+      const labor = data.laborBudget ?? 0;
+      const materials = data.materialsBudget ?? 0;
+      const equipment = data.equipmentBudget ?? 0;
+      const subs = data.subcontractorBudget ?? 0;
+      const subtotal = labor + materials + equipment + subs;
+      const overhead = subtotal * ((data.overheadPct ?? 10) / 100);
+      const totalCost = subtotal + overhead;
+      const profit = (data.clientQuote ?? 0) - totalCost;
+
       // Build project object from wizard data
       const project: Omit<Project, 'id' | 'createdAt'> = {
         name: data.name.trim(),
         client: data.clientName || '',
         address: data.address,
         totalArea: 0,
-        startDate: '',
-        targetDate: '',
-        budget: 0,
-        notes: '',
+        startDate: data.startDate || '',
+        targetDate: data.targetDate || '',
+        budget: data.clientQuote ?? 0,
+        notes: data.equipmentNotes || '',
         lat: data.lat ?? undefined,
         lng: data.lng ?? undefined,
         zones: [],
         checklist: {
-          permit: false,
-          utility: false,
+          permit: data.permitChecklist.length > 0,
+          utility: !!data.utilityLocations,
           deposit: false,
           design: false,
-          access: false,
-          materials: false,
-          crew: false,
-          equipment: false,
+          access: !!data.gateCode || !!data.permittedHours,
+          materials: (data.materialsBudget ?? 0) > 0,
+          crew: (data.crewSize ?? 0) > 0,
+          equipment: !!data.equipmentNotes,
         },
         // M1.5 fields
         clientName: data.clientName,
@@ -187,6 +242,16 @@ export default function ProjectWizard() {
         permittedHours: data.permittedHours,
         utilityLocations: data.utilityLocations,
         hoaRules: data.hoaRules,
+        laborBudget: data.laborBudget,
+        materialsBudget: data.materialsBudget,
+        equipmentBudget: data.equipmentBudget,
+        subcontractorBudget: data.subcontractorBudget,
+        overheadPct: data.overheadPct,
+        clientQuote: data.clientQuote,
+        profitMargin: profit,
+        estimatedHours: data.estimatedHours,
+        complianceNotes: data.complianceNotes,
+        permitStatus: data.permitStatus as Project['permitStatus'],
         wizardStep: 7,
         wizardCompletedAt: new Date().toISOString(),
       };
@@ -220,6 +285,32 @@ export default function ProjectWizard() {
               completedAt: null,
               aiGenerated: false,
               aiConfidence: null,
+            },
+            crypto.randomUUID(),
+            orgId
+          );
+        }
+      }
+
+      // Create subcontractors in Supabase
+      for (const sub of data.subcontractors) {
+        if (sub.companyName.trim()) {
+          await createProjectSubcontractor(
+            {
+              orgId,
+              projectId,
+              companyName: sub.companyName.trim(),
+              contactName: sub.contactName,
+              phone: sub.phone,
+              email: null,
+              trade: sub.trade,
+              scopeDescription: sub.scopeDescription,
+              scheduledStart: null,
+              scheduledEnd: null,
+              quotedCost: sub.quotedCost,
+              actualCost: null,
+              status: 'pending',
+              notes: null,
             },
             crypto.randomUUID(),
             orgId
@@ -271,43 +362,13 @@ export default function ProjectWizard() {
           borderColor: 'var(--border)',
         }}
       >
-        {currentStep === 0 && (
-          <WizardStep1 data={data} onChange={handleChange} />
-        )}
-        {currentStep === 1 && (
-          <WizardStep2 data={data} onChange={handleChange} />
-        )}
-        {currentStep === 2 && (
-          <WizardStep3 data={data} onChange={handleChange} />
-        )}
-        {currentStep === 3 && (
-          <WizardStepPlaceholder
-            stepNumber={4}
-            title="Resources"
-            description="Assign crew, materials, equipment, and subcontractors to the project. AI will recommend based on your tasks and scope."
-          />
-        )}
-        {currentStep === 4 && (
-          <WizardStepPlaceholder
-            stepNumber={5}
-            title="Timeline & Budget"
-            description="Set start/end dates, review AI-generated timeline, and build your budget breakdown with labor, materials, equipment, and overhead."
-          />
-        )}
-        {currentStep === 5 && (
-          <WizardStepPlaceholder
-            stepNumber={6}
-            title="Compliance"
-            description="Track permits, inspection requirements, and compliance notes. AI will suggest required permits based on your location and scope."
-          />
-        )}
-        {currentStep === 6 && (
-          <WizardStepPlaceholder
-            stepNumber={7}
-            title="Review & Create"
-            description="Review all project details and create the project with one tap. Everything you've entered becomes a living project."
-          />
-        )}
+        {currentStep === 0 && <WizardStep1 data={data} onChange={handleChange} />}
+        {currentStep === 1 && <WizardStep2 data={data} onChange={handleChange} />}
+        {currentStep === 2 && <WizardStep3 data={data} onChange={handleChange} />}
+        {currentStep === 3 && <WizardStep4 data={data} onChange={handleChange} />}
+        {currentStep === 4 && <WizardStep5 data={data} onChange={handleChange} />}
+        {currentStep === 5 && <WizardStep6 data={data} onChange={handleChange} />}
+        {currentStep === 6 && <WizardStep7 data={data} />}
       </div>
 
       {/* Navigation buttons */}
