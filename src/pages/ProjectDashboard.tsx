@@ -21,6 +21,11 @@ import {
   updateProjectTask,
   createProjectTask,
   deleteProjectTask,
+  createProjectPermit,
+  updateProjectPermit,
+  createProjectSubcontractor,
+  updateProjectSubcontractor,
+  deleteProjectSubcontractor,
 } from '@/services/supabaseData';
 
 // ── Status helpers ───────────────────────────────────────────────────────────
@@ -199,6 +204,105 @@ export default function ProjectDashboard() {
     if (!success) setTasks(prev);
   };
 
+  // Create a new permit
+  const handlePermitCreate = async () => {
+    if (!orgId || !id) return;
+    const newId = crypto.randomUUID();
+    const newPermit: Omit<ProjectPermit, 'id' | 'createdAt' | 'updatedAt'> = {
+      orgId,
+      projectId: id,
+      permitType: 'general',
+      jurisdiction: null,
+      permitNumber: null,
+      status: 'needed',
+      appliedDate: null,
+      approvedDate: null,
+      expiryDate: null,
+      inspectionDate: null,
+      inspectionResult: null,
+      inspectionNotes: null,
+      fee: null,
+      aiSuggested: false,
+      notes: null,
+    };
+    const optimistic: ProjectPermit = {
+      ...newPermit,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setPermits((prev) => [...prev, optimistic]);
+    const result = await createProjectPermit(newPermit, newId, orgId);
+    if (!result) setPermits((prev) => prev.filter((p) => p.id !== newId));
+  };
+
+  // Update a permit
+  const handlePermitUpdate = async (permitId: string, updates: Partial<ProjectPermit>) => {
+    setPermits((prev) => prev.map((p) => (p.id === permitId ? { ...p, ...updates } : p)));
+    try {
+      await updateProjectPermit(permitId, updates);
+    } catch (err) {
+      console.error('Failed to update permit:', err);
+      if (orgId && id) {
+        const refreshed = await fetchProjectPermits(orgId, id);
+        if (refreshed) setPermits(refreshed);
+      }
+    }
+  };
+
+  // Create a new subcontractor
+  const handleSubCreate = async () => {
+    if (!orgId || !id) return;
+    const newId = crypto.randomUUID();
+    const newSub: Omit<ProjectSubcontractor, 'id' | 'createdAt' | 'updatedAt'> = {
+      orgId,
+      projectId: id,
+      companyName: 'New Subcontractor',
+      contactName: null,
+      phone: null,
+      email: null,
+      trade: null,
+      scopeDescription: null,
+      scheduledStart: null,
+      scheduledEnd: null,
+      quotedCost: null,
+      actualCost: null,
+      status: 'pending',
+      notes: null,
+    };
+    const optimistic: ProjectSubcontractor = {
+      ...newSub,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setSubcontractors((prev) => [...prev, optimistic]);
+    const result = await createProjectSubcontractor(newSub, newId, orgId);
+    if (!result) setSubcontractors((prev) => prev.filter((s) => s.id !== newId));
+  };
+
+  // Update a subcontractor
+  const handleSubUpdate = async (subId: string, updates: Partial<ProjectSubcontractor>) => {
+    setSubcontractors((prev) => prev.map((s) => (s.id === subId ? { ...s, ...updates } : s)));
+    try {
+      await updateProjectSubcontractor(subId, updates);
+    } catch (err) {
+      console.error('Failed to update subcontractor:', err);
+      if (orgId && id) {
+        const refreshed = await fetchProjectSubcontractors(orgId, id);
+        if (refreshed) setSubcontractors(refreshed);
+      }
+    }
+  };
+
+  // Delete a subcontractor
+  const handleSubDelete = async (subId: string) => {
+    const prev = subcontractors;
+    setSubcontractors((s) => s.filter((sub) => sub.id !== subId));
+    const success = await deleteProjectSubcontractor(subId);
+    if (!success) setSubcontractors(prev);
+  };
+
   // Handle project field updates from inline editing (budget, etc.)
   // BudgetTab already persisted to DB — this just syncs the Zustand store
   const handleProjectUpdated = (updates: Partial<Project>) => {
@@ -363,6 +467,9 @@ export default function ProjectDashboard() {
             <ProjectDashboardCompliance
               project={project}
               permits={permits}
+              orgId={orgId!}
+              onPermitCreate={handlePermitCreate}
+              onPermitUpdate={handlePermitUpdate}
             />
           )}
         </>
