@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AddressInput } from '@/components/shared/AddressInput';
+import { inferSiteConditions } from '@/services/anthropic';
 import type { WizardData } from '@/pages/ProjectWizard';
 
 interface Props {
@@ -19,7 +20,63 @@ const inputClass =
 
 const labelClass = 'block text-[12px] font-[600] text-[var(--text-2)] mb-[6px]';
 
+const AiTag: React.FC = () => (
+  <span
+    className="inline-flex items-center gap-[3px] ml-[6px] px-[5px] py-[1px] rounded-[4px] text-[10px] font-[500]"
+    style={{ backgroundColor: 'rgba(45,106,79,0.12)', color: 'var(--green-l)' }}
+  >
+    <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+      <path d="M7 1L8.5 4.5L12.5 5L9.5 7.5L10.5 11.5L7 9.5L3.5 11.5L4.5 7.5L1.5 5L5.5 4.5L7 1Z" fill="currentColor" />
+    </svg>
+    AI
+  </span>
+);
+
 export const WizardStep2: React.FC<Props> = ({ data, onChange }) => {
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggested, setAiSuggested] = useState(false);
+  const lastInferredCoords = useRef<string | null>(null);
+
+  // Run AI inference when lat/lng are set from Mapbox geocoding
+  useEffect(() => {
+    if (!data.lat || !data.lng || !data.address) return;
+
+    const coordKey = `${data.lat},${data.lng}`;
+    if (lastInferredCoords.current === coordKey) return;
+    lastInferredCoords.current = coordKey;
+
+    // Only auto-fill if the AI-inferred fields are still empty
+    if (data.climateZone && data.soilType) return;
+
+    setAiLoading(true);
+
+    inferSiteConditions({
+      address: data.address,
+      lat: data.lat,
+      lng: data.lng,
+      existingConditions: [data.slopeGrade, data.existingVegetation].filter(Boolean).join(', ') || undefined,
+    })
+      .then((result) => {
+        if (!result) return;
+
+        const updates: Partial<WizardData> = {};
+        if (result.climateZone && !data.climateZone) updates.climateZone = result.climateZone;
+        if (result.soilType && !data.soilType) updates.soilType = result.soilType;
+        if (result.hoaLikelihood === 'high' && !data.hoaFlag) updates.hoaFlag = true;
+
+        if (Object.keys(updates).length > 0) {
+          onChange(updates);
+          setAiSuggested(true);
+        }
+      })
+      .catch(() => {
+        // Silently fail — AI inference is optional
+      })
+      .finally(() => {
+        setAiLoading(false);
+      });
+  }, [data.lat, data.lng]);
+
   return (
     <div className="space-y-[24px]">
       {/* Address */}
@@ -42,6 +99,19 @@ export const WizardStep2: React.FC<Props> = ({ data, onChange }) => {
         />
       </div>
 
+      {/* AI loading indicator */}
+      {aiLoading && (
+        <div
+          className="rounded-[8px] border px-[14px] py-[10px] flex items-center gap-[8px]"
+          style={{ backgroundColor: 'rgba(45,106,79,0.06)', borderColor: 'var(--green)' }}
+        >
+          <div className="w-[14px] h-[14px] border-2 border-[var(--green)] border-t-transparent rounded-full animate-spin" />
+          <span className="text-[12px] text-[var(--green-l)]">
+            AI is analyzing site conditions...
+          </span>
+        </div>
+      )}
+
       {/* Site Conditions */}
       <div>
         <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
@@ -59,7 +129,10 @@ export const WizardStep2: React.FC<Props> = ({ data, onChange }) => {
           </div>
 
           <div>
-            <label className={labelClass}>Soil Type</label>
+            <label className={labelClass}>
+              Soil Type
+              {aiSuggested && data.soilType && <AiTag />}
+            </label>
             <input
               className={inputClass}
               placeholder="e.g., Clay, Sandy loam, Rocky"
@@ -128,11 +201,16 @@ export const WizardStep2: React.FC<Props> = ({ data, onChange }) => {
           Climate & Permits
         </h3>
         <p className="text-[12px] text-[var(--text-4)] mb-[16px]">
-          AI will auto-fill these based on the address. You can edit them.
+          {aiSuggested
+            ? 'AI has suggested values based on your address. You can edit them freely.'
+            : 'Select an address above and AI will auto-fill these fields.'}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px]">
           <div>
-            <label className={labelClass}>Climate Zone</label>
+            <label className={labelClass}>
+              Climate Zone
+              {aiSuggested && data.climateZone && <AiTag />}
+            </label>
             <input
               className={inputClass}
               placeholder="e.g., USDA 7b"
@@ -157,7 +235,10 @@ export const WizardStep2: React.FC<Props> = ({ data, onChange }) => {
                 onChange={(e) => onChange({ hoaFlag: e.target.checked })}
                 className="w-[16px] h-[16px] accent-[var(--green)]"
               />
-              <span className="text-[13px] text-[var(--text-2)]">HOA Property</span>
+              <span className="text-[13px] text-[var(--text-2)]">
+                HOA Property
+                {aiSuggested && data.hoaFlag && <AiTag />}
+              </span>
             </label>
           </div>
         </div>
