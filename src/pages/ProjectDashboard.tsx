@@ -461,6 +461,9 @@ export default function ProjectDashboard() {
               subcontractors={subcontractors}
               crew={crew}
               scheduleEntries={projectSchedule}
+              onSubCreate={handleSubCreate}
+              onSubUpdate={handleSubUpdate}
+              onSubDelete={handleSubDelete}
             />
           )}
           {activeTab === 'compliance' && (
