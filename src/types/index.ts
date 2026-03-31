@@ -515,3 +515,68 @@ export interface ProjectSiteCondition {
   createdAt: string;
   updatedAt: string;
 }
+
+export type SubcontractorStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+
+export type DocumentType =
+  | 'site_photo' | 'permit' | 'contract' | 'proposal' | 'invoice'
+  | 'plan' | 'inspection' | 'receipt' | 'other';
+
+export type PermitLifecycleStatus = 'needed' | 'applied' | 'approved' | 'denied' | 'not_required' | 'expired';
+
+export type InspectionResult = 'passed' | 'failed' | 'conditional' | 'pending';
+
+export interface ProjectSubcontractor {
+  id: string;
+  orgId: string;
+  projectId: string;
+  companyName: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  trade: string | null;
+  scopeDescription: string | null;
+  scheduledStart: string | null;
+  scheduledEnd: string | null;
+  quotedCost: number | null;
+  actualCost: number | null;
+  status: SubcontractorStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectDocument {
+  id: string;
+  orgId: string;
+  projectId: string;
+  fileName: string;
+  storagePath: string;
+  fileType: string | null;
+  fileSizeBytes: number | null;
+  documentType: DocumentType;
+  description: string | null;
+  uploadedBy: string | null;
+  createdAt: string;
+}
+
+export interface ProjectPermit {
+  id: string;
+  orgId: string;
+  projectId: string;
+  permitType: string;
+  jurisdiction: string | null;
+  permitNumber: string | null;
+  status: PermitLifecycleStatus;
+  appliedDate: string | null;
+  approvedDate: string | null;
+  expiryDate: string | null;
+  inspectionDate: string | null;
+  inspectionResult: InspectionResult | null;
+  inspectionNotes: string | null;
+  fee: number | null;
+  aiSuggested: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
