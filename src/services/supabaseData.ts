@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry, ProjectTask, ProjectSiteCondition } from '@/types'
+import type { Project, Zone, ZoneMaterial, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry, ProjectTask, ProjectSiteCondition, ProjectSubcontractor, ProjectDocument, ProjectPermit } from '@/types'
 
 // ===== ERROR REPORTING =====
 
@@ -1457,6 +1457,255 @@ export async function deleteProjectSiteCondition(id: string): Promise<boolean> {
     return true;
   } catch (err: any) {
     onSupabaseError('DELETE', 'project_site_conditions', err);
+    return false;
+  }
+}
+
+// ===== PROJECT SUBCONTRACTORS =====
+
+export async function fetchProjectSubcontractors(
+  orgId: string,
+  projectId: string
+): Promise<ProjectSubcontractor[]> {
+  try {
+    const { data, error } = await supabase
+      .from('project_subcontractors')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map((row) => toCamelCase(row) as ProjectSubcontractor);
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'project_subcontractors', err);
+    return [];
+  }
+}
+
+export async function createProjectSubcontractor(
+  sub: Omit<ProjectSubcontractor, 'id' | 'createdAt' | 'updatedAt'>,
+  id: string,
+  orgId: string
+): Promise<ProjectSubcontractor | null> {
+  try {
+    const snakeData = toSnakeCase(sub as unknown as Record<string, any>);
+    snakeData.id = id;
+    snakeData.org_id = orgId;
+
+    const { data, error } = await supabase
+      .from('project_subcontractors')
+      .insert([snakeData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return toCamelCase(data) as ProjectSubcontractor;
+  } catch (err: any) {
+    onSupabaseError('INSERT', 'project_subcontractors', err);
+    return null;
+  }
+}
+
+export async function updateProjectSubcontractor(
+  id: string,
+  updates: Partial<ProjectSubcontractor>
+): Promise<ProjectSubcontractor | null> {
+  try {
+    const snakeData = toSnakeCase(updates as unknown as Record<string, any>);
+
+    const { data, error } = await supabase
+      .from('project_subcontractors')
+      .update(snakeData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return toCamelCase(data) as ProjectSubcontractor;
+  } catch (err: any) {
+    onSupabaseError('UPDATE', 'project_subcontractors', err);
+    return null;
+  }
+}
+
+export async function deleteProjectSubcontractor(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('project_subcontractors')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (err: any) {
+    onSupabaseError('DELETE', 'project_subcontractors', err);
+    return false;
+  }
+}
+
+// ===== PROJECT DOCUMENTS =====
+
+export async function fetchProjectDocuments(
+  orgId: string,
+  projectId: string
+): Promise<ProjectDocument[]> {
+  try {
+    const { data, error } = await supabase
+      .from('project_documents')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map((row) => toCamelCase(row) as ProjectDocument);
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'project_documents', err);
+    return [];
+  }
+}
+
+export async function createProjectDocument(
+  doc: Omit<ProjectDocument, 'id' | 'createdAt'>,
+  id: string,
+  orgId: string
+): Promise<ProjectDocument | null> {
+  try {
+    const snakeData = toSnakeCase(doc as unknown as Record<string, any>);
+    snakeData.id = id;
+    snakeData.org_id = orgId;
+
+    const { data, error } = await supabase
+      .from('project_documents')
+      .insert([snakeData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return toCamelCase(data) as ProjectDocument;
+  } catch (err: any) {
+    onSupabaseError('INSERT', 'project_documents', err);
+    return null;
+  }
+}
+
+export async function updateProjectDocument(
+  id: string,
+  updates: Partial<ProjectDocument>
+): Promise<ProjectDocument | null> {
+  try {
+    const snakeData = toSnakeCase(updates as unknown as Record<string, any>);
+
+    const { data, error } = await supabase
+      .from('project_documents')
+      .update(snakeData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return toCamelCase(data) as ProjectDocument;
+  } catch (err: any) {
+    onSupabaseError('UPDATE', 'project_documents', err);
+    return null;
+  }
+}
+
+export async function deleteProjectDocument(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('project_documents')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (err: any) {
+    onSupabaseError('DELETE', 'project_documents', err);
+    return false;
+  }
+}
+
+// ===== PROJECT PERMITS =====
+
+export async function fetchProjectPermits(
+  orgId: string,
+  projectId: string
+): Promise<ProjectPermit[]> {
+  try {
+    const { data, error } = await supabase
+      .from('project_permits')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map((row) => toCamelCase(row) as ProjectPermit);
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'project_permits', err);
+    return [];
+  }
+}
+
+export async function createProjectPermit(
+  permit: Omit<ProjectPermit, 'id' | 'createdAt' | 'updatedAt'>,
+  id: string,
+  orgId: string
+): Promise<ProjectPermit | null> {
+  try {
+    const snakeData = toSnakeCase(permit as unknown as Record<string, any>);
+    snakeData.id = id;
+    snakeData.org_id = orgId;
+
+    const { data, error } = await supabase
+      .from('project_permits')
+      .insert([snakeData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return toCamelCase(data) as ProjectPermit;
+  } catch (err: any) {
+    onSupabaseError('INSERT', 'project_permits', err);
+    return null;
+  }
+}
+
+export async function updateProjectPermit(
+  id: string,
+  updates: Partial<ProjectPermit>
+): Promise<ProjectPermit | null> {
+  try {
+    const snakeData = toSnakeCase(updates as unknown as Record<string, any>);
+
+    const { data, error } = await supabase
+      .from('project_permits')
+      .update(snakeData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return toCamelCase(data) as ProjectPermit;
+  } catch (err: any) {
+    onSupabaseError('UPDATE', 'project_permits', err);
+    return null;
+  }
+}
+
+export async function deleteProjectPermit(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('project_permits')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (err: any) {
+    onSupabaseError('DELETE', 'project_permits', err);
     return false;
   }
 }
