@@ -11,6 +11,7 @@ import type { CrewPhoto } from '@/services/supabaseData';
 import { generateSteps } from '@/lib/workorders';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { HelpIcon } from '@/components/shared/Tooltip';
+import { toast } from '@/hooks/useToast';
 import type { ScheduleEntry, ScheduleEntryStatus } from '@/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -313,7 +314,7 @@ export const Schedule: React.FC = () => {
         const map: Record<string, string> = {};
         for (const { crewMemberId, status } of list) map[crewMemberId] = status;
         setCrewStatuses(map);
-      });
+      }).catch(() => { /* silent — polling will retry */ });
     };
     load();
     const interval = setInterval(load, 30000);
@@ -331,7 +332,7 @@ export const Schedule: React.FC = () => {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const ids = entries.map(e => e.id).filter(id => uuidPattern.test(id));
     if (ids.length === 0) return;
-    fetchChecklistProgressCounts(ids).then(setProgressCounts);
+    fetchChecklistProgressCounts(ids).then(setProgressCounts).catch(() => {});
     // Fetch photo counts
     Promise.all(ids.map(async (id) => {
       const photos = await fetchCrewPhotos(id);
@@ -342,17 +343,21 @@ export const Schedule: React.FC = () => {
         if (count > 0) counts[id] = count;
       }
       setPhotoCounts(counts);
-    });
+    }).catch(() => {});
   }, [entries]);
 
   async function handleViewPhotos(entryId: string) {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidPattern.test(entryId)) return;
-    const photos = await fetchCrewPhotos(entryId);
-    const withUrls = await Promise.all(
-      photos.map(async (p) => ({ ...p, url: await getPhotoUrl(p.storagePath) }))
-    );
-    setPhotoGallery({ entryId, photos: withUrls });
+    try {
+      const photos = await fetchCrewPhotos(entryId);
+      const withUrls = await Promise.all(
+        photos.map(async (p) => ({ ...p, url: await getPhotoUrl(p.storagePath) }))
+      );
+      setPhotoGallery({ entryId, photos: withUrls });
+    } catch {
+      toast.error('Failed to load photos');
+    }
   }
 
   // Week navigation

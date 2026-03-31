@@ -1279,6 +1279,7 @@ export async function clearSampleData(orgId: string): Promise<{ success: boolean
 }
 
 export async function diagnoseUserRole(): Promise<void> {
+  if (!import.meta.env.DEV) return;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
