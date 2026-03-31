@@ -18,6 +18,7 @@ import { Badge } from '@/components/shared/Badge';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState, EquipmentIcon } from '@/components/shared/EmptyState';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -349,6 +350,7 @@ export const EquipmentManager: React.FC = () => {
 
   return (
     <div>
+      <PageHeader title="Equipment" subtitle="Track status, assignments, and maintenance." />
       {error && (
         <div className="mb-[16px]">
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />

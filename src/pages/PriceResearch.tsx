@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { HelpIcon } from '@/components/shared/Tooltip';
+import { PageHeader } from '@/components/layout/PageHeader';
 import type { PriceEstimate, PriceCacheEntry, Material } from '@/types';
 
 // ── Cache helpers (module-level pure functions) ───────────────────────────────
@@ -254,6 +255,7 @@ export const PriceResearch: React.FC = () => {
 
   return (
     <div>
+      <PageHeader title="Price Research" subtitle="AI-powered material pricing estimates." />
       {error && (
         <div className="mb-[16px]">
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
