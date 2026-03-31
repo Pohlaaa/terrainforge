@@ -138,6 +138,16 @@ export default function ProjectDashboard() {
     }
   };
 
+  // Handle project field updates from inline editing (budget, etc.)
+  // BudgetTab already persisted to DB — this just syncs the Zustand store
+  const handleProjectUpdated = (updates: Partial<Project>) => {
+    if (!id) return;
+    const { projects: currentProjects } = useProjectStore.getState();
+    useProjectStore.setState({
+      projects: currentProjects.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+    });
+  };
+
   // Schedule entries for this project
   const projectSchedule = useMemo(
     () => scheduleEntries.filter((e) => e.projectId === id),
@@ -266,6 +276,7 @@ export default function ProjectDashboard() {
               tasks={tasks}
               subcontractors={subcontractors}
               permits={permits}
+              onProjectUpdated={handleProjectUpdated}
             />
           )}
           {activeTab === 'materials' && (
