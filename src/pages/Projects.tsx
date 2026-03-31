@@ -1043,10 +1043,10 @@ export const Projects: React.FC = () => {
           {projects.length} project{projects.length !== 1 ? 's' : ''}
         </div>
         <div className="flex items-center gap-[8px]">
-          <Button variant="secondary" onClick={() => navigate('/projects/wizard')}>
-            Wizard
+          <Button variant="secondary" size="sm" onClick={() => setShowNewModal(true)}>
+            Quick Create
           </Button>
-          <Button variant="primary" onClick={() => setShowNewModal(true)}>
+          <Button variant="primary" onClick={() => navigate('/projects/wizard')}>
             + New Project
           </Button>
         </div>
@@ -1059,7 +1059,7 @@ export const Projects: React.FC = () => {
           title="Create your first project"
           description="Every job starts here. Add a project with a name, address, and budget — then build zones, assign crew, and track progress."
           actionLabel="New Project"
-          onAction={() => setShowNewModal(true)}
+          onAction={() => navigate('/projects/wizard')}
         />
       ) : (
         <>
