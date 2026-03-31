@@ -451,6 +451,7 @@ export interface PriceCacheEntry {
 export interface Organization {
   id: string;
   name: string;
+  shortcode: string | null;
   subscriptionStatus: SubscriptionStatus;
   subscriptionTier: SubscriptionTier;
   /** ISO timestamp — when the 14-day free trial expires. */

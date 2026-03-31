@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgStore } from '@/stores/orgStore';
 import { useProjectStore } from '@/stores/projectStore';
@@ -11,16 +10,19 @@ import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { toast } from '@/hooks/useToast';
 import { insertSampleData, clearSampleData } from '@/services/supabaseData';
+import { createPortalSession } from '@/services/stripe';
+import { upsertUserPreferences } from '@/services/preferences';
+import { supabase } from '@/services/supabase';
 
-type SettingsSection = 'profile' | 'appearance' | 'notifications' | 'integrations' | 'team' | 'billing'
+type SettingsSection = 'profile' | 'company' | 'preferences' | 'notifications' | 'billing' | 'danger'
 
 const NAV_ITEMS: Array<{ id: SettingsSection; icon: string; label: string }> = [
   { id: 'profile', icon: '👤', label: 'Profile' },
-  { id: 'appearance', icon: '🎨', label: 'Appearance' },
+  { id: 'company', icon: '🏢', label: 'Company' },
+  { id: 'preferences', icon: '⚙️', label: 'Preferences' },
   { id: 'notifications', icon: '🔔', label: 'Notifications' },
-  { id: 'integrations', icon: '🔌', label: 'Integrations' },
-  { id: 'team', icon: '👥', label: 'Team Members' },
   { id: 'billing', icon: '💳', label: 'Billing' },
+  { id: 'danger', icon: '⚠️', label: 'Danger Zone' },
 ]
 
 function applyTheme(newTheme: 'light' | 'dark' | 'system') {
@@ -40,28 +42,35 @@ export const Settings: React.FC = () => {
   const { setMaterials, fetchMaterials } = useMaterialStore()
   const { setCrew, fetchCrew } = useCrewStore()
   const { setEquipment, fetchEquipment } = useEquipmentStore()
-  const navigate = useNavigate()
 
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
 
   // Profile state
+  const [displayName, setDisplayName] = useState('')
+  const [nameSaving, setNameSaving] = useState(false)
+  const [nameStatus, setNameStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+
+  // Company state
   const [orgName, setOrgName] = useState(org?.name ?? '')
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [orgSaving, setOrgSaving] = useState(false)
+  const [orgStatus, setOrgStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+
+  // Danger zone
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [sampleLoading, setSampleLoading] = useState(false)
   const hasDemoData = projects.some(p => p.isDemo === true)
   const hasSampleData = localStorage.getItem('tf-sample-ids') !== null
 
-  // Sync org name when loaded async
-  useEffect(() => {
-    if (org?.name && !orgName) setOrgName(org.name)
-  }, [org?.name])
-
   // Appearance state
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() =>
     (localStorage.getItem('tf-theme') as 'light' | 'dark' | 'system') || 'light'
   )
+
+  // Project view preference
+  const [projectView, setProjectView] = useState<'cards' | 'list'>(() => {
+    const saved = localStorage.getItem('tf-projects-view')
+    return (saved === 'list' || saved === 'cards') ? saved : 'cards'
+  })
 
   // Notification state
   const [notifications, setNotifications] = useState(() => {
@@ -84,26 +93,59 @@ export const Settings: React.FC = () => {
       }
     }
   })
+  const [notifSaving, setNotifSaving] = useState(false)
 
+  // Billing state
+  const [portalLoading, setPortalLoading] = useState(false)
 
+  // Sync org name when loaded async
   useEffect(() => {
-    setOrgName(org?.name ?? '')
+    if (org?.name) setOrgName(org.name)
   }, [org?.name])
 
+  // Load display name from user metadata
+  useEffect(() => {
+    if (user?.user_metadata?.full_name) {
+      setDisplayName(user.user_metadata.full_name as string)
+    }
+  }, [user?.user_metadata?.full_name])
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
+  async function handleSaveDisplayName() {
+    if (nameSaving) return
+    setNameSaving(true)
+    setNameStatus('idle')
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: displayName.trim() }
+      })
+      if (error) throw error
+      setNameStatus('saved')
+      toast.success('Display name saved')
+      setTimeout(() => setNameStatus('idle'), 2500)
+    } catch {
+      setNameStatus('error')
+      toast.error('Failed to save display name')
+    } finally {
+      setNameSaving(false)
+    }
+  }
+
   async function handleSaveOrgName() {
-    if (isSaving) return
-    setIsSaving(true)
-    setSaveStatus('idle')
+    if (orgSaving) return
+    setOrgSaving(true)
+    setOrgStatus('idle')
     try {
       await updateOrgName(orgName.trim())
-      setSaveStatus('saved')
+      setOrgStatus('saved')
       toast.success('Company name saved')
-      setTimeout(() => setSaveStatus('idle'), 2500)
+      setTimeout(() => setOrgStatus('idle'), 2500)
     } catch {
-      setSaveStatus('error')
+      setOrgStatus('error')
       toast.error('Failed to save company name')
     } finally {
-      setIsSaving(false)
+      setOrgSaving(false)
     }
   }
 
@@ -114,20 +156,6 @@ export const Settings: React.FC = () => {
     setCrew([])
     setEquipment([])
     setShowClearConfirm(false)
-    navigate('/')
-  }
-
-  async function handleLoadSampleData() {
-    if (!org?.id) { toast.error('No organization found'); return }
-    setSampleLoading(true)
-    const result = await insertSampleData(org.id)
-    if (result.success) {
-      await Promise.all([fetchProjects(), fetchCrew(), fetchEquipment(), fetchMaterials()])
-      toast.success('Sample company loaded — 3 projects, 6 crew, 5 equipment, 8 materials')
-    } else {
-      toast.error(`Failed to load sample data: ${result.error}`)
-    }
-    setSampleLoading(false)
   }
 
   async function handleClearSampleData() {
@@ -136,7 +164,6 @@ export const Settings: React.FC = () => {
     const result = await clearSampleData(org.id)
     if (result.success) {
       await Promise.all([fetchProjects(), fetchCrew(), fetchEquipment(), fetchMaterials()])
-      // Prevent setup checklist from reappearing after user already explored with sample data
       localStorage.setItem('tf-setup-dismissed', 'true')
       toast.success('Sample data cleared')
     } else {
@@ -151,15 +178,44 @@ export const Settings: React.FC = () => {
     applyTheme(newTheme)
   }
 
+  function handleProjectViewChange(mode: 'cards' | 'list') {
+    setProjectView(mode)
+    localStorage.setItem('tf-projects-view', mode)
+  }
+
   function toggleNotification(key: string) {
     const updated = { ...notifications, [key]: !notifications[key] }
     setNotifications(updated)
     localStorage.setItem('tf-notifications', JSON.stringify(updated))
   }
 
-  const SubHeader = ({ label }: { label: string }) => (
-    <div className="text-[11px] font-[600] uppercase tracking-[0.1em] text-[var(--text-tertiary)] mt-8 mb-3">{label}</div>
-  )
+  async function handleSaveNotifications() {
+    if (!user?.id || !org?.id) return
+    setNotifSaving(true)
+    try {
+      await upsertUserPreferences(user.id, org.id, {
+        notificationSettings: notifications
+      })
+      toast.success('Notification preferences saved')
+    } catch {
+      toast.error('Failed to save notification preferences')
+    } finally {
+      setNotifSaving(false)
+    }
+  }
+
+  async function handleManageBilling() {
+    if (!org?.id) return
+    setPortalLoading(true)
+    try {
+      await createPortalSession(org.id)
+    } catch {
+      toast.error('Unable to open billing portal. Please try again.')
+      setPortalLoading(false)
+    }
+  }
+
+  // ── Sub-components ──────────────────────────────────────────────────────────
 
   const SectionHeading = ({ title, subtitle }: { title: string; subtitle?: string }) => (
     <div className="mb-6">
@@ -172,7 +228,32 @@ export const Settings: React.FC = () => {
 
   const ProfileSection = () => (
     <div>
-      <SectionHeading title="Profile" subtitle="Manage your account and organisation details" />
+      <SectionHeading title="Profile" subtitle="Your personal account details" />
+
+      {/* Display Name */}
+      <div className="py-4 border-b border-[var(--border-light)]">
+        <div className="text-[14px] font-[500] text-[var(--text-primary)] mb-2">Display name</div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={displayName}
+            onChange={e => { setDisplayName(e.target.value); setNameStatus('idle') }}
+            onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayName() }}
+            placeholder="Your name"
+            className="flex-1 h-[44px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-bg)] text-[var(--text-primary)] text-[14px] outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+          />
+          <Button
+            variant="primary"
+            className="h-[44px]"
+            disabled={nameSaving || displayName.trim() === ((user?.user_metadata?.full_name as string) ?? '')}
+            onClick={handleSaveDisplayName}
+          >
+            {nameSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+        {nameStatus === 'saved' && <div className="text-[12px] text-[var(--status-green)] mt-2">Saved successfully</div>}
+        {nameStatus === 'error' && <div className="text-[12px] text-[var(--status-red)] mt-2">Failed to save</div>}
+      </div>
 
       {/* Email */}
       <div className="flex items-center justify-between py-4 border-b border-[var(--border-light)]">
@@ -180,7 +261,7 @@ export const Settings: React.FC = () => {
           <div className="text-[14px] font-[500] text-[var(--text-primary)]">Email address</div>
           <div className="text-[13px] text-[var(--text-secondary)] mt-0.5">{user?.email ?? '—'}</div>
         </div>
-        <span className="text-[18px] opacity-40">🔒</span>
+        <span className="text-[12px] text-[var(--text-tertiary)] px-2 py-1 rounded bg-[var(--surface-hover)]">Read-only</span>
       </div>
 
       {/* Role */}
@@ -189,16 +270,23 @@ export const Settings: React.FC = () => {
           <div className="text-[14px] font-[500] text-[var(--text-primary)]">Role</div>
           <div className="text-[13px] text-[var(--text-secondary)] mt-0.5">Admin</div>
         </div>
+        <span className="text-[12px] text-[var(--text-tertiary)] px-2 py-1 rounded bg-[var(--surface-hover)]">Read-only</span>
       </div>
+    </div>
+  )
 
-      {/* Org name */}
+  const CompanySection = () => (
+    <div>
+      <SectionHeading title="Company" subtitle="Your organization details" />
+
+      {/* Org Name */}
       <div className="py-4 border-b border-[var(--border-light)]">
-        <div className="text-[14px] font-[500] text-[var(--text-primary)] mb-2">Company / Org name</div>
+        <div className="text-[14px] font-[500] text-[var(--text-primary)] mb-2">Organization name</div>
         <div className="flex gap-2">
           <input
             type="text"
             value={orgName}
-            onChange={e => { setOrgName(e.target.value); setSaveStatus('idle') }}
+            onChange={e => { setOrgName(e.target.value); setOrgStatus('idle') }}
             onKeyDown={e => { if (e.key === 'Enter') handleSaveOrgName() }}
             placeholder="Your company name"
             className="flex-1 h-[44px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-bg)] text-[var(--text-primary)] text-[14px] outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
@@ -206,93 +294,96 @@ export const Settings: React.FC = () => {
           <Button
             variant="primary"
             className="h-[44px]"
-            disabled={isSaving || orgName.trim() === (org?.name ?? '')}
+            disabled={orgSaving || orgName.trim() === (org?.name ?? '')}
             onClick={handleSaveOrgName}
           >
-            {isSaving ? 'Saving…' : 'Save'}
+            {orgSaving ? 'Saving...' : 'Save'}
           </Button>
         </div>
-        {saveStatus === 'saved' && <div className="text-[12px] text-[var(--status-green)] mt-2">Saved successfully</div>}
-        {saveStatus === 'error' && <div className="text-[12px] text-[var(--status-red)] mt-2">Failed to save — please try again</div>}
+        {orgStatus === 'saved' && <div className="text-[12px] text-[var(--status-green)] mt-2">Saved successfully</div>}
+        {orgStatus === 'error' && <div className="text-[12px] text-[var(--status-red)] mt-2">Failed to save</div>}
       </div>
 
-      <SubHeader label="Data Management" />
-      {hasDemoData && (
-        <div className="mb-4">
-          <div className="text-[13px] text-[var(--text-secondary)] mb-3 leading-relaxed">
-            Demo projects, materials, crew, and equipment were loaded automatically. Clear them when you're ready to use your own data.
-          </div>
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            className="px-4 py-2 text-[13px] font-[600] rounded-lg transition-colors"
-            style={{ color: '#FB923C', backgroundColor: 'rgba(251,146,60,.1)', border: '1px solid rgba(251,146,60,.3)' }}
-          >
-            ⚠ Clear Demo Data
-          </button>
-        </div>
-      )}
-      {hasSampleData ? (
+      {/* Org Shortcode */}
+      <div className="flex items-center justify-between py-4 border-b border-[var(--border-light)]">
         <div>
-          <div className="text-[13px] text-[var(--text-secondary)] mb-3 leading-relaxed">
-            Sample company data is loaded. Remove it when you're ready to use your own data.
+          <div className="text-[14px] font-[500] text-[var(--text-primary)]">Company code</div>
+          <div className="text-[13px] text-[var(--text-secondary)] mt-0.5">
+            {org?.shortcode ?? '—'}
           </div>
-          <Button
-            variant="danger"
-            size="sm"
-            loading={sampleLoading}
-            onClick={() => setShowClearConfirm(true)}
-          >
-            Clear Sample Data
-          </Button>
-        </div>
-      ) : (
-        <div>
-          <div className="text-[13px] text-[var(--text-secondary)] mb-3 leading-relaxed">
-            Populate your workspace with a sample landscaping company — 3 projects, 6 crew members, equipment, and materials. You can clear it anytime.
+          <div className="text-[12px] text-[var(--text-tertiary)] mt-1">
+            Used by crew members to log in via the crew app
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={sampleLoading}
-            onClick={handleLoadSampleData}
-          >
-            Load Sample Company
-          </Button>
         </div>
-      )}
+        <span className="text-[12px] text-[var(--text-tertiary)] px-2 py-1 rounded bg-[var(--surface-hover)]">Read-only</span>
+      </div>
     </div>
   )
 
-  const AppearanceSection = () => (
+  const PreferencesSection = () => (
     <div>
-      <SectionHeading title="Appearance" subtitle="Choose your preferred colour theme" />
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { id: 'light' as const, icon: '☀️', label: 'Light', gradient: 'from-[#FAFAFA] to-[#FFFFFF]', dir: 'b' },
-          { id: 'dark' as const, icon: '🌙', label: 'Dark', gradient: 'from-[#0F172A] to-[#1E293B]', dir: 'b' },
-          { id: 'system' as const, icon: '💻', label: 'System', gradient: 'from-[#FAFAFA] via-[#FAFAFA] to-[#0F172A]', dir: 'r' },
-        ].map(t => (
-          <div
-            key={t.id}
-            onClick={() => handleThemeChange(t.id)}
-            className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all text-center ${
-              theme === t.id
-                ? 'border-[var(--brand-primary)] bg-[var(--surface-selected)] shadow-[var(--shadow-card)]'
-                : 'border-[var(--border-default)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]'
-            }`}
-          >
-            {theme === t.id && (
-              <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
-                <span className="text-white text-[10px]">✓</span>
-              </div>
-            )}
+      <SectionHeading title="Preferences" subtitle="Customize your experience" />
+
+      {/* Theme */}
+      <div className="mb-8">
+        <div className="text-[14px] font-[500] text-[var(--text-primary)] mb-4">Theme</div>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { id: 'light' as const, icon: '☀️', label: 'Light', gradient: 'from-[#FAFAFA] to-[#FFFFFF]', dir: 'b' },
+            { id: 'dark' as const, icon: '🌙', label: 'Dark', gradient: 'from-[#0F172A] to-[#1E293B]', dir: 'b' },
+            { id: 'system' as const, icon: '💻', label: 'System', gradient: 'from-[#FAFAFA] via-[#FAFAFA] to-[#0F172A]', dir: 'r' },
+          ].map(t => (
             <div
-              className={`w-full h-[60px] rounded-lg mb-3 border border-[var(--border-light)] bg-gradient-to-${t.dir} ${t.gradient}`}
-            />
-            <div className="text-[20px] mb-1">{t.icon}</div>
-            <div className="text-[13px] font-[500] text-[var(--text-primary)]">{t.label}</div>
-          </div>
-        ))}
+              key={t.id}
+              onClick={() => handleThemeChange(t.id)}
+              className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                theme === t.id
+                  ? 'border-[var(--brand-primary)] bg-[var(--surface-selected)] shadow-[var(--shadow-card)]'
+                  : 'border-[var(--border-default)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]'
+              }`}
+            >
+              {theme === t.id && (
+                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
+                  <span className="text-white text-[10px]">✓</span>
+                </div>
+              )}
+              <div
+                className={`w-full h-[60px] rounded-lg mb-3 border border-[var(--border-light)] bg-gradient-to-${t.dir} ${t.gradient}`}
+              />
+              <div className="text-[20px] mb-1">{t.icon}</div>
+              <div className="text-[13px] font-[500] text-[var(--text-primary)]">{t.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Default project view */}
+      <div>
+        <div className="text-[14px] font-[500] text-[var(--text-primary)] mb-4">Default project view</div>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { id: 'cards' as const, icon: '▦', label: 'Card view' },
+            { id: 'list' as const, icon: '☰', label: 'List view' },
+          ].map(v => (
+            <div
+              key={v.id}
+              onClick={() => handleProjectViewChange(v.id)}
+              className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                projectView === v.id
+                  ? 'border-[var(--brand-primary)] bg-[var(--surface-selected)] shadow-[var(--shadow-card)]'
+                  : 'border-[var(--border-default)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]'
+              }`}
+            >
+              {projectView === v.id && (
+                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
+                  <span className="text-white text-[10px]">✓</span>
+                </div>
+              )}
+              <div className="text-[24px] mb-2 text-[var(--text-secondary)]">{v.icon}</div>
+              <div className="text-[13px] font-[500] text-[var(--text-primary)]">{v.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -309,7 +400,7 @@ export const Settings: React.FC = () => {
     <div>
       <SectionHeading title="Notifications" />
       <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[var(--status-blue-bg)] text-[var(--status-blue)] text-[13px] mb-6">
-        ℹ️ Notification delivery coming soon — your preferences are saved for when it launches.
+        Email notifications coming soon. These preferences will apply once notifications are enabled.
       </div>
       {NOTIFICATION_ITEMS.map(item => (
         <div key={item.key} className="flex items-center justify-between py-4 border-b border-[var(--border-light)]">
@@ -327,80 +418,14 @@ export const Settings: React.FC = () => {
           </button>
         </div>
       ))}
-    </div>
-  )
-
-  const IntegrationsSection = () => {
-    const INTEGRATIONS = [
-      {
-        icon: '💳', name: 'Stripe', desc: 'Payment processing & subscriptions',
-        status: org?.stripeCustomerId ? 'connected' : 'not_connected',
-        action: () => navigate('/billing'),
-      },
-      { icon: '📊', name: 'QuickBooks', desc: 'Accounting & bookkeeping sync', status: 'coming_soon', action: () => {} },
-      { icon: '📅', name: 'Google Calendar', desc: 'Schedule & deadline sync', status: 'coming_soon', action: () => {} },
-      { icon: '🌤️', name: 'Weather API', desc: 'Job site weather forecasts', status: 'coming_soon', action: () => {} },
-      { icon: '🗺️', name: 'Mapbox', desc: 'Project location mapping', status: 'coming_soon', action: () => {} },
-      {
-        icon: '🤖', name: 'Claude AI', desc: 'Smart suggestions & estimates',
-        status: import.meta.env.VITE_ANTHROPIC_API_KEY ? 'connected' : 'not_connected',
-        action: () => {},
-      },
-    ]
-
-    return (
-      <div>
-        <SectionHeading title="Integrations" subtitle="Connect external services to your workspace" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {INTEGRATIONS.map(integ => (
-            <div
-              key={integ.name}
-              className={`p-5 rounded-xl border border-[var(--border-default)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)] ${integ.status === 'coming_soon' ? 'opacity-60' : ''}`}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[24px]">{integ.icon}</span>
-                <span className="text-[14px] font-[600] text-[var(--text-primary)]">{integ.name}</span>
-                <span className={`ml-auto text-[11px] font-[500] px-2 py-1 rounded-full ${
-                  integ.status === 'connected'
-                    ? 'bg-[var(--status-green-bg)] text-[var(--status-green)]'
-                    : integ.status === 'coming_soon'
-                    ? 'bg-[var(--status-gray-bg)] text-[var(--status-gray)]'
-                    : 'bg-[var(--status-amber-bg)] text-[var(--status-amber)]'
-                }`}>
-                  {integ.status === 'connected' ? 'Connected' : integ.status === 'coming_soon' ? 'Coming Soon' : 'Not Connected'}
-                </span>
-              </div>
-              <p className="text-[13px] text-[var(--text-secondary)] mb-4">{integ.desc}</p>
-              {integ.status === 'connected' && (
-                <Button variant="secondary" size="sm" onClick={integ.action}>Manage</Button>
-              )}
-              {integ.status === 'not_connected' && (
-                <Button variant="primary" size="sm" onClick={integ.action}>Connect</Button>
-              )}
-              {integ.status === 'coming_soon' && (
-                <Button variant="secondary" size="sm" disabled>Coming Soon</Button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  const TeamSection = () => (
-    <div>
-      <SectionHeading title="Team Members" />
-      <div className="text-center py-12">
-        <div className="text-[48px] mb-4 opacity-30">👥</div>
-        <div className="text-[16px] font-[600] text-[var(--text-primary)] mb-2">Team Management</div>
-        <div className="text-[13px] text-[var(--text-tertiary)] mb-6">
-          You're the only member. Invite your crew when you're ready.
-        </div>
+      <div className="mt-6">
         <Button
           variant="primary"
-          onClick={() => toast.info('Team invitations coming in Phase 2')}
+          size="sm"
+          loading={notifSaving}
+          onClick={handleSaveNotifications}
         >
-          Invite Member
+          Save Preferences
         </Button>
       </div>
     </div>
@@ -419,16 +444,63 @@ export const Settings: React.FC = () => {
           </div>
           <span className="text-[24px]">💳</span>
         </div>
-        <Button variant="primary" onClick={() => navigate('/billing')}>
-          Manage Subscription →
+        <Button
+          variant="primary"
+          loading={portalLoading}
+          onClick={handleManageBilling}
+        >
+          Manage Billing
         </Button>
+      </div>
+    </div>
+  )
+
+  const DangerZoneSection = () => (
+    <div>
+      <SectionHeading title="Danger Zone" subtitle="Irreversible actions" />
+      <div className="p-5 rounded-xl border border-[var(--status-red)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]">
+        {hasDemoData && (
+          <div className="mb-4 pb-4 border-b border-[var(--border-light)]">
+            <div className="text-[14px] font-[500] text-[var(--text-primary)] mb-1">Clear Demo Data</div>
+            <div className="text-[13px] text-[var(--text-secondary)] mb-3 leading-relaxed">
+              Remove demo projects, materials, crew, and equipment that were loaded automatically.
+            </div>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setShowClearConfirm(true)}
+            >
+              Clear Demo Data
+            </Button>
+          </div>
+        )}
+        {hasSampleData ? (
+          <div>
+            <div className="text-[14px] font-[500] text-[var(--text-primary)] mb-1">Delete Sample Data</div>
+            <div className="text-[13px] text-[var(--text-secondary)] mb-3 leading-relaxed">
+              Remove all sample company data (projects, crew, equipment, materials). Your account settings and billing will not be affected.
+            </div>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={sampleLoading}
+              onClick={() => setShowClearConfirm(true)}
+            >
+              Delete Sample Data
+            </Button>
+          </div>
+        ) : !hasDemoData ? (
+          <div className="text-[13px] text-[var(--text-secondary)]">
+            No sample or demo data to remove.
+          </div>
+        ) : null}
       </div>
     </div>
   )
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Manage your account, appearance, and team preferences." />
+      <PageHeader title="Settings" subtitle="Manage your account, company, and preferences." />
     <div className="flex gap-0 h-full">
       {/* Left nav — hidden on phone */}
       <nav className="hidden md:block w-[220px] border-r border-[var(--border-default)] bg-[var(--surface-card)] py-4 flex-shrink-0">
@@ -468,18 +540,18 @@ export const Settings: React.FC = () => {
       {/* Content area */}
       <div className="flex-1 overflow-y-auto px-6 py-6 max-w-[640px]">
         {activeSection === 'profile' && <ProfileSection />}
-        {activeSection === 'appearance' && <AppearanceSection />}
+        {activeSection === 'company' && <CompanySection />}
+        {activeSection === 'preferences' && <PreferencesSection />}
         {activeSection === 'notifications' && <NotificationsSection />}
-        {activeSection === 'integrations' && <IntegrationsSection />}
-        {activeSection === 'team' && <TeamSection />}
         {activeSection === 'billing' && <BillingSection />}
+        {activeSection === 'danger' && <DangerZoneSection />}
       </div>
 
       <ConfirmDialog
         isOpen={showClearConfirm}
-        title={hasSampleData ? 'Clear Sample Data' : 'Clear Demo Data'}
+        title={hasSampleData ? 'Delete Sample Data' : 'Clear Demo Data'}
         message="This will remove all sample/demo projects, materials, crew, and equipment. Your account settings and billing will not be affected. This cannot be undone."
-        confirmText="Start Fresh"
+        confirmText="Delete"
         confirmVariant="danger"
         onConfirm={hasSampleData ? handleClearSampleData : handleClearDemoData}
         onCancel={() => setShowClearConfirm(false)}

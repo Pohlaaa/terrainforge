@@ -33,6 +33,7 @@ interface OrgStore {
 interface OrgRow {
   id: string;
   name: string | null;
+  shortcode: string | null;
   subscription_status: string | null;
   subscription_tier: string | null;
   trial_ends_at: string | null;
@@ -46,6 +47,7 @@ function mapOrgRow(row: OrgRow): Organization {
   return {
     id: row.id,
     name: row.name ?? '',
+    shortcode: row.shortcode ?? null,
     subscriptionStatus: (row.subscription_status as SubscriptionStatus) ?? 'trialing',
     subscriptionTier: (row.subscription_tier as SubscriptionTier) ?? 'starter',
     trialEndsAt: row.trial_ends_at ?? null,
@@ -63,6 +65,7 @@ function makeDefaultOrg(orgId: string): Organization {
   return {
     id: orgId,
     name: '',
+    shortcode: null,
     subscriptionStatus: 'trialing',
     subscriptionTier: 'starter',
     trialEndsAt: null, // unknown — don't gate when we can't confirm
@@ -88,7 +91,7 @@ export const useOrgStore = create<OrgStore>()(
           const { data, error } = await supabase
             .from('organizations')
             .select(
-              'id, name, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id'
+              'id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id'
             )
             .eq('id', orgId)
             .single();
@@ -111,7 +114,7 @@ export const useOrgStore = create<OrgStore>()(
                   subscription_tier: 'starter',
                   trial_ends_at: trialEndsAt,
                 }])
-                .select('id, name, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id')
+                .select('id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id')
                 .single()
 
               if (insertError) {
