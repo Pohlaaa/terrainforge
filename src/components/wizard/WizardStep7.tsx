@@ -66,7 +66,7 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
     { label: 'Job Description', filled: !!data.name.trim() },
     { label: 'Site Intelligence', filled: !!data.address.trim() },
     { label: 'Scope & Tasks', filled: data.tasks.length > 0 },
-    { label: 'Resources', filled: (data.crewSize ?? 0) > 0 || data.subcontractors.length > 0 },
+    { label: 'Resources', filled: (data.crewSize ?? 0) > 0 || data.subcontractors.length > 0 || data.equipmentSelections.length > 0 },
     { label: 'Compliance', filled: data.permitChecklist.length > 0 || !!data.complianceNotes },
     { label: 'Timeline & Budget', filled: (data.clientQuote ?? 0) > 0 || !!data.startDate },
   ];
@@ -160,7 +160,7 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
       )}
 
       {/* Step 4: Resources */}
-      {((data.crewSize ?? 0) > 0 || data.subcontractors.length > 0 || data.equipmentNotes) && (
+      {((data.crewSize ?? 0) > 0 || data.subcontractors.length > 0 || data.equipmentSelections.length > 0 || data.equipmentNotes) && (
         <div className={sectionClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
           <h4 className={sectionHeadClass}>Resources</h4>
           {(data.crewSize ?? 0) > 0 && (
@@ -169,9 +169,22 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
               <span className={valueSpan}>{data.crewSize}</span>
             </div>
           )}
+          {data.equipmentSelections.length > 0 && (
+            <div className="mt-[4px]">
+              <span className="text-[11px] text-[var(--text-3)]">Equipment:</span>
+              {data.equipmentSelections.map((equip) => (
+                <div key={equip.equipmentId} className={rowClass}>
+                  <span className={labelSpan}>{equip.name} ({equip.durationDays}d)</span>
+                  <span className={valueSpan}>
+                    {equip.dailyRate > 0 ? fmt(equip.dailyRate * equip.durationDays) : 'Rate TBD'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           {data.equipmentNotes && (
             <div className={rowClass}>
-              <span className={labelSpan}>Equipment</span>
+              <span className={labelSpan}>Equipment Notes</span>
               <span className={`${valueSpan} max-w-[300px] text-right`}>{data.equipmentNotes}</span>
             </div>
           )}

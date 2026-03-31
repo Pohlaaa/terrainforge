@@ -35,6 +35,13 @@ export interface WizardSubcontractor {
   quotedCost: number | null;
 }
 
+export interface WizardEquipment {
+  equipmentId: string;
+  name: string;
+  dailyRate: number;
+  durationDays: number;
+}
+
 export interface WizardData {
   // Step 1: Job Description
   name: string;
@@ -70,6 +77,7 @@ export interface WizardData {
   // Step 4: Resources
   crewSize: number | null;
   crewNotes: string | null;
+  equipmentSelections: WizardEquipment[];
   equipmentNotes: string | null;
   subcontractors: WizardSubcontractor[];
 
@@ -118,6 +126,7 @@ const INITIAL_DATA: WizardData = {
   tasks: [],
   crewSize: null,
   crewNotes: null,
+  equipmentSelections: [],
   equipmentNotes: null,
   subcontractors: [],
   startDate: null,
@@ -207,7 +216,10 @@ export default function ProjectWizard() {
         startDate: data.startDate || '',
         targetDate: data.targetDate || '',
         budget: data.clientQuote ?? 0,
-        notes: data.equipmentNotes || '',
+        notes: [
+          ...data.equipmentSelections.map((e) => `${e.name} (${e.durationDays}d)`),
+          data.equipmentNotes || '',
+        ].filter(Boolean).join('; '),
         lat: data.lat ?? undefined,
         lng: data.lng ?? undefined,
         zones: [],
@@ -219,7 +231,7 @@ export default function ProjectWizard() {
           access: !!data.gateCode || !!data.permittedHours,
           materials: (data.materialsBudget ?? 0) > 0,
           crew: (data.crewSize ?? 0) > 0,
-          equipment: !!data.equipmentNotes,
+          equipment: data.equipmentSelections.length > 0 || !!data.equipmentNotes,
         },
         // M1.5 fields
         clientName: data.clientName,
