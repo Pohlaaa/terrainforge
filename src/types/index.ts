@@ -469,6 +469,13 @@ export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled'
 /** Mirrors the subscription_tier column on the organizations table. */
 export type SubscriptionTier = 'starter' | 'pro' | 'business';
 
+/** Combined subscription info for components that need the full picture. */
+export interface SubscriptionInfo {
+  status: SubscriptionStatus;
+  tier: SubscriptionTier;
+  endsAt: string | null;
+}
+
 // ── Project Intelligence (M1.5) ─────────────────────────────────────────────
 
 export type ProjectType =
