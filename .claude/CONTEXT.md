@@ -12,17 +12,17 @@
 ## Current Status
 
 **Active milestone**: M3 "First Revenue" — subscription enforcement, trial flow, launch readiness
-**Last completed**: Sprint 41 — Onboarding & auth flow hotfix
+**Last completed**: Sprint 42 — Sample data & manifest routing fix
 **Milestones complete**: M1, M1.5a, M1.5b, M2
-**Current sprint**: None — awaiting next sprint planning
-**Git state**: sprint-41-onboarding-hotfix branch, PR #102 open. Migrations 001–012 applied. Trial columns + trigger active.
+**Current sprint**: None — awaiting next sprint plan
+**Git state**: main branch, Sprint 42 PR #103 ready. Migrations 001–012 applied. Trial columns + trigger active.
 **SQL migration needed**: None
 
-**Sprint 41 changes**:
-- Setup checklist now filters seed data by UUID pattern — new accounts see all items as incomplete
-- Removed duplicate company name field from onboarding (signup already collects it)
-- Verified onboarding skip button works (implemented in S38)
-- Fixed sign-out redirect: TopNav, CrewLayout, MobileSidebar now navigate to `/` (landing page)
+**Sprint 42 changes**:
+- `insertSampleData` now creates project tasks (8-9 per project) in addition to projects, zones, crew, equipment, materials
+- `clearSampleData` deletes sample tasks before projects for proper cleanup
+- Sample tasks defined in `getSampleTasks()` with realistic landscaping phases
+- Projects page redirects to `/projects/:id` when activeProjectId is set, fixing stale detail view after manifest navigation
 
 ---
 
@@ -117,12 +117,4 @@ All M1 + M2 + M1.5a + M1.5b features complete and tested:
 | 39 | Trial Experience | 14-day trial banner, countdown, read-only downgrade on expiry |
 | 40 | Launch Readiness | Signup-to-trial messaging, checkout return handling, env var docs, deploy checklist |
 
-Full history: Sprints 1-27 in `archive/SPRINT_HISTORY.md`
-
----
-
-## What's Next
-
-**Sprint 41 (Hotfix)**: Fix onboarding bugs from batch 38-40 testing — checklist pre-completion, duplicate company name ask, onboarding exit, sign-out redirect.
-
-**After Sprint 41**: Stripe dashboard setup (Charlie), then production deploy verification. M3 gate: 5 paying subs, $400+ MRR.
+Full history: Sprints 1-27 in `
