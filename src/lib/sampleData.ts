@@ -4,7 +4,7 @@
  * org_id is NOT included — it's added at insert time.
  */
 
-import type { Project, Material, CrewMember, Equipment } from '@/types';
+import type { Project, Material, CrewMember, Equipment, TaskPhase, TaskStatus } from '@/types';
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -126,6 +126,55 @@ export function getSampleProjects(): Omit<Project, 'id' | 'createdAt'>[] {
       ],
     },
   ];
+}
+
+// ── Sample Tasks ────────────────────────────────────────────────────────────
+
+export interface SampleTask {
+  name: string;
+  description: string;
+  phase: TaskPhase;
+  status: TaskStatus;
+  sequenceNumber: number;
+  aiGenerated: boolean;
+}
+
+/** Returns sample tasks keyed by project name */
+export function getSampleTasks(): Record<string, SampleTask[]> {
+  return {
+    'Riverside Patio & Firepit': [
+      { name: 'Clear existing vegetation', description: 'Remove grass, weeds, and small shrubs from the patio footprint', phase: 'rough_grade', status: 'pending', sequenceNumber: 1, aiGenerated: false },
+      { name: 'Grade and level patio area', description: 'Establish proper slope for drainage (1% away from house)', phase: 'rough_grade', status: 'pending', sequenceNumber: 2, aiGenerated: false },
+      { name: 'Install gravel base', description: 'Lay 4" compacted #57 limestone base across all zones', phase: 'rough_grade', status: 'pending', sequenceNumber: 3, aiGenerated: false },
+      { name: 'Lay paver base and edge restraints', description: 'Set 1" sand bedding layer and install poly edge restraints', phase: 'hardscape', status: 'pending', sequenceNumber: 4, aiGenerated: false },
+      { name: 'Install flagstone pavers', description: 'Lay Belgard Cambridge pavers in running bond pattern', phase: 'hardscape', status: 'pending', sequenceNumber: 5, aiGenerated: false },
+      { name: 'Build firepit structure', description: 'Construct circular gas firepit with limestone surround', phase: 'hardscape', status: 'pending', sequenceNumber: 6, aiGenerated: false },
+      { name: 'Apply polymeric sand', description: 'Fill paver joints and activate with water', phase: 'cleanup_punchlist', status: 'pending', sequenceNumber: 7, aiGenerated: false },
+      { name: 'Final grading and cleanup', description: 'Dress edges, clean pavers, haul debris', phase: 'cleanup_punchlist', status: 'pending', sequenceNumber: 8, aiGenerated: false },
+    ],
+    'Cedar Park Front Yard': [
+      { name: 'Remove existing lawn and shrubs', description: 'Strip old bermuda sod and remove overgrown foundation plantings', phase: 'demo_prep', status: 'pending', sequenceNumber: 1, aiGenerated: false },
+      { name: 'Clear planting beds', description: 'Remove old mulch and amend soil in garden bed areas', phase: 'demo_prep', status: 'pending', sequenceNumber: 2, aiGenerated: false },
+      { name: 'Install drip irrigation lines', description: 'Run drip tubing through all garden beds with Hunter MP rotators', phase: 'irrigation', status: 'pending', sequenceNumber: 3, aiGenerated: false },
+      { name: 'Connect to main water supply', description: 'Tie drip system into existing irrigation mainline', phase: 'irrigation', status: 'pending', sequenceNumber: 4, aiGenerated: false },
+      { name: 'Plant trees and large shrubs', description: 'Install Live Oaks and specimen shrubs per design plan', phase: 'softscape', status: 'pending', sequenceNumber: 5, aiGenerated: false },
+      { name: 'Install sod', description: 'Lay premium bermuda sod in all lawn areas', phase: 'softscape', status: 'pending', sequenceNumber: 6, aiGenerated: false },
+      { name: 'Mulch all beds', description: 'Apply 3" hardwood mulch to all planting beds', phase: 'softscape', status: 'pending', sequenceNumber: 7, aiGenerated: false },
+      { name: 'Install landscape lighting', description: 'Place low-voltage path lights and uplights on trees', phase: 'lighting', status: 'pending', sequenceNumber: 8, aiGenerated: false },
+      { name: 'Final walkthrough', description: 'HOA compliance check and client sign-off', phase: 'cleanup_punchlist', status: 'pending', sequenceNumber: 9, aiGenerated: false },
+    ],
+    'Thompson Pool Deck': [
+      { name: 'Excavate deck area', description: 'Remove 6" of soil across pool deck footprint', phase: 'rough_grade', status: 'pending', sequenceNumber: 1, aiGenerated: false },
+      { name: 'Compact subgrade', description: 'Plate-compact native soil to 95% density', phase: 'rough_grade', status: 'pending', sequenceNumber: 2, aiGenerated: false },
+      { name: 'Install drainage', description: 'Set channel drains at deck perimeter for pool splash runoff', phase: 'rough_grade', status: 'pending', sequenceNumber: 3, aiGenerated: false },
+      { name: 'Pour concrete pad', description: 'Place 4" reinforced concrete slab as paver substrate', phase: 'hardscape', status: 'pending', sequenceNumber: 4, aiGenerated: false },
+      { name: 'Install stone veneer on pool edge', description: 'Apply travertine coping stones to pool beam', phase: 'hardscape', status: 'pending', sequenceNumber: 5, aiGenerated: false },
+      { name: 'Lay deck pavers', description: 'Set travertine pavers with non-slip finish on mortar bed', phase: 'hardscape', status: 'pending', sequenceNumber: 6, aiGenerated: false },
+      { name: 'Seal all surfaces', description: 'Apply penetrating sealer to deck and coping', phase: 'cleanup_punchlist', status: 'pending', sequenceNumber: 7, aiGenerated: false },
+      { name: 'Install pool fence sections', description: 'Mount aluminum fence panels per code requirements', phase: 'cleanup_punchlist', status: 'pending', sequenceNumber: 8, aiGenerated: false },
+      { name: 'Final inspection', description: 'City inspection for pool barrier compliance', phase: 'cleanup_punchlist', status: 'pending', sequenceNumber: 9, aiGenerated: false },
+    ],
+  };
 }
 
 // ── Crew ─────────────────────────────────────────────────────────────────────

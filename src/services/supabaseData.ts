@@ -1208,12 +1208,13 @@ interface SampleIds {
   crew: string[];
   equipment: string[];
   materials: string[];
+  tasks: string[];
 }
 
 export async function insertSampleData(orgId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { getSampleProjects, getSampleCrew, getSampleEquipment, getSampleMaterials } = await import('@/lib/sampleData');
-    const ids: SampleIds = { projects: [], crew: [], equipment: [], materials: [] };
+    const { getSampleProjects, getSampleCrew, getSampleEquipment, getSampleMaterials, getSampleTasks } = await import('@/lib/sampleData');
+    const ids: SampleIds = { projects: [], crew: [], equipment: [], materials: [], tasks: [] };
 
     // Materials first (no deps)
     for (const mat of getSampleMaterials()) {
@@ -1237,10 +1238,43 @@ export async function insertSampleData(orgId: string): Promise<{ success: boolea
     }
 
     // Projects (with zones)
+    const sampleTasks = getSampleTasks();
     for (const proj of getSampleProjects()) {
       const id = crypto.randomUUID();
       const result = await createProject(proj, id, orgId);
-      if (result) ids.projects.push(id);
+      if (result) {
+        ids.projects.push(id);
+        // Insert tasks for this project
+        const tasks = sampleTasks[proj.name];
+        if (tasks) {
+          for (const task of tasks) {
+            const taskId = crypto.randomUUID();
+            const taskResult = await createProjectTask(
+              {
+                orgId,
+                projectId: id,
+                zoneId: null,
+                name: task.name,
+                description: task.description,
+                phase: task.phase,
+                sequenceNumber: task.sequenceNumber,
+                status: task.status,
+                assignedCrewId: null,
+                estimatedHours: null,
+                actualHours: null,
+                dependsOn: [],
+                scheduledDate: null,
+                completedAt: null,
+                aiGenerated: task.aiGenerated,
+                aiConfidence: null,
+              },
+              taskId,
+              orgId,
+            );
+            if (taskResult) ids.tasks.push(taskId);
+          }
+        }
+      }
     }
 
     // Persist IDs for cleanup
@@ -1257,7 +1291,12 @@ export async function clearSampleData(orgId: string): Promise<{ success: boolean
     if (!raw) return { success: true };
     const ids: SampleIds = JSON.parse(raw);
 
-    // Delete in reverse dependency order: projects (zones cascade), equipment, crew, materials
+    // Delete in reverse dependency order: tasks, projects (zones cascade), equipment, crew, materials
+    if (ids.tasks) {
+      for (const id of ids.tasks) {
+        await deleteProjectTask(id);
+      }
+    }
     for (const id of ids.projects) {
       await deleteProject(id);
     }
