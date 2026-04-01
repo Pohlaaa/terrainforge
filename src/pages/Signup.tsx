@@ -219,12 +219,17 @@ export const Signup: React.FC = () => {
               disabled={loading}
               className="w-full mt-6 py-2 px-4 bg-[var(--green)] hover:bg-[var(--green-l)] text-[var(--surface)] font-semibold rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Creating Account...' : 'Start Free Trial'}
             </button>
           </form>
 
+          {/* Trial note */}
+          <p className="mt-4 text-center text-[14px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            Start your 14-day free trial. No credit card required.
+          </p>
+
           {/* Sign In Link */}
-          <div className="mt-6 text-center text-sm text-[var(--text-2)]">
+          <div className="mt-4 text-center text-sm text-[var(--text-2)]">
             Already have an account?{' '}
             <Link
               to="/login"

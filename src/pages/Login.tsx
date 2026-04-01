@@ -127,7 +127,7 @@ export const Login: React.FC = () => {
               to="/signup"
               className="text-[var(--green-l)] hover:text-[var(--green-xl)] transition-colors font-semibold"
             >
-              Sign up
+              Start your free trial
             </Link>
           </div>
         </div>
