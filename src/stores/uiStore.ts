@@ -32,6 +32,7 @@ interface UIStore {
   toggleWidgetCollapsed: (widgetId: string) => void
   toggleWidgetSize: (widgetId: string) => void
   resetWidgetLayout: () => void
+  setWidgetLayout: (layout: WidgetConfig[]) => void
 }
 
 const defaultDashboardConfig: DashboardConfig = {
@@ -102,6 +103,7 @@ export const useUIStore = create<UIStore>()(
           ),
         })),
       resetWidgetLayout: () => set({ widgetLayout: DEFAULT_WIDGET_LAYOUT }),
+      setWidgetLayout: (layout) => set({ widgetLayout: layout }),
     }),
     {
       name: 'tf_ui',
