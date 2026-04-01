@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/services/supabase'
-import { hasCompletedOnboarding } from '@/services/preferences'
 
 export const Login: React.FC = () => {
   const { user, signIn } = useAuth()
@@ -29,13 +27,10 @@ export const Login: React.FC = () => {
       }
 
       await signIn(email, password)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user?.id) {
-        const done = await hasCompletedOnboarding(user.id)
-        navigate(done ? '/' : '/onboarding', { replace: true })
-      } else {
-        navigate('/', { replace: true })
-      }
+      // Auth state change handler loads org + data; AppLayout handles
+      // onboarding redirect for new users. Navigate to root and let
+      // HomeRoute redirect to /dashboard.
+      navigate('/', { replace: true })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sign in'
       setError(message)

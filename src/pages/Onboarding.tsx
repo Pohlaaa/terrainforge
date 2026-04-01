@@ -180,9 +180,35 @@ Return only valid JSON, no markdown.`, 'claude-haiku-4-5-20251001')
     </div>
   )
 
+  const handleSkip = async () => {
+    // Mark onboarding as dismissed so user isn't redirected back
+    if (user && org) {
+      try {
+        await upsertUserPreferences(user.id, org.id, {
+          onboardingCompletedAt: new Date().toISOString(),
+        })
+      } catch {
+        // Best-effort — still navigate even if save fails
+      }
+    }
+    navigate('/')
+  }
+
   return (
     <div className="min-h-screen bg-[var(--surface-bg)] flex items-start justify-center pt-16 px-4">
       <div className="w-full max-w-[640px]">
+        {/* Skip link */}
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={handleSkip}
+            className="text-[14px] bg-transparent border-none cursor-pointer transition-colors"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
+          >
+            Skip for now &rarr;
+          </button>
+        </div>
         <ProgressDots />
 
         {/* Step 1 — Business Type */}

@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, mobileOpen 
     setSigningOut(true);
     try {
       await signOut();
-      navigate('/login');
+      navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
       setSigningOut(false);
