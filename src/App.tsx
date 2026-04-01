@@ -1,6 +1,6 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/shared/ProtectedRoute'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import AppLayout from '@/components/layout/AppLayout'
@@ -28,6 +28,52 @@ import Onboarding from '@/pages/Onboarding'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
 import ForgotPassword from '@/pages/ForgotPassword'
+const Landing = React.lazy(() => import('@/pages/Landing'))
+
+/** Show landing page for visitors, redirect authenticated users to /dashboard */
+function HomeRoute() {
+  const { user, loading } = useAuth()
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen" style={{ background: '#0A0A0A' }}>
+        <div className="inline-block animate-spin">⌛</div>
+      </div>
+    )
+  }
+  if (user) return <Navigate to="/dashboard" replace />
+  return (
+    <React.Suspense fallback={<div style={{ background: '#0A0A0A', minHeight: '100vh' }} />}>
+      <Landing />
+    </React.Suspense>
+  )
+}
+
+function NotFound() {
+  const navigate = useNavigate();
+  return (
+    <div style={{ textAlign: 'center', padding: '60px 24px' }}>
+      <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text)', marginBottom: '8px' }}>Page not found</h2>
+      <p style={{ fontSize: '13px', color: 'var(--text-3)', marginBottom: '16px' }}>
+        The page you're looking for doesn't exist or has been moved.
+      </p>
+      <button
+        onClick={() => navigate('/')}
+        style={{
+          padding: '10px 20px',
+          background: 'var(--green)',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Back to Dashboard
+      </button>
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -35,6 +81,12 @@ function App() {
       <Router>
         <Routes>
           {/* Public routes - no sidebar */}
+          <Route path="/" element={<HomeRoute />} />
+          <Route path="/landing" element={
+            <React.Suspense fallback={<div style={{ background: '#0A0A0A', minHeight: '100vh' }} />}>
+              <Landing />
+            </React.Suspense>
+          } />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -68,6 +120,7 @@ function App() {
                 <AppLayout>
                   <Routes>
                     <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+                    <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
                     <Route path="/projects" element={<ErrorBoundary><Projects /></ErrorBoundary>} />
                     <Route path="/projects/wizard" element={
                       <ErrorBoundary>
@@ -99,6 +152,8 @@ function App() {
                         </React.Suspense>
                       } />
                     )}
+                    {/* 404 catch-all */}
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AppLayout>
               </ProtectedRoute>
