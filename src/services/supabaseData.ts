@@ -1410,6 +1410,32 @@ export async function diagnoseUserRole(): Promise<void> {
 
 // ===== PROJECT TASKS =====
 
+/** Fetch task count summaries for all projects in an org — used by project cards */
+export async function fetchTaskSummaries(
+  orgId: string
+): Promise<Record<string, { total: number; completed: number }>> {
+  try {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .select('project_id, status')
+      .eq('org_id', orgId);
+
+    if (error) throw error;
+
+    const summaries: Record<string, { total: number; completed: number }> = {};
+    for (const row of data || []) {
+      const pid = row.project_id;
+      if (!summaries[pid]) summaries[pid] = { total: 0, completed: 0 };
+      summaries[pid].total++;
+      if (row.status === 'completed') summaries[pid].completed++;
+    }
+    return summaries;
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'project_tasks', err);
+    return {};
+  }
+}
+
 export async function fetchProjectTasks(
   orgId: string,
   projectId: string

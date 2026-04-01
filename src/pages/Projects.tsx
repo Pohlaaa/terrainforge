@@ -5,11 +5,13 @@ import { Pencil } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useCrewStore } from '@/stores/crewStore';
+import { useOrgStore } from '@/stores/orgStore';
 import { computeProjectCostRaw } from '@/lib/manifest';
 import { CHECKLIST_ITEMS } from '@/lib/constants';
 import type { Project, Zone } from '@/types';
 import { generateProjectFromDescription } from '@/services/anthropic';
 import type { AIProjectSuggestion } from '@/services/anthropic';
+import { fetchTaskSummaries } from '@/services/supabaseData';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -86,6 +88,7 @@ export const Projects: React.FC = () => {
     projectCrew, addProjectCrew, removeProjectCrew } = useProjectStore();
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
+  const { org } = useOrgStore();
   const navigate = useNavigate();
   const { getEntriesForProject } = useScheduleStore();
   const { readOnly } = useBillingGate();
@@ -95,6 +98,13 @@ export const Projects: React.FC = () => {
     const t = setTimeout(() => setInitialLoad(false), 600);
     return () => clearTimeout(t);
   }, []);
+
+  // Fetch task summaries for all projects (matches ProjectDashboard task counts)
+  const [taskSums, setTaskSums] = useState<Record<string, { total: number; completed: number }>>({});
+  useEffect(() => {
+    if (!org?.id) return;
+    fetchTaskSummaries(org.id).then(setTaskSums);
+  }, [org?.id, projects.length]);
 
   // View mode — persisted in localStorage
   const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
@@ -1103,8 +1113,9 @@ export const Projects: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             {projects.map((project, idx) => {
               const status = getProjectStatus(project);
-              const checks = Object.values(project.checklist);
-              const completedCount = checks.filter(Boolean).length;
+              const ts = taskSums[project.id];
+              const taskTotal = ts?.total ?? 0;
+              const taskCompleted = ts?.completed ?? 0;
               const statusColor = status.variant === 'green' ? 'var(--status-green)'
                 : status.variant === 'amber' ? 'var(--status-amber)'
                 : status.variant === 'blue' ? 'var(--status-blue)'
@@ -1152,13 +1163,13 @@ export const Projects: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Progress bar */}
+                  {/* Task progress bar */}
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-[4px] rounded-sm overflow-hidden" style={{ background: 'var(--surface-bg)' }}>
-                      <div className="h-full rounded-sm" style={{ width: `${checks.length > 0 ? (completedCount / checks.length) * 100 : 0}%`, background: statusColor }} />
+                      <div className="h-full rounded-sm" style={{ width: `${taskTotal > 0 ? (taskCompleted / taskTotal) * 100 : 0}%`, background: statusColor }} />
                     </div>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                      {completedCount}/{checks.length}
+                      {taskTotal > 0 ? `${taskCompleted}/${taskTotal} tasks` : 'No tasks'}
                     </span>
                   </div>
                 </div>
@@ -1172,8 +1183,9 @@ export const Projects: React.FC = () => {
           <div className="flex flex-col" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             {projects.map((project) => {
               const status = getProjectStatus(project);
-              const checks = Object.values(project.checklist);
-              const completedCount = checks.filter(Boolean).length;
+              const ts = taskSums[project.id];
+              const taskTotal = ts?.total ?? 0;
+              const taskCompleted = ts?.completed ?? 0;
               const statusColor = status.variant === 'green' ? 'var(--status-green)'
                 : status.variant === 'amber' ? 'var(--status-amber)'
                 : status.variant === 'blue' ? 'var(--status-blue)'
@@ -1212,12 +1224,14 @@ export const Projects: React.FC = () => {
                       <div className="text-[13px] font-bold" style={{ color: 'var(--text-primary)' }}>{project.zones.length}</div>
                       <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>Zones</div>
                     </div>
-                    {/* Progress */}
-                    <div style={{ width: '60px', flexShrink: 0 }}>
+                    {/* Task progress */}
+                    <div style={{ width: '70px', flexShrink: 0 }}>
                       <div className="h-[4px] rounded-sm overflow-hidden" style={{ background: 'var(--surface-bg)' }}>
-                        <div className="h-full rounded-sm" style={{ width: `${checks.length > 0 ? (completedCount / checks.length) * 100 : 0}%`, background: statusColor }} />
+                        <div className="h-full rounded-sm" style={{ width: `${taskTotal > 0 ? (taskCompleted / taskTotal) * 100 : 0}%`, background: statusColor }} />
                       </div>
-                      <div className="text-right mt-0.5" style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)' }}>{completedCount}/{checks.length}</div>
+                      <div className="text-right mt-0.5" style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                        {taskTotal > 0 ? `${taskCompleted}/${taskTotal}` : '—'}
+                      </div>
                     </div>
                   </div>
 
