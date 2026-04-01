@@ -1224,12 +1224,13 @@ interface SampleIds {
   equipment: string[];
   materials: string[];
   tasks: string[];
+  scheduleEntries: string[];
 }
 
 export async function insertSampleData(orgId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { getSampleProjects, getSampleCrew, getSampleEquipment, getSampleMaterials, getSampleTasks, getSampleZoneMaterials } = await import('@/lib/sampleData');
-    const ids: SampleIds = { projects: [], crew: [], equipment: [], materials: [], tasks: [] };
+    const { getSampleProjects, getSampleCrew, getSampleEquipment, getSampleMaterials, getSampleTasks, getSampleZoneMaterials, getSampleScheduleEntries } = await import('@/lib/sampleData');
+    const ids: SampleIds = { projects: [], crew: [], equipment: [], materials: [], tasks: [], scheduleEntries: [] };
 
     // Materials first (no deps) — build name→id lookup for zone_materials
     const materialNameToId: Record<string, string> = {};
@@ -1263,12 +1264,14 @@ export async function insertSampleData(orgId: string): Promise<{ success: boolea
     // Projects (with zones) + zone_materials + tasks
     const sampleTasks = getSampleTasks();
     const zoneMaterialMap = getSampleZoneMaterials();
+    const projectNameToId: Record<string, string> = {};
 
     for (const proj of getSampleProjects()) {
       const id = crypto.randomUUID();
       const result = await createProject(proj, id, orgId);
       if (result) {
         ids.projects.push(id);
+        projectNameToId[proj.name] = id;
 
         // Fetch the zones that were just created for this project
         const { data: createdZones } = await supabase
@@ -1331,6 +1334,35 @@ export async function insertSampleData(orgId: string): Promise<{ success: boolea
       }
     }
 
+    // Schedule entries — link crew to projects with relative dates
+    for (const entry of getSampleScheduleEntries()) {
+      const crewId = crewNameToId[entry.crewName];
+      const projectId = projectNameToId[entry.projectName];
+      if (!crewId || !projectId) continue;
+
+      const schedDate = new Date();
+      schedDate.setDate(schedDate.getDate() + entry.dayOffset);
+      const dateStr = schedDate.toISOString().split('T')[0];
+
+      const schedId = crypto.randomUUID();
+      await createScheduleEntry(
+        {
+          orgId,
+          projectId,
+          crewMemberId: crewId,
+          equipmentId: null,
+          scheduledDate: dateStr,
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+          notes: entry.notes,
+          status: entry.status,
+        },
+        schedId,
+        orgId,
+      );
+      ids.scheduleEntries.push(schedId);
+    }
+
     // Persist IDs for cleanup
     localStorage.setItem('tf-sample-ids', JSON.stringify(ids));
     return { success: true };
@@ -1345,7 +1377,12 @@ export async function clearSampleData(orgId: string): Promise<{ success: boolean
     if (!raw) return { success: true };
     const ids: SampleIds = JSON.parse(raw);
 
-    // Delete in reverse dependency order: tasks, projects (zones cascade), equipment, crew, materials
+    // Delete in reverse dependency order: schedule, tasks, projects (zones cascade), equipment, crew, materials
+    if (ids.scheduleEntries) {
+      for (const id of ids.scheduleEntries) {
+        await deleteScheduleEntry(id);
+      }
+    }
     if (ids.tasks) {
       for (const id of ids.tasks) {
         await deleteProjectTask(id);

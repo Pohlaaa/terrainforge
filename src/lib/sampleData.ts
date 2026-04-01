@@ -4,7 +4,7 @@
  * org_id is NOT included — it's added at insert time.
  */
 
-import type { Project, Material, CrewMember, Equipment, TaskPhase, TaskStatus } from '@/types';
+import type { Project, Material, CrewMember, Equipment, TaskPhase, TaskStatus, ScheduleEntryStatus } from '@/types';
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -574,5 +574,39 @@ export function getSampleMaterials(): Omit<Material, 'id'>[] {
       storageLocation: 'Warehouse - Shelf C4',
       lastRestocked: daysFromNow(-8),
     },
+  ];
+}
+
+// ── Schedule Entries ────────────────────────────────────────────────────────
+
+export interface SampleScheduleEntry {
+  crewName: string;
+  projectName: string;
+  dayOffset: number;   // relative to today
+  startTime: string;   // 'HH:MM'
+  endTime: string;     // 'HH:MM'
+  notes: string;
+  status: ScheduleEntryStatus;
+}
+
+/** Returns sample schedule entries spread across the current week */
+export function getSampleScheduleEntries(): SampleScheduleEntry[] {
+  return [
+    // Marco → Riverside Patio (Mon–Wed)
+    { crewName: 'Marco Gutierrez', projectName: 'Riverside Patio & Firepit', dayOffset: 0, startTime: '07:00', endTime: '16:00', notes: 'Patio base prep and gravel', status: 'scheduled' },
+    { crewName: 'Marco Gutierrez', projectName: 'Riverside Patio & Firepit', dayOffset: 1, startTime: '07:00', endTime: '16:00', notes: 'Paver installation', status: 'scheduled' },
+    { crewName: 'Marco Gutierrez', projectName: 'Riverside Patio & Firepit', dayOffset: 2, startTime: '07:00', endTime: '16:00', notes: 'Firepit surround', status: 'scheduled' },
+    // James → Cedar Park (Mon–Fri)
+    { crewName: 'James Wilson', projectName: 'Cedar Park Front Yard', dayOffset: 0, startTime: '07:00', endTime: '15:00', notes: 'Sod removal and grading', status: 'scheduled' },
+    { crewName: 'James Wilson', projectName: 'Cedar Park Front Yard', dayOffset: 1, startTime: '07:00', endTime: '15:00', notes: 'Irrigation line trenching', status: 'scheduled' },
+    { crewName: 'James Wilson', projectName: 'Cedar Park Front Yard', dayOffset: 2, startTime: '07:00', endTime: '15:00', notes: 'Bed prep and edging', status: 'scheduled' },
+    { crewName: 'James Wilson', projectName: 'Cedar Park Front Yard', dayOffset: 3, startTime: '07:00', endTime: '15:00', notes: 'Planting day 1', status: 'scheduled' },
+    { crewName: 'James Wilson', projectName: 'Cedar Park Front Yard', dayOffset: 4, startTime: '07:00', endTime: '15:00', notes: 'Sod install and mulch', status: 'scheduled' },
+    // Tyler → Thompson Pool Deck (Thu–Fri)
+    { crewName: 'Tyler Brooks', projectName: 'Thompson Pool Deck', dayOffset: 3, startTime: '08:00', endTime: '17:00', notes: 'Deck excavation', status: 'scheduled' },
+    { crewName: 'Tyler Brooks', projectName: 'Thompson Pool Deck', dayOffset: 4, startTime: '08:00', endTime: '17:00', notes: 'Subgrade compaction', status: 'scheduled' },
+    // Sofia → Riverside Patio (Thu–Fri)
+    { crewName: 'Sofia Reyes', projectName: 'Riverside Patio & Firepit', dayOffset: 3, startTime: '07:00', endTime: '16:00', notes: 'Pathway lighting layout', status: 'scheduled' },
+    { crewName: 'Sofia Reyes', projectName: 'Riverside Patio & Firepit', dayOffset: 4, startTime: '07:00', endTime: '16:00', notes: 'Lighting install and test', status: 'scheduled' },
   ];
 }
