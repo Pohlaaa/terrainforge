@@ -12,6 +12,17 @@ export function setSupabaseErrorReporter(reporter: ErrorReporter) {
   onSupabaseError = reporter;
 }
 
+// ===== TIMESTAMP SANITIZATION =====
+
+/** Replace empty-string values with null for timestamp/date columns to avoid Postgres 22007 errors */
+function sanitizeTimestamps(obj: Record<string, any>, fields: string[]): Record<string, any> {
+  const cleaned = { ...obj };
+  for (const field of fields) {
+    if (cleaned[field] === '') cleaned[field] = null;
+  }
+  return cleaned;
+}
+
 // ===== CASE CONVERSION HELPERS =====
 
 function toCamelCase(obj: Record<string, any>): Record<string, any> {
@@ -444,9 +455,13 @@ export async function createMaterial(material: Omit<Material, 'id'>, id: string,
     // After migration 006: DB column is `unit` (TEXT), matches frontend — no rename needed
     if ('reserve_override' in snakeData) { snakeData.reserve_override_pct = snakeData.reserve_override; delete snakeData.reserve_override }
 
+    // Sanitize empty strings for timestamp columns — Postgres rejects "" for TIMESTAMPTZ
+    const MATERIAL_TIMESTAMP_FIELDS = ['price_update_date', 'last_restocked', 'created_at', 'updated_at'];
+    const cleanData = sanitizeTimestamps(snakeData, MATERIAL_TIMESTAMP_FIELDS);
+
     const { data, error } = await supabase
       .from('materials')
-      .insert([snakeData])
+      .insert([cleanData])
       .select()
       .single()
 
