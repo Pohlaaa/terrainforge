@@ -22,6 +22,7 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useBillingGate } from '@/hooks/useBillingGate';
+import { TrialBanner } from '@/components/TrialBanner';
 import { ToastContainer } from '@/components/shared/Toast';
 import { useUIStore } from '@/stores/uiStore';
 import { fetchUserPreferences, hasCompletedOnboarding } from '@/services/preferences';
@@ -50,12 +51,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const fetchCrew = useCrewStore((s) => s.fetchCrew);
   const fetchMaterials = useMaterialStore((s) => s.fetchMaterials);
   const fetchEquipment = useEquipmentStore((s) => s.fetchEquipment);
-  const { showUrgentBanner, daysLeft, isPastDue } = useBillingGate();
+  const { isTrial, daysLeft, isPastDue, isExpiredTrial } = useBillingGate();
   const location = useLocation();
 
-  // Dismissal state resets on page reload (session-level pressure on trial users)
-  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
+  // Past-due banner dismissal resets on page reload (session-level)
   const [pastDueBannerDismissed, setPastDueBannerDismissed] = useState(false);
+  // Expired trial overlay dismissal (session-level — user clicked "View Your Data")
+  const [expiredOverlayDismissed, setExpiredOverlayDismissed] = useState(false);
 
   // Mobile sidebar overlay state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -133,11 +135,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // Suppress banners on the billing page itself — user is already looking at it
   const isOnBillingPage = location.pathname === '/billing';
 
-  const showTrial =
-    showUrgentBanner && !trialBannerDismissed && !isOnBillingPage;
+  const showTrialBanner =
+    isTrial && daysLeft !== null && !isOnBillingPage;
 
   const showPastDue =
     isPastDue && !pastDueBannerDismissed && !isOnBillingPage;
+
+  const showExpiredOverlay =
+    isExpiredTrial && !expiredOverlayDismissed;
 
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -175,33 +180,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         {/* Sub-tab bar for grouped pages */}
         <SubTabBar />
 
-        {/* ── Trial ending soon banner ───────────────────────────────────── */}
-        {showTrial && (
-          <div className="flex-shrink-0 flex items-center justify-between gap-[12px] px-[20px] py-[9px] bg-[rgba(251,146,60,.1)] border-b border-[rgba(251,146,60,.3)]">
-            <div className="flex items-center gap-[10px] text-[12px]">
-              <span className="text-[#D97706] font-[700] flex-shrink-0">&#x26A0;</span>
-              <span style={{ color: 'var(--text-2)' }}>
-                Your free trial ends in{' '}
-                <span className="font-[700] text-[#D97706]">
-                  {daysLeft} day{daysLeft === 1 ? '' : 's'}
-                </span>
-                .
-              </span>
-              <Link
-                to="/billing"
-                className="font-[600] underline underline-offset-2 transition-colors flex-shrink-0 text-[#D97706] hover:text-[#B45309]"
-              >
-                Upgrade now &rarr;
-              </Link>
-            </div>
-            <button
-              onClick={() => setTrialBannerDismissed(true)}
-              aria-label="Dismiss trial banner"
-              className="flex-shrink-0 text-[16px] leading-none transition-colors bg-transparent border-none cursor-pointer p-[2px] text-[#D97706] hover:text-[#B45309]"
-            >
-              &#x2715;
-            </button>
-          </div>
+        {/* ── Trial banner (all trial days, escalating urgency) ──────────── */}
+        {showTrialBanner && daysLeft !== null && (
+          <TrialBanner daysRemaining={daysLeft} />
         )}
 
         {/* ── Payment failed banner ──────────────────────────────────────── */}
@@ -234,6 +215,49 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           {children}
         </main>
       </div>
+
+      {/* ── Expired trial overlay ─────────────────────────────────────── */}
+      {showExpiredOverlay && (
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ zIndex: 50, background: 'rgba(0, 0, 0, 0.6)' }}
+        >
+          <div
+            className="text-center"
+            style={{
+              maxWidth: '480px',
+              width: '90%',
+              background: '#1A1A1A',
+              borderRadius: '16px',
+              padding: '40px',
+            }}
+          >
+            <h2 className="text-[28px] font-bold text-white mb-3">
+              Your trial has ended
+            </h2>
+            <p className="text-[16px] mb-8" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              Your projects and data are still here. Subscribe to pick up where you left off.
+            </p>
+            <Link
+              to="/billing"
+              className="block w-full py-3 rounded-lg text-[15px] font-semibold text-white text-center no-underline transition-colors mb-3"
+              style={{ background: '#2D6A4F' }}
+            >
+              Choose a Plan
+            </Link>
+            <button
+              onClick={() => setExpiredOverlayDismissed(true)}
+              className="w-full py-3 rounded-lg text-[14px] font-medium bg-transparent cursor-pointer transition-colors"
+              style={{
+                color: 'rgba(255,255,255,0.6)',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}
+            >
+              View Your Data (Read Only)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Toast notification region ─────────────────────────────────── */}
       <ToastContainer />

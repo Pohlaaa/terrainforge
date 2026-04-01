@@ -33,10 +33,22 @@ export interface BillingGateResult {
   daysLeft: number | null;
 
   /**
+   * True when a trial is active (status = 'trialing' and daysLeft >= 0).
+   * Drives the TrialBanner in AppLayout for ALL trial users.
+   */
+  isTrial: boolean;
+
+  /**
    * True when a trial is active with 7 or fewer days remaining.
    * Drives the yellow "trial ending soon" banner in AppLayout.
    */
   showUrgentBanner: boolean;
+
+  /**
+   * True when the user had a trial that has expired and never subscribed.
+   * Drives the TrialExpiredOverlay read-only mode.
+   */
+  isExpiredTrial: boolean;
 
   /**
    * True when subscriptionStatus is 'past_due'.
@@ -51,23 +63,31 @@ export function useBillingGate(): BillingGateResult {
   return useMemo((): BillingGateResult => {
     // No org data yet — don't gate to avoid a flash redirect on first load
     if (!org) {
-      return { isGated: false, daysLeft: null, showUrgentBanner: false, isPastDue: false };
+      return { isGated: false, daysLeft: null, isTrial: false, showUrgentBanner: false, isExpiredTrial: false, isPastDue: false };
     }
 
     const { subscriptionStatus, trialEndsAt } = org;
 
     // ── Trial days remaining ───────────────────────────────────────────────
     let daysLeft: number | null = null;
-    if (subscriptionStatus === 'trialing' && trialEndsAt) {
+    if (trialEndsAt) {
       daysLeft = Math.ceil(
         (new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
     }
 
+    // ── Trial state ────────────────────────────────────────────────────────
+    const isTrial =
+      subscriptionStatus === 'trialing' && daysLeft !== null && daysLeft >= 0;
+
+    // Expired trial: had a trial (trialEndsAt exists), it expired, never subscribed
+    const isExpiredTrial =
+      subscriptionStatus === 'none' && trialEndsAt !== null && daysLeft !== null && daysLeft < 0;
+
     // ── Gate logic ─────────────────────────────────────────────────────────
     const isGated =
       subscriptionStatus === 'canceled' ||
-      subscriptionStatus === 'none' ||
+      (subscriptionStatus === 'none' && !isExpiredTrial) ||
       (subscriptionStatus === 'trialing' && daysLeft !== null && daysLeft < 0);
 
     // ── Banner signals ─────────────────────────────────────────────────────
@@ -79,6 +99,6 @@ export function useBillingGate(): BillingGateResult {
 
     const isPastDue = subscriptionStatus === 'past_due';
 
-    return { isGated, daysLeft, showUrgentBanner, isPastDue };
+    return { isGated, daysLeft, isTrial, showUrgentBanner, isExpiredTrial, isPastDue };
   }, [org]);
 }

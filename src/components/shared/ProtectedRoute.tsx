@@ -14,7 +14,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
 }) => {
   const { user, loading } = useAuth()
-  const { isGated } = useBillingGate()
+  const { isGated, isExpiredTrial } = useBillingGate()
   const location = useLocation()
 
   // Wait for Supabase auth to resolve before making any routing decisions
@@ -34,8 +34,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" replace />
   }
 
-  // Billing gate — trial expired or subscription lapsed.
-  if (isGated && !BILLING_EXEMPT_PATHS.has(location.pathname)) {
+  // Expired trial users get read-only access (overlay handled in AppLayout).
+  // Only hard-gate for canceled / never-subscribed-without-trial users.
+  if (isGated && !isExpiredTrial && !BILLING_EXEMPT_PATHS.has(location.pathname)) {
     return <Navigate to="/billing" replace />
   }
 
