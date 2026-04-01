@@ -5,18 +5,18 @@
 > For milestones and roadmap: read `ROADMAP.md` (Cowork-only for planning)
 > For backlog items: read `CONSIDERATIONS.md` (Cowork-only for planning)
 > For M1.5 data model reference: see `archive/DATA_MODEL_M1.5.md`
-> Last updated: 2026-03-31 (Sprint 36 complete — bug fixes + UI consistency pass)
+> Last updated: 2026-03-31 (Sprints 38-40 complete — subscription, trial, launch readiness)
 
 ---
 
 ## Current Status
 
-**Active milestone**: M3 "First Revenue" — landing page, Stripe completion, trial flow, launch
-**Last completed**: Sprint 36 — Bug fix & UI consistency pass (all Sprint 35 issues resolved)
+**Active milestone**: M3 "First Revenue" — subscription enforcement, trial flow, launch readiness
+**Last completed**: Sprint 40 — Launch readiness & signup polish (batch 38-40)
 **Milestones complete**: M1, M1.5a, M1.5b, M2
-**Current sprint**: None active — M3 sprint prompts being prepared by Cowork
-**Git state**: Clean, main pushed to origin. Migrations 001–011 applied. Storage buckets `crew-photos` and `project-photos` both created.
-**SQL migration needed**: None
+**Current sprint**: None active — batch 38-40 complete, awaiting Charlie's merge + test
+**Git state**: Branch `batch-sprint-38-to-40` ready for PR. Migrations 001–012 applied. Trial columns + trigger active.
+**SQL migration needed**: None (012_trial_columns.sql already applied)
 
 ---
 
@@ -106,14 +106,21 @@ All M1 + M2 + M1.5a + M1.5b features complete and tested:
 | 34 | M1.5b Polish | Materials tab, AI badge fix, inline editing across all tabs |
 | 35 | M2/Pre-M3 | Settings page (6 sections), production readiness, PageHeader consistency |
 | 36 | Bug Fix & Polish | Settings input fix, PageHeaders on all pages, map routing, deletion fix, UI audit |
+| 37 | Landing Page | Marketing landing page, Netlify production config, SPA redirect |
+| 38 | Subscription & Billing | Bug fixes (login race, sign-out, onboarding skip), subscription types, billing gate, billing page |
+| 39 | Trial Experience | Trial banner (3 urgency levels), expired trial overlay, read-only mode |
+| 40 | Launch Readiness | Signup trial messaging, checkout return polling, deploy checklist |
 
 Full history: Sprints 1-27 in `archive/SPRINT_HISTORY.md`
 
 ---
 
-## What's Next: M3 "First Revenue"
+## What's Next
 
-Sprint prompts batch-prepared by Cowork. Sequence:
-- Sprint 37: Landing page + Netlify production deploy
-- Sprint 38: Subscription enforcement + billing UI
-- 
+M3 "First Revenue" is feature-complete pending Charlie's merge + test of batch 38-40.
+
+Next steps:
+- Charlie: merge batch, run test checklists, update SPRINT_LOG.md
+- Charlie: complete Stripe setup (create products, set env vars per DEPLOY_CHECKLIST.md)
+- Charlie: test end-to-end flow: landing → signup → trial → checkout → active subscription
+- If all passes: deploy to production
