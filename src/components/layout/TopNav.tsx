@@ -50,7 +50,8 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
   const handleSignOut = useCallback(async () => {
     setDropdownOpen(false);
     await signOut();
-  }, [signOut]);
+    navigate('/');
+  }, [signOut, navigate]);
 
   const userInitial = user?.email ? user.email[0].toUpperCase() : '?';
 

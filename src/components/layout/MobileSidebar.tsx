@@ -26,6 +26,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
   const handleSignOut = async () => {
     onClose();
     await signOut();
+    navigate('/');
   };
 
   const renderNavButton = (path: string, icon: string, label: string, indented: boolean) => {

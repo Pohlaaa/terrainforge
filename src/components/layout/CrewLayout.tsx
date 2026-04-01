@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgStore } from '@/stores/orgStore';
 import { useProjectStore } from '@/stores/projectStore';
@@ -21,6 +22,7 @@ interface CrewLayoutProps {
 }
 
 export const CrewLayout: React.FC<CrewLayoutProps> = ({ children }) => {
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { crew } = useCrewStore();
   const fetchOrg = useOrgStore((s) => s.fetchOrg);
@@ -61,6 +63,7 @@ export const CrewLayout: React.FC<CrewLayoutProps> = ({ children }) => {
     setSigningOut(true);
     try {
       await signOut();
+      navigate('/');
     } catch {
       setSigningOut(false);
     }
