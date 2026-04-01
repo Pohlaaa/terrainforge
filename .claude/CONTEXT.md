@@ -12,11 +12,17 @@
 ## Current Status
 
 **Active milestone**: M3 "First Revenue" — subscription enforcement, trial flow, launch readiness
-**Last completed**: Sprint 40 — Launch readiness & signup polish (batch 38-40)
+**Last completed**: Sprint 41 — Onboarding & auth flow hotfix
 **Milestones complete**: M1, M1.5a, M1.5b, M2
-**Current sprint**: None active — batch 38-40 complete, awaiting Charlie's merge + test
-**Git state**: Branch `batch-sprint-38-to-40` ready for PR. Migrations 001–012 applied. Trial columns + trigger active.
-**SQL migration needed**: None (012_trial_columns.sql already applied)
+**Current sprint**: None — awaiting next sprint planning
+**Git state**: sprint-41-onboarding-hotfix branch, PR #102 open. Migrations 001–012 applied. Trial columns + trigger active.
+**SQL migration needed**: None
+
+**Sprint 41 changes**:
+- Setup checklist now filters seed data by UUID pattern — new accounts see all items as incomplete
+- Removed duplicate company name field from onboarding (signup already collects it)
+- Verified onboarding skip button works (implemented in S38)
+- Fixed sign-out redirect: TopNav, CrewLayout, MobileSidebar now navigate to `/` (landing page)
 
 ---
 
@@ -108,8 +114,8 @@ All M1 + M2 + M1.5a + M1.5b features complete and tested:
 | 36 | Bug Fix & Polish | Settings input fix, PageHeaders on all pages, map routing, deletion fix, UI audit |
 | 37 | Landing Page | Marketing landing page, Netlify production config, SPA redirect |
 | 38 | Subscription & Billing | Bug fixes (login race, sign-out, onboarding skip), subscription types, billing gate, billing page |
-| 39 | Trial Experience | Trial banner (3 urgency levels), expired trial overlay, read-only mode |
-| 40 | Launch Readiness | Signup trial messaging, checkout return polling, deploy checklist |
+| 39 | Trial Experience | 14-day trial banner, countdown, read-only downgrade on expiry |
+| 40 | Launch Readiness | Signup-to-trial messaging, checkout return handling, env var docs, deploy checklist |
 
 Full history: Sprints 1-27 in `archive/SPRINT_HISTORY.md`
 
@@ -117,10 +123,6 @@ Full history: Sprints 1-27 in `archive/SPRINT_HISTORY.md`
 
 ## What's Next
 
-M3 "First Revenue" is feature-complete pending Charlie's merge + test of batch 38-40.
+**Sprint 41 (Hotfix)**: Fix onboarding bugs from batch 38-40 testing — checklist pre-completion, duplicate company name ask, onboarding exit, sign-out redirect.
 
-Next steps:
-- Charlie: merge batch, run test checklists, update SPRINT_LOG.md
-- Charlie: complete Stripe setup (create products, set env vars per DEPLOY_CHECKLIST.md)
-- Charlie: test end-to-end flow: landing → signup → trial → checkout → active subscription
-- If all passes: deploy to production
+**After Sprint 41**: Stripe dashboard setup (Charlie), then production deploy verification. M3 gate: 5 paying subs, $400+ MRR.
