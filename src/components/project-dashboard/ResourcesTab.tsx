@@ -397,12 +397,51 @@ export const ProjectDashboardResources: React.FC<Props> = ({
       </div>
 
       {/* ── Equipment ─────────────────────────────────────────────────────────── */}
-      {project.notes && (
-        <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-          <div className={cardHead}>Equipment</div>
-          <p className="text-[12px] text-[var(--text-2)]">{project.notes}</p>
-        </div>
-      )}
+      {(() => {
+        // Dedupe equipment across all zones
+        const equipMap = new Map<string, { name: string; zones: string[] }>();
+        for (const zone of project.zones) {
+          for (const eq of zone.equipment || []) {
+            if (!equipMap.has(eq.equipId)) {
+              equipMap.set(eq.equipId, { name: eq.name, zones: [] });
+            }
+            equipMap.get(eq.equipId)!.zones.push(zone.name);
+          }
+        }
+        // Also include equipment referenced in schedule entries
+        for (const entry of scheduleEntries) {
+          if (entry.equipmentId && !equipMap.has(entry.equipmentId)) {
+            equipMap.set(entry.equipmentId, { name: `Equipment ${entry.equipmentId.slice(0, 8)}`, zones: [] });
+          }
+        }
+        const equipList = [...equipMap.values()];
+
+        return (
+          <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+            <div className={cardHead}>Equipment ({equipList.length})</div>
+            {equipList.length === 0 ? (
+              <p className="text-[12px] text-[var(--text-4)]">
+                No equipment assigned. Assign equipment to zones or schedule entries.
+              </p>
+            ) : (
+              <div className="space-y-[6px]">
+                {equipList.map((eq, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-[6px] px-[10px] py-[6px]"
+                    style={{ backgroundColor: 'var(--surface3)' }}
+                  >
+                    <span className="text-[12px] font-[500] text-[var(--text)]">{eq.name}</span>
+                    {eq.zones.length > 0 && (
+                      <span className="text-[11px] text-[var(--text-4)]">{eq.zones.join(', ')}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Zones ─────────────────────────────────────────────────────────────── */}
       {project.zones.length > 0 && (
