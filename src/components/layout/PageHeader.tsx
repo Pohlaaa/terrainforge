@@ -6,6 +6,7 @@ interface PageHeaderAction {
   onClick: () => void;
   variant?: 'primary' | 'secondary' | 'outline' | 'danger';
   icon?: string;
+  disabled?: boolean;
 }
 
 interface PageHeaderProps {
@@ -40,6 +41,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               variant={action.variant || 'primary'}
               size="sm"
               onClick={action.onClick}
+              disabled={action.disabled}
             >
               {action.icon && <span>{action.icon}</span>}
               {action.label}

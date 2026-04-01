@@ -16,6 +16,7 @@ import { SearchFilter } from '@/components/shared/SearchFilter';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { EmptyState, MaterialsIcon } from '@/components/shared/EmptyState';
+import { useBillingGate } from '@/hooks/useBillingGate';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,7 @@ const UNIT_OPTIONS = UNIT_TYPES.map(u => ({ value: u.id, label: u.label }));
 
 export const MaterialLibrary: React.FC = () => {
   const { materials, addMaterial, updateMaterial, deleteMaterial, adjustStock, isLoading, error } = useMaterialStore();
+  const { readOnly } = useBillingGate();
 
   const [initialLoad, setInitialLoad] = useState(true);
   useEffect(() => {
@@ -501,8 +503,8 @@ export const MaterialLibrary: React.FC = () => {
                 onChange={e => setQuickQty(e.target.value)}
                 className="w-[80px] h-[40px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
               />
-              <Button variant="primary" className="h-[40px]" onClick={handleQuickAdd} disabled={!quickName.trim()}>
-                Add
+              <Button variant="primary" className="h-[40px]" onClick={handleQuickAdd} disabled={!quickName.trim() || readOnly}>
+                {readOnly ? 'Subscribe to edit' : 'Add'}
               </Button>
               <Button variant="secondary" size="sm" className="h-[40px]" onClick={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}>
                 ↑ CSV

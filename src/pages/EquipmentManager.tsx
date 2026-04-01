@@ -20,6 +20,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState, EquipmentIcon } from '@/components/shared/EmptyState';
+import { useBillingGate } from '@/hooks/useBillingGate';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,7 @@ const MAINT_TYPE_OPTIONS = MAINTENANCE_TYPES.map(t => ({
 export const EquipmentManager: React.FC = () => {
   const { equipment, addEquipment, updateEquipment, deleteEquipment, addMaintenanceEntry, isLoading, error } =
     useEquipmentStore();
+  const { readOnly } = useBillingGate();
 
   const [initialLoad, setInitialLoad] = useState(true);
   useEffect(() => {
@@ -375,7 +377,7 @@ export const EquipmentManager: React.FC = () => {
 
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
       <div className="flex gap-[8px] mb-[16px] items-center flex-wrap">
-        <Button variant="primary" onClick={openAdd}>+ Add Equipment</Button>
+        <Button variant="primary" onClick={openAdd} disabled={readOnly}>{readOnly ? 'Subscribe to edit' : '+ Add Equipment'}</Button>
         <Button variant="outline" disabled title="AI equipment recommendations coming soon">⚡ Recommend for Active Project</Button>
         <div className="ml-auto flex gap-[8px]">
           <select

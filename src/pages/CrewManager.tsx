@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState, CrewIcon } from '@/components/shared/EmptyState';
+import { useBillingGate } from '@/hooks/useBillingGate';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ function formToMember(f: CrewForm): Omit<CrewMember, 'id'> {
 
 export const CrewManager: React.FC = () => {
   const { crew, addCrewMember, updateCrewMember, deleteCrewMember, isLoading, error } = useCrewStore();
+  const { readOnly } = useBillingGate();
 
   const [initialLoad, setInitialLoad] = useState(true);
   useEffect(() => {
@@ -232,7 +234,7 @@ export const CrewManager: React.FC = () => {
         title="Crew"
         subtitle={`${crew.length} members · ${availableTodayCount} available today`}
         actions={[
-          { label: '+ Add Crew Member', onClick: openAdd, variant: 'primary' },
+          { label: readOnly ? 'Subscribe to edit' : '+ Add Crew Member', onClick: () => !readOnly && openAdd(), variant: 'primary', disabled: readOnly },
         ]}
       />
 

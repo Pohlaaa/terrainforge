@@ -26,6 +26,7 @@ import { AddressInput } from '@/components/shared/AddressInput';
 import type { AddressSuggestion } from '@/hooks/useAddressAutocomplete';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 import { HelpIcon } from '@/components/shared/Tooltip';
+import { useBillingGate } from '@/hooks/useBillingGate';
 
 type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
 
@@ -87,6 +88,7 @@ export const Projects: React.FC = () => {
   const { crew } = useCrewStore();
   const navigate = useNavigate();
   const { getEntriesForProject } = useScheduleStore();
+  const { readOnly } = useBillingGate();
 
   const [initialLoad, setInitialLoad] = useState(true);
   useEffect(() => {
@@ -1042,7 +1044,7 @@ export const Projects: React.FC = () => {
         title="Projects"
         subtitle={`${projects.length} project${projects.length !== 1 ? 's' : ''}`}
         actions={[
-          { label: '+ New Project', onClick: () => navigate('/projects/wizard'), variant: 'primary' },
+          { label: readOnly ? 'Subscribe to add projects' : '+ New Project', onClick: () => !readOnly && navigate('/projects/wizard'), variant: 'primary', disabled: readOnly },
         ]}
       />
 

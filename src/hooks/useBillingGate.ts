@@ -55,6 +55,12 @@ export interface BillingGateResult {
    * Drives a separate "payment failed" banner in AppLayout.
    */
   isPastDue: boolean;
+
+  /**
+   * True when the user should be in read-only mode (expired trial).
+   * Components should disable write actions when this is true.
+   */
+  readOnly: boolean;
 }
 
 export function useBillingGate(): BillingGateResult {
@@ -63,7 +69,7 @@ export function useBillingGate(): BillingGateResult {
   return useMemo((): BillingGateResult => {
     // No org data yet — don't gate to avoid a flash redirect on first load
     if (!org) {
-      return { isGated: false, daysLeft: null, isTrial: false, showUrgentBanner: false, isExpiredTrial: false, isPastDue: false };
+      return { isGated: false, daysLeft: null, isTrial: false, showUrgentBanner: false, isExpiredTrial: false, isPastDue: false, readOnly: false };
     }
 
     const { subscriptionStatus, trialEndsAt } = org;
@@ -99,6 +105,6 @@ export function useBillingGate(): BillingGateResult {
 
     const isPastDue = subscriptionStatus === 'past_due';
 
-    return { isGated, daysLeft, isTrial, showUrgentBanner, isExpiredTrial, isPastDue };
+    return { isGated, daysLeft, isTrial, showUrgentBanner, isExpiredTrial, isPastDue, readOnly: isExpiredTrial };
   }, [org]);
 }
