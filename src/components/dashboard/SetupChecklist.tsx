@@ -11,14 +11,17 @@ interface SetupStep {
   path: string;
 }
 
+/** Seed data uses IDs like crew_001, eq_001; real DB records use UUIDs. */
+const isRealId = (id: string) => /^[0-9a-f]{8}-/.test(id);
+
 function useSetupSteps(): SetupStep[] {
   const { projects } = useProjectStore();
   const { crew } = useCrewStore();
   const { equipment } = useEquipmentStore();
 
-  const realProjects = projects.filter((p) => !p.isDemo);
-  const realCrew = crew.filter((c) => !(c as { isDemo?: boolean }).isDemo);
-  const realEquipment = equipment.filter((e) => !(e as { isDemo?: boolean }).isDemo);
+  const realProjects = projects.filter((p) => !p.isDemo && isRealId(p.id));
+  const realCrew = crew.filter((c) => isRealId(c.id));
+  const realEquipment = equipment.filter((e) => isRealId(e.id));
 
   return [
     {
