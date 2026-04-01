@@ -157,6 +157,14 @@ export const Projects: React.FC = () => {
   const [zoneFormErrors, setZoneFormErrors] = useState<Partial<ZoneForm>>({});
   const [deleteZoneId, setDeleteZoneId] = useState<string | null>(null);
 
+  // If a project is selected (e.g. from manifest page), redirect to its dashboard
+  useEffect(() => {
+    if (activeProjectId) {
+      setActiveProject(null);
+      navigate(`/projects/${activeProjectId}`, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const selectedProject = useMemo(
     () => projects.find(p => p.id === activeProjectId) ?? null,
     [projects, activeProjectId]
