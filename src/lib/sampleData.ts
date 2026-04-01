@@ -177,6 +177,27 @@ export function getSampleTasks(): Record<string, SampleTask[]> {
   };
 }
 
+// ── Zone → Material Mappings ────────────────────────────────────────────────
+// Maps project name → zone name → array of material names (must match getSampleMaterials names)
+
+export function getSampleZoneMaterials(): Record<string, Record<string, string[]>> {
+  return {
+    'Riverside Patio & Firepit': {
+      'Main Patio': ['Belgard Cambridge Pavers', '#57 Limestone Gravel'],
+      'Firepit Area': ['Austin Cream Limestone', '#57 Limestone Gravel'],
+      'Pathway': ['Belgard Cambridge Pavers', 'Steel Landscape Edging'],
+    },
+    'Cedar Park Front Yard': {
+      'Driveway Border': ['Steel Landscape Edging', 'Hardwood Mulch'],
+      'Garden Beds': ['Bermuda Sod (premium)', 'Hardwood Mulch', 'Live Oak (30gal)', 'Hunter MP Rotator'],
+    },
+    'Thompson Pool Deck': {
+      'Pool Deck': ['Austin Cream Limestone', '#57 Limestone Gravel'],
+      'Landscape Ring': ['Hardwood Mulch', 'Live Oak (30gal)'],
+    },
+  };
+}
+
 // ── Crew ─────────────────────────────────────────────────────────────────────
 
 export function getSampleCrew(): Omit<CrewMember, 'id'>[] {

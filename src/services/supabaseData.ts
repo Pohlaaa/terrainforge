@@ -1228,21 +1228,29 @@ interface SampleIds {
 
 export async function insertSampleData(orgId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { getSampleProjects, getSampleCrew, getSampleEquipment, getSampleMaterials, getSampleTasks } = await import('@/lib/sampleData');
+    const { getSampleProjects, getSampleCrew, getSampleEquipment, getSampleMaterials, getSampleTasks, getSampleZoneMaterials } = await import('@/lib/sampleData');
     const ids: SampleIds = { projects: [], crew: [], equipment: [], materials: [], tasks: [] };
 
-    // Materials first (no deps)
+    // Materials first (no deps) — build name→id lookup for zone_materials
+    const materialNameToId: Record<string, string> = {};
     for (const mat of getSampleMaterials()) {
       const id = crypto.randomUUID();
       const result = await createMaterial(mat, id, orgId);
-      if (result) ids.materials.push(id);
+      if (result) {
+        ids.materials.push(id);
+        materialNameToId[mat.name] = id;
+      }
     }
 
-    // Crew
+    // Crew — build name→id lookup for schedule entries
+    const crewNameToId: Record<string, string> = {};
     for (const member of getSampleCrew()) {
       const id = crypto.randomUUID();
       const result = await createCrewMember(member, id, orgId);
-      if (result) ids.crew.push(id);
+      if (result) {
+        ids.crew.push(id);
+        crewNameToId[member.name] = id;
+      }
     }
 
     // Equipment
@@ -1252,13 +1260,44 @@ export async function insertSampleData(orgId: string): Promise<{ success: boolea
       if (result) ids.equipment.push(id);
     }
 
-    // Projects (with zones)
+    // Projects (with zones) + zone_materials + tasks
     const sampleTasks = getSampleTasks();
+    const zoneMaterialMap = getSampleZoneMaterials();
+
     for (const proj of getSampleProjects()) {
       const id = crypto.randomUUID();
       const result = await createProject(proj, id, orgId);
       if (result) {
         ids.projects.push(id);
+
+        // Fetch the zones that were just created for this project
+        const { data: createdZones } = await supabase
+          .from('zones')
+          .select('id, name')
+          .eq('project_id', id)
+          .eq('org_id', orgId);
+
+        // Create zone_materials linkages
+        const projectZoneMats = zoneMaterialMap[proj.name];
+        if (createdZones && projectZoneMats) {
+          for (const zone of createdZones) {
+            const matNames = projectZoneMats[zone.name];
+            if (matNames) {
+              const insertRows = matNames
+                .map(name => materialNameToId[name])
+                .filter(Boolean)
+                .map(materialId => ({
+                  zone_id: zone.id,
+                  material_id: materialId,
+                  quantity: 1,
+                }));
+              if (insertRows.length > 0) {
+                await supabase.from('zone_materials').insert(insertRows);
+              }
+            }
+          }
+        }
+
         // Insert tasks for this project
         const tasks = sampleTasks[proj.name];
         if (tasks) {
