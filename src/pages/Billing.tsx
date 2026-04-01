@@ -16,6 +16,7 @@ import {
   createPortalSession,
 } from '@/services/stripe';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { toast } from '@/hooks/useToast';
 import type { SubscriptionStatus, SubscriptionTier } from '@/types';
 
 // ── Local types ───────────────────────────────────────────────────────────────
@@ -120,16 +121,38 @@ const Billing: React.FC = () => {
    */
   const orgId = user?.id ?? '';
 
+  // Polling state for webhook processing
+  const [pollingStatus, setPollingStatus] = useState(false);
+
   // ── Handle post-Stripe redirect ────────────────────────────────────────────
 
   useEffect(() => {
     const session = searchParams.get('session');
+    if (!session) return;
+
+    // Strip the param from the URL so a hard-refresh doesn't re-trigger
+    setSearchParams({}, { replace: true });
+
     if (session === 'success') {
-      setCheckoutSuccess(true);
-      // Strip the param from the URL so a hard-refresh doesn't re-show it
-      setSearchParams({}, { replace: true });
-      // Re-fetch org so orgStore (and AppLayout banners) reflect the new status
-      if (orgId) fetchOrg(orgId);
+      setPollingStatus(true);
+      // Poll for webhook to update subscription status (async, may take a few seconds)
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        if (orgId) await fetchOrg(orgId);
+        const currentStatus = useOrgStore.getState().org?.subscriptionStatus;
+        if (currentStatus === 'active' || attempts >= 8) {
+          clearInterval(poll);
+          setPollingStatus(false);
+          setCheckoutSuccess(true);
+          toast.success('Welcome aboard!', 'Your subscription is active.');
+        }
+      }, 2000);
+      return () => clearInterval(poll);
+    }
+
+    if (session === 'cancel') {
+      toast.info('Checkout canceled', 'You can subscribe anytime from Settings → Billing.');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -256,8 +279,18 @@ const Billing: React.FC = () => {
 
       {/* ── Banners ─────────────────────────────────────────────────────────── */}
 
+      {/* Polling for webhook */}
+      {pollingStatus && (
+        <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[rgba(37,99,235,.08)] border border-[rgba(37,99,235,.3)] flex items-center gap-[12px]">
+          <div className="animate-spin text-[18px] flex-shrink-0">⌛</div>
+          <div className="text-[13px] font-[600] text-[var(--status-blue)]">
+            Processing your subscription…
+          </div>
+        </div>
+      )}
+
       {/* Checkout success */}
-      {checkoutSuccess && (
+      {checkoutSuccess && !pollingStatus && (
         <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[rgba(116,198,157,.1)] border border-[rgba(116,198,157,.4)] flex items-center justify-between gap-[12px]">
           <div className="flex items-center gap-[12px]">
             <span className="text-[18px] flex-shrink-0">✅</span>
