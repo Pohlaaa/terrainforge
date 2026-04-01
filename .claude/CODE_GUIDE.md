@@ -1,114 +1,128 @@
 # TerrainForge — Claude Code Guide
 
-> **For Claude Code sessions in VSCode.** Code owns the full sprint lifecycle: planning, execution, testing support, and documentation updates.
-> Last updated: 2026-03-30 (consolidated from CODE_GUIDE + EXECUTION)
+> **For Claude Code sessions in VSCode.** Code owns sprint execution: implement, self-verify, build, commit, PR.
+> Code does NOT plan sprints — Cowork prepares all sprint prompts in advance.
+> Last updated: 2026-03-31 (batch execution model — chain sprints on one branch)
 
 ---
 
 ## Your Role
 
-You are the primary development environment for TerrainForge. You handle:
-- **Sprint planning**: Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md, DATA_MODEL_M1.5.md → write SPRINT_[N]_PROMPTS.md
-- **Migration authoring**: Write SQL files in `supabase/migrations/` (NEVER inline SQL in markdown)
-- **Sprint execution**: Branch, implement, build, commit, PR
-- **Hotfix writing + execution**: When tests fail, write and run the fix
-- **Doc updates**: Update CONTEXT.md and ORCHESTRATOR.md after sprints
-- **Post-sprint support**: Provide Charlie with the merge/build/test command block
+You execute pre-planned sprints. You do not plan them. Your inputs:
+1. `CONTEXT.md` — current project state, Supabase rules, what's working
+2. This file (`CODE_GUIDE.md`) — execution rules
+3. `SPRINT_[N]_PROMPTS.md` — the specific tasks to implement
 
-Cowork (the Anthropic desktop app) is only used for strategic/business work — NOT for sprint planning or coordination.
+That's it. You do NOT need to read ORCHESTRATOR.md, ROADMAP.md, or CONSIDERATIONS.md unless the sprint prompt explicitly references them.
 
 ---
 
-## Context Files
+## Sprint Execution (Batch Model)
 
-### For Planning
-1. `ORCHESTRATOR.md` — full project knowledge base, Supabase rules, session model
-2. `ROADMAP.md` — milestone plan, what to build next
-3. `CONTEXT.md` — current state, open bugs, git state
-4. `CONSIDERATIONS.md` — backlog items, design decisions
-
-### For Execution
-1. This file (`CODE_GUIDE.md`) — execution workflow
-2. `SPRINT_[N]_PROMPTS.md` — sprint tasks (the actual work)
-3. `DESIGN_SYSTEM.md` — if the sprint involves visual changes
-4. `TESTING/FINDINGS.md` — open bugs and known issues
-5. `business/AI_PRODUCT.md` — if the sprint involves AI features
-
----
-
-## Sprint Lifecycle (Complete Workflow)
+Code executes **all sprints in a batch** on a single branch before stopping. Charlie merges and tests the whole batch in one evening session.
 
 Charlie executes steps marked **(C)**. Claude Code handles **(CC)**.
 
-### Phase A: Plan (CC)
-1. Read ROADMAP.md, CONTEXT.md, CONSIDERATIONS.md, ORCHESTRATOR.md, DATA_MODEL_M1.5.md
-2. Write SPRINT_[N]_PROMPTS.md with all tasks, types, file paths, and test section
-3. Write SQL migration file in `supabase/migrations/` if sprint adds DB features
-4. Update CONTEXT.md with sprint status
-5. Tell Charlie: "Sprint [N] is planned. Run migration [NNN] in Supabase SQL Editor, then tell me to execute."
+### Phase A: Pre-Flight (C)
+1. Check each sprint prompt in the batch for a **SQL migrations** line in the header
+2. If any sprint lists a migration: open the file from `supabase/migrations/`, copy the SQL, run it in Supabase SQL Editor
+3. Kick off Code with: `Read .claude/CODE_GUIDE.md, then execute SPRINT_[N] through SPRINT_[M] in sequence.`
 
-### Phase B: Pre-Flight (C)
-1. Run SQL migration in Supabase SQL Editor if sprint has one
-2. Tell Code to execute
+**Current batch (Sprints 38-40) requires**:
+- `supabase/migrations/012_trial_columns.sql` — run in Supabase SQL Editor before starting
 
-### Phase C: Execute (CC)
-1. Read this file + SPRINT_[N]_PROMPTS.md
-2. Create branch, implement all tasks, build, commit per task, push, create PR
-3. Charlie should NOT interact with Code during execution
+### Phase B: Execute Batch (CC)
+1. Read this file
+2. Create ONE branch for the entire batch: `batch-sprint-[N]-to-[M]`
+3. **For each sprint in the batch**:
+   a. Read SPRINT_[N]_PROMPTS.md
+   b. For each task in that sprint:
+      - Read all target files + referenced components before writing anything
+      - Implement changes
+      - Run `npm run build` — fix TypeScript errors before proceeding
+      - **Self-verify** — see Self-Verification Protocol below
+      - Commit: `S[sprint]-[task]: [description]`
+   c. After all tasks in this sprint: run that sprint's regression checklist
+   d. Run `npm run build` — confirm clean before moving to next sprint
+   e. Commit: `S[sprint]: sprint complete, build passing`
+   f. **Continue immediately to the next sprint in the batch** — do NOT stop, do NOT create a PR, do NOT wait for Charlie
+4. After ALL sprints in the batch are complete:
+   a. Run the FINAL sprint's regression checklist (it covers the most ground)
+   b. Push branch
+   c. Create ONE PR covering all sprints: `"C:\Program Files\GitHub CLI\gh.exe" pr create --base main --head batch-sprint-[N]-to-[M] --title "Batch: Sprints [N]-[M]" --body "[summary of all sprints completed]"`
+   d. Update CONTEXT.md with all sprint results
+   e. Move all sprint prompts to archive: `git mv .claude/SPRINT_[N]_PROMPTS.md .claude/archive/sprints/` (for each sprint)
 
-### Phase D: Merge + Test (C)
-Charlie pastes the post-sprint command block (provided by Code with branch name filled in):
+### Phase C: Merge + Test (C)
+Charlie pastes the post-sprint command block:
 ```powershell
 cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
 git checkout main
-git merge [branch]
+git merge batch-sprint-[N]-to-[M]
 git push origin main
-git branch -d [branch]
+git branch -d batch-sprint-[N]-to-[M]
 npm run build
 npm run dev
 ```
-Then: open `http://localhost:3000` in incognito, run test checklist, report PASS / PARTIAL / FAIL.
+Then: open `http://localhost:3000` in incognito, run each sprint's test checklist, report PASS / PARTIAL / FAIL.
 
-### Phase E: Fix if Needed (CC)
-If PARTIAL or FAIL: write SPRINT_[N]_5_HOTFIX.md, execute it, provide new merge block. Repeat until PASS.
+### Phase D: Fix if Needed (CC)
+If PARTIAL or FAIL: Code writes a hotfix on the same batch branch, pushes, Charlie re-merges.
 
-### Phase F: Wrap Up (CC + C)
-1. (CC) Update CONTEXT.md with sprint results
-2. (CC) **Remind Charlie**: "Sprint [N] passed. Please update `.claude/SPRINT_LOG.md` with your testing impressions — what felt right, what felt off, and anything you discovered you need."
-3. (C) Update SPRINT_LOG.md with sprint entry (~2 min)
-4. (C) Commit .claude/ docs: `git add .claude/ supabase/migrations/ CLAUDE.md && git commit -m "docs: add Sprint [N] orchestration files" && git push origin main`
+### Phase E: Wrap Up (C)
+1. Update SPRINT_LOG.md for each sprint in the batch (~2 min per sprint)
+2. Commit docs: `git add .claude/ && git commit -m "docs: Batch [N]-[M] wrap-up" && git push origin main`
+
+### Single-Sprint Mode
+If Charlie kicks off only ONE sprint, Code still follows the same flow — the batch just contains one sprint. Branch name: `sprint-[N]-[description]` (not batch prefix).
+
+### Key Batch Rules
+- **Never stop between sprints** — the whole point is autonomous execution
+- **Each sprint builds on the previous** — Code is working on the same branch, so Sprint N+1 has access to all code from Sprint N
+- **If `npm run build` fails between sprints**, fix it before continuing — do not start the next sprint with a broken build
+- **Migrations**: Charlie runs all SQL migrations in Pre-Flight before the batch starts. If a sprint prompt includes a migration file task, the file already exists in `supabase/migrations/` — do NOT recreate it, but DO verify it exists. The migration has already been applied to the database.
 
 ---
 
-## Per-Task Execution Cycle
+## Self-Verification Protocol
 
-1. **Read** the task from the sprint prompt file
-2. **Read** all target files + referenced components/stores before writing anything
-3. **Implement** changes across all specified files
-4. **Build** — `npm run build`. Fix TypeScript errors before proceeding.
-5. **Commit** — format: `S[sprint]-[task]: [description]`
-6. **Next task** — repeat until all tasks complete
-7. **PR** — create one PR for the entire sprint branch
+**This is mandatory.** After each task AND after all tasks are complete, verify your work.
 
-### Git Workflow
-```bash
-git checkout -b sprint-[N]-[description]
-# ... implement all tasks, committing each ...
-git push origin sprint-[N]-[description]
-"C:\Program Files\GitHub CLI\gh.exe" pr create --base main --head sprint-[N]-[description] --title "Sprint [N]: [theme]" --body "[summary]"
-```
+### Per-Task Verification
+After implementing each task, before committing:
+1. Run `npm run build` — must pass clean
+2. Check the sprint prompt's **Self-verification** section for that task
+3. If the task modifies a page component, verify the import chain compiles (no missing exports, no circular deps)
+4. If the task modifies supabaseData.ts, verify the function signature matches all call sites
 
-### Error Recovery
-- `npm run build` fails → fix TypeScript errors, rebuild, commit the fix
-- PR merge conflicts → rebase onto main, resolve, push
-- Supabase query fails at runtime → check RLS policies first, then CHECK constraints, then column mappings
-- Never skip a failing build
+### End-of-Sprint Verification
+After all tasks are committed, before creating PR:
+1. Run `npm run build` one final time
+2. Run through the **Regression Checklist** from the sprint prompt
+3. Search for any `console.log` statements you added during debugging — remove them
+4. Verify no files outside the sprint scope were accidentally modified (`git diff --stat`)
+
+### What Self-Verification Does NOT Include
+- You do NOT run `npm run dev` or start a dev server
+- You do NOT test in a browser (Charlie does this)
+- You DO verify everything that can be checked statically
+
+---
+
+## Git Conventions
+
+- Batch branches: `batch-sprint-[N]-to-[M]` (or `sprint-N-description` for single sprints)
+- One commit per task: `S[sprint]-[task]: [description]`
+- One checkpoint commit per sprint: `S[sprint]: sprint complete, build passing`
+- PR covers the entire batch: `"C:\Program Files\GitHub CLI\gh.exe" pr create --base main --head batch-sprint-[N]-to-[M] --title "Batch: Sprints [N]-[M]" --body "[summary of all sprints]"`
+- Push to prod: `git push origin HEAD:main` (Netlify watches `main`)
+- GitHub has BOTH `main` and `master` — always use `main`
 
 ---
 
 ## Code Standards
 
-> Full architecture rules, naming conventions, and "What NOT to Do" are in `CLAUDE.md` at project root. This section covers execution-specific standards only.
+> Full architecture rules, naming conventions, and "What NOT to Do" are in `CLAUDE.md` at project root.
 
 ### TypeScript
 - No `any` types — use interfaces from `src/types/index.ts`
@@ -118,7 +132,7 @@ git push origin sprint-[N]-[description]
 ### Supabase
 - ALL writes go through `src/services/supabaseData.ts`
 - Always include `org_id` on inserts and fetches
-- Use `onSupabaseError()` for error reporting (wired to toast notifications)
+- Use `onSupabaseError()` for error reporting
 - Field mapping: frontend camelCase ↔ DB snake_case via `toSnakeCase()`/`toCamelCase()`
 - Special mappings: `totalArea` → `total_area_sqft`, `area` → `area_sqft`, `perimeter` → `perimeter_lnft`
 - Send NULL (not 0) for optional numeric fields with CHECK constraints
@@ -127,7 +141,8 @@ git push origin sprint-[N]-[description]
 ### Styling
 - CSS custom properties only: `var(--brand-primary)`, `var(--surface-card)`, etc.
 - Tailwind for layout utilities
-- Design tokens defined in `DESIGN_SYSTEM.md`
+- Design tokens in `DESIGN_SYSTEM.md`
+- All pages MUST use the shared `PageHeader` component
 - Respect `prefers-reduced-motion` for all animations
 
 ### RLS Policy Reference
@@ -150,8 +165,7 @@ git push origin sprint-[N]-[description]
 - Each migration is idempotent (`IF NOT EXISTS`, `DROP IF EXISTS + CREATE`)
 - Include RLS policies and CHECK constraints in the same migration
 - NEVER use Postgres ENUM types — always TEXT + CHECK
-- Sprint prompt docs REFERENCE the file — never embed SQL inline in markdown
-- Charlie runs migrations manually in Supabase SQL Editor BEFORE testing
+- Sprint prompts REFERENCE the migration file — never embed SQL inline
 
 ---
 
@@ -163,16 +177,17 @@ git push origin sprint-[N]-[description]
 - Don't modify `.env.local` or any secrets file
 - Don't delete files outside `src/` without explicit instruction
 - Don't make product decisions — execute what's in the sprint prompt
+- Don't plan sprints — Cowork does this
 
 ---
 
 ## Key Rules (Learned the Hard Way)
 
-- **Never interact with Claude Code during sprint execution** — causes context breaks and partial commits
-- **Always verify `git status` is clean before starting** — stale locks, phantom branches, and CRLF noise cause cascading failures
+- **Never interact with Claude Code during sprint execution** — causes context breaks
+- **Always verify `git status` is clean before starting**
 - **Close Claude Code sessions before running git commands** — prevents index.lock conflicts
-- **Run SQL migration BEFORE sprint execution** — Code's Supabase CRUD functions will fail otherwise
-- **Build before AND after** — pre-flight catches existing issues, post-merge catches sprint regressions
+- **Run SQL migration BEFORE sprint execution** — CRUD functions will fail otherwise
+- **Build before AND after** — pre-flight catches existing issues, post-merge catches regressions
 - **Use incognito for testing** — Zustand persist middleware caches old state in localStorage
 - **Frontend type values must exactly match DB CHECK constraint values** — mismatches cause silent INSERT failures
-- **Don't add widgets to DEFAULT_WIDGET_LAYOUT without a merge function** — existing users have cached layouts
+- **Don't add widgets to DEFAULT_WIDGET_LAYOUT w

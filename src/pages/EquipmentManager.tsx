@@ -356,18 +356,6 @@ export const EquipmentManager: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
-      {/* ── Callout banner ───────────────────────────────────────────────── */}
-      <div className="border border-[#FB923C] bg-gradient-to-br from-[rgba(251,146,60,.1)] to-[rgba(10,15,10,.9)] rounded-[10px] px-[20px] py-[16px] mb-[16px]">
-        <div className="text-[9px] font-[700] uppercase tracking-[0.12em] text-[#FB923C] mb-[6px]">
-          Equipment Manager
-        </div>
-        <div className="text-[13px] text-[var(--text-2)] leading-[1.7]">
-          Track every piece of equipment — status, assignments, maintenance history,
-          and certifications. When you start a project the AI will recommend which
-          machines to deploy based on zone types and availability.
-        </div>
-      </div>
-
       {/* ── Stats bar ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-[12px] mb-[16px]">
         {[

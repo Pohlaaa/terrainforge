@@ -21,6 +21,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { AddressInput } from '@/components/shared/AddressInput';
 import type { AddressSuggestion } from '@/hooks/useAddressAutocomplete';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
@@ -1037,20 +1038,13 @@ export const Projects: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
-      {/* Toolbar */}
-      <div className="flex items-center justify-between mb-[20px]">
-        <div className="text-[13px] text-[var(--text-3)]">
-          {projects.length} project{projects.length !== 1 ? 's' : ''}
-        </div>
-        <div className="flex items-center gap-[8px]">
-          <Button variant="secondary" size="sm" onClick={() => setShowNewModal(true)}>
-            Quick Create
-          </Button>
-          <Button variant="primary" onClick={() => navigate('/projects/wizard')}>
-            + New Project
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Projects"
+        subtitle={`${projects.length} project${projects.length !== 1 ? 's' : ''}`}
+        actions={[
+          { label: '+ New Project', onClick: () => navigate('/projects/wizard'), variant: 'primary' },
+        ]}
+      />
 
       {/* Empty state */}
       {projects.length === 0 ? (

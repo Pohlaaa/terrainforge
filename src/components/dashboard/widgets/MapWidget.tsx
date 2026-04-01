@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { Project } from '@/types';
 import { useMapbox } from '@/hooks/useMapbox';
-import { useProjectStore } from '@/stores/projectStore';
 import { useNavigate } from 'react-router-dom';
 
 interface MapWidgetProps {
@@ -18,7 +17,6 @@ const STATUS_LEGEND = [
 export const MapWidget: React.FC<MapWidgetProps> = ({ projects }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { setActiveProject } = useProjectStore();
   const [satellite, setSatellite] = useState(false);
 
   const { loaded, error } = useMapbox({
@@ -26,8 +24,7 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ projects }) => {
     projects,
     satelliteMode: satellite,
     onProjectClick: (projectId) => {
-      setActiveProject(projectId);
-      navigate('/projects');
+      navigate(`/projects/${projectId}`);
     },
   });
 

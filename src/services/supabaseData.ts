@@ -1297,8 +1297,6 @@ export async function diagnoseUserRole(): Promise<void> {
       return;
     }
 
-    console.log('[TF-DIAG] User roles:', memberships);
-
     if (memberships && memberships.length > 0) {
       const hasAdmin = memberships.some((m: any) => m.role === 'admin');
       const hasForeman = memberships.some((m: any) => m.role === 'foreman');

@@ -122,7 +122,6 @@ export const useOrgStore = create<OrgStore>()(
                 console.error('fetchOrg: org INSERT failed', insertError)
                 set({ org: makeDefaultOrg(orgId), isLoading: false })
               } else {
-                if (import.meta.env.DEV) console.log('fetchOrg: org INSERT succeeded, id =', newOrg.id)
                 // Bug 2 fix: create organization_members row so RLS policies pass
                 const { error: memberError } = await supabase
                   .from('organization_members')

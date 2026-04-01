@@ -54,4 +54,24 @@
 **Discovered I need**: Nothing new
 **Notes**: Contractor likes the progress being made on the design
 
-**Cowork notes (Batch 3 summary)**: Sprint 33 shipped the full project dashboard at `/projects/:id` with 5 tabs: Overview (KPI strip, active phase, recent tasks, site conditions, schedule), Tasks (phase-grouped with status toggling), Budget (cost breakdown, margin guidance, quote vs. cost visualization), Resources (crew, subs, equipment, zones), Compliance (permits, inspections, HOA, access logistics). Dashboard is read-only except task status toggling. Two issues flagged: (1) AI badges not rendering on tasks, (2) no materials tracking section. Contractor positive on design direction.
+**Cowork notes (Batch 3 summary)**: Sprint 33 shipped the full project dashboard. Two issues flagged: AI badges not rendering, no materials tracking. Both addressed in Sprint 34.
+
+---
+
+## Batch 4: Sprints 34-36 — M1.5b Complete + M2 Complete (processed 2026-03-31)
+
+### Sprint 34 — 3/30/26
+**Shipped**: Materials tab, AI badge fix, inline budget editing, task CRUD, permit editing, subcontractor editing
+**Notes**: M1.5b dashboard now fully editable across all 6 tabs.
+
+### Sprint 35 — 3/31/26
+**Shipped**: Settings page (6 sections), production readiness pass, UI consistency
+**Felt right**: Some attempts to make UI consistent
+**Felt off**: Settings input bug (1 char at a time), billing portal doesn't open to Stripe, Equipment/Crew have legacy headers, Materials/Projects missing PageHeader, map doesn't route to dashboard, projects can't be deleted
+**Discovered I need**: Materials page improvements (entry cut off)
+
+### Sprint 36 — 3/31/26
+**Shipped**: Bug fix & UI consistency pass — all Sprint 35 issues
+**Notes**: All Sprint 35 bugs resolved. M2 gate fully met.
+
+**Cowork notes (Batch 4 summary)**: Sprints 34-36 closed out both M1.5b and M2. Sprint 34 made the dashboard fully editable. Sprint 35 shipped the Settings page (last M2 item) but introduced several UI bugs. Sprint 36 was a comprehensive bug fix sprint covering Settings input, PageHeader consistency, map routing, project deletion, and full UI audit. Post-batch assessment identified three key process improvements: (1) add self-verification to sprint prompts, (2) reduce Code's pre-sprint reading from 1,400 to 500 lines, (3) persist every sprint prompt file. Full restructure executed: archived DATA_MODEL_M1.5.md and old sprint prompts, cleaned CONSIDERATIONS.md, streamlined ORCHESTRATOR.md, updated SPRINT_TEMPLATE.md and CODE_GUIDE.md with self-verification protocol. M3 sprint prompts batch-prepared.

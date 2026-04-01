@@ -13,6 +13,7 @@ import { TabPanel } from '@/components/shared/TabPanel';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SearchFilter } from '@/components/shared/SearchFilter';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { EmptyState, MaterialsIcon } from '@/components/shared/EmptyState';
 
@@ -406,6 +407,7 @@ export const MaterialLibrary: React.FC = () => {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="h-full flex flex-col">
+      <PageHeader title="Materials" subtitle="Manage your material library, costs, and suppliers." />
       {error && (
         <div className="mb-[16px]">
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />

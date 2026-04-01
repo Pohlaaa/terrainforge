@@ -18,6 +18,7 @@ import { updateSelectedKpis, updateWidgetLayout } from '@/services/preferences';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
 import { HelpIcon } from '@/components/shared/Tooltip';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { insertSampleData } from '@/services/supabaseData';
 import type { AppState } from '@/types';
 
@@ -500,35 +501,10 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div>
-      {/* ── Compact Greeting (v7) ────────────────────────────────────────── */}
-      <div
-        className="flex items-center justify-between gap-3 -mx-3 -mt-2 sm:-mx-4 sm:-mt-3 lg:-mx-6 lg:-mt-4 px-4 lg:px-6"
-        style={{
-          paddingTop: '14px',
-          paddingBottom: '14px',
-          background: 'var(--surface-card)',
-          borderBottom: '1px solid var(--border-default)',
-        }}
-      >
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            Good {greetingWord}{userName ? `, ${userName}` : ''}
-          </h2>
-          {projects.length > 0 && (
-            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-              <strong style={{ color: 'var(--brand-primary)' }}>{activeCount}</strong> projects
-              {' · '}
-              <strong style={{ color: 'var(--brand-primary)' }}>${totalValueK}K</strong> value
-              {needingAttentionCount > 0 && (
-                <>
-                  {' · '}
-                  <strong style={{ color: 'var(--status-amber)' }}>{needingAttentionCount}</strong> need attention
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title={`Good ${greetingWord}${userName ? `, ${userName}` : ''}`}
+        subtitle={projects.length > 0 ? `${activeCount} projects · $${totalValueK}K value${needingAttentionCount > 0 ? ` · ${needingAttentionCount} need attention` : ''}` : undefined}
+      />
 
       {error && (
         <div className="mt-3 mb-2">

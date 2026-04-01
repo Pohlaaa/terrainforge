@@ -210,7 +210,7 @@ export const Settings: React.FC = () => {
     try {
       await createPortalSession(org.id)
     } catch {
-      toast.error('Unable to open billing portal. Please try again.')
+      toast.error('Stripe billing portal is not configured yet. This will be available once billing is set up.')
       setPortalLoading(false)
     }
   }
@@ -539,12 +539,12 @@ export const Settings: React.FC = () => {
 
       {/* Content area */}
       <div className="flex-1 overflow-y-auto px-6 py-6 max-w-[640px]">
-        {activeSection === 'profile' && <ProfileSection />}
-        {activeSection === 'company' && <CompanySection />}
-        {activeSection === 'preferences' && <PreferencesSection />}
-        {activeSection === 'notifications' && <NotificationsSection />}
-        {activeSection === 'billing' && <BillingSection />}
-        {activeSection === 'danger' && <DangerZoneSection />}
+        {activeSection === 'profile' && ProfileSection()}
+        {activeSection === 'company' && CompanySection()}
+        {activeSection === 'preferences' && PreferencesSection()}
+        {activeSection === 'notifications' && NotificationsSection()}
+        {activeSection === 'billing' && BillingSection()}
+        {activeSection === 'danger' && DangerZoneSection()}
       </div>
 
       <ConfirmDialog

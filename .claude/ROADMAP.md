@@ -3,7 +3,7 @@
 > **Purpose**: Replaces the old Phase 1-4 model. Milestones are outcome-driven with clear gates.
 > **Created**: 2026-03-29
 > **Owner**: Charlie (Business Systems Analyst II)
-> **Last updated**: 2026-03-30 (M1.5 Project Intelligence added)
+> **Last updated**: 2026-03-31 (M2 complete, M3 sprint prompts 37-40 prepared)
 
 ---
 
@@ -68,12 +68,9 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 - [x] **Welcome banner** — First-time user banner, auto-hides after 3 visits. **DONE Sprint 27.**
 - [x] **Billing banners** — Trial/past-due banners in AppLayout. **DONE Sprint 27.**
 
-**What's remaining**:
-- [ ] **Settings page completion** — Profile, company info, notification preferences.
-
 **Gate**: A contractor completes signup-to-first-project in under 5 minutes without any external help.
 
-**Status**: **NEAR COMPLETE** (Sprints 26-27). Settings page is the one remaining item.
+**Status**: **COMPLETE** (Sprints 26-27, Settings page completed in Sprint 35, bug fixes in Sprint 36).
 
 ---
 
@@ -268,10 +265,14 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 31 | M1.5a | Wizard UI Steps 4-7 — resources, budget, compliance, review + route integration + Quick Create demotion (**COMPLETE**) |
 | 32 | Bridge | AI wizard integration (task gen, site inference), step reorder, equipment dropdown, auto-calc costs, permit UX (**COMPLETE**) |
 | 33 | M1.5b | Project dashboard — `/projects/:id` with Overview, Tasks, Budget, Resources, Compliance tabs (**COMPLETE**) |
-| 34 | M1.5b | Materials tab, AI badge fix, inline budget editing, dashboard edit capabilities |
-| 35 | M2/Pre-M3 | Settings page (last M2 item), final polish pass, Netlify deploy prep |
-| 36-37 | M3 | Stripe completion, landing page, trial flow, outreach |
-| 38+ | M4 | Time tracking, client portal, CSV, invoicing, crew app enhancements |
+| 34 | M1.5b | Materials tab, AI badge fix, inline budget editing, dashboard edit capabilities (**COMPLETE**) |
+| 35 | M2/Pre-M3 | Settings page (last M2 item), production readiness, UI consistency (**COMPLETE**) |
+| 36 | Bug Fix | Settings input fix, PageHeaders, map routing, project deletion, UI audit (**COMPLETE**) |
+| 37 | M3 | Landing page + Netlify production deploy |
+| 38 | M3 | Subscription enforcement + billing UI |
+| 39 | M3 | Trial experience (14-day flow, banner, read-only downgrade) |
+| 40 | M3 | Launch readiness + signup polish |
+| 41+ | M4 | Time tracking, client portal, CSV, invoicing, crew app enhancements |
 
 *Sprint numbers are estimates. Actual scope depends on sprint outcomes and user feedback.*
 

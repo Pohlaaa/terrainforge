@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState, CrewIcon } from '@/components/shared/EmptyState';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -227,31 +228,13 @@ export const CrewManager: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
-      {/* ── Callout banner ───────────────────────────────────────────────── */}
-      <div className="border border-[var(--teal-l)] bg-gradient-to-br from-[rgba(13,148,136,.12)] to-[rgba(10,15,10,.9)] rounded-[10px] px-[20px] py-[16px] mb-[16px]">
-        <div className="text-[9px] font-[700] uppercase tracking-[0.12em] text-[var(--teal-l)] mb-[6px]">
-          Crew Manager
-        </div>
-        <div className="text-[13px] text-[var(--text-2)] leading-[1.7]">
-          Add crew members with their <strong>skills, roles, and weekly availability</strong>.
-          When you open a project, the AI will recommend the best crew assignments based
-          on zone requirements and who's available.
-        </div>
-      </div>
-
-      {/* ── Toolbar ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-[8px] mb-[16px] flex-wrap">
-        <Button variant="primary" onClick={openAdd}>+ Add Crew Member</Button>
-        <Button variant="outline" disabled title="AI crew recommendations coming in Phase 3">⚡ Recommend Crew for Active Project</Button>
-        <div className="ml-auto flex gap-[16px] text-[12px] text-[var(--text-3)]">
-          <span>
-            <span className="font-[700] text-[var(--text)]">{crew.length}</span> total
-          </span>
-          <span>
-            <span className="font-[700] text-[var(--green-l)]">{availableTodayCount}</span> available today
-          </span>
-        </div>
-      </div>
+      <PageHeader
+        title="Crew"
+        subtitle={`${crew.length} members · ${availableTodayCount} available today`}
+        actions={[
+          { label: '+ Add Crew Member', onClick: openAdd, variant: 'primary' },
+        ]}
+      />
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}
       {crew.length === 0 && (

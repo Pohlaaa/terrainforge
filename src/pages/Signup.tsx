@@ -1,8 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 
 export const Signup: React.FC = () => {
+  const { user, signUp } = useAuth()
+  const navigate = useNavigate()
+
+  // Redirect authenticated users away from signup
+  useEffect(() => {
+    if (user) navigate('/', { replace: true })
+  }, [user, navigate])
+
   const [fullName, setFullName] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [email, setEmail] = useState('')
@@ -11,9 +19,6 @@ export const Signup: React.FC = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
-  const { signUp } = useAuth()
-
   const validateForm = (): boolean => {
     if (!fullName.trim()) {
       setError('Full name is required')

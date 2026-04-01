@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/shared/Badge';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { toast } from '@/hooks/useToast';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
@@ -83,6 +85,8 @@ export default function ProjectDashboard() {
   const [zoneMaterials, setZoneMaterials] = useState<ZoneMaterialDetail[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const project = useMemo(
     () => projects.find((p) => p.id === id) ?? null,
@@ -313,6 +317,21 @@ export default function ProjectDashboard() {
     });
   };
 
+  // Delete project handler
+  const handleDeleteProject = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await useProjectStore.getState().deleteProject(id);
+      toast.info('Project deleted');
+      navigate('/projects');
+    } catch {
+      toast.error('Failed to delete project');
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   // Schedule entries for this project
   const projectSchedule = useMemo(
     () => scheduleEntries.filter((e) => e.projectId === id),
@@ -374,15 +393,25 @@ export default function ProjectDashboard() {
             </div>
           </div>
 
-          {/* Progress indicator */}
-          {tasks.length > 0 && (
-            <div className="text-right">
-              <div className="text-[20px] font-[700] text-[var(--text)]">{taskProgress}%</div>
-              <div className="text-[11px] text-[var(--text-4)]">
-                {tasks.filter((t) => t.status === 'completed').length}/{tasks.length} tasks
+          <div className="flex items-center gap-[12px]">
+            {/* Progress indicator */}
+            {tasks.length > 0 && (
+              <div className="text-right">
+                <div className="text-[20px] font-[700] text-[var(--text)]">{taskProgress}%</div>
+                <div className="text-[11px] text-[var(--text-4)]">
+                  {tasks.filter((t) => t.status === 'completed').length}/{tasks.length} tasks
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            {/* Delete button */}
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              Delete
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -477,6 +506,16 @@ export default function ProjectDashboard() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${project.name}"? All tasks, permits, subcontractors, and other project data will be permanently removed. This cannot be undone.`}
+        confirmText="Delete Project"
+        confirmVariant="danger"
+        onConfirm={handleDeleteProject}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
