@@ -265,6 +265,15 @@ export const ManifestEngine: React.FC = () => {
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}
+      {/* ── Back to project list ────────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={() => setActiveProject(null)}
+        className="text-[12px] text-[var(--text-3)] hover:text-[var(--text)] bg-transparent border-none cursor-pointer p-0 mb-[12px] flex items-center gap-[4px]"
+      >
+        ← Back to Manifest Projects
+      </button>
+
       {/* ── Top bar: selector + view toggle ──────────────────────────────── */}
       <div className="flex items-end gap-[16px] mb-[20px] flex-wrap">
         <div className="flex-1 min-w-[260px]">
