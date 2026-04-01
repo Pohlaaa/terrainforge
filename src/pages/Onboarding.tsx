@@ -5,7 +5,6 @@ import { useOrgStore } from '@/stores/orgStore'
 import { callClaude } from '@/services/anthropic'
 import { fetchUserPreferences, upsertUserPreferences } from '@/services/preferences'
 import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 
 const BUSINESS_TYPES = [
@@ -87,7 +86,6 @@ const Onboarding: React.FC = () => {
 
   const [step, setStep] = useState(1)
   const [businessType, setBusinessType] = useState<string | null>(null)
-  const [companyName, setCompanyName] = useState('')
   const [teamSize, setTeamSize] = useState<string | null>(null)
   const [role, setRole] = useState('')
   const [priorities, setPriorities] = useState<string[]>([])
@@ -150,7 +148,6 @@ Return only valid JSON, no markdown.`, 'claude-haiku-4-5-20251001')
           .filter((v, i, a) => a.indexOf(v) === i); // deduplicate
         await upsertUserPreferences(user.id, org.id, {
           businessType,
-          companyName,
           teamSize,
           userRole: role,
           priorities,
@@ -258,12 +255,6 @@ Return only valid JSON, no markdown.`, 'claude-haiku-4-5-20251001')
               We'll personalise your experience
             </p>
             <div className="space-y-5">
-              <Input
-                label="Company name"
-                placeholder="e.g., Green Valley Landscaping"
-                value={companyName}
-                onChange={e => setCompanyName(e.target.value)}
-              />
               <div>
                 <div className="text-[11px] font-[700] text-[var(--text-3)] uppercase tracking-[0.04em] mb-2">
                   Team size
