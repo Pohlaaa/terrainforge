@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
@@ -14,7 +14,7 @@ import { WidgetGrid } from '@/components/dashboard/WidgetGrid';
 import { useCountUp } from '@/hooks/useCountUp';
 import { toast } from '@/hooks/useToast';
 import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS, DEFAULT_WIDGET_LAYOUT } from '@/lib/kpiDefinitions';
-import { fetchUserPreferences, updateSelectedKpis, updateWidgetLayout } from '@/services/preferences';
+import { fetchUserPreferences, updateSelectedKpis } from '@/services/preferences';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
 import { HelpIcon } from '@/components/shared/Tooltip';
@@ -34,25 +34,6 @@ const PRIORITY_TO_KPI: Record<string, string> = {
   'Invoicing': 'pipeline_value',
   'Weather Planning': 'active_projects',
 };
-
-// Track which user's layout has been loaded this session (survives component unmount/remount)
-let layoutLoadedForUser: string | null = null;
-export function resetLayoutLoadedGuard() { layoutLoadedForUser = null; }
-
-// Debounce helper for Supabase layout writes
-function useDebouncedCallback<T extends unknown[]>(
-  fn: (...args: T) => void,
-  delay: number,
-): (...args: T) => void {
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  return useCallback(
-    (...args: T) => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => fn(...args), delay);
-    },
-    [fn, delay],
-  );
-}
 
 // Generate mock sparkline data (7 points, slight upward trend)
 function getMockSparklinePoints(width = 100, height = 32): string {
@@ -357,55 +338,8 @@ export const Dashboard: React.FC = () => {
 
   const appState: AppState = { projects, crew, equipment, materials };
 
-  // Load widget layout from Supabase on user login/switch — prevents cross-user leakage
-  // Module-level guard (survives component unmount/remount during page navigation)
-  useEffect(() => {
-    if (!user?.id) return;
-    if (layoutLoadedForUser === user.id) return;
-    layoutLoadedForUser = user.id;
-
-    fetchUserPreferences(user.id).then((prefs) => {
-      if (prefs && Array.isArray((prefs as any).widgetLayout) && (prefs as any).widgetLayout.length > 0) {
-        // Map Supabase format → store WidgetConfig format
-        const saved = (prefs as any).widgetLayout as Array<{ widgetId: string; type: string; position: number; visible?: boolean }>;
-        const restored = DEFAULT_WIDGET_LAYOUT.map((def) => {
-          const match = saved.find((s) => s.type === def.type || s.widgetId === def.id);
-          return match
-            ? { ...def, order: match.position, visible: match.visible !== false }
-            : { ...def, visible: false };
-        });
-        restored.sort((a, b) => a.order - b.order);
-        useUIStore.getState().setWidgetLayout(restored);
-      }
-      // If no Supabase record: keep current store state (from localStorage persist or DEFAULT_WIDGET_LAYOUT)
-      // Do NOT call resetWidgetLayout() here — it destroys the working localStorage layout
-    });
-  }, [user?.id]);
-
-  // Debounced Supabase layout write — reads layout from store to avoid stale closure
-  const debouncedSaveLayout = useDebouncedCallback(
-    async (userId: string, userOrgId: string) => {
-      const layout = useUIStore.getState().widgetLayout;
-      const serialized = layout.map((w) => ({
-        widgetId: w.id,
-        type: w.type,
-        position: w.order,
-        visible: w.visible,
-      }));
-      try {
-        await updateWidgetLayout(userId, userOrgId, serialized);
-      } catch {
-        // silently ignore
-      }
-    },
-    1000,
-  );
-
   const handleReorder = (fromIndex: number, toIndex: number) => {
     reorderWidgets(fromIndex, toIndex);
-    if (user?.id && orgId) {
-      debouncedSaveLayout(user.id, orgId);
-    }
   };
 
   const handleVisibilityToggle = (widgetId: string) => {
@@ -416,9 +350,6 @@ export const Dashboard: React.FC = () => {
       toast.info('Widget hidden — use Edit Layout to restore');
     } else {
       toast.success('Widget restored');
-    }
-    if (user?.id && orgId) {
-      debouncedSaveLayout(user.id, orgId);
     }
   };
 

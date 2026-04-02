@@ -8,7 +8,7 @@ import { useCrewStore } from '@/stores/crewStore'
 import { useMaterialStore } from '@/stores/materialStore'
 import { useEquipmentStore } from '@/stores/equipmentStore'
 import { useUIStore } from '@/stores/uiStore'
-import { resetLayoutLoadedGuard } from '@/pages/Dashboard'
+
 
 interface AuthContextType {
   user: User | null
@@ -125,7 +125,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Reset widget layout so next user gets defaults (not previous user's layout)
     useUIStore.getState().resetWidgetLayout()
     useUIStore.persist.clearStorage()
-    resetLayoutLoadedGuard()
   }
 
   const resetPassword = async (email: string) => {
