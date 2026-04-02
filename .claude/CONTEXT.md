@@ -5,21 +5,24 @@
 > For milestones and roadmap: read `ROADMAP.md` (Cowork-only for planning)
 > For backlog items: read `CONSIDERATIONS.md` (Cowork-only for planning)
 > For M1.5 data model reference: see `archive/DATA_MODEL_M1.5.md`
-> Last updated: 2026-04-01 (Sprint 44.6 — widget persistence root cause fix, exact code patch)
+> Last updated: 2026-04-01 (Sprint 44.7 — widget persistence simplified, remove Supabase dependency)
 
 ---
 
 ## Current Status
 
 **Active milestone**: M3 "First Revenue" — subscription enforcement, trial flow, launch readiness
-**Last completed**: Sprint 44.6 — Widget layout persistence root cause fix (module-level guard, remove reset fallback, signOut cleanup)
+**Last completed**: Sprint 44.7 — Simplified widget persistence (removed Supabase sync, localStorage only)
 **Milestones complete**: M1, M1.5a, M1.5b, M2
-**Current sprint**: None — awaiting Charlie's test of Sprint 44.6
-**Git state**: PR #107 on sprint-44-6-hotfix. Migrations 001–012 applied. Trial columns + trigger active.
+**Current sprint**: None — awaiting Charlie's test of S44.7
+**Git state**: PR #108 open (sprint-44-7-hotfix). Migrations 001–012 applied. Trial columns + trigger active.
 **SQL migration needed**: None
 
-**Sprint 44.6 results** (pending Charlie's test):
-- S44.6-1: Module-level `layoutLoadedForUser` guard (replaces `useRef` that died on unmount), removed `resetWidgetLayout()` from Supabase fetch else branch, added `useUIStore` cleanup + `resetLayoutLoadedGuard()` to `signOut()`
+**Sprint 44.7 results** (code-verified, pending Charlie test):
+- Removed Supabase widget layout fetch/save from Dashboard entirely
+- Widget layout now persists via Zustand persist (localStorage) only
+- Sign-out clears localStorage (cross-account safe, but layout resets on re-login)
+- Build passes clean
 
 ---
 
