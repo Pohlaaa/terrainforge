@@ -35,6 +35,10 @@ const PRIORITY_TO_KPI: Record<string, string> = {
   'Weather Planning': 'active_projects',
 };
 
+// Track which user's layout has been loaded this session (survives component unmount/remount)
+let layoutLoadedForUser: string | null = null;
+export function resetLayoutLoadedGuard() { layoutLoadedForUser = null; }
+
 // Debounce helper for Supabase layout writes
 function useDebouncedCallback<T extends unknown[]>(
   fn: (...args: T) => void,
@@ -354,12 +358,11 @@ export const Dashboard: React.FC = () => {
   const appState: AppState = { projects, crew, equipment, materials };
 
   // Load widget layout from Supabase on user login/switch — prevents cross-user leakage
-  const lastLayoutUserRef = useRef<string | null>(null);
+  // Module-level guard (survives component unmount/remount during page navigation)
   useEffect(() => {
     if (!user?.id) return;
-    // Only load once per user per session
-    if (lastLayoutUserRef.current === user.id) return;
-    lastLayoutUserRef.current = user.id;
+    if (layoutLoadedForUser === user.id) return;
+    layoutLoadedForUser = user.id;
 
     fetchUserPreferences(user.id).then((prefs) => {
       if (prefs && Array.isArray((prefs as any).widgetLayout) && (prefs as any).widgetLayout.length > 0) {
@@ -373,10 +376,9 @@ export const Dashboard: React.FC = () => {
         });
         restored.sort((a, b) => a.order - b.order);
         useUIStore.getState().setWidgetLayout(restored);
-      } else {
-        // No saved layout — reset to default (clears previous user's cached layout)
-        useUIStore.getState().resetWidgetLayout();
       }
+      // If no Supabase record: keep current store state (from localStorage persist or DEFAULT_WIDGET_LAYOUT)
+      // Do NOT call resetWidgetLayout() here — it destroys the working localStorage layout
     });
   }, [user?.id]);
 
