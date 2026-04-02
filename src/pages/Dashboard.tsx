@@ -382,7 +382,7 @@ export const Dashboard: React.FC = () => {
 
   // Debounced Supabase layout write — reads layout from store to avoid stale closure
   const debouncedSaveLayout = useDebouncedCallback(
-    async (userId: string) => {
+    async (userId: string, userOrgId: string) => {
       const layout = useUIStore.getState().widgetLayout;
       const serialized = layout.map((w) => ({
         widgetId: w.id,
@@ -391,7 +391,7 @@ export const Dashboard: React.FC = () => {
         visible: w.visible,
       }));
       try {
-        await updateWidgetLayout(userId, serialized);
+        await updateWidgetLayout(userId, userOrgId, serialized);
       } catch {
         // silently ignore
       }
@@ -401,8 +401,8 @@ export const Dashboard: React.FC = () => {
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
     reorderWidgets(fromIndex, toIndex);
-    if (user?.id) {
-      debouncedSaveLayout(user.id);
+    if (user?.id && orgId) {
+      debouncedSaveLayout(user.id, orgId);
     }
   };
 
@@ -415,8 +415,8 @@ export const Dashboard: React.FC = () => {
     } else {
       toast.success('Widget restored');
     }
-    if (user?.id) {
-      debouncedSaveLayout(user.id);
+    if (user?.id && orgId) {
+      debouncedSaveLayout(user.id, orgId);
     }
   };
 

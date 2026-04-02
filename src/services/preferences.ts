@@ -72,13 +72,16 @@ export async function updateSelectedKpis(userId: string, kpis: string[]): Promis
 
 export async function updateWidgetLayout(
   userId: string,
+  orgId: string,
   layout: Array<{ widgetId: string; type: string; position: number; visible?: boolean; config?: Record<string, unknown> }>,
 ): Promise<void> {
   try {
     await supabase
       .from('user_preferences')
-      .update({ widget_layout: layout })
-      .eq('user_id', userId)
+      .upsert(
+        { user_id: userId, org_id: orgId, widget_layout: layout },
+        { onConflict: 'user_id' },
+      )
   } catch {
     // silently fail — localStorage already updated
   }
