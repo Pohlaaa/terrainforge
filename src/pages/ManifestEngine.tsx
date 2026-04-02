@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { Skeleton } from '@/components/shared/Skeleton';
@@ -34,8 +35,19 @@ export const ManifestEngine: React.FC = () => {
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
 
-  // Local selected project — isolates ManifestEngine from global activeProjectId
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  // Sync selected project with URL search params so browser back button works
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedProjectId = searchParams.get('project');
+  const setSelectedProjectId = useCallback(
+    (id: string | null) => {
+      if (id) {
+        setSearchParams({ project: id });
+      } else {
+        setSearchParams({});
+      }
+    },
+    [setSearchParams],
+  );
 
   // Track visit for setup checklist
   useEffect(() => {
