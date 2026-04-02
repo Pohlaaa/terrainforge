@@ -5,24 +5,31 @@
 > For milestones and roadmap: read `ROADMAP.md` (Cowork-only for planning)
 > For backlog items: read `CONSIDERATIONS.md` (Cowork-only for planning)
 > For M1.5 data model reference: see `archive/DATA_MODEL_M1.5.md`
-> Last updated: 2026-03-31 (Sprints 38-40 complete — subscription, trial, launch readiness)
+> Last updated: 2026-04-01 (Sprint 43 complete — sample data quality & navigation fixes)
 
 ---
 
 ## Current Status
 
 **Active milestone**: M3 "First Revenue" — subscription enforcement, trial flow, launch readiness
-**Last completed**: Sprint 42 — Sample data & manifest routing fix
+**Last completed**: Sprint 43 — Sample Data Quality & Navigation Fixes
 **Milestones complete**: M1, M1.5a, M1.5b, M2
-**Current sprint**: None — awaiting next sprint plan
-**Git state**: main branch, Sprint 42 PR #103 ready. Migrations 001–012 applied. Trial columns + trigger active.
+**Current sprint**: None (awaiting next sprint prompt)
+**Git state**: PR #104 open. Migrations 001–012 applied. Trial columns + trigger active.
 **SQL migration needed**: None
 
-**Sprint 42 changes**:
-- `insertSampleData` now creates project tasks (8-9 per project) in addition to projects, zones, crew, equipment, materials
-- `clearSampleData` deletes sample tasks before projects for proper cleanup
-- Sample tasks defined in `getSampleTasks()` with realistic landscaping phases
-- Projects page redirects to `/projects/:id` when activeProjectId is set, fixing stale detail view after manifest navigation
+**Sprint 43 changes**:
+- `sanitizeTimestamps()` helper in supabaseData.ts — converts empty strings to null for TIMESTAMPTZ columns
+- `insertSampleData()` now creates zone_materials linkages, schedule entries, and builds name→id lookups
+- `clearSampleData()` deletes schedule entries before other cleanup
+- `getSampleZoneMaterials()` maps each zone to relevant materials for realistic demo
+- `getSampleScheduleEntries()` provides 12 crew schedule entries for the current week
+- `fetchTaskSummaries()` returns task counts per project for card display
+- Project cards now show actual task progress (from project_tasks) instead of checklist progress
+- ResourcesTab equipment section shows zone equipment data instead of project notes
+- ManifestEngine has "Back to Manifest Projects" button
+- Widget layout loaded from Supabase user_preferences on login (prevents cross-user leakage)
+- uiStore has `setWidgetLayout` action
 
 ---
 
@@ -116,5 +123,8 @@ All M1 + M2 + M1.5a + M1.5b features complete and tested:
 | 38 | Subscription & Billing | Bug fixes (login race, sign-out, onboarding skip), subscription types, billing gate, billing page |
 | 39 | Trial Experience | 14-day trial banner, countdown, read-only downgrade on expiry |
 | 40 | Launch Readiness | Signup-to-trial messaging, checkout return handling, env var docs, deploy checklist |
+| 41 | Hotfix | Onboarding fixes — checklist, duplicate name, skip/exit, sign-out redirect |
+| 42 | Sample Data | insertSampleData/clearSampleData implementation, sample tasks, manifest→projects nav fix |
+| 43 | Sample Polish | Timestamp fix, materials/equipment/task display, manifest nav, widget scoping, schedule entries |
 
 Full history: Sprints 1-27 in `
