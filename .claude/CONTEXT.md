@@ -5,24 +5,22 @@
 > For milestones and roadmap: read `ROADMAP.md` (Cowork-only for planning)
 > For backlog items: read `CONSIDERATIONS.md` (Cowork-only for planning)
 > For M1.5 data model reference: see `archive/DATA_MODEL_M1.5.md`
-> Last updated: 2026-04-01 (Sprint 44 complete — all 5 Sprint 43 failures fixed)
+> Last updated: 2026-04-01 (Sprint 44.5 — manifest nav + widget persistence hotfix)
 
 ---
 
 ## Current Status
 
 **Active milestone**: M3 "First Revenue" — subscription enforcement, trial flow, launch readiness
-**Last completed**: Sprint 44 — Hotfix for all 5 Sprint 43 test failures
+**Last completed**: Sprint 44.5 — Manifest nav + widget persistence hotfix (PR #106)
 **Milestones complete**: M1, M1.5a, M1.5b, M2
-**Current sprint**: None — ready for next sprint
-**Git state**: PR #105 open. Migrations 001–012 applied. Trial columns + trigger active.
+**Current sprint**: None — awaiting testing
+**Git state**: PR #106 open. Migrations 001–012 applied. Trial columns + trigger active.
 **SQL migration needed**: None
 
-**Sprint 44 fixes (all 5 Sprint 43 failures resolved)**:
-- S44-1/S44-2: Schedule store now fetches from Supabase on mount + week changes. Equipment assigned to sample schedule entries. Dashboard + Settings refresh schedule store after insert/clear.
-- S44-3: ManifestEngine uses local `selectedProjectId` state instead of global `activeProjectId`. Back button returns to `/manifest` project cards.
-- S44-4: Fixed stale closure bug in `debouncedSaveLayout` — reads current layout from store. Widget visibility included in save/restore cycle.
-- S44-5: `clearSampleData()` now deletes zone_materials before projects/materials, preventing FK constraint failures.
+**Sprint 44.5 fixes**:
+- S44.5-1: ManifestEngine back nav — replaced useState with useSearchParams so project selection syncs with URL (?project=id). Browser back button now returns to /manifest project list.
+- S44.5-2: Widget layout persistence — changed updateWidgetLayout from .update() to .upsert(). Row is created if it doesn't exist (was silently updating 0 rows).
 
 ---
 
