@@ -30,9 +30,12 @@ function fmtQty(n: number): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const ManifestEngine: React.FC = () => {
-  const { projects, activeProjectId, setActiveProject, isLoading, error } = useProjectStore();
+  const { projects, isLoading, error } = useProjectStore();
   const { materials } = useMaterialStore();
   const { crew } = useCrewStore();
+
+  // Local selected project — isolates ManifestEngine from global activeProjectId
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   // Track visit for setup checklist
   useEffect(() => {
@@ -49,8 +52,8 @@ export const ManifestEngine: React.FC = () => {
   const [exporting, setExporting] = useState(false);
 
   const project = useMemo(
-    () => projects.find(p => p.id === activeProjectId) ?? null,
-    [projects, activeProjectId]
+    () => projects.find(p => p.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId]
   );
 
   // Per-zone manifest items — computed per zone so each line is attributable
@@ -233,7 +236,7 @@ export const ManifestEngine: React.FC = () => {
               return (
                 <button
                   key={p.id}
-                  onClick={() => setActiveProject(p.id)}
+                  onClick={() => setSelectedProjectId(p.id)}
                   className="text-left p-[16px] rounded-[10px] border border-[var(--border)] bg-[var(--surface2)] cursor-pointer card-hover"
                 >
                   <div className="font-[600] text-[14px] text-[var(--text)] mb-[2px]">{p.name}</div>
@@ -268,7 +271,7 @@ export const ManifestEngine: React.FC = () => {
       {/* ── Back to project list ────────────────────────────────────────── */}
       <button
         type="button"
-        onClick={() => setActiveProject(null)}
+        onClick={() => setSelectedProjectId(null)}
         className="text-[12px] text-[var(--text-3)] hover:text-[var(--text)] bg-transparent border-none cursor-pointer p-0 mb-[12px] flex items-center gap-[4px]"
       >
         ← Back to Manifest Projects
@@ -282,8 +285,8 @@ export const ManifestEngine: React.FC = () => {
           </label>
           <select
             className="bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] text-[var(--text)] px-[14px] py-[10px] text-[13px] outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 cursor-pointer w-full"
-            value={activeProjectId ?? ''}
-            onChange={e => setActiveProject(e.target.value || null)}
+            value={selectedProjectId ?? ''}
+            onChange={e => setSelectedProjectId(e.target.value || null)}
           >
             <option value="">— Choose a project —</option>
             {projects.map(p => (
