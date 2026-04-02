@@ -1254,11 +1254,15 @@ export async function insertSampleData(orgId: string): Promise<{ success: boolea
       }
     }
 
-    // Equipment
+    // Equipment — build name→id lookup for schedule entry equipment assignment
+    const equipmentNameToId: Record<string, string> = {};
     for (const equip of getSampleEquipment()) {
       const id = crypto.randomUUID();
       const result = await createEquipment(equip, id, orgId);
-      if (result) ids.equipment.push(id);
+      if (result) {
+        ids.equipment.push(id);
+        equipmentNameToId[equip.name] = id;
+      }
     }
 
     // Projects (with zones) + zone_materials + tasks
@@ -1345,12 +1349,13 @@ export async function insertSampleData(orgId: string): Promise<{ success: boolea
       const dateStr = schedDate.toISOString().split('T')[0];
 
       const schedId = crypto.randomUUID();
+      const equipId = entry.equipmentName ? (equipmentNameToId[entry.equipmentName] || null) : null;
       await createScheduleEntry(
         {
           orgId,
           projectId,
           crewMemberId: crewId,
-          equipmentId: null,
+          equipmentId: equipId,
           scheduledDate: dateStr,
           startTime: entry.startTime,
           endTime: entry.endTime,

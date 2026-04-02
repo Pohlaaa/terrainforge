@@ -20,6 +20,7 @@ import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
 import { HelpIcon } from '@/components/shared/Tooltip';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { insertSampleData } from '@/services/supabaseData';
+import { useScheduleStore } from '@/stores/scheduleStore';
 import type { AppState } from '@/types';
 
 // Fallback mapping: priority labels → KPI IDs (handles stale localStorage from pre-hotfix sessions)
@@ -316,7 +317,18 @@ export const Dashboard: React.FC = () => {
     setSampleLoading(true);
     const result = await insertSampleData(orgId);
     if (result.success) {
-      await Promise.all([fetchProjects(), fetchCrew(), fetchEquipment(), fetchMaterials()]);
+      // Refresh all stores including schedule
+      const monday = new Date();
+      const day = monday.getDay();
+      monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+      const weekStart = monday.toISOString().split('T')[0];
+      await Promise.all([
+        fetchProjects(),
+        fetchCrew(),
+        fetchEquipment(),
+        fetchMaterials(),
+        useScheduleStore.getState().fetchSchedule(weekStart),
+      ]);
       toast.success('Sample company loaded!');
     } else {
       toast.error(`Failed: ${result.error}`);

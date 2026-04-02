@@ -289,7 +289,7 @@ const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, existingE
 
 export const Schedule: React.FC = () => {
   const navigate = useNavigate();
-  const { entries, moveEntry, deleteEntry, getEntriesForCrewMember, hasConflict } = useScheduleStore();
+  const { entries, moveEntry, deleteEntry, getEntriesForCrewMember, hasConflict, fetchSchedule } = useScheduleStore();
   const { projects } = useProjectStore();
   const { crew } = useCrewStore();
   const { equipment } = useEquipmentStore();
@@ -363,6 +363,12 @@ export const Schedule: React.FC = () => {
   // Week navigation
   const [weekStart, setWeekStart] = useState(() => isoDate(getMonday(new Date())));
   const [showWeekend, setShowWeekend] = useState(true);
+
+  // Fetch schedule entries from Supabase for the visible week
+  useEffect(() => {
+    if (!orgId) return;
+    fetchSchedule(weekStart);
+  }, [orgId, weekStart, fetchSchedule]);
 
   // Modal state
   const [modalTarget, setModalTarget] = useState<{ crewMemberId: string; date: string } | null>(null);
