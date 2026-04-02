@@ -5,24 +5,25 @@
 > For milestones and roadmap: read `ROADMAP.md` (Cowork-only for planning)
 > For backlog items: read `CONSIDERATIONS.md` (Cowork-only for planning)
 > For M1.5 data model reference: see `archive/DATA_MODEL_M1.5.md`
-> Last updated: 2026-04-01 (Sprint 44.7 — widget persistence simplified, remove Supabase dependency)
+> Last updated: 2026-04-01 (Sprint 45 — landing page visual upgrade)
 
 ---
 
 ## Current Status
 
 **Active milestone**: M3 "First Revenue" — subscription enforcement, trial flow, launch readiness
-**Last completed**: Sprint 44.7 — Simplified widget persistence (removed Supabase sync, localStorage only)
+**Last completed**: Sprint 45 — Landing page visual overhaul (hero gradient, SVG icons, social proof, scroll animations, pricing enhancements). PR #109.
 **Milestones complete**: M1, M1.5a, M1.5b, M2
-**Current sprint**: None — awaiting Charlie's test of S44.7
-**Git state**: PR #108 open (sprint-44-7-hotfix). Migrations 001–012 applied. Trial columns + trigger active.
+**Current sprint**: Next sprint TBD
+**Git state**: PR #109 open. Migrations 001–012 applied. Trial columns + trigger active.
 **SQL migration needed**: None
 
-**Sprint 44.7 results** (code-verified, pending Charlie test):
-- Removed Supabase widget layout fetch/save from Dashboard entirely
-- Widget layout now persists via Zustand persist (localStorage) only
-- Sign-out clears localStorage (cross-account safe, but layout resets on re-login)
-- Build passes clean
+**Sprint 42-44.7 hotfix arc complete. All sample data + UX bugs resolved:**
+- Sample data: load, display, and clear all working
+- Resources tab, Schedule page, Materials tab, Tasks tab: all showing data
+- Manifest back nav: returns to /manifest
+- Widget layout: persists through page nav + refresh (localStorage via Zustand persist)
+- Cross-account isolation: sign-out clears layout (defaults on re-login)
 
 ---
 
