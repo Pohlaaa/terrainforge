@@ -364,11 +364,11 @@ export const Dashboard: React.FC = () => {
     fetchUserPreferences(user.id).then((prefs) => {
       if (prefs && Array.isArray((prefs as any).widgetLayout) && (prefs as any).widgetLayout.length > 0) {
         // Map Supabase format → store WidgetConfig format
-        const saved = (prefs as any).widgetLayout as Array<{ widgetId: string; type: string; position: number }>;
+        const saved = (prefs as any).widgetLayout as Array<{ widgetId: string; type: string; position: number; visible?: boolean }>;
         const restored = DEFAULT_WIDGET_LAYOUT.map((def) => {
           const match = saved.find((s) => s.type === def.type || s.widgetId === def.id);
           return match
-            ? { ...def, order: match.position, visible: true }
+            ? { ...def, order: match.position, visible: match.visible !== false }
             : { ...def, visible: false };
         });
         restored.sort((a, b) => a.order - b.order);
@@ -380,17 +380,18 @@ export const Dashboard: React.FC = () => {
     });
   }, [user?.id]);
 
-  // Debounced Supabase layout write
+  // Debounced Supabase layout write — reads layout from store to avoid stale closure
   const debouncedSaveLayout = useDebouncedCallback(
-    async (userId: string, layout: typeof widgetLayout) => {
+    async (userId: string) => {
+      const layout = useUIStore.getState().widgetLayout;
       const serialized = layout.map((w) => ({
         widgetId: w.id,
         type: w.type,
         position: w.order,
+        visible: w.visible,
       }));
       try {
         await updateWidgetLayout(userId, serialized);
-        toast.success('Dashboard layout saved');
       } catch {
         // silently ignore
       }
@@ -401,7 +402,7 @@ export const Dashboard: React.FC = () => {
   const handleReorder = (fromIndex: number, toIndex: number) => {
     reorderWidgets(fromIndex, toIndex);
     if (user?.id) {
-      debouncedSaveLayout(user.id, widgetLayout);
+      debouncedSaveLayout(user.id);
     }
   };
 
@@ -415,7 +416,7 @@ export const Dashboard: React.FC = () => {
       toast.success('Widget restored');
     }
     if (user?.id) {
-      debouncedSaveLayout(user.id, widgetLayout);
+      debouncedSaveLayout(user.id);
     }
   };
 

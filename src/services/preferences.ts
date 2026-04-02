@@ -72,7 +72,7 @@ export async function updateSelectedKpis(userId: string, kpis: string[]): Promis
 
 export async function updateWidgetLayout(
   userId: string,
-  layout: Array<{ widgetId: string; type: string; position: number; config?: Record<string, unknown> }>,
+  layout: Array<{ widgetId: string; type: string; position: number; visible?: boolean; config?: Record<string, unknown> }>,
 ): Promise<void> {
   try {
     await supabase
