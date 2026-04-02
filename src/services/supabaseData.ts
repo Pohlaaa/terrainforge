@@ -1382,26 +1382,44 @@ export async function clearSampleData(orgId: string): Promise<{ success: boolean
     if (!raw) return { success: true };
     const ids: SampleIds = JSON.parse(raw);
 
-    // Delete in reverse dependency order: schedule, tasks, projects (zones cascade), equipment, crew, materials
-    if (ids.scheduleEntries) {
+    // Delete in reverse dependency order:
+    // 1. schedule_entries (references project_id, crew_member_id)
+    if (ids.scheduleEntries?.length) {
       for (const id of ids.scheduleEntries) {
         await deleteScheduleEntry(id);
       }
     }
-    if (ids.tasks) {
+    // 2. tasks (references project_id)
+    if (ids.tasks?.length) {
       for (const id of ids.tasks) {
         await deleteProjectTask(id);
       }
     }
+    // 3. zone_materials (references zone_id, material_id) — must delete before zones/projects/materials
+    if (ids.projects?.length) {
+      const { data: zones } = await supabase
+        .from('zones')
+        .select('id')
+        .in('project_id', ids.projects)
+        .eq('org_id', orgId);
+      if (zones?.length) {
+        const zoneIds = zones.map((z: { id: string }) => z.id);
+        await supabase.from('zone_materials').delete().in('zone_id', zoneIds);
+      }
+    }
+    // 4. projects (zones cascade via FK)
     for (const id of ids.projects) {
       await deleteProject(id);
     }
+    // 5. equipment
     for (const id of ids.equipment) {
       await deleteEquipment(id);
     }
+    // 6. crew
     for (const id of ids.crew) {
       await deleteCrewMember(id);
     }
+    // 7. materials (last — zone_materials already cleaned up)
     for (const id of ids.materials) {
       await deleteMaterial(id);
     }

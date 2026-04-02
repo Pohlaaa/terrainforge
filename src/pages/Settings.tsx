@@ -5,6 +5,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
+import { useScheduleStore } from '@/stores/scheduleStore';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -163,7 +164,18 @@ export const Settings: React.FC = () => {
     setSampleLoading(true)
     const result = await clearSampleData(org.id)
     if (result.success) {
-      await Promise.all([fetchProjects(), fetchCrew(), fetchEquipment(), fetchMaterials()])
+      // Refresh all stores including schedule
+      const monday = new Date();
+      const day = monday.getDay();
+      monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+      const weekStart = monday.toISOString().split('T')[0];
+      await Promise.all([
+        fetchProjects(),
+        fetchCrew(),
+        fetchEquipment(),
+        fetchMaterials(),
+        useScheduleStore.getState().fetchSchedule(weekStart),
+      ])
       localStorage.setItem('tf-setup-dismissed', 'true')
       toast.success('Sample data cleared')
     } else {
