@@ -5,31 +5,24 @@
 > For milestones and roadmap: read `ROADMAP.md` (Cowork-only for planning)
 > For backlog items: read `CONSIDERATIONS.md` (Cowork-only for planning)
 > For M1.5 data model reference: see `archive/DATA_MODEL_M1.5.md`
-> Last updated: 2026-04-01 (Sprint 43 complete — sample data quality & navigation fixes)
+> Last updated: 2026-04-01 (Sprint 44 complete — all 5 Sprint 43 failures fixed)
 
 ---
 
 ## Current Status
 
 **Active milestone**: M3 "First Revenue" — subscription enforcement, trial flow, launch readiness
-**Last completed**: Sprint 43 — Sample Data Quality & Navigation Fixes
+**Last completed**: Sprint 44 — Hotfix for all 5 Sprint 43 test failures
 **Milestones complete**: M1, M1.5a, M1.5b, M2
-**Current sprint**: None (awaiting next sprint prompt)
-**Git state**: PR #104 open. Migrations 001–012 applied. Trial columns + trigger active.
+**Current sprint**: None — ready for next sprint
+**Git state**: PR #105 open. Migrations 001–012 applied. Trial columns + trigger active.
 **SQL migration needed**: None
 
-**Sprint 43 changes**:
-- `sanitizeTimestamps()` helper in supabaseData.ts — converts empty strings to null for TIMESTAMPTZ columns
-- `insertSampleData()` now creates zone_materials linkages, schedule entries, and builds name→id lookups
-- `clearSampleData()` deletes schedule entries before other cleanup
-- `getSampleZoneMaterials()` maps each zone to relevant materials for realistic demo
-- `getSampleScheduleEntries()` provides 12 crew schedule entries for the current week
-- `fetchTaskSummaries()` returns task counts per project for card display
-- Project cards now show actual task progress (from project_tasks) instead of checklist progress
-- ResourcesTab equipment section shows zone equipment data instead of project notes
-- ManifestEngine has "Back to Manifest Projects" button
-- Widget layout loaded from Supabase user_preferences on login (prevents cross-user leakage)
-- uiStore has `setWidgetLayout` action
+**Sprint 44 fixes (all 5 Sprint 43 failures resolved)**:
+- S44-1/S44-2: Schedule store now fetches from Supabase on mount + week changes. Equipment assigned to sample schedule entries. Dashboard + Settings refresh schedule store after insert/clear.
+- S44-3: ManifestEngine uses local `selectedProjectId` state instead of global `activeProjectId`. Back button returns to `/manifest` project cards.
+- S44-4: Fixed stale closure bug in `debouncedSaveLayout` — reads current layout from store. Widget visibility included in save/restore cycle.
+- S44-5: `clearSampleData()` now deletes zone_materials before projects/materials, preventing FK constraint failures.
 
 ---
 
