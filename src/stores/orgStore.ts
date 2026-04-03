@@ -24,6 +24,12 @@ interface OrgStore {
   fetchOrg: (orgId: string) => Promise<void>;
   /** Update the org's display name. */
   updateOrgName: (name: string) => Promise<void>;
+  /** Update org rate settings (labor rate, equipment rate, disposal rates). */
+  updateOrgSettings: (settings: {
+    defaultLaborRate?: number | null;
+    defaultEquipmentRate?: number | null;
+    disposalRates?: Record<string, number>;
+  }) => Promise<void>;
   /** Clear org data on sign-out. */
   clearOrg: () => void;
 }
@@ -39,6 +45,9 @@ interface OrgRow {
   trial_ends_at: string | null;
   subscription_ends_at: string | null;
   stripe_customer_id: string | null;
+  default_labor_rate: number | null;
+  default_equipment_rate: number | null;
+  disposal_rates: Record<string, number> | null;
 }
 
 // ── Mapping helper ────────────────────────────────────────────────────────────
@@ -53,9 +62,9 @@ function mapOrgRow(row: OrgRow): Organization {
     trialEndsAt: row.trial_ends_at ?? null,
     subscriptionEndsAt: row.subscription_ends_at ?? null,
     stripeCustomerId: row.stripe_customer_id ?? null,
-    defaultLaborRate: (row as any).default_labor_rate ?? null,
-    defaultEquipmentRate: (row as any).default_equipment_rate ?? null,
-    disposalRates: (row as any).disposal_rates ?? {},
+    defaultLaborRate: row.default_labor_rate ?? null,
+    defaultEquipmentRate: row.default_equipment_rate ?? null,
+    disposalRates: row.disposal_rates ?? {},
   };
 }
 
@@ -97,7 +106,7 @@ export const useOrgStore = create<OrgStore>()(
           const { data, error } = await supabase
             .from('organizations')
             .select(
-              'id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id'
+              'id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates'
             )
             .eq('id', orgId)
             .single();
@@ -120,7 +129,7 @@ export const useOrgStore = create<OrgStore>()(
                   subscription_tier: 'starter',
                   trial_ends_at: trialEndsAt,
                 }])
-                .select('id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id')
+                .select('id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates')
                 .single()
 
               if (insertError) {
@@ -163,6 +172,33 @@ export const useOrgStore = create<OrgStore>()(
           .update({ name })
           .eq('id', orgId)
         if (error) {
+        }
+      },
+
+      updateOrgSettings: async (settings) => {
+        const org = useOrgStore.getState().org
+        if (!org) return
+        // Optimistic update
+        const previous = { ...org }
+        set({
+          org: {
+            ...org,
+            ...(settings.defaultLaborRate !== undefined && { defaultLaborRate: settings.defaultLaborRate }),
+            ...(settings.defaultEquipmentRate !== undefined && { defaultEquipmentRate: settings.defaultEquipmentRate }),
+            ...(settings.disposalRates !== undefined && { disposalRates: settings.disposalRates }),
+          },
+        })
+        const dbUpdate: Record<string, unknown> = {}
+        if (settings.defaultLaborRate !== undefined) dbUpdate.default_labor_rate = settings.defaultLaborRate
+        if (settings.defaultEquipmentRate !== undefined) dbUpdate.default_equipment_rate = settings.defaultEquipmentRate
+        if (settings.disposalRates !== undefined) dbUpdate.disposal_rates = settings.disposalRates
+        const { error } = await supabase
+          .from('organizations')
+          .update(dbUpdate)
+          .eq('id', org.id)
+        if (error) {
+          console.error('updateOrgSettings failed', error)
+          set({ org: previous })
         }
       },
 

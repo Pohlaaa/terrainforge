@@ -115,6 +115,7 @@ Page → store hook → store action → supabaseData function → Supabase
 - [ ] Projects tab (`/`) — KPI cards, chart/map toggle, projects table all render
 - [ ] Projects tab — clicking a project navigates to ProjectDashboard
 - [ ] Projects tab — "+ New Project" launches wizard
+- [ ] Budget tab (`/budget`) — KPI cards, charts, project budgets table, org rate settings
 - [ ] Materials tab (`/materials`) — KPI cards, low stock banner, inventory table render
 - [ ] Crew & Equipment tab (`/crew`) — KPI cards, crew cards, schedule grid, equipment table render
 - [ ] Project wizard completes and creates project visible on Projects tab

@@ -145,7 +145,8 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 - `.claude/CODE_GUIDE.md` — Execution workflow, git conventions, verification protocol.
 - `.claude/DESIGN_SYSTEM.md` — Design tokens, color system, spacing, component specs, hub layout patterns.
 - `.claude/CONTRACTOR_FEEDBACK.md` — Real contractor requirements integrated into UI rebuild.
-- `.claude/REBUILD_PROMPT.md` — **Current execution prompt.** 4-tab hub rebuild + contractor features.
+- `.claude/REBUILD_PROMPT.md` — Completed. 4-tab hub rebuild + contractor features.
+- `.claude/BUDGET_TAB_PROMPT.md` — **Current execution prompt.** Budget & Finance tab build.
 
 ### Reference Files
 - `.claude/DEPLOY_CHECKLIST.md` — Netlify deploy steps
