@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Project, Zone, ZoneMaterial, ZoneMaterialDetail, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry, ProjectTask, ProjectSiteCondition, ProjectSubcontractor, ProjectDocument, ProjectPermit } from '@/types'
+import type { Project, Zone, ZoneMaterial, ZoneMaterialDetail, ZoneEquipment, Material, CrewMember, Equipment, MaintenanceEntry, CrewCert, ScheduleEntry, ProjectTask, ProjectSiteCondition, ProjectSubcontractor, ProjectDocument, ProjectPermit, ProjectListItem, ProjectFull, ProjectCrewAssignment } from '@/types'
 
 // ===== ERROR REPORTING =====
 
@@ -71,7 +71,7 @@ function toSnakeCase(obj: Record<string, any>): Record<string, any> {
 
 // ===== PROJECTS =====
 
-export async function fetchProjects(orgId: string): Promise<Project[]> {
+export async function fetchProjects(orgId: string): Promise<ProjectListItem[]> {
   try {
     const { data, error } = await supabase
       .from('projects')
@@ -92,6 +92,13 @@ export async function fetchProjects(orgId: string): Promise<Project[]> {
       .eq('org_id', orgId)
 
     if (error) throw error
+
+    // Batch-fetch task counts and crew assignment counts for all projects
+    const [taskSums, crewCounts, nextDates] = await Promise.all([
+      fetchTaskSummaries(orgId),
+      fetchCrewAssignmentCounts(orgId),
+      fetchNextScheduledDates(orgId),
+    ]);
 
     return (data || []).map(project => {
       const camelProject = toCamelCase(project) as any
@@ -133,11 +140,251 @@ export async function fetchProjects(orgId: string): Promise<Project[]> {
         camelProject.materials = []
       }
 
-      return camelProject as Project
+      // Attach summary counts
+      const ts = taskSums[camelProject.id];
+      camelProject.taskCount = ts?.total ?? 0;
+      camelProject.completedTaskCount = ts?.completed ?? 0;
+      camelProject.crewCount = crewCounts[camelProject.id] ?? 0;
+      camelProject.nextScheduledDate = nextDates[camelProject.id] ?? null;
+
+      return camelProject as ProjectListItem
     })
   } catch (err: any) {
     console.error('fetchProjects error:', err.message)
     return []
+  }
+}
+
+/** Fetch a single project with its complete relational graph */
+export async function fetchProjectFull(orgId: string, projectId: string): Promise<ProjectFull | null> {
+  try {
+    // Fetch project + all related entities in parallel
+    const [projectResult, tasks, subcontractors, permits, crewAssignments, scheduleEntries, siteConditions] = await Promise.all([
+      supabase
+        .from('projects')
+        .select(`
+          *,
+          zones (
+            *,
+            zone_materials (material_id, materials (name)),
+            zone_equipment (equipment_id, equipment (name))
+          )
+        `)
+        .eq('org_id', orgId)
+        .eq('id', projectId)
+        .single(),
+      fetchProjectTasks(orgId, projectId),
+      fetchProjectSubcontractors(orgId, projectId),
+      fetchProjectPermits(orgId, projectId),
+      fetchProjectCrewAssignments(orgId, projectId),
+      fetchScheduleEntriesForProject(orgId, projectId),
+      fetchProjectSiteConditions(orgId, projectId),
+    ]);
+
+    if (projectResult.error) throw projectResult.error;
+    const project = projectResult.data;
+
+    const camelProject = toCamelCase(project) as any;
+    camelProject.totalArea = camelProject.totalAreaSqft ?? camelProject.totalArea ?? 0;
+    camelProject.client = camelProject.clientId ? '' : '';
+
+    // Build zones
+    camelProject.zones = (camelProject.zones || []).map((zone: any) => {
+      zone.materials = (zone.zoneMaterials || []).map((zm: any) => ({
+        materialId: zm.materialId,
+        name: zm.materials?.name || ''
+      }));
+      zone.equipment = (zone.zoneEquipment || []).map((ze: any) => ({
+        equipId: ze.equipmentId,
+        name: ze.equipment?.name || ''
+      }));
+      delete zone.zoneMaterials;
+      delete zone.zoneEquipment;
+      zone.area = zone.areaSqft ?? zone.area ?? 0;
+      zone.perimeter = zone.perimeterLnft ?? zone.perimeter ?? 0;
+      zone.sequence = zone.sequenceNumber ?? zone.sequence ?? 0;
+      zone.crew = zone.crewAssignment ?? zone.crew ?? '';
+      return zone;
+    });
+
+    if (typeof camelProject.checklist === 'string') {
+      camelProject.checklist = JSON.parse(camelProject.checklist);
+    }
+    if (typeof camelProject.materials === 'string') {
+      try { camelProject.materials = JSON.parse(camelProject.materials); } catch { camelProject.materials = []; }
+    }
+    if (!Array.isArray(camelProject.materials)) {
+      camelProject.materials = [];
+    }
+
+    return {
+      ...camelProject,
+      tasks,
+      subcontractors,
+      permits,
+      crewAssignments,
+      scheduleEntries,
+      siteConditions,
+    } as ProjectFull;
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'projects (full)', err);
+    return null;
+  }
+}
+
+// ===== PROJECT CREW ASSIGNMENTS =====
+
+export async function fetchProjectCrewAssignments(
+  orgId: string,
+  projectId: string
+): Promise<ProjectCrewAssignment[]> {
+  try {
+    const { data, error } = await supabase
+      .from('project_crew_assignments')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+    return (data || []).map((row) => toCamelCase(row) as ProjectCrewAssignment);
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'project_crew_assignments', err);
+    return [];
+  }
+}
+
+export async function fetchAllProjectCrewAssignments(
+  orgId: string
+): Promise<ProjectCrewAssignment[]> {
+  try {
+    const { data, error } = await supabase
+      .from('project_crew_assignments')
+      .select('*')
+      .eq('org_id', orgId);
+
+    if (error) throw error;
+    return (data || []).map((row) => toCamelCase(row) as ProjectCrewAssignment);
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'project_crew_assignments', err);
+    return [];
+  }
+}
+
+export async function createProjectCrewAssignment(
+  assignment: Omit<ProjectCrewAssignment, 'id' | 'assignedAt'>,
+  id: string,
+  orgId: string
+): Promise<ProjectCrewAssignment | null> {
+  try {
+    const snakeData = toSnakeCase(assignment as unknown as Record<string, any>);
+    snakeData.id = id;
+    snakeData.org_id = orgId;
+
+    const { data, error } = await supabase
+      .from('project_crew_assignments')
+      .insert([snakeData])
+      .select()
+      .single();
+
+    if (error) {
+      // Handle unique constraint violation gracefully
+      if (error.code === '23505') {
+        onSupabaseError('INSERT', 'project_crew_assignments', { ...error, message: 'Crew member already assigned to this project' });
+        return null;
+      }
+      throw error;
+    }
+    return toCamelCase(data) as ProjectCrewAssignment;
+  } catch (err: any) {
+    onSupabaseError('INSERT', 'project_crew_assignments', err);
+    return null;
+  }
+}
+
+export async function deleteProjectCrewAssignment(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('project_crew_assignments')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (err: any) {
+    onSupabaseError('DELETE', 'project_crew_assignments', err);
+    return false;
+  }
+}
+
+// ===== SCHEDULE ENTRIES (project-filtered) =====
+
+export async function fetchScheduleEntriesForProject(
+  orgId: string,
+  projectId: string
+): Promise<ScheduleEntry[]> {
+  try {
+    const { data, error } = await supabase
+      .from('schedule_entries')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('project_id', projectId)
+      .order('scheduled_date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map((row) => toCamelCase(row) as ScheduleEntry);
+  } catch (err: any) {
+    onSupabaseError('SELECT', 'schedule_entries', err);
+    return [];
+  }
+}
+
+// ===== SUMMARY HELPERS (used by fetchProjects for ProjectListItem counts) =====
+
+async function fetchCrewAssignmentCounts(
+  orgId: string
+): Promise<Record<string, number>> {
+  try {
+    const { data, error } = await supabase
+      .from('project_crew_assignments')
+      .select('project_id')
+      .eq('org_id', orgId);
+
+    if (error) throw error;
+
+    const counts: Record<string, number> = {};
+    for (const row of data || []) {
+      counts[row.project_id] = (counts[row.project_id] || 0) + 1;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
+async function fetchNextScheduledDates(
+  orgId: string
+): Promise<Record<string, string>> {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('schedule_entries')
+      .select('project_id, scheduled_date')
+      .eq('org_id', orgId)
+      .gte('scheduled_date', today)
+      .order('scheduled_date', { ascending: true });
+
+    if (error) throw error;
+
+    const nextDates: Record<string, string> = {};
+    for (const row of data || []) {
+      if (!nextDates[row.project_id]) {
+        nextDates[row.project_id] = row.scheduled_date;
+      }
+    }
+    return nextDates;
+  } catch {
+    return {};
   }
 }
 
