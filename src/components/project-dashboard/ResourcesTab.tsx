@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Project, ProjectSubcontractor, ScheduleEntry, CrewMember, SubcontractorStatus } from '@/types';
+import { useProjectStore } from '@/stores/projectStore';
 
 interface Props {
   project: Project;
@@ -235,6 +236,97 @@ const SubEditForm: React.FC<{
   );
 };
 
+// Inline editable field component
+const InlineEditField: React.FC<{
+  label: string;
+  value: string;
+  type?: 'text' | 'number' | 'textarea';
+  placeholder?: string;
+  onSave: (value: string) => void;
+}> = ({ label, value, type = 'text', placeholder, onSave }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  const startEdit = () => {
+    setDraft(value);
+    setEditing(true);
+  };
+
+  const handleSave = () => {
+    onSave(draft);
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setDraft(value);
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-between py-[4px]">
+        <div>
+          <span className="text-[11px] text-[var(--text-4)] mr-[8px]">{label}:</span>
+          <span className="text-[12px] text-[var(--text)]">{value || '—'}</span>
+        </div>
+        <button
+          type="button"
+          onClick={startEdit}
+          className="text-[11px] bg-transparent border-none cursor-pointer shrink-0"
+          style={{ color: 'var(--green-l)' }}
+        >
+          Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-[4px] space-y-[4px]">
+      <label className="text-[11px] text-[var(--text-4)] block">{label}</label>
+      {type === 'textarea' ? (
+        <textarea
+          className={inputClass}
+          style={{ borderColor: 'var(--border)', minHeight: '50px', resize: 'vertical' }}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          autoFocus
+        />
+      ) : (
+        <input
+          type={type}
+          className={inputClass}
+          style={{ borderColor: 'var(--border)' }}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          min={type === 'number' ? 0 : undefined}
+          autoFocus
+        />
+      )}
+      <div className="flex gap-[4px] justify-end">
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="px-[8px] py-[3px] rounded-[4px] border text-[10px] bg-transparent cursor-pointer"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="px-[8px] py-[3px] rounded-[4px] text-[10px] border-none cursor-pointer font-[600]"
+          style={{ backgroundColor: 'var(--green)', color: '#fff' }}
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const ProjectDashboardResources: React.FC<Props> = ({
   project,
   subcontractors,
@@ -245,6 +337,7 @@ export const ProjectDashboardResources: React.FC<Props> = ({
   onSubDelete,
 }) => {
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const updateProject = useProjectStore((s) => s.updateProject);
 
   // Unique crew members scheduled for this project
   const scheduledCrewIds = [...new Set(scheduleEntries.map((e) => e.crewMemberId))];
@@ -262,12 +355,44 @@ export const ProjectDashboardResources: React.FC<Props> = ({
     setEditingSubId(null);
   };
 
+  const handleCrewFieldSave = (field: 'crewSize' | 'crewNotes', value: string) => {
+    const update: Partial<Project> = {};
+    if (field === 'crewSize') {
+      update.crewSize = value ? parseInt(value, 10) : null;
+    } else {
+      update.crewNotes = value.trim() || null;
+    }
+    updateProject(project.id, update);
+  };
+
+  const handleEquipmentNotesSave = (value: string) => {
+    updateProject(project.id, { equipmentNotes: value.trim() || null });
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-[16px]">
       {/* ── Crew ──────────────────────────────────────────────────────────────── */}
       <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
         <div className={cardHead}>
-          Crew {project.scopeSize ? `(est. size: ${project.scopeSize})` : ''}
+          Crew
+        </div>
+
+        {/* Editable crew size and notes */}
+        <div className="mb-[12px] space-y-[2px]">
+          <InlineEditField
+            label="Crew Size"
+            value={project.crewSize?.toString() || ''}
+            type="number"
+            placeholder="e.g., 4"
+            onSave={(v) => handleCrewFieldSave('crewSize', v)}
+          />
+          <InlineEditField
+            label="Crew Notes"
+            value={project.crewNotes || ''}
+            type="text"
+            placeholder="e.g., need bilingual foreman"
+            onSave={(v) => handleCrewFieldSave('crewNotes', v)}
+          />
         </div>
 
         {scheduledCrew.length === 0 ? (
@@ -419,6 +544,18 @@ export const ProjectDashboardResources: React.FC<Props> = ({
         return (
           <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
             <div className={cardHead}>Equipment ({equipList.length})</div>
+
+            {/* Editable equipment notes */}
+            <div className="mb-[10px]">
+              <InlineEditField
+                label="Equipment Notes"
+                value={project.equipmentNotes || ''}
+                type="textarea"
+                placeholder="e.g., mini-excavator needed for trenching"
+                onSave={handleEquipmentNotesSave}
+              />
+            </div>
+
             {equipList.length === 0 ? (
               <p className="text-[12px] text-[var(--text-4)]">
                 No equipment assigned. Assign equipment to zones or schedule entries.
