@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit } from '@/types';
-import { updateProject } from '@/services/supabaseData';
+import { useProjectStore } from '@/stores/projectStore';
 
 interface Props {
   project: Project;
@@ -74,12 +74,10 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
       materialsBudget: editValues.materialsBudget || null,
       equipmentBudget: editValues.equipmentBudget || null,
     };
-    const result = await updateProject(project.id, updates);
+    await useProjectStore.getState().updateProject(project.id, updates);
     setSaving(false);
-    if (result) {
-      onProjectUpdated?.(updates);
-      setEditing(false);
-    }
+    onProjectUpdated?.(updates);
+    setEditing(false);
   };
 
   const setField = (field: keyof EditState, value: string) => {

@@ -11,7 +11,6 @@ import { CHECKLIST_ITEMS } from '@/lib/constants';
 import type { Project, Zone } from '@/types';
 import { generateProjectFromDescription } from '@/services/anthropic';
 import type { AIProjectSuggestion } from '@/services/anthropic';
-import { fetchTaskSummaries } from '@/services/supabaseData';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -99,12 +98,7 @@ export const Projects: React.FC = () => {
     return () => clearTimeout(t);
   }, []);
 
-  // Fetch task summaries for all projects (matches ProjectDashboard task counts)
-  const [taskSums, setTaskSums] = useState<Record<string, { total: number; completed: number }>>({});
-  useEffect(() => {
-    if (!org?.id) return;
-    fetchTaskSummaries(org.id).then(setTaskSums);
-  }, [org?.id, projects.length]);
+  // Task summaries are now embedded in ProjectListItem from the store
 
   // View mode — persisted in localStorage
   const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
@@ -1113,9 +1107,8 @@ export const Projects: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             {projects.map((project, idx) => {
               const status = getProjectStatus(project);
-              const ts = taskSums[project.id];
-              const taskTotal = ts?.total ?? 0;
-              const taskCompleted = ts?.completed ?? 0;
+              const taskTotal = (project as any).taskCount ?? 0;
+              const taskCompleted = (project as any).completedTaskCount ?? 0;
               const statusColor = status.variant === 'green' ? 'var(--status-green)'
                 : status.variant === 'amber' ? 'var(--status-amber)'
                 : status.variant === 'blue' ? 'var(--status-blue)'
@@ -1183,9 +1176,8 @@ export const Projects: React.FC = () => {
           <div className="flex flex-col" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             {projects.map((project) => {
               const status = getProjectStatus(project);
-              const ts = taskSums[project.id];
-              const taskTotal = ts?.total ?? 0;
-              const taskCompleted = ts?.completed ?? 0;
+              const taskTotal = (project as any).taskCount ?? 0;
+              const taskCompleted = (project as any).completedTaskCount ?? 0;
               const statusColor = status.variant === 'green' ? 'var(--status-green)'
                 : status.variant === 'amber' ? 'var(--status-amber)'
                 : status.variant === 'blue' ? 'var(--status-blue)'

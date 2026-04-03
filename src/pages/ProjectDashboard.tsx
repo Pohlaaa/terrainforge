@@ -6,7 +6,6 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { toast } from '@/hooks/useToast';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
-import { useScheduleStore } from '@/stores/scheduleStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { ProjectDashboardOverview } from '@/components/project-dashboard/OverviewTab';
 import { ProjectDashboardTasks } from '@/components/project-dashboard/TasksTab';
@@ -15,20 +14,7 @@ import { ProjectDashboardResources } from '@/components/project-dashboard/Resour
 import { ProjectDashboardCompliance } from '@/components/project-dashboard/ComplianceTab';
 import { ProjectDashboardMaterials } from '@/components/project-dashboard/MaterialsTab';
 import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ZoneMaterialDetail, TaskStatus, TaskPhase } from '@/types';
-import {
-  fetchProjectTasks,
-  fetchProjectSubcontractors,
-  fetchProjectPermits,
-  fetchZoneMaterialDetails,
-  updateProjectTask,
-  createProjectTask,
-  deleteProjectTask,
-  createProjectPermit,
-  updateProjectPermit,
-  createProjectSubcontractor,
-  updateProjectSubcontractor,
-  deleteProjectSubcontractor,
-} from '@/services/supabaseData';
+import { fetchZoneMaterialDetails } from '@/services/supabaseData';
 
 // ── Status helpers ───────────────────────────────────────────────────────────
 
@@ -72,44 +58,35 @@ const TABS: { id: TabId; label: string }[] = [
 export default function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects } = useProjectStore();
+  const {
+    activeProject: project,
+    loading,
+    fetchProjectFull,
+    clearActiveProject,
+    updateProject,
+    createProjectTask,
+    updateProjectTask,
+    deleteProjectTask,
+    createProjectSubcontractor,
+    updateProjectSubcontractor,
+    deleteProjectSubcontractor,
+    createProjectPermit,
+    updateProjectPermit,
+  } = useProjectStore();
   const { org } = useOrgStore();
-  const { entries: scheduleEntries } = useScheduleStore();
   const { crew } = useCrewStore();
   const orgId = org?.id;
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [tasks, setTasks] = useState<ProjectTask[]>([]);
-  const [subcontractors, setSubcontractors] = useState<ProjectSubcontractor[]>([]);
-  const [permits, setPermits] = useState<ProjectPermit[]>([]);
   const [zoneMaterials, setZoneMaterials] = useState<ZoneMaterialDetail[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const project = useMemo(
-    () => projects.find((p) => p.id === id) ?? null,
-    [projects, id]
-  );
-
-  // Fetch M1.5 data when project loads
+  // Fetch complete project graph on mount
   useEffect(() => {
     if (!orgId || !id) return;
-    setLoadingData(true);
-
-    Promise.all([
-      fetchProjectTasks(orgId, id),
-      fetchProjectSubcontractors(orgId, id),
-      fetchProjectPermits(orgId, id),
-    ])
-      .then(([t, s, p]) => {
-        setTasks(t ?? []);
-        setSubcontractors(s ?? []);
-        setPermits(p ?? []);
-      })
-      .catch((err) => console.error('Failed to load project data:', err))
-      .finally(() => setLoadingData(false));
+    fetchProjectFull(orgId, id);
 
     // Fetch zone materials separately (doesn't need orgId filter — filtered by project's zones)
     setLoadingMaterials(true);
@@ -117,204 +94,132 @@ export default function ProjectDashboard() {
       .then((m) => setZoneMaterials(m ?? []))
       .catch((err) => console.error('Failed to load zone materials:', err))
       .finally(() => setLoadingMaterials(false));
+
+    return () => {
+      clearActiveProject();
+    };
   }, [orgId, id]);
+
+  // Read sub-entities from activeProject
+  const tasks = project?.tasks ?? [];
+  const subcontractors = project?.subcontractors ?? [];
+  const permits = project?.permits ?? [];
+  const projectSchedule = project?.scheduleEntries ?? [];
 
   // Task status toggle handler
   const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
-    // Optimistic update
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: newStatus as TaskStatus,
-              completedAt: newStatus === 'completed' ? new Date().toISOString() : null,
-            }
-          : t
-      )
-    );
-
-    try {
-      await updateProjectTask(taskId, {
-        status: newStatus as TaskStatus,
-        completedAt: newStatus === 'completed' ? new Date().toISOString() : null,
-      });
-    } catch (err) {
-      console.error('Failed to update task:', err);
-      // Revert on failure
-      if (orgId && id) {
-        const refreshed = await fetchProjectTasks(orgId, id);
-        if (refreshed) setTasks(refreshed);
-      }
-    }
+    await updateProjectTask(taskId, {
+      status: newStatus as TaskStatus,
+      completedAt: newStatus === 'completed' ? new Date().toISOString() : null,
+    });
   };
 
   // Create a new task in a given phase
   const handleTaskCreate = async (phase: string) => {
     if (!orgId || !id) return;
-    const newId = crypto.randomUUID();
     const maxSeq = tasks.reduce((max, t) => Math.max(max, t.sequenceNumber), -1);
-    const newTask: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'> = {
-      orgId,
-      projectId: id,
-      zoneId: null,
-      name: 'New Task',
-      description: null,
-      phase: phase as TaskPhase,
-      sequenceNumber: maxSeq + 1,
-      status: 'pending',
-      assignedCrewId: null,
-      estimatedHours: null,
-      actualHours: null,
-      dependsOn: [],
-      scheduledDate: null,
-      completedAt: null,
-      aiGenerated: false,
-      aiConfidence: null,
-    };
-    // Optimistic add
-    const optimistic: ProjectTask = {
-      ...newTask,
-      id: newId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setTasks((prev) => [...prev, optimistic]);
-    const result = await createProjectTask(newTask, newId, orgId);
-    if (!result) {
-      setTasks((prev) => prev.filter((t) => t.id !== newId));
-    }
+    await createProjectTask(
+      {
+        orgId,
+        projectId: id,
+        zoneId: null,
+        name: 'New Task',
+        description: null,
+        phase: phase as TaskPhase,
+        sequenceNumber: maxSeq + 1,
+        status: 'pending',
+        assignedCrewId: null,
+        estimatedHours: null,
+        actualHours: null,
+        dependsOn: [],
+        scheduledDate: null,
+        completedAt: null,
+        aiGenerated: false,
+        aiConfidence: null,
+      },
+      orgId
+    );
   };
 
   // Update a task's fields
   const handleTaskUpdate = async (taskId: string, updates: Partial<ProjectTask>) => {
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
-    try {
-      await updateProjectTask(taskId, updates);
-    } catch (err) {
-      console.error('Failed to update task:', err);
-      if (orgId && id) {
-        const refreshed = await fetchProjectTasks(orgId, id);
-        if (refreshed) setTasks(refreshed);
-      }
-    }
+    await updateProjectTask(taskId, updates);
   };
 
   // Delete a task
   const handleTaskDelete = async (taskId: string) => {
-    const prev = tasks;
-    setTasks((t) => t.filter((task) => task.id !== taskId));
-    const success = await deleteProjectTask(taskId);
-    if (!success) setTasks(prev);
+    await deleteProjectTask(taskId);
   };
 
   // Create a new permit
   const handlePermitCreate = async () => {
     if (!orgId || !id) return;
-    const newId = crypto.randomUUID();
-    const newPermit: Omit<ProjectPermit, 'id' | 'createdAt' | 'updatedAt'> = {
-      orgId,
-      projectId: id,
-      permitType: 'general',
-      jurisdiction: null,
-      permitNumber: null,
-      status: 'needed',
-      appliedDate: null,
-      approvedDate: null,
-      expiryDate: null,
-      inspectionDate: null,
-      inspectionResult: null,
-      inspectionNotes: null,
-      fee: null,
-      aiSuggested: false,
-      notes: null,
-    };
-    const optimistic: ProjectPermit = {
-      ...newPermit,
-      id: newId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setPermits((prev) => [...prev, optimistic]);
-    const result = await createProjectPermit(newPermit, newId, orgId);
-    if (!result) setPermits((prev) => prev.filter((p) => p.id !== newId));
+    await createProjectPermit(
+      {
+        orgId,
+        projectId: id,
+        permitType: 'general',
+        jurisdiction: null,
+        permitNumber: null,
+        status: 'needed',
+        appliedDate: null,
+        approvedDate: null,
+        expiryDate: null,
+        inspectionDate: null,
+        inspectionResult: null,
+        inspectionNotes: null,
+        fee: null,
+        aiSuggested: false,
+        notes: null,
+      },
+      orgId
+    );
   };
 
   // Update a permit
   const handlePermitUpdate = async (permitId: string, updates: Partial<ProjectPermit>) => {
-    setPermits((prev) => prev.map((p) => (p.id === permitId ? { ...p, ...updates } : p)));
-    try {
-      await updateProjectPermit(permitId, updates);
-    } catch (err) {
-      console.error('Failed to update permit:', err);
-      if (orgId && id) {
-        const refreshed = await fetchProjectPermits(orgId, id);
-        if (refreshed) setPermits(refreshed);
-      }
-    }
+    await updateProjectPermit(permitId, updates);
   };
 
   // Create a new subcontractor
   const handleSubCreate = async () => {
     if (!orgId || !id) return;
-    const newId = crypto.randomUUID();
-    const newSub: Omit<ProjectSubcontractor, 'id' | 'createdAt' | 'updatedAt'> = {
-      orgId,
-      projectId: id,
-      companyName: 'New Subcontractor',
-      contactName: null,
-      phone: null,
-      email: null,
-      trade: null,
-      scopeDescription: null,
-      scheduledStart: null,
-      scheduledEnd: null,
-      quotedCost: null,
-      actualCost: null,
-      status: 'pending',
-      notes: null,
-    };
-    const optimistic: ProjectSubcontractor = {
-      ...newSub,
-      id: newId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setSubcontractors((prev) => [...prev, optimistic]);
-    const result = await createProjectSubcontractor(newSub, newId, orgId);
-    if (!result) setSubcontractors((prev) => prev.filter((s) => s.id !== newId));
+    await createProjectSubcontractor(
+      {
+        orgId,
+        projectId: id,
+        companyName: 'New Subcontractor',
+        contactName: null,
+        phone: null,
+        email: null,
+        trade: null,
+        scopeDescription: null,
+        scheduledStart: null,
+        scheduledEnd: null,
+        quotedCost: null,
+        actualCost: null,
+        status: 'pending',
+        notes: null,
+      },
+      orgId
+    );
   };
 
   // Update a subcontractor
   const handleSubUpdate = async (subId: string, updates: Partial<ProjectSubcontractor>) => {
-    setSubcontractors((prev) => prev.map((s) => (s.id === subId ? { ...s, ...updates } : s)));
-    try {
-      await updateProjectSubcontractor(subId, updates);
-    } catch (err) {
-      console.error('Failed to update subcontractor:', err);
-      if (orgId && id) {
-        const refreshed = await fetchProjectSubcontractors(orgId, id);
-        if (refreshed) setSubcontractors(refreshed);
-      }
-    }
+    await updateProjectSubcontractor(subId, updates);
   };
 
   // Delete a subcontractor
   const handleSubDelete = async (subId: string) => {
-    const prev = subcontractors;
-    setSubcontractors((s) => s.filter((sub) => sub.id !== subId));
-    const success = await deleteProjectSubcontractor(subId);
-    if (!success) setSubcontractors(prev);
+    await deleteProjectSubcontractor(subId);
   };
 
   // Handle project field updates from inline editing (budget, etc.)
-  // BudgetTab already persisted to DB — this just syncs the Zustand store
   const handleProjectUpdated = (updates: Partial<Project>) => {
     if (!id) return;
-    const { projects: currentProjects } = useProjectStore.getState();
-    useProjectStore.setState({
-      projects: currentProjects.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-    });
+    // BudgetTab already persisted to DB — sync the store
+    updateProject(id, updates);
   };
 
   // Delete project handler
@@ -332,13 +237,15 @@ export default function ProjectDashboard() {
     }
   };
 
-  // Schedule entries for this project
-  const projectSchedule = useMemo(
-    () => scheduleEntries.filter((e) => e.projectId === id),
-    [scheduleEntries, id]
-  );
+  // Not found / loading
+  if (loading) {
+    return (
+      <div className="text-center py-[40px] text-[13px] text-[var(--text-3)]">
+        Loading project data...
+      </div>
+    );
+  }
 
-  // Not found
   if (!project) {
     return (
       <div className="max-w-[900px] mx-auto text-center py-[60px]">
@@ -442,69 +349,61 @@ export default function ProjectDashboard() {
       </div>
 
       {/* ── Tab Content ───────────────────────────────────────────────────────── */}
-      {loadingData ? (
-        <div className="text-center py-[40px] text-[13px] text-[var(--text-3)]">
-          Loading project data...
-        </div>
-      ) : (
-        <>
-          {activeTab === 'overview' && (
-            <ProjectDashboardOverview
-              project={project}
-              tasks={tasks}
-              subcontractors={subcontractors}
-              permits={permits}
-              scheduleEntries={projectSchedule}
-              crew={crew}
-            />
-          )}
-          {activeTab === 'tasks' && (
-            <ProjectDashboardTasks
-              tasks={tasks}
-              projectId={id!}
-              orgId={orgId!}
-              onStatusChange={handleTaskStatusChange}
-              onTaskCreate={handleTaskCreate}
-              onTaskUpdate={handleTaskUpdate}
-              onTaskDelete={handleTaskDelete}
-            />
-          )}
-          {activeTab === 'budget' && (
-            <ProjectDashboardBudget
-              project={project}
-              tasks={tasks}
-              subcontractors={subcontractors}
-              permits={permits}
-              onProjectUpdated={handleProjectUpdated}
-            />
-          )}
-          {activeTab === 'materials' && (
-            <ProjectDashboardMaterials
-              materials={zoneMaterials}
-              loading={loadingMaterials}
-            />
-          )}
-          {activeTab === 'resources' && (
-            <ProjectDashboardResources
-              project={project}
-              subcontractors={subcontractors}
-              crew={crew}
-              scheduleEntries={projectSchedule}
-              onSubCreate={handleSubCreate}
-              onSubUpdate={handleSubUpdate}
-              onSubDelete={handleSubDelete}
-            />
-          )}
-          {activeTab === 'compliance' && (
-            <ProjectDashboardCompliance
-              project={project}
-              permits={permits}
-              orgId={orgId!}
-              onPermitCreate={handlePermitCreate}
-              onPermitUpdate={handlePermitUpdate}
-            />
-          )}
-        </>
+      {activeTab === 'overview' && (
+        <ProjectDashboardOverview
+          project={project}
+          tasks={tasks}
+          subcontractors={subcontractors}
+          permits={permits}
+          scheduleEntries={projectSchedule}
+          crew={crew}
+        />
+      )}
+      {activeTab === 'tasks' && (
+        <ProjectDashboardTasks
+          tasks={tasks}
+          projectId={id!}
+          orgId={orgId!}
+          onStatusChange={handleTaskStatusChange}
+          onTaskCreate={handleTaskCreate}
+          onTaskUpdate={handleTaskUpdate}
+          onTaskDelete={handleTaskDelete}
+        />
+      )}
+      {activeTab === 'budget' && (
+        <ProjectDashboardBudget
+          project={project}
+          tasks={tasks}
+          subcontractors={subcontractors}
+          permits={permits}
+          onProjectUpdated={handleProjectUpdated}
+        />
+      )}
+      {activeTab === 'materials' && (
+        <ProjectDashboardMaterials
+          materials={zoneMaterials}
+          loading={loadingMaterials}
+        />
+      )}
+      {activeTab === 'resources' && (
+        <ProjectDashboardResources
+          project={project}
+          subcontractors={subcontractors}
+          crew={crew}
+          scheduleEntries={projectSchedule}
+          onSubCreate={handleSubCreate}
+          onSubUpdate={handleSubUpdate}
+          onSubDelete={handleSubDelete}
+        />
+      )}
+      {activeTab === 'compliance' && (
+        <ProjectDashboardCompliance
+          project={project}
+          permits={permits}
+          orgId={orgId!}
+          onPermitCreate={handlePermitCreate}
+          onPermitUpdate={handlePermitUpdate}
+        />
       )}
 
       <ConfirmDialog

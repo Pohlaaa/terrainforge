@@ -12,7 +12,6 @@ import { WizardStep7 } from '@/components/wizard/WizardStep7';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import type { Project, ProjectTask } from '@/types';
-import { createProjectTask, createProjectSubcontractor } from '@/services/supabaseData';
 
 // ── Wizard data shape (local state until project is created) ────────────────
 
@@ -160,7 +159,7 @@ const WIZARD_STEPS = [
 
 export default function ProjectWizard() {
   const navigate = useNavigate();
-  const { addProject } = useProjectStore();
+  const { addProject, createProjectTask, createProjectSubcontractor } = useProjectStore();
   const { org } = useOrgStore();
   const orgId = org?.id;
 
@@ -281,7 +280,7 @@ export default function ProjectWizard() {
         return;
       }
 
-      // Create tasks in Supabase
+      // Create tasks through store
       for (const task of data.tasks) {
         if (task.name.trim()) {
           await createProjectTask(
@@ -303,13 +302,12 @@ export default function ProjectWizard() {
               aiGenerated: task.aiGenerated ?? false,
               aiConfidence: null,
             },
-            crypto.randomUUID(),
             orgId
           );
         }
       }
 
-      // Create subcontractors in Supabase
+      // Create subcontractors through store
       for (const sub of data.subcontractors) {
         if (sub.companyName.trim()) {
           await createProjectSubcontractor(
@@ -329,13 +327,12 @@ export default function ProjectWizard() {
               status: 'pending',
               notes: null,
             },
-            crypto.randomUUID(),
             orgId
           );
         }
       }
 
-      navigate('/projects');
+      navigate(`/projects/${projectId}`);
     } catch (err) {
       console.error('Wizard create failed:', err);
     } finally {
