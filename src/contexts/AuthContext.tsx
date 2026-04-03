@@ -51,10 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           useCrewStore.getState().reset()
           useMaterialStore.getState().reset()
           useEquipmentStore.getState().reset()
-          useProjectStore.persist.clearStorage()
-          useCrewStore.persist.clearStorage()
-          useMaterialStore.persist.clearStorage()
-          useEquipmentStore.persist.clearStorage()
         }
         if (_event === 'SIGNED_IN' && session) {
           // Org must be loaded first — fetch functions need orgId
@@ -117,10 +113,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useCrewStore.getState().reset()
     useMaterialStore.getState().reset()
     useEquipmentStore.getState().reset()
-    useProjectStore.persist.clearStorage()
-    useCrewStore.persist.clearStorage()
-    useMaterialStore.persist.clearStorage()
-    useEquipmentStore.persist.clearStorage()
     useOrgStore.getState().clearOrg()
     // Reset widget layout so next user gets defaults (not previous user's layout)
     useUIStore.getState().resetWidgetLayout()
