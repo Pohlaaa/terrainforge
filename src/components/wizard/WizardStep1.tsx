@@ -126,6 +126,33 @@ export const WizardStep1: React.FC<Props> = ({ data, onChange }) => {
         </p>
       </div>
 
+      {/* Timeline */}
+      <div>
+        <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
+          Timeline
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
+          <div>
+            <label className={labelClass}>Start Date</label>
+            <input
+              className={inputClass}
+              type="date"
+              value={data.startDate || ''}
+              onChange={(e) => onChange({ startDate: e.target.value || null })}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Target Completion</label>
+            <input
+              className={inputClass}
+              type="date"
+              value={data.targetDate || ''}
+              onChange={(e) => onChange({ targetDate: e.target.value || null })}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Section: Client Info */}
       <div>
         <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">

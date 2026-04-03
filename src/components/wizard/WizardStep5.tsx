@@ -130,49 +130,26 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
 
   return (
     <div className="space-y-[24px]">
-      {/* Timeline */}
-      <div>
-        <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
-          Timeline
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px]">
-          <div>
-            <label className={labelClass}>Start Date</label>
-            <input
-              className={inputClass}
-              type="date"
-              value={data.startDate || ''}
-              onChange={(e) => onChange({ startDate: e.target.value || null })}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Target Completion</label>
-            <input
-              className={inputClass}
-              type="date"
-              value={data.targetDate || ''}
-              onChange={(e) => onChange({ targetDate: e.target.value || null })}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Estimated Total Hours</label>
-            <input
-              className={inputClass}
-              type="number"
-              min="0"
-              step="0.5"
-              placeholder="e.g., 120"
-              value={data.estimatedHours ?? ''}
-              onChange={(e) =>
-                onChange({ estimatedHours: e.target.value ? parseFloat(e.target.value) : null })
-              }
-            />
-            {taskHoursSum > 0 && data.estimatedHours !== taskHoursSum && (
-              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
-                Task sum: {taskHoursSum}h
-              </p>
-            )}
-          </div>
+      {/* Estimated Hours (kept in budget section) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
+        <div>
+          <label className={labelClass}>Estimated Total Hours</label>
+          <input
+            className={inputClass}
+            type="number"
+            min="0"
+            step="0.5"
+            placeholder="e.g., 120"
+            value={data.estimatedHours ?? ''}
+            onChange={(e) =>
+              onChange({ estimatedHours: e.target.value ? parseFloat(e.target.value) : null })
+            }
+          />
+          {taskHoursSum > 0 && data.estimatedHours !== taskHoursSum && (
+            <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+              Task sum: {taskHoursSum}h
+            </p>
+          )}
         </div>
       </div>
 

@@ -68,7 +68,7 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
     { label: 'Scope & Tasks', filled: data.tasks.length > 0 },
     { label: 'Resources', filled: (data.crewSize ?? 0) > 0 || data.subcontractors.length > 0 || data.equipmentSelections.length > 0 },
     { label: 'Compliance', filled: data.permitChecklist.length > 0 || !!data.complianceNotes },
-    { label: 'Timeline & Budget', filled: (data.clientQuote ?? 0) > 0 || !!data.startDate },
+    { label: 'Budget', filled: (data.clientQuote ?? 0) > 0 },
   ];
   const filledCount = sections.filter((s) => s.filled).length;
 
@@ -118,6 +118,14 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
           <div className={rowClass}>
             <span className={labelSpan}>Client</span>
             <span className={valueSpan}>{data.clientName}{data.clientPhone ? ` · ${data.clientPhone}` : ''}</span>
+          </div>
+        )}
+        {(data.startDate || data.targetDate) && (
+          <div className={rowClass}>
+            <span className={labelSpan}>Timeline</span>
+            <span className={valueSpan}>
+              {data.startDate || '?'} → {data.targetDate || '?'}
+            </span>
           </div>
         )}
         {data.description && (
@@ -227,15 +235,7 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
 
       {/* Step 6: Financial Summary */}
       <div className={sectionClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-        <h4 className={sectionHeadClass}>Timeline & Budget</h4>
-        {(data.startDate || data.targetDate) && (
-          <div className={rowClass}>
-            <span className={labelSpan}>Timeline</span>
-            <span className={valueSpan}>
-              {data.startDate || '?'} → {data.targetDate || '?'}
-            </span>
-          </div>
-        )}
+        <h4 className={sectionHeadClass}>Budget</h4>
         <div className={rowClass}>
           <span className={labelSpan}>Total Cost</span>
           <span className={valueSpan}>{fmt(financials.totalCost)}</span>

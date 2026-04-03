@@ -170,7 +170,7 @@ const WIZARD_STEPS = [
   { label: 'Scope & Tasks', shortLabel: 'Tasks' },
   { label: 'Resources', shortLabel: 'Resources' },
   { label: 'Compliance', shortLabel: 'Permits' },
-  { label: 'Timeline & Budget', shortLabel: 'Budget' },
+  { label: 'Budget & Cost Breakdown', shortLabel: 'Budget' },
   { label: 'Review & Create', shortLabel: 'Review' },
 ];
 
