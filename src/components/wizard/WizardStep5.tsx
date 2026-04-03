@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import type { WizardData } from '@/pages/ProjectWizard';
 import { useOrgStore } from '@/stores/orgStore';
 
@@ -20,6 +20,9 @@ function fmt(n: number | null | undefined): string {
 }
 
 export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
+  // Track whether user has manually edited the labor budget
+  const laborManuallyEdited = useRef(false);
+
   // ── Auto-calculated values from earlier steps ──────────────────────────────
 
   // Labor: crew size × total task hours × hourly rate
@@ -28,12 +31,13 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
     [data.tasks]
   );
 
+  const org = useOrgStore((s) => s.org);
+  const orgLaborRate = org?.defaultLaborRate ?? null;
+  const effectiveRate = orgLaborRate ?? DEFAULT_HOURLY_RATE;
+
   const calcLabor = useMemo(() => {
-    const crew = data.crewSize ?? 1;
-    // taskHoursSum is the total estimated task-hours for the whole project
-    // Labor cost = total hours × rate (crew size is implicit in the hour estimates)
-    return taskHoursSum * DEFAULT_HOURLY_RATE;
-  }, [taskHoursSum, data.crewSize]);
+    return taskHoursSum * effectiveRate;
+  }, [taskHoursSum, effectiveRate]);
 
   // Equipment: sum of (daily rate × duration days)
   const calcEquipment = useMemo(
@@ -63,14 +67,20 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
     if (Object.keys(updates).length > 0) onChange(updates);
   }, []); // only on mount
 
-  // Auto-calc labor cost from hours × org default rate
-  const org = useOrgStore((s) => s.org);
-  const orgLaborRate = org?.defaultLaborRate ?? DEFAULT_HOURLY_RATE;
+  // Auto-calc labor cost when estimated hours change (unless manually overridden)
   useEffect(() => {
-    if (data.estimatedHours && data.estimatedHours > 0 && data.laborBudget == null) {
-      onChange({ laborBudget: data.estimatedHours * orgLaborRate });
+    if (
+      data.estimatedHours &&
+      data.estimatedHours > 0 &&
+      !laborManuallyEdited.current
+    ) {
+      onChange({ laborBudget: data.estimatedHours * effectiveRate });
     }
-  }, [data.estimatedHours]);
+  }, [data.estimatedHours, effectiveRate]);
+
+  // Org disposal rates
+  const disposalRates = org?.disposalRates ?? {};
+  const hasDisposalRates = Object.keys(disposalRates).length > 0;
 
   // Computed financials
   const financials = useMemo(() => {
@@ -165,15 +175,21 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
               step="0.01"
               placeholder="0.00"
               value={data.laborBudget ?? ''}
-              onChange={(e) =>
-                onChange({ laborBudget: e.target.value ? parseFloat(e.target.value) : null })
-              }
+              onChange={(e) => {
+                laborManuallyEdited.current = true;
+                onChange({ laborBudget: e.target.value ? parseFloat(e.target.value) : null });
+              }}
             />
-            {taskHoursSum > 0 && (
+            {/* Org default rate helper text */}
+            {orgLaborRate != null && data.estimatedHours && data.estimatedHours > 0 ? (
               <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
-                Calc: {taskHoursSum}h × ${DEFAULT_HOURLY_RATE}/hr = {fmt(calcLabor)}
+                Org default: ${orgLaborRate}/hr × {data.estimatedHours}h = {fmt(orgLaborRate * data.estimatedHours)}
               </p>
-            )}
+            ) : taskHoursSum > 0 ? (
+              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                Calc: {taskHoursSum}h × ${effectiveRate}/hr = {fmt(calcLabor)}
+              </p>
+            ) : null}
           </div>
           <div>
             <label className={labelClass}>Materials Cost</label>
@@ -245,6 +261,12 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
                 onChange({ disposalCost: e.target.value ? parseFloat(e.target.value) : null })
               }
             />
+            {/* Org disposal rates reference */}
+            {hasDisposalRates && (
+              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                Org disposal rates: {Object.entries(disposalRates).map(([k, v]) => `${k} $${v}/load`).join(', ')}
+              </p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Equipment Cost</label>
