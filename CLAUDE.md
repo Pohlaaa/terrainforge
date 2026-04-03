@@ -11,7 +11,7 @@ TerrainForge is a SaaS platform for landscaping contractors. It replaces spreads
 
 **Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. Currently in M3 "First Revenue".
 
-**Database**: 15+ tables, 75+ RLS policies, 14 migrations applied (including 014_contractor_fields). No new migrations needed for AI wizard sprint.
+**Database**: 15+ tables, 75+ RLS policies, 14 migrations applied (including 014_contractor_fields). No new migrations needed for AI wizard sprint. Migration 015 (schema cleanup) staged — run AFTER AI wizard merge.
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand 7 stores (Supabase-primary, localStorage for UI only) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)
