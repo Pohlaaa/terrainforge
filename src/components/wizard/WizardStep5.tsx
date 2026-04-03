@@ -1,10 +1,12 @@
 import React, { useMemo, useEffect, useRef } from 'react';
 import type { WizardData } from '@/pages/ProjectWizard';
 import { useOrgStore } from '@/stores/orgStore';
+import type { AIRecommendationSet } from '@/types';
 
 interface Props {
   data: WizardData;
   onChange: (updates: Partial<WizardData>) => void;
+  recommendations: AIRecommendationSet | null;
 }
 
 const inputClass =
@@ -19,9 +21,10 @@ function fmt(n: number | null | undefined): string {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
+export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }) => {
   // Track whether user has manually edited the labor budget
   const laborManuallyEdited = useRef(false);
+  const aiBudgetApplied = useRef(false);
 
   // ── Auto-calculated values from earlier steps ──────────────────────────────
 
@@ -57,8 +60,24 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
     [data.permitFees]
   );
 
-  // Pre-populate on mount if values are null (first visit to this step)
+  // Pre-populate from AI budget recommendations on mount
   useEffect(() => {
+    if (aiBudgetApplied.current) return;
+    const aiBudget = recommendations?.budget;
+    if (aiBudget) {
+      aiBudgetApplied.current = true;
+      const updates: Partial<WizardData> = {};
+      if (data.laborBudget == null && aiBudget.laborBudget > 0) updates.laborBudget = aiBudget.laborBudget;
+      if (data.materialsBudget == null && aiBudget.materialsBudget > 0) updates.materialsBudget = aiBudget.materialsBudget;
+      if (data.equipmentBudget == null && aiBudget.equipmentBudget > 0) updates.equipmentBudget = aiBudget.equipmentBudget;
+      if (data.disposalCost == null && aiBudget.disposalCost > 0) updates.disposalCost = aiBudget.disposalCost;
+      if (data.subcontractorBudget == null && aiBudget.subcontractorBudget > 0) updates.subcontractorBudget = aiBudget.subcontractorBudget;
+      if (data.overheadPct == null) updates.overheadPct = aiBudget.overheadPct;
+      if (data.estimatedHours == null && aiBudget.estimatedHours > 0) updates.estimatedHours = aiBudget.estimatedHours;
+      if (Object.keys(updates).length > 0) onChange(updates);
+      return;
+    }
+    // Fallback: pre-populate from earlier steps
     const updates: Partial<WizardData> = {};
     if (data.laborBudget == null && calcLabor > 0) updates.laborBudget = calcLabor;
     if (data.equipmentBudget == null && calcEquipment > 0) updates.equipmentBudget = calcEquipment;
@@ -157,13 +176,61 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
         </div>
       </div>
 
+      {/* AI Budget Reasoning */}
+      {recommendations?.budget?.reasoning && (
+        <div
+          className="rounded-[8px] border px-[14px] py-[10px] text-[12px]"
+          style={{ backgroundColor: 'rgba(45,106,79,0.06)', borderColor: 'var(--green)', color: 'var(--green-l)' }}
+        >
+          <div className="flex items-center gap-[6px] mb-[4px]">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1L8.5 4.5L12.5 5L9.5 7.5L10.5 11.5L7 9.5L3.5 11.5L4.5 7.5L1.5 5L5.5 4.5L7 1Z" fill="currentColor" />
+            </svg>
+            <span className="font-[600]">AI Budget Estimate</span>
+          </div>
+          <p>{recommendations.budget.reasoning}</p>
+          {recommendations.budget.clientQuoteRange.low > 0 && (
+            <p className="mt-[4px] font-[500]">
+              Suggested quote: ${recommendations.budget.clientQuoteRange.low.toLocaleString()} – ${recommendations.budget.clientQuoteRange.high.toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* AI Materials Summary */}
+      {recommendations?.materials && recommendations.materials.length > 0 && (
+        <div
+          className="rounded-[8px] border px-[14px] py-[10px] text-[12px]"
+          style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
+        >
+          <h4 className="text-[13px] font-[600] text-[var(--text-2)] mb-[6px]">
+            AI Suggested Materials
+          </h4>
+          <div className="space-y-[4px]">
+            {recommendations.materials.map((m, i) => (
+              <div key={i} className="flex items-center justify-between text-[var(--text-3)]">
+                <span>
+                  {m.materialName}
+                  {!m.inLibrary && (
+                    <span className="text-[10px] text-[var(--text-4)] ml-[6px]">(not in library)</span>
+                  )}
+                </span>
+                <span className="text-[var(--text-2)]">
+                  {m.estimatedQuantity} {m.unit} × ${m.unitCost} = ${(m.estimatedQuantity * m.unitCost).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Cost Breakdown */}
       <div>
         <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
           Cost Breakdown
         </h3>
         <p className="text-[12px] text-[var(--text-4)] mb-[16px]">
-          Pre-populated from earlier steps. All values are editable.
+          {recommendations?.budget ? 'Pre-populated from AI recommendations. All values are editable.' : 'Pre-populated from earlier steps. All values are editable.'}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
           <div>

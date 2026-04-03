@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { WizardStepper } from '@/components/wizard/WizardStepper';
@@ -11,7 +11,13 @@ import { WizardStep6 } from '@/components/wizard/WizardStep6';
 import { WizardStep7 } from '@/components/wizard/WizardStep7';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
-import type { Project, ProjectTask } from '@/types';
+import { useCrewStore } from '@/stores/crewStore';
+import { useEquipmentStore } from '@/stores/equipmentStore';
+import { useMaterialStore } from '@/stores/materialStore';
+import { useScheduleStore } from '@/stores/scheduleStore';
+import { generateProjectRecommendations } from '@/services/aiRecommendations';
+import type { Project, ProjectTask, AIRecommendationSet } from '@/types';
+import { getWeekdaysBetween } from '@/utils/dates';
 
 // ── Wizard data shape (local state until project is created) ────────────────
 
@@ -77,6 +83,12 @@ export interface WizardData {
   // Step 4: Resources
   crewSize: number | null;
   crewNotes: string | null;
+  crewSelections: Array<{
+    crewMemberId: string;
+    name: string;
+    role: string;
+    roleOnProject?: string;
+  }>;
   equipmentSelections: WizardEquipment[];
   equipmentNotes: string | null;
   subcontractors: WizardSubcontractor[];
@@ -130,6 +142,7 @@ const INITIAL_DATA: WizardData = {
   tasks: [],
   crewSize: null,
   crewNotes: null,
+  crewSelections: [],
   equipmentSelections: [],
   equipmentNotes: null,
   subcontractors: [],
@@ -164,12 +177,48 @@ const WIZARD_STEPS = [
 export default function ProjectWizard() {
   const navigate = useNavigate();
   const { addProject, createProjectTask, createProjectSubcontractor } = useProjectStore();
+  const projectStore = useProjectStore();
   const { org } = useOrgStore();
+  const crewStore = useCrewStore();
+  const equipmentStore = useEquipmentStore();
+  const materialStore = useMaterialStore();
+  const scheduleStore = useScheduleStore();
   const orgId = org?.id;
 
   const [currentStep, setCurrentStep] = useState(0);
   const [data, setData] = useState<WizardData>(INITIAL_DATA);
   const [isCreating, setIsCreating] = useState(false);
+  const [createStatus, setCreateStatus] = useState('');
+
+  // AI recommendation state
+  const [recommendations, setRecommendations] = useState<AIRecommendationSet | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [acceptedItems, setAcceptedItems] = useState<Record<string, Set<string>>>({
+    tasks: new Set(),
+    crew: new Set(),
+    equipment: new Set(),
+    materials: new Set(),
+    permits: new Set(),
+  });
+  const [dismissedItems, setDismissedItems] = useState<Record<string, Set<string>>>({
+    tasks: new Set(),
+    crew: new Set(),
+    equipment: new Set(),
+    materials: new Set(),
+    permits: new Set(),
+  });
+
+  // Fetch org data needed for AI recommendations
+  useEffect(() => {
+    if (!orgId) return;
+    crewStore.fetchCrew();
+    equipmentStore.fetchEquipment();
+    materialStore.fetchMaterials();
+    scheduleStore.fetchAssignments(orgId);
+    const today = new Date().toISOString().split('T')[0];
+    const future = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0];
+    scheduleStore.fetchEntries(orgId, today, future);
+  }, [orgId]);
 
   const handleChange = useCallback((updates: Partial<WizardData>) => {
     setData((prev) => ({ ...prev, ...updates }));
@@ -186,6 +235,38 @@ export default function ProjectWizard() {
 
   const handleNext = () => {
     if (currentStep < WIZARD_STEPS.length - 1) {
+      // Fire AI when leaving Site Intelligence step (index 1)
+      if (currentStep === 1 && !recommendations && !aiLoading) {
+        setAiLoading(true);
+        generateProjectRecommendations({
+          description: data.description || '',
+          projectType: data.projectType,
+          propertyType: data.propertyType,
+          scopeSize: data.scopeSize,
+          address: data.address || '',
+          siteConditions: {
+            slopeGrade: data.slopeGrade ?? undefined,
+            soilType: data.soilType ?? undefined,
+            sunExposure: data.sunExposure ?? undefined,
+            drainagePattern: data.drainagePattern ?? undefined,
+            climateZone: data.climateZone ?? undefined,
+            hoaFlag: data.hoaFlag,
+          },
+          startDate: data.startDate ?? undefined,
+          targetDate: data.targetDate ?? undefined,
+          orgCrew: crewStore.crew,
+          orgEquipment: equipmentStore.equipment,
+          orgMaterials: materialStore.materials,
+          defaultLaborRate: org?.defaultLaborRate ?? 35,
+          defaultEquipmentRate: org?.defaultEquipmentRate ?? 0,
+          existingAssignments: scheduleStore.assignments,
+          existingScheduleEntries: scheduleStore.entries,
+          existingProjects: projectStore.projects,
+        }).then((result) => {
+          setRecommendations(result);
+          setAiLoading(false);
+        }).catch(() => setAiLoading(false));
+      }
       setCurrentStep((s) => s + 1);
     }
   };
@@ -198,6 +279,66 @@ export default function ProjectWizard() {
 
   const handleCancel = () => {
     navigate('/projects');
+  };
+
+  // AI accept/dismiss helpers
+  const handleAccept = (category: string, id: string) => {
+    setAcceptedItems((prev) => {
+      const next = { ...prev };
+      next[category] = new Set(prev[category]);
+      next[category].add(id);
+      return next;
+    });
+    // Remove from dismissed if it was there (undo)
+    setDismissedItems((prev) => {
+      if (!prev[category].has(id)) return prev;
+      const next = { ...prev };
+      next[category] = new Set(prev[category]);
+      next[category].delete(id);
+      return next;
+    });
+  };
+
+  const handleDismiss = (category: string, id: string) => {
+    setDismissedItems((prev) => {
+      const next = { ...prev };
+      next[category] = new Set(prev[category]);
+      next[category].add(id);
+      return next;
+    });
+    setAcceptedItems((prev) => {
+      if (!prev[category].has(id)) return prev;
+      const next = { ...prev };
+      next[category] = new Set(prev[category]);
+      next[category].delete(id);
+      return next;
+    });
+  };
+
+  const handleAcceptAll = (category: string, ids: string[]) => {
+    setAcceptedItems((prev) => {
+      const next = { ...prev };
+      next[category] = new Set([...prev[category], ...ids]);
+      return next;
+    });
+    setDismissedItems((prev) => {
+      const next = { ...prev };
+      next[category] = new Set([...prev[category]].filter((id) => !ids.includes(id)));
+      return next;
+    });
+  };
+
+  const handleDismissAll = (category: string, ids: string[]) => {
+    setDismissedItems((prev) => {
+      const next = { ...prev };
+      next[category] = new Set([...prev[category], ...ids]);
+      return next;
+    });
+    setAcceptedItems((prev) => {
+      const next = { ...prev };
+      next[category] = new Set([...prev[category]].filter((id) => !ids.includes(id)));
+      return next;
+    });
   };
 
   const handleCreate = async () => {
@@ -389,10 +530,61 @@ export default function ProjectWizard() {
       >
         {currentStep === 0 && <WizardStep1 data={data} onChange={handleChange} />}
         {currentStep === 1 && <WizardStep2 data={data} onChange={handleChange} />}
-        {currentStep === 2 && <WizardStep3 data={data} onChange={handleChange} />}
-        {currentStep === 3 && <WizardStep4 data={data} onChange={handleChange} />}
-        {currentStep === 4 && <WizardStep6 data={data} onChange={handleChange} />}
-        {currentStep === 5 && <WizardStep5 data={data} onChange={handleChange} />}
+        {currentStep === 2 && (
+          <WizardStep3
+            data={data}
+            onChange={handleChange}
+            recommendations={recommendations}
+            aiLoading={aiLoading}
+            acceptedIds={acceptedItems.tasks}
+            dismissedIds={dismissedItems.tasks}
+            onAccept={(id) => handleAccept('tasks', id)}
+            onDismiss={(id) => handleDismiss('tasks', id)}
+            onAcceptAll={(ids) => handleAcceptAll('tasks', ids)}
+            onDismissAll={(ids) => handleDismissAll('tasks', ids)}
+          />
+        )}
+        {currentStep === 3 && (
+          <WizardStep4
+            data={data}
+            onChange={handleChange}
+            recommendations={recommendations}
+            aiLoading={aiLoading}
+            acceptedCrewIds={acceptedItems.crew}
+            dismissedCrewIds={dismissedItems.crew}
+            acceptedEquipIds={acceptedItems.equipment}
+            dismissedEquipIds={dismissedItems.equipment}
+            onAcceptCrew={(id) => handleAccept('crew', id)}
+            onDismissCrew={(id) => handleDismiss('crew', id)}
+            onAcceptAllCrew={(ids) => handleAcceptAll('crew', ids)}
+            onDismissAllCrew={(ids) => handleDismissAll('crew', ids)}
+            onAcceptEquip={(id) => handleAccept('equipment', id)}
+            onDismissEquip={(id) => handleDismiss('equipment', id)}
+            onAcceptAllEquip={(ids) => handleAcceptAll('equipment', ids)}
+            onDismissAllEquip={(ids) => handleDismissAll('equipment', ids)}
+          />
+        )}
+        {currentStep === 4 && (
+          <WizardStep6
+            data={data}
+            onChange={handleChange}
+            recommendations={recommendations}
+            aiLoading={aiLoading}
+            acceptedIds={acceptedItems.permits}
+            dismissedIds={dismissedItems.permits}
+            onAccept={(id) => handleAccept('permits', id)}
+            onDismiss={(id) => handleDismiss('permits', id)}
+            onAcceptAll={(ids) => handleAcceptAll('permits', ids)}
+            onDismissAll={(ids) => handleDismissAll('permits', ids)}
+          />
+        )}
+        {currentStep === 5 && (
+          <WizardStep5
+            data={data}
+            onChange={handleChange}
+            recommendations={recommendations}
+          />
+        )}
         {currentStep === 6 && <WizardStep7 data={data} />}
       </div>
 

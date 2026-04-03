@@ -1,3 +1,30 @@
+/**
+ * Returns an array of YYYY-MM-DD strings for each weekday (Mon-Fri)
+ * between start and end (inclusive). Capped at 60 days to prevent runaway loops.
+ */
+export function getWeekdaysBetween(start: string, end: string): string[] {
+  const dates: string[] = [];
+  const startDate = new Date(start + 'T00:00:00');
+  const endDate = new Date(end + 'T00:00:00');
+  const current = new Date(startDate);
+  const maxDays = 60;
+  let count = 0;
+
+  while (current <= endDate && count < maxDays) {
+    const day = current.getDay();
+    if (day >= 1 && day <= 5) {
+      const yyyy = current.getFullYear();
+      const mm = String(current.getMonth() + 1).padStart(2, '0');
+      const dd = String(current.getDate()).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
+
 export const dateUtils = {
   format: (date: Date | string, format: 'short' | 'long' = 'short'): string => {
     const d = typeof date === 'string' ? new Date(date) : date

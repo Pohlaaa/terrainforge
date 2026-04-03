@@ -1,9 +1,20 @@
 import React from 'react';
+import { SuggestionPanel } from '@/components/shared/SuggestionPanel';
+import type { SuggestionItem } from '@/components/shared/SuggestionPanel';
 import type { WizardData } from '@/pages/ProjectWizard';
+import type { AIRecommendationSet } from '@/types';
 
 interface Props {
   data: WizardData;
   onChange: (updates: Partial<WizardData>) => void;
+  recommendations: AIRecommendationSet | null;
+  aiLoading: boolean;
+  acceptedIds: Set<string>;
+  dismissedIds: Set<string>;
+  onAccept: (id: string) => void;
+  onDismiss: (id: string) => void;
+  onAcceptAll: (ids: string[]) => void;
+  onDismissAll: (ids: string[]) => void;
 }
 
 const PERMIT_STATUS_OPTIONS = [
@@ -35,7 +46,80 @@ function fmt(n: number): string {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export const WizardStep6: React.FC<Props> = ({ data, onChange }) => {
+const URGENCY_LABELS: Record<string, string> = {
+  required: 'Required',
+  recommended: 'Recommended',
+  optional: 'Optional',
+};
+
+export const WizardStep6: React.FC<Props> = ({
+  data,
+  onChange,
+  recommendations,
+  aiLoading,
+  acceptedIds,
+  dismissedIds,
+  onAccept,
+  onDismiss,
+  onAcceptAll,
+  onDismissAll,
+}) => {
+  // Map AI permit recommendations to SuggestionItems
+  const permitSuggestions: SuggestionItem[] = (recommendations?.permits || []).map((p, i) => ({
+    id: `permit-${i}-${p.permitType}`,
+    title: PERMIT_OPTIONS.find((o) => o.key === p.permitType)?.label || p.permitType,
+    subtitle: URGENCY_LABELS[p.urgency] || p.urgency,
+    reason: p.reason,
+    metadata: p.estimatedFee != null ? { 'Est. Fee': `$${p.estimatedFee}` } : undefined,
+  }));
+
+  // Handle permit accept — add to checklist and set fee
+  const handleAcceptPermit = (id: string) => {
+    onAccept(id);
+    const idx = parseInt(id.split('-')[1]);
+    const rec = recommendations?.permits[idx];
+    if (!rec) return;
+    if (!data.permitChecklist.includes(rec.permitType)) {
+      const fees = { ...data.permitFees };
+      if (rec.estimatedFee != null) fees[rec.permitType] = rec.estimatedFee;
+      onChange({
+        permitChecklist: [...data.permitChecklist, rec.permitType],
+        permitFees: fees,
+        noPermitsRequired: false,
+        permitStatus: data.permitStatus === 'not_required' ? 'not_started' : data.permitStatus,
+      });
+    }
+  };
+
+  const handleAcceptAllPermits = () => {
+    const ids = permitSuggestions
+      .filter((s) => !acceptedIds.has(s.id) && !dismissedIds.has(s.id))
+      .map((s) => s.id);
+    onAcceptAll(ids);
+    const newChecklist = [...data.permitChecklist];
+    const newFees = { ...data.permitFees };
+    ids.forEach((id) => {
+      const idx = parseInt(id.split('-')[1]);
+      const rec = recommendations?.permits[idx];
+      if (!rec || newChecklist.includes(rec.permitType)) return;
+      newChecklist.push(rec.permitType);
+      if (rec.estimatedFee != null) newFees[rec.permitType] = rec.estimatedFee;
+    });
+    onChange({
+      permitChecklist: newChecklist,
+      permitFees: newFees,
+      noPermitsRequired: false,
+      permitStatus: data.permitStatus === 'not_required' ? 'not_started' : data.permitStatus,
+    });
+  };
+
+  const handleDismissAllPermits = () => {
+    const ids = permitSuggestions
+      .filter((s) => !acceptedIds.has(s.id) && !dismissedIds.has(s.id))
+      .map((s) => s.id);
+    onDismissAll(ids);
+  };
+
   const togglePermit = (key: string) => {
     const isChecked = data.permitChecklist.includes(key);
     const updated = isChecked
@@ -79,6 +163,22 @@ export const WizardStep6: React.FC<Props> = ({ data, onChange }) => {
 
   return (
     <div className="space-y-[24px]">
+      {/* AI Permit Suggestions */}
+      {(aiLoading || permitSuggestions.length > 0) && (
+        <SuggestionPanel
+          title="Permit Recommendations"
+          items={permitSuggestions}
+          onAccept={handleAcceptPermit}
+          onDismiss={onDismiss}
+          onAcceptAll={handleAcceptAllPermits}
+          onDismissAll={handleDismissAllPermits}
+          acceptedIds={acceptedIds}
+          dismissedIds={dismissedIds}
+          isLoading={aiLoading}
+          emptyMessage="No permit suggestions"
+        />
+      )}
+
       {/* No Permits Toggle */}
       <div
         className="rounded-[10px] border-2 px-[16px] py-[14px] cursor-pointer transition-all"

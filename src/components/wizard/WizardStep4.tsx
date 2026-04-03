@@ -1,11 +1,28 @@
 import React from 'react';
 import { Button } from '@/components/ui/Button';
 import { useEquipmentStore } from '@/stores/equipmentStore';
+import { SuggestionPanel } from '@/components/shared/SuggestionPanel';
+import type { SuggestionItem } from '@/components/shared/SuggestionPanel';
 import type { WizardData, WizardSubcontractor, WizardEquipment } from '@/pages/ProjectWizard';
+import type { AIRecommendationSet } from '@/types';
 
 interface Props {
   data: WizardData;
   onChange: (updates: Partial<WizardData>) => void;
+  recommendations: AIRecommendationSet | null;
+  aiLoading: boolean;
+  acceptedCrewIds: Set<string>;
+  dismissedCrewIds: Set<string>;
+  acceptedEquipIds: Set<string>;
+  dismissedEquipIds: Set<string>;
+  onAcceptCrew: (id: string) => void;
+  onDismissCrew: (id: string) => void;
+  onAcceptAllCrew: (ids: string[]) => void;
+  onDismissAllCrew: (ids: string[]) => void;
+  onAcceptEquip: (id: string) => void;
+  onDismissEquip: (id: string) => void;
+  onAcceptAllEquip: (ids: string[]) => void;
+  onDismissAllEquip: (ids: string[]) => void;
 }
 
 const inputClass =
@@ -25,8 +42,109 @@ function createEmptySub(): WizardSubcontractor {
   };
 }
 
-export const WizardStep4: React.FC<Props> = ({ data, onChange }) => {
+export const WizardStep4: React.FC<Props> = ({
+  data,
+  onChange,
+  recommendations,
+  aiLoading,
+  acceptedCrewIds,
+  dismissedCrewIds,
+  acceptedEquipIds,
+  dismissedEquipIds,
+  onAcceptCrew,
+  onDismissCrew,
+  onAcceptAllCrew,
+  onDismissAllCrew,
+  onAcceptEquip,
+  onDismissEquip,
+  onAcceptAllEquip,
+  onDismissAllEquip,
+}) => {
   const { equipment: orgEquipment } = useEquipmentStore();
+
+  // Map AI crew recommendations to SuggestionItems
+  const crewSuggestions: SuggestionItem[] = (recommendations?.crew || []).map((c) => ({
+    id: c.crewMemberId,
+    title: c.crewMemberName,
+    subtitle: c.role,
+    reason: c.reason,
+    warning: !c.isAvailable ? c.availabilityNote : undefined,
+    metadata: c.skills.length > 0 ? { Skills: c.skills.join(', ') } : undefined,
+  }));
+
+  // Map AI equipment recommendations to SuggestionItems
+  const equipSuggestions: SuggestionItem[] = (recommendations?.equipment || []).map((e) => ({
+    id: e.equipmentId,
+    title: e.equipmentName,
+    subtitle: e.type,
+    reason: `${e.reason} — ${e.estimatedDays}d × $${e.dailyRate}/day`,
+    warning: !e.isAvailable ? e.availabilityNote : undefined,
+    metadata: { Days: e.estimatedDays, 'Daily Rate': `$${e.dailyRate}` },
+  }));
+
+  // Handle crew accept — add to crewSelections
+  const handleAcceptCrew = (id: string) => {
+    onAcceptCrew(id);
+    const rec = recommendations?.crew.find((c) => c.crewMemberId === id);
+    if (!rec) return;
+    if (data.crewSelections.some((c) => c.crewMemberId === id)) return;
+    onChange({
+      crewSelections: [
+        ...data.crewSelections,
+        { crewMemberId: rec.crewMemberId, name: rec.crewMemberName, role: rec.role },
+      ],
+    });
+  };
+
+  const handleAcceptAllCrew = () => {
+    const ids = crewSuggestions
+      .filter((s) => !acceptedCrewIds.has(s.id) && !dismissedCrewIds.has(s.id))
+      .map((s) => s.id);
+    onAcceptAllCrew(ids);
+    const newSelections = ids
+      .filter((id) => !data.crewSelections.some((c) => c.crewMemberId === id))
+      .map((id) => {
+        const rec = recommendations?.crew.find((c) => c.crewMemberId === id);
+        return rec ? { crewMemberId: rec.crewMemberId, name: rec.crewMemberName, role: rec.role } : null;
+      })
+      .filter(Boolean) as WizardData['crewSelections'];
+    if (newSelections.length > 0) {
+      onChange({ crewSelections: [...data.crewSelections, ...newSelections] });
+    }
+  };
+
+  // Handle equipment accept — add to equipmentSelections
+  const handleAcceptEquip = (id: string) => {
+    onAcceptEquip(id);
+    const rec = recommendations?.equipment.find((e) => e.equipmentId === id);
+    if (!rec) return;
+    if (data.equipmentSelections.some((e) => e.equipmentId === id)) return;
+    const entry: WizardEquipment = {
+      equipmentId: rec.equipmentId,
+      name: rec.equipmentName,
+      dailyRate: rec.dailyRate,
+      durationDays: rec.estimatedDays,
+    };
+    onChange({ equipmentSelections: [...data.equipmentSelections, entry] });
+  };
+
+  const handleAcceptAllEquip = () => {
+    const ids = equipSuggestions
+      .filter((s) => !acceptedEquipIds.has(s.id) && !dismissedEquipIds.has(s.id))
+      .map((s) => s.id);
+    onAcceptAllEquip(ids);
+    const newEntries: WizardEquipment[] = ids
+      .filter((id) => !data.equipmentSelections.some((e) => e.equipmentId === id))
+      .map((id) => {
+        const rec = recommendations?.equipment.find((e) => e.equipmentId === id);
+        if (!rec) return null;
+        return { equipmentId: rec.equipmentId, name: rec.equipmentName, dailyRate: rec.dailyRate, durationDays: rec.estimatedDays };
+      })
+      .filter(Boolean) as WizardEquipment[];
+    if (newEntries.length > 0) {
+      onChange({ equipmentSelections: [...data.equipmentSelections, ...newEntries] });
+    }
+  };
 
   // Equipment already selected (by ID)
   const selectedIds = new Set(data.equipmentSelections.map((e) => e.equipmentId));
@@ -79,6 +197,59 @@ export const WizardStep4: React.FC<Props> = ({ data, onChange }) => {
 
   return (
     <div className="space-y-[24px]">
+      {/* AI Crew Suggestions */}
+      {(aiLoading || crewSuggestions.length > 0) && (
+        <SuggestionPanel
+          title="Crew Recommendations"
+          items={crewSuggestions}
+          onAccept={handleAcceptCrew}
+          onDismiss={onDismissCrew}
+          onAcceptAll={handleAcceptAllCrew}
+          onDismissAll={() => {
+            const ids = crewSuggestions
+              .filter((s) => !acceptedCrewIds.has(s.id) && !dismissedCrewIds.has(s.id))
+              .map((s) => s.id);
+            onDismissAllCrew(ids);
+          }}
+          acceptedIds={acceptedCrewIds}
+          dismissedIds={dismissedCrewIds}
+          isLoading={aiLoading}
+          emptyMessage="No crew suggestions available"
+        />
+      )}
+
+      {/* Accepted crew members */}
+      {data.crewSelections.length > 0 && (
+        <div>
+          <h4 className="text-[13px] font-[600] text-[var(--text-2)] mb-[8px]">
+            Assigned Crew ({data.crewSelections.length})
+          </h4>
+          <div className="space-y-[6px]">
+            {data.crewSelections.map((c) => (
+              <div
+                key={c.crewMemberId}
+                className="flex items-center gap-[8px] rounded-[8px] border px-[12px] py-[8px]"
+                style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
+              >
+                <span className="text-[13px] text-[var(--text)] flex-1">{c.name}</span>
+                <span className="text-[11px] text-[var(--text-4)]">{c.role}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange({
+                      crewSelections: data.crewSelections.filter((cs) => cs.crewMemberId !== c.crewMemberId),
+                    });
+                  }}
+                  className="text-[var(--text-4)] hover:text-[var(--status-red)] bg-transparent border-none cursor-pointer p-[2px] text-[14px]"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Crew Estimate */}
       <div>
         <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
@@ -112,6 +283,27 @@ export const WizardStep4: React.FC<Props> = ({ data, onChange }) => {
           </div>
         </div>
       </div>
+
+      {/* AI Equipment Suggestions */}
+      {(aiLoading || equipSuggestions.length > 0) && (
+        <SuggestionPanel
+          title="Equipment Recommendations"
+          items={equipSuggestions}
+          onAccept={handleAcceptEquip}
+          onDismiss={onDismissEquip}
+          onAcceptAll={handleAcceptAllEquip}
+          onDismissAll={() => {
+            const ids = equipSuggestions
+              .filter((s) => !acceptedEquipIds.has(s.id) && !dismissedEquipIds.has(s.id))
+              .map((s) => s.id);
+            onDismissAllEquip(ids);
+          }}
+          acceptedIds={acceptedEquipIds}
+          dismissedIds={dismissedEquipIds}
+          isLoading={aiLoading}
+          emptyMessage="No equipment suggestions available"
+        />
+      )}
 
       {/* Equipment from org library */}
       <div>
