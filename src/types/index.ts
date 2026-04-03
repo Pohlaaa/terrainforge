@@ -460,6 +460,77 @@ export interface WorkOrderStep {
   text: string;
 }
 
+// ── AI Recommendation Types ──────────────────────────────────────────────────
+
+export interface AIRecommendationSet {
+  tasks: AITaskRecommendation[];
+  crew: AICrewRecommendation[];
+  equipment: AIEquipmentRecommendation[];
+  materials: AIMaterialRecommendation[];
+  budget: AIBudgetRecommendation;
+  permits: AIPermitRecommendation[];
+  generatedAt: string;
+}
+
+export interface AITaskRecommendation {
+  name: string;
+  phase: string;
+  estimatedHours: number;
+  description: string;
+  suggestedCrewRole?: string;
+}
+
+export interface AICrewRecommendation {
+  crewMemberId: string;
+  crewMemberName: string;
+  role: string;
+  reason: string;
+  availabilityNote: string;
+  isAvailable: boolean;
+  skills: string[];
+}
+
+export interface AIEquipmentRecommendation {
+  equipmentId: string;
+  equipmentName: string;
+  type: string;
+  reason: string;
+  availabilityNote: string;
+  isAvailable: boolean;
+  estimatedDays: number;
+  dailyRate: number;
+}
+
+export interface AIMaterialRecommendation {
+  materialId: string | null;
+  materialName: string;
+  category: string;
+  estimatedQuantity: number;
+  unit: string;
+  unitCost: number;
+  reason: string;
+  inLibrary: boolean;
+}
+
+export interface AIBudgetRecommendation {
+  laborBudget: number;
+  materialsBudget: number;
+  equipmentBudget: number;
+  disposalCost: number;
+  subcontractorBudget: number;
+  overheadPct: number;
+  estimatedHours: number;
+  clientQuoteRange: { low: number; high: number };
+  reasoning: string;
+}
+
+export interface AIPermitRecommendation {
+  permitType: string;
+  reason: string;
+  estimatedFee: number | null;
+  urgency: 'required' | 'recommended' | 'optional';
+}
+
 // ── AI / Price Research ───────────────────────────────────────────────────────
 
 /**

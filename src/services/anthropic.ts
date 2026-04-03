@@ -31,7 +31,8 @@ interface AnthropicSuccessBody {
  */
 export async function callClaude(
   prompt: string,
-  model: string = DEFAULT_MODEL
+  model: string = DEFAULT_MODEL,
+  maxTokens: number = 1024
 ): Promise<string> {
   const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
 
@@ -52,7 +53,7 @@ export async function callClaude(
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
