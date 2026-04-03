@@ -357,6 +357,7 @@ export default function ProjectDashboard() {
           permits={permits}
           scheduleEntries={projectSchedule}
           crew={crew}
+          onProjectUpdated={handleProjectUpdated}
         />
       )}
       {activeTab === 'tasks' && (
