@@ -49,6 +49,14 @@ npm run dev
 ```
 Open `http://localhost:3000` in incognito. Run test checklist. Report PASS / PARTIAL / FAIL.
 
+### Phase C.5: Cowork Doc Commit (C)
+After each sprint, Cowork may have created or modified documentation files that are untracked by git (execution prompts, CLAUDE.md updates, utility scripts). Before moving to the next sprint:
+1. Run `git status` — look for untracked `.claude/` files and modified docs
+2. Archive completed prompt files: move `[NAME].md` → `.claude/archive/[NAME]_completed.md`
+3. Update `CLAUDE.md` "Current Status" and "Active Files" sections
+4. Stage and commit: `git add .claude/ CLAUDE.md && git commit -m "docs: archive [sprint name] prompts, update project status"`
+5. Push to main
+
 ### Phase D: Fix if Needed (CC)
 If PARTIAL or FAIL: Code writes a hotfix, pushes, Charlie re-merges.
 

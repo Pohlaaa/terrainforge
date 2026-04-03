@@ -3,15 +3,15 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-03) — UI Hub Rebuild + Contractor Features
+## Current Status (2026-04-03) — Post-Rebuild, Field Alignment Complete
 
-**Active work**: Replacing the multi-page sidebar layout with a 4-tab hub (Projects, Budget & Finance, Materials, Crew & Equipment). Integrating contractor feature requests (crew phone, equipment types/hourly cost, disposal/equipment cost, org rate settings). Data layer refactor completed.
+**Active work**: 4-tab hub rebuild complete. Budget & Finance tab complete. Wizard↔dashboard field alignment complete (PR #114 pending merge). All wizard-collected fields are now viewable and editable on the ProjectDashboard. Org default rates flow into wizard budget step.
 
-**Why**: Contractor testing confirmed the multi-page layout feels disjointed. The 4-tab hub consolidates the most important views into one screen with consistent patterns (KPI cards → charts → data tables). Contractor feedback provides the specific feature gaps to fill.
+**What's next**: Merge PR #114 (fix-field-alignment), test, then identify next feature sprint.
 
-**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. Currently in M3 "First Revenue" with UI rebuild as next step.
+**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. Currently in M3 "First Revenue".
 
-**Database**: 15+ tables, 75+ RLS policies, 13 migrations applied. Migration 014 (contractor fields) pending for UI rebuild.
+**Database**: 15+ tables, 75+ RLS policies, 14 migrations applied (including 014_contractor_fields).
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand 7 stores (Supabase-primary, localStorage for UI only) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)
@@ -145,8 +145,7 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 - `.claude/CODE_GUIDE.md` — Execution workflow, git conventions, verification protocol.
 - `.claude/DESIGN_SYSTEM.md` — Design tokens, color system, spacing, component specs, hub layout patterns.
 - `.claude/CONTRACTOR_FEEDBACK.md` — Real contractor requirements integrated into UI rebuild.
-- `.claude/REBUILD_PROMPT.md` — Completed. 4-tab hub rebuild + contractor features.
-- `.claude/BUDGET_TAB_PROMPT.md` — **Current execution prompt.** Budget & Finance tab build.
+- _No active execution prompts. All completed prompts archived to `.claude/archive/`._
 
 ### Reference Files
 - `.claude/DEPLOY_CHECKLIST.md` — Netlify deploy steps
@@ -160,3 +159,6 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 
 ### Archived (historical reference only)
 - `.claude/archive/` — Pre-refactor docs, old sprint prompts, superseded files
+- `.claude/archive/REBUILD_PROMPT_completed.md` — 4-tab hub rebuild + contractor features
+- `.claude/archive/BUDGET_TAB_PROMPT_completed.md` — Budget & Finance tab build
+- `.claude/archive/FIELD_ALIGNMENT_PROMPT_completed.md` — Wizard↔dashboard field alignment + org rate defaults
