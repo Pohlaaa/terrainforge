@@ -3,7 +3,7 @@
 > **Purpose**: Replaces the old Phase 1-4 model. Milestones are outcome-driven with clear gates.
 > **Created**: 2026-03-29
 > **Owner**: Charlie (Business Systems Analyst II)
-> **Last updated**: 2026-03-31 (M2 complete, M3 sprint prompts 37-40 prepared)
+> **Last updated**: 2026-04-01 (Sprint 44.7 PASS — all hotfixes complete, ready for M3 execution)
 
 ---
 
@@ -268,11 +268,16 @@ The crew app is a separate, simplified interface for field workers — foremen, 
 | 34 | M1.5b | Materials tab, AI badge fix, inline budget editing, dashboard edit capabilities (**COMPLETE**) |
 | 35 | M2/Pre-M3 | Settings page (last M2 item), production readiness, UI consistency (**COMPLETE**) |
 | 36 | Bug Fix | Settings input fix, PageHeaders, map routing, project deletion, UI audit (**COMPLETE**) |
-| 37 | M3 | Landing page + Netlify production deploy |
-| 38 | M3 | Subscription enforcement + billing UI |
-| 39 | M3 | Trial experience (14-day flow, banner, read-only downgrade) |
-| 40 | M3 | Launch readiness + signup polish |
-| 41+ | M4 | Time tracking, client portal, CSV, invoicing, crew app enhancements |
+| 37 | M3 | Landing page + Netlify production deploy (**COMPLETE**) |
+| 38-40 | M3 | Subscription enforcement, trial experience, launch readiness (batch) (**COMPLETE**) |
+| 41 | Hotfix | Onboarding fixes — checklist, duplicate name, skip, sign-out redirect (**COMPLETE**) |
+| 42 | Hotfix | Sample data implementation + manifest routing fix (**COMPLETE**) |
+| 43 | Hotfix | Sample data quality — timestamp fix, zone_materials, task counts PASSED; resources/schedule/nav/widgets/clear FAILED |
+| 44 | Hotfix | Resources tab, schedule entries, clearSampleData fixed (**COMPLETE**) |
+| 44.5 | Hotfix | Manifest back nav fixed (**COMPLETE**) |
+| 44.6-44.7 | Hotfix | Widget layout persistence — removed Supabase sync, localStorage only (**COMPLETE**) |
+| 45 | M3 | Landing page visual upgrade — hero gradient, SVG icons, social proof, scroll animations, pricing polish |
+| 46+ | M3/M4 | Netlify production deploy, customer outreach, time tracking, client portal |
 
 *Sprint numbers are estimates. Actual scope depends on sprint outcomes and user feedback.*
 

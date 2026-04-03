@@ -89,6 +89,8 @@ export interface WizardData {
   materialsBudget: number | null;
   equipmentBudget: number | null;
   subcontractorBudget: number | null;
+  disposalCost: number | null;
+  equipmentCost: number | null;
   overheadPct: number | null;
   clientQuote: number | null;
 
@@ -138,6 +140,8 @@ const INITIAL_DATA: WizardData = {
   materialsBudget: null,
   equipmentBudget: null,
   subcontractorBudget: null,
+  disposalCost: null,
+  equipmentCost: null,
   overheadPct: null,
   clientQuote: null,
   noPermitsRequired: false,
@@ -206,7 +210,9 @@ export default function ProjectWizard() {
       const materials = data.materialsBudget ?? 0;
       const equipment = data.equipmentBudget ?? 0;
       const subs = data.subcontractorBudget ?? 0;
-      const subtotal = labor + materials + equipment + subs;
+      const disposal = data.disposalCost ?? 0;
+      const equipCost = data.equipmentCost ?? 0;
+      const subtotal = labor + materials + equipment + subs + disposal + equipCost;
       const overhead = subtotal * ((data.overheadPct ?? 10) / 100);
       const totalCost = subtotal + overhead;
       const profit = (data.clientQuote ?? 0) - totalCost;
@@ -266,6 +272,8 @@ export default function ProjectWizard() {
         clientQuote: data.clientQuote,
         profitMargin: profit,
         estimatedHours: data.estimatedHours,
+        disposalCost: data.disposalCost,
+        equipmentCost: data.equipmentCost,
         complianceNotes: data.complianceNotes,
         permitStatus: data.permitStatus as Project['permitStatus'],
         wizardStep: 7,

@@ -5,10 +5,12 @@ import { DEFAULT_SELECTED_KPIS, DEFAULT_WIDGET_LAYOUT } from '@/lib/kpiCompute'
 
 interface UIStore {
   sidebarCollapsed: boolean
+  theme: 'dark' | 'light'
   currentModal: string | null
   modalData: any
   dashboardConfig: DashboardConfig
   searchQuery: string
+  setTheme: (theme: 'dark' | 'light') => void
   toggleSidebar: () => void
   openModal: (name: string, data?: any) => void
   closeModal: () => void
@@ -48,10 +50,16 @@ export const useUIStore = create<UIStore>()(
   persist(
     (set) => ({
       sidebarCollapsed: false,
+      theme: (localStorage.getItem('tf-theme') as 'dark' | 'light') || 'dark',
       currentModal: null,
       modalData: null,
       dashboardConfig: defaultDashboardConfig,
       searchQuery: '',
+      setTheme: (theme) => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('tf-theme', theme);
+        set({ theme });
+      },
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       openModal: (name, data) =>

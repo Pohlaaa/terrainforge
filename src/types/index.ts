@@ -106,6 +106,8 @@ export interface Project {
   clientQuote?: number | null;
   profitMargin?: number | null;
   estimatedHours?: number | null;
+  disposalCost?: number | null;
+  equipmentCost?: number | null;
 
   // Step 6: Compliance
   complianceNotes?: string | null;
@@ -179,6 +181,7 @@ export interface CrewMember {
   id: string;
   name: string;
   role: 'foreman' | 'lead' | 'installer' | 'laborer' | 'specialist' | 'apprentice';
+  phone: string | null;
   skills: string[];
   availability: { mon: boolean; tue: boolean; wed: boolean; thu: boolean; fri: boolean; sat: boolean; sun: boolean };
   maxProjects: number;
@@ -197,6 +200,8 @@ export interface Equipment {
   id: string;
   name: string;
   type: string;
+  hourlyCost: number | null;
+  equipmentType: string | null;
   makeModel: string;
   year: number | null;
   serial: string;
@@ -489,7 +494,22 @@ export interface Organization {
   /** ISO timestamp — when paid access expires after cancellation. */
   subscriptionEndsAt: string | null;
   stripeCustomerId: string | null;
+  defaultLaborRate: number | null;
+  defaultEquipmentRate: number | null;
+  disposalRates: Record<string, number>;
 }
+
+export const EQUIPMENT_TYPES = [
+  { value: 'excavator', label: 'Excavator' },
+  { value: 'mini-excavator', label: 'Mini-Excavator' },
+  { value: 'skid-steer', label: 'Skid Steer' },
+  { value: 'mini-skid-steer', label: 'Mini Skid Steer' },
+  { value: 'tractor', label: 'Tractor' },
+  { value: 'dump-truck', label: 'Dump Truck' },
+  { value: 'trailer', label: 'Trailer' },
+  { value: 'pickup-truck', label: 'Pickup Truck' },
+  { value: 'other', label: 'Other' },
+] as const;
 
 // ── Billing ───────────────────────────────────────────────────────────────────
 

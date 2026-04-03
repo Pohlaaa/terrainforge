@@ -205,6 +205,7 @@ export function getSampleCrew(): Omit<CrewMember, 'id'>[] {
     {
       name: 'Marco Gutierrez',
       role: 'foreman',
+      phone: '(512) 555-0101',
       skills: ['hardscape', 'grading'],
       availability: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
       maxProjects: 2,
@@ -215,6 +216,7 @@ export function getSampleCrew(): Omit<CrewMember, 'id'>[] {
     {
       name: 'James Wilson',
       role: 'lead',
+      phone: '(512) 555-0102',
       skills: ['hardscape', 'concrete'],
       availability: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
       maxProjects: 2,
@@ -225,6 +227,7 @@ export function getSampleCrew(): Omit<CrewMember, 'id'>[] {
     {
       name: 'Sofia Reyes',
       role: 'specialist',
+      phone: '(512) 555-0103',
       skills: ['planting', 'irrigation'],
       availability: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: false },
       maxProjects: 3,
@@ -235,6 +238,7 @@ export function getSampleCrew(): Omit<CrewMember, 'id'>[] {
     {
       name: 'Tyler Brooks',
       role: 'installer',
+      phone: null,
       skills: ['grading', 'demolition'],
       availability: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
       maxProjects: 2,
@@ -245,6 +249,7 @@ export function getSampleCrew(): Omit<CrewMember, 'id'>[] {
     {
       name: 'David Chen',
       role: 'apprentice',
+      phone: null,
       skills: ['general labor'],
       availability: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false },
       maxProjects: 1,
@@ -255,6 +260,7 @@ export function getSampleCrew(): Omit<CrewMember, 'id'>[] {
     {
       name: 'Ana Martinez',
       role: 'specialist',
+      phone: '(512) 555-0106',
       skills: ['design', 'estimation'],
       availability: { mon: true, tue: true, wed: true, thu: true, fri: false, sat: false, sun: false },
       maxProjects: 3,
@@ -272,6 +278,8 @@ export function getSampleEquipment(): Omit<Equipment, 'id'>[] {
     {
       name: 'CAT 303.5 Mini Excavator',
       type: 'Excavator',
+      hourlyCost: 85,
+      equipmentType: 'excavator',
       makeModel: 'Caterpillar 303.5',
       year: 2022,
       serial: 'CAT303-2022-4871',
@@ -298,6 +306,8 @@ export function getSampleEquipment(): Omit<Equipment, 'id'>[] {
     {
       name: 'Bobcat S570 Skid Steer',
       type: 'Skid Steer',
+      hourlyCost: 65,
+      equipmentType: 'skid-steer',
       makeModel: 'Bobcat S570',
       year: 2023,
       serial: 'BOB570-2023-1192',
@@ -324,6 +334,8 @@ export function getSampleEquipment(): Omit<Equipment, 'id'>[] {
     {
       name: 'Ford F-350 Dump Truck',
       type: 'Truck',
+      hourlyCost: 45,
+      equipmentType: 'dump-truck',
       makeModel: 'Ford F-350 XL',
       year: 2021,
       serial: '1FTRF3B6XMEC18472',
@@ -350,6 +362,8 @@ export function getSampleEquipment(): Omit<Equipment, 'id'>[] {
     {
       name: 'Wacker Neuson WP1550 Compactor',
       type: 'Compactor',
+      hourlyCost: 25,
+      equipmentType: 'other',
       makeModel: 'Wacker Neuson WP1550',
       year: 2024,
       serial: 'WN1550-2024-0337',
@@ -376,6 +390,8 @@ export function getSampleEquipment(): Omit<Equipment, 'id'>[] {
     {
       name: 'Vermeer BC700XL Chipper',
       type: 'Chipper',
+      hourlyCost: 55,
+      equipmentType: 'other',
       makeModel: 'Vermeer BC700XL',
       year: 2020,
       serial: 'VER700-2020-8814',

@@ -1,80 +1,42 @@
-export interface NavItem {
+export interface NavTab {
   path: string;
-  icon: string;
   label: string;
+  shortLabel: string;
+  icon: string;
 }
 
-export interface NavGroup {
-  key: string;
-  icon: string;
+export interface NavSecondary {
+  path: string;
   label: string;
-  defaultPath: string;
-  items: NavItem[];
+  icon: string;
 }
 
-export const navGroups: NavGroup[] = [
-  {
-    key: 'dashboard',
-    icon: 'grid',
-    label: 'Dashboard',
-    defaultPath: '/',
-    items: [],
-  },
-  {
-    key: 'jobs',
-    icon: 'folder',
-    label: 'Jobs',
-    defaultPath: '/projects',
-    items: [
-      { path: '/projects', icon: 'folder', label: 'Projects' },
-      { path: '/schedule', icon: 'calendar', label: 'Schedule' },
-      { path: '/work-orders', icon: 'check-square', label: 'Work Orders' },
-    ],
-  },
-  {
-    key: 'resources',
-    icon: 'users',
-    label: 'Resources',
-    defaultPath: '/crew-manager',
-    items: [
-      { path: '/crew-manager', icon: 'users', label: 'Crew' },
-      { path: '/equipment', icon: 'wrench', label: 'Equipment' },
-      { path: '/materials', icon: 'package', label: 'Materials' },
-    ],
-  },
-  {
-    key: 'manifest',
-    icon: 'clipboard',
-    label: 'Manifest',
-    defaultPath: '/manifest',
-    items: [
-      { path: '/manifest', icon: 'clipboard', label: 'Manifest Engine' },
-      { path: '/price-research', icon: 'search', label: 'Price Research' },
-    ],
-  },
-  {
-    key: 'settings',
-    icon: 'settings',
-    label: 'Settings',
-    defaultPath: '/settings',
-    items: [
-      { path: '/settings', icon: 'settings', label: 'Settings' },
-      { path: '/billing', icon: 'credit-card', label: 'Billing' },
-    ],
-  },
+/** Primary hub tabs — always visible in top nav */
+export const primaryTabs: NavTab[] = [
+  { path: '/dashboard', label: 'Projects', shortLabel: 'Projects', icon: 'folder' },
+  { path: '/budget', label: 'Budget & Finance', shortLabel: 'Budget', icon: 'credit-card' },
+  { path: '/materials', label: 'Materials', shortLabel: 'Materials', icon: 'package' },
+  { path: '/crew-hub', label: 'Crew & Equipment', shortLabel: 'Crew', icon: 'users' },
 ];
 
-/** Find which group a pathname belongs to */
-export function findGroupForPath(pathname: string): NavGroup | undefined {
-  return navGroups.find((g) => {
-    if (g.defaultPath === '/' && pathname === '/') return true;
-    if (g.items.some((item) => pathname === item.path || pathname.startsWith(item.path + '/'))) return true;
-    if (g.defaultPath !== '/' && pathname.startsWith(g.defaultPath)) return true;
-    return false;
-  });
+/** Secondary pages — shown in "More" dropdown */
+export const secondaryPages: NavSecondary[] = [
+  { path: '/manifest', label: 'Manifest Engine', icon: 'clipboard' },
+  { path: '/work-orders', label: 'Work Orders', icon: 'check-square' },
+  { path: '/price-research', label: 'Price Research', icon: 'search' },
+  { path: '/settings', label: 'Settings', icon: 'settings' },
+  { path: '/billing', label: 'Billing', icon: 'credit-card' },
+];
+
+/** Check if a path matches the active tab */
+export function isActiveTab(tabPath: string, currentPath: string): boolean {
+  if (tabPath === '/dashboard') {
+    return currentPath === '/' || currentPath === '/dashboard';
+  }
+  return currentPath === tabPath || currentPath.startsWith(tabPath + '/');
 }
 
-/** Flat list of all navigable pages (for mobile sidebar) */
-export const allNavItems: NavItem[] = navGroups.flatMap((g) =>
-  g.items.length > 0 ? g.items : [{ path: g.defaultPath, icon: g.icon, label: g.label }]
-);
+/** Check if current path is a secondary page */
+export function isSecondaryPage(currentPath: string): boolean {
+  return secondaryPages.some(p => currentPath === p.path || currentPath.startsWith(p.path + '/'));
+}

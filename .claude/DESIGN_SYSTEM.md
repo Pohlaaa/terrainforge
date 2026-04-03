@@ -1,21 +1,23 @@
 # TerrainForge — Design System
 
-> **Last updated**: 2026-03-30 (consolidated from DESIGN_SYSTEM + DESIGN)
-> **Active design preview**: `.claude/design/design-preview-v7-tablet-density.html`
-> **Historical previews**: `.claude/archive/design/`
+> **Last updated**: 2026-04-03 (UI hub rebuild — 4-tab layout)
+> **Figma reference**: `https://www.figma.com/make/8U9qU4ZFoP9LgOcEiUtnPC/Landscaping-Project-Management-Dashboard`
+> **CSS source of truth**: `src/index.css`
 
 ## Design Identity
 
-TerrainForge is a professional tool for people who work outdoors. The design should feel sturdy, focused, and modern — not like a generic SaaS dashboard. Dark theme is the primary experience. Green is the brand color. Density matters — landscapers are checking this on a tablet at a job site.
+TerrainForge is a professional tool for people who work outdoors. The design should feel sturdy, focused, and modern — not like a generic SaaS dashboard. Dark theme is the default, light theme available via toggle. Green is the brand color. Density matters — landscapers are checking this on a tablet at a job site.
 
 ### Decisions That Are Final
-- Dark mode as default (brand decision)
+- Dark mode as default (brand decision), light mode via user toggle
 - Inter as the typeface (clean, legible at small sizes, free)
-- Green (#2D6A4F) as the primary brand color
+- Green (#2D6A4F light / #34D399 dark) as the primary brand color
 - High information density (professionals want data visible, not hidden behind clicks)
+- 4-tab hub layout with top navigation bar (no sidebar)
+- Consistent tab pattern: KPI cards → visualization → data table
 
 ## Design Philosophy
-Inspired by Linear (speed, clarity), Monday (visual status), and Asana (view flexibility) — adapted for contractors on tablets in the field. Every design decision passes the "muddy hands test": can a contractor standing in a yard, holding a tablet in one hand, use this feature without frustration?
+Inspired by Linear (speed, clarity), Monday (visual status), and the Figma template layout (clean hub tabs with consistent card/chart/table sections) — adapted for contractors on tablets in the field. Every design decision passes the "muddy hands test": can a contractor standing in a yard, holding a tablet in one hand, use this feature without frustration?
 
 ## Core Principles
 
@@ -27,73 +29,92 @@ Inspired by Linear (speed, clarity), Monday (visual status), and Asana (view fle
 
 ## Layout System
 
-### Page Structure
+### App Shell
 ```
-┌─────────────────────────────────────────────────┐
-│ Sidebar (dark)  │  Page Content (light)          │
-│                 │                                 │
-│  [Logo]         │  ┌─ Page Header ─────────────┐ │
-│                 │  │ Title    [Search] [+ New]  │ │
-│  Dashboard      │  └───────────────────────────┘ │
-│  Projects       │                                 │
-│  Materials      │  ┌─ View Toggle ─────────────┐ │
-│  Crew           │  │ [List] [Board] [Calendar]  │ │
-│  Equipment      │  └───────────────────────────┘ │
-│  ...            │                                 │
-│                 │  ┌─ Content Area ─────────────┐ │
-│  ─────────      │  │                             │ │
-│  [Settings]     │  │  Cards / List / Board       │ │
-│                 │  │                             │ │
-│                 │  └───────────────────────────┘ │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│ [TF Logo]  Projects  Budget & Finance  Materials  Crew & Equip  │
+│                                            [🔔] [More ▾] [👤]  │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  Tab Content Area (full width, scrollable)                       │
+│                                                                   │
+│  ┌─ KPI Cards ──────────────────────────────────────────────┐   │
+│  │ [Card 1]  [Card 2]  [Card 3]  [Card 4]                  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                   │
+│  ┌─ Visualization ──────────────────────────────────────────┐   │
+│  │ Chart / Map / Schedule Grid                               │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                   │
+│  ┌─ Data Table ─────────────────────────────────────────────┐   │
+│  │ Sortable, filterable table of primary entities            │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### Sidebar Behavior
-- Desktop (>1024px): Full sidebar with icons + labels, 240px wide
-- Tablet (640-1024px): Collapsed to icon-only rail, 64px wide. Tap icon = navigate. Long-press = show tooltip label.
-- Phone (<640px): Hidden. Hamburger icon in top-left. Slides over content as overlay.
+### Top Navigation Bar
+- Fixed at top of viewport, full width
+- Height: 56px
+- Background: `var(--surface-card)` with bottom border `var(--border-default)`
+- Left: Logo (links to `/`)
+- Center-left: 4 tab links — active tab gets a 2px bottom border in `var(--brand-primary)` and `var(--text-primary)` text; inactive tabs use `var(--text-secondary)`
+- Right: Alert bell icon, "More" dropdown (secondary pages), user avatar dropdown (theme toggle, sign out)
 
-### Detail Panel (Linear-style)
-When tapping a project card (or material, crew, equipment):
-- Detail slides in from the right as a panel overlay (not a new page)
-- Panel width: 60% on desktop, 85% on tablet, 100% on phone
-- Background content dims slightly but stays visible
-- Tap outside or swipe right to close
-- This keeps the user's place in the list — no "back button" navigation
+### TopNav Responsive Behavior
+- Desktop (>1024px): Full tab labels, all right-side icons visible
+- Tablet (640-1024px): Abbreviated tab labels (e.g., "Crew & Equip" → "Crew"), icons visible
+- Phone (<640px): Hamburger menu icon replaces tab links. Tapping opens a slide-out drawer with all nav items.
 
-### Page Header
-- Fixed at top of content area (not the viewport — sidebar stays fixed)
-- Contains: page title (left), search bar (center, collapsible on mobile), primary action button (right)
-- Primary action button: "+ New Project", "+ Add Material", etc. — always one tap away
-- On phone: search collapses to a search icon that expands on tap
+### "More" Dropdown
+Contains secondary pages: Manifest Engine, Work Orders, Price Research, Settings, Billing. Styled as a standard dropdown menu with `var(--surface-card)` background and `var(--shadow-panel)` shadow.
+
+### User Avatar Dropdown
+- User name and email
+- Theme toggle (Dark / Light) — switch component
+- Sign Out button
+
+### Hub Tab Content Pattern
+Every hub tab follows the same 3-section layout:
+1. **KPI Cards** — row of 4 cards at top. Each card: title (caption size, `var(--text-tertiary)`), value (heading-lg, `var(--text-primary)`), optional trend indicator (green up arrow or red down arrow with % change).
+2. **Visualization** — chart area. Projects tab has a chart/map toggle. Materials tab has an alert banner. Crew & Equipment tab has a split view (crew cards left, schedule grid right).
+3. **Data Table** — full-width table with sortable columns, search/filter bar, and an action button (e.g., "+ New Project", "+ Add Material").
+
+### Detail Navigation
+Clicking a project in any table navigates to `/projects/:id` (ProjectDashboard with 6 tabs). This is a full page navigation, not a panel overlay. Back navigation via browser back button or breadcrumb.
+
+### Page Header (Secondary Pages)
+Secondary pages (Manifest Engine, Work Orders, etc.) keep the standard page header pattern:
+- Fixed at top of content area (below TopNav)
+- Contains: page title (left), optional search bar (center), primary action button (right)
 
 ## Color System
 
-### Light Theme (default)
+### Light Theme (`:root` in index.css)
 ```css
 /* Surfaces */
 --surface-bg: #FAFAFA;          /* Page background */
---surface-card: #FFFFFF;        /* Card/panel background */
---surface-hover: #F3F4F6;       /* Hover state on cards */
+--surface-card: #FFFFFF;        /* Card/panel/nav background */
+--surface-hover: #F3F4F6;       /* Hover state on cards/rows */
 --surface-active: #E5E7EB;      /* Active/pressed state */
 --surface-selected: #D1FAE5;    /* Selected item highlight (green tint) */
 
 /* Text */
 --text-primary: #111827;        /* Headings, primary content */
---text-secondary: #4B5563;      /* Body text, descriptions */
---text-tertiary: #9CA3AF;       /* Timestamps, metadata, placeholders */
+--text-secondary: #4B5563;      /* Body text, descriptions, inactive tabs */
+--text-tertiary: #9CA3AF;       /* Timestamps, metadata, KPI labels */
 --text-disabled: #D1D5DB;       /* Disabled state */
 
 /* Brand */
---brand-primary: #2D6A4F;       /* Primary actions, links, active nav */
+--brand-primary: #2D6A4F;       /* Primary actions, active tab indicator, links */
 --brand-primary-hover: #245A42;
 --brand-primary-bg: #D1FAE5;    /* Light green background for selected/active */
 --brand-secondary: #D4A843;     /* Accent, warnings, highlights */
 
 /* Borders */
 --border-light: #F3F4F6;        /* Subtle dividers within cards */
---border-default: #E5E7EB;      /* Card borders, input borders */
---border-strong: #D1D5DB;       /* Emphasized borders */
+--border-default: #E5E7EB;      /* Card borders, nav bottom border, input borders */
+--border-strong: #D1D5DB;       /* Emphasized borders, hover state */
 
 /* Shadows */
 --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
@@ -102,11 +123,11 @@ When tapping a project card (or material, crew, equipment):
 --shadow-panel: 0 8px 24px rgba(0,0,0,0.12);
 
 /* Status colors */
---status-green: #16A34A;        /* On track, complete */
+--status-green: #16A34A;        /* On track, complete, positive trend */
 --status-green-bg: #DCFCE7;
---status-amber: #F59E0B;        /* Needs attention */
+--status-amber: #F59E0B;        /* Needs attention, low stock */
 --status-amber-bg: #FEF3C7;
---status-red: #DC2626;          /* Blocked, overdue */
+--status-red: #DC2626;          /* Blocked, overdue, negative trend */
 --status-red-bg: #FEE2E2;
 --status-blue: #2563EB;         /* In progress */
 --status-blue-bg: #DBEAFE;
@@ -114,51 +135,44 @@ When tapping a project card (or material, crew, equipment):
 --status-gray-bg: #F3F4F6;
 ```
 
-### Dark Theme
+### Dark Theme (`[data-theme="dark"]` in index.css)
 ```css
-[data-theme="dark"] {
-  --surface-bg: #0F172A;
-  --surface-card: #1E293B;
-  --surface-hover: #334155;
-  --surface-active: #475569;
-  --surface-selected: #064E3B;
+--surface-bg: #0F172A;
+--surface-card: #1E293B;
+--surface-hover: #334155;
+--surface-active: #475569;
+--surface-selected: #064E3B;
 
-  --text-primary: #F1F5F9;
-  --text-secondary: #CBD5E1;
-  --text-tertiary: #64748B;
-  --text-disabled: #475569;
+--text-primary: #F1F5F9;
+--text-secondary: #CBD5E1;
+--text-tertiary: #64748B;
+--text-disabled: #475569;
 
-  --brand-primary: #34D399;      /* Brighter green for dark bg readability */
-  --brand-primary-hover: #6EE7B7;
-  --brand-primary-bg: #064E3B;
+--brand-primary: #34D399;      /* Brighter green for dark bg readability */
+--brand-primary-hover: #6EE7B7;
+--brand-primary-bg: #064E3B;
 
-  --border-light: #1E293B;
-  --border-default: #334155;
-  --border-strong: #475569;
+--border-light: #1E293B;
+--border-default: #334155;
+--border-strong: #475569;
 
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-hover: 0 4px 8px rgba(0,0,0,0.3);
-  --shadow-panel: 0 8px 24px rgba(0,0,0,0.4);
+--shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+--shadow-card: 0 1px 3px rgba(0,0,0,0.3);
+--shadow-hover: 0 4px 8px rgba(0,0,0,0.3);
+--shadow-panel: 0 8px 24px rgba(0,0,0,0.4);
 
-  --status-green-bg: #064E3B;
-  --status-amber-bg: #78350F;
-  --status-red-bg: #7F1D1D;
-  --status-blue-bg: #1E3A5F;
-  --status-gray-bg: #1E293B;
-}
+--status-green-bg: #064E3B;
+--status-amber-bg: #78350F;
+--status-red-bg: #7F1D1D;
+--status-blue-bg: #1E3A5F;
+--status-gray-bg: #1E293B;
 ```
 
-### Sidebar (always dark, both themes)
-```css
---sidebar-bg: #0F172A;
---sidebar-hover: #1E293B;
---sidebar-active: #334155;
---sidebar-text: #E2E8F0;
---sidebar-text-muted: #94A3B8;
---sidebar-border: #1E293B;
---sidebar-accent: #34D399;       /* Active nav indicator */
-```
+### Theme Toggle Implementation
+- Theme stored in `uiStore` (localStorage)
+- Applied via `document.documentElement.setAttribute('data-theme', theme)`
+- Default: `'dark'`
+- Toggle location: user avatar dropdown in TopNav
 
 ## Typography
 
@@ -166,17 +180,17 @@ When tapping a project card (or material, crew, equipment):
 ```css
 font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 ```
-Inter is available via Google Fonts CDN. It's the standard for modern SaaS apps (Linear, Vercel, Resend all use it). If loading a web font is undesirable, the system font stack alone is fine.
+Inter loaded via Google Fonts CDN.
 
 ### Scale
 | Token | Size | Weight | Use |
 |-------|------|--------|-----|
-| heading-xl | 24px / 1.75rem | 700 | Page titles |
-| heading-lg | 20px / 1.25rem | 600 | Section headers |
-| heading-md | 16px / 1rem | 600 | Card titles, modal headers |
-| body | 14px / 0.875rem | 400 | Default body text |
+| heading-xl | 24px / 1.75rem | 700 | Page titles (secondary pages only) |
+| heading-lg | 20px / 1.25rem | 600 | KPI values, section headers |
+| heading-md | 16px / 1rem | 600 | Card titles, modal headers, tab labels |
+| body | 14px / 0.875rem | 400 | Default body text, table cells |
 | body-sm | 13px / 0.8125rem | 400 | Secondary text, metadata |
-| caption | 12px / 0.75rem | 500 | Labels, badges, timestamps |
+| caption | 12px / 0.75rem | 500 | KPI labels, badges, timestamps |
 | overline | 11px / 0.6875rem | 600 | Section labels, uppercase tracking |
 
 ### Rules
@@ -186,28 +200,30 @@ Inter is available via Google Fonts CDN. It's the standard for modern SaaS apps 
 
 ## Component Library
 
-### Cards (Project, Material, Equipment, Crew)
+### KPI Card
 ```
-┌──────────────────────────────────┐
-│ ● Status    Project Name    ...  │  ← Header: status dot + title + overflow menu
-│                                  │
-│ 123 Oak Street                   │  ← Subtitle / address
-│                                  │
-│ ┌────┐ ┌────┐ ┌────┐ ┌────┐    │  ← Metadata chips
-│ │$5K │ │3👷│ │12🧱│ │Mar 15│   │
-│ └────┘ └────┘ └────┘ └────┘    │
-│                                  │
-│ ▓▓▓▓▓▓▓▓▓▓░░░░░░ 65%          │  ← Progress bar
-└──────────────────────────────────┘
+┌──────────────────────────┐
+│ ▎ Total Revenue          │  ← Green left accent bar (4px), caption label
+│ ▎ $124,500               │  ← heading-lg value
+│ ▎ ↑ 12.5% from last mo  │  ← Optional trend (green up / red down + %)
+└──────────────────────────┘
 ```
+- 4 cards per row on desktop, 2×2 on tablet, stacked on phone
+- Background: `var(--surface-card)`
+- Border: `1px solid var(--border-default)`
+- Left accent: `4px solid var(--brand-primary)` (class: `kpi-card-accent`)
+- Shadow: `var(--shadow-card)`
+- Padding: 16px
+- Min width: 200px
 
-- Entire card is tappable (opens detail panel)
-- Status dot: colored circle (6px) in top-left — maps to project status
-- Overflow menu (`...`): appears on hover (desktop) or is always visible (mobile)
-- Metadata chips: small rounded pills showing key metrics at a glance
-- Progress bar: thin (4px) bar at bottom showing project completion
-- Card height: minimum 120px, consistent across the grid
-- Card spacing: 12px gap in grid
+### Data Table
+- Full-width within content area
+- Header row: `var(--surface-hover)` background, caption text, sortable columns (click to sort)
+- Body rows: alternating `var(--surface-bg)` and `var(--surface-card)` or hover with `var(--surface-hover)`
+- Row height: 48px minimum (touch-friendly)
+- Search/filter bar above table
+- Action button top-right (e.g., "+ New Project")
+- Pagination or infinite scroll for long lists
 
 ### Status Badges
 ```
@@ -222,26 +238,58 @@ Inter is available via Google Fonts CDN. It's the standard for modern SaaS apps 
 - Status dot (8px) + label text
 - Background uses status color at 10% opacity
 
+### Progress Bar
+- Used in project tables to show completion %
+- Height: 4px (thin bar) or 8px (standard)
+- Background: `var(--surface-hover)`
+- Fill: `var(--status-green)` for progress, `var(--status-blue)` for secondary metric
+- Text label next to bar: completion %
+
+### Crew Card (Crew & Equipment tab)
+```
+┌──────────────────────────┐
+│ John Smith          📞   │  ← Name + phone icon
+│ Foreman                  │  ← Role
+│ Assigned: Oak Street     │  ← Current project or "Available"
+│ [excavation] [grading]   │  ← Skill tags
+└──────────────────────────┘
+```
+- Background: `var(--surface-card)`
+- Border: `1px solid var(--border-default)`
+- Click opens edit modal
+- "Available" state uses `var(--status-green)` text
+
+### Alert Banner (Materials tab)
+```
+┌─ ⚠ ─────────────────────────────────────────────┐
+│  Low stock: Mulch (5 bags), Pavers (12 units)    │
+└──────────────────────────────────────────────────┘
+```
+- Background: `var(--status-amber-bg)`
+- Left border or icon: `var(--status-amber)`
+- Text: `var(--text-primary)`
+- Only shows when low stock items exist
+
 ### Buttons
 | Type | Use | Style |
 |------|-----|-------|
 | Primary | Main action ("Create Project", "Save") | Green bg, white text, rounded-lg |
-| Secondary | Supporting action ("Cancel", "Back") | White bg, gray border, dark text |
+| Secondary | Supporting action ("Cancel", "Back") | `var(--surface-card)` bg, border, dark text |
 | Ghost | Tertiary action ("Skip", "Maybe later") | No bg, no border, green text |
 | Danger | Destructive action ("Delete") | Red bg, white text — only in confirmation dialogs |
-| Icon | Toolbar actions | 40x40px, rounded-full, ghost style, icon centered |
+| Icon | Toolbar actions, nav icons | 40x40px, rounded-full, ghost style, icon centered |
 
-- All buttons: minimum height 44px (touch target), rounded-lg (8px radius)
-- Primary button: only ONE per view/modal. If there are two green buttons visible, something is wrong.
+- All buttons: minimum height 44px (touch target), rounded-lg (8px radius via `var(--radius-md)`)
+- Primary button: only ONE per view/modal
 - Loading state: replace label with a small spinner, keep button width stable
 
 ### Form Inputs
 - Height: 44px minimum (touch target)
-- Border: 1px solid var(--border-default), rounded-lg
-- Focus: 2px ring in brand-primary color, border changes to brand-primary
+- Border: `1px solid var(--border-default)`, `var(--radius-md)` radius
+- Focus: 2px ring in `var(--brand-primary)`, border changes to `var(--brand-primary)`
 - Error: red border, red ring, error message below in caption size
-- Label: caption size, above the input, text-secondary color
-- Placeholder: text-tertiary, never use as the label
+- Label: caption size, above the input, `var(--text-secondary)` color
+- Placeholder: `var(--text-tertiary)`, never use as the label
 
 ### Modal / Dialog
 - Centered on desktop, slides up from bottom on mobile (bottom sheet pattern)
@@ -251,7 +299,7 @@ Inter is available via Google Fonts CDN. It's the standard for modern SaaS apps 
 - Animation: fade in overlay (150ms) + slide up content (200ms ease-out)
 
 ### Toast / Notifications
-- Appears bottom-center on desktop, top-center on mobile (away from thumb zone)
+- Appears bottom-center on desktop, top-center on mobile
 - Auto-dismiss after 3 seconds for success, persist until dismissed for errors
 - Types: success (green left border), error (red), info (blue), warning (amber)
 - Max width: 400px, single line when possible
@@ -263,59 +311,75 @@ Inter is available via Google Fonts CDN. It's the standard for modern SaaS apps 
 - Primary CTA button below
 - Never show an empty table or empty grid — always show the empty state
 
+## Charts (Recharts)
+
+### Bar Chart (Projects tab — project progress overview)
+- Horizontal or vertical bars per project
+- Green fill for completed portion, gray/blue for remaining
+- Y-axis: project names (truncated to ~20 chars)
+- X-axis: percentage (0-100%)
+- Tooltip on hover: project name, completion %, budget info
+
+### Line Chart (Budget tab — revenue vs expenses)
+- Two lines: revenue (green), expenses (red/amber)
+- X-axis: months (last 6)
+- Y-axis: dollar amounts
+- Grid lines: `var(--border-light)`
+
+### Donut/Pie Chart (Budget tab — expense breakdown)
+- Categories: Labor, Materials, Equipment, Disposal, Overhead
+- Legend below or beside chart
+- Colors: use distinct brand/status colors for each segment
+
+### Chart Styling
+- Background: transparent (inherits card background)
+- Text: `var(--text-secondary)` for axis labels
+- Grid: `var(--border-light)`
+- Tooltip: `var(--surface-card)` bg, `var(--shadow-panel)` shadow, `var(--text-primary)` text
+
 ## Motion & Transitions
 
 ### Principles
-- Every transition should be under 200ms — the app should feel instant
+- Every transition under 200ms — the app should feel instant
 - Use ease-out for entrances, ease-in for exits
-- Never animate content that the user is trying to read
-- Disable all animations if the user has `prefers-reduced-motion: reduce`
+- Never animate content the user is trying to read
+- Disable all animations if `prefers-reduced-motion: reduce`
 
 ### Standard Transitions
 | Action | Animation | Duration |
 |--------|-----------|----------|
-| Page navigation | Content fade + slight slide up | 150ms ease-out |
-| Detail panel open | Slide in from right | 200ms ease-out |
-| Detail panel close | Slide out to right | 150ms ease-in |
-| Modal open | Fade overlay + scale up content from 95% | 150ms ease-out |
+| Tab switch | Content fade | 100ms ease |
+| Detail page navigate | Browser default | instant |
+| Modal open | Fade overlay + scale up from 95% | 150ms ease-out |
 | Modal close | Fade out | 100ms ease-in |
 | Card hover | Shadow elevation increase | 100ms ease |
 | Toast appear | Slide up + fade in | 200ms ease-out |
 | Toast dismiss | Fade out + slide down | 100ms ease-in |
 | Loading skeleton | Pulse animation | 1.5s infinite |
+| Dropdown open | Scale from 95% + fade | 100ms ease-out |
 
 ### Loading States
 - Never show a blank page — show skeleton loaders (gray pulsing rectangles matching content layout)
-- For inline loads (fetching materials for a project): show a subtle spinner next to the section header
-- For full page loads: show skeleton cards in the same grid layout as real cards
+- Skeleton class: `.skeleton-shimmer` (defined in index.css)
+- For tab switches: show skeleton KPI cards + table rows until data loads
+- For inline loads: show a subtle spinner next to the section header
 
-## View Modes
-
-### Projects Page — Three Views
-1. **Card Grid** (default) — responsive grid of project cards. Best for overview.
-2. **List View** — compact rows with status, name, dates, budget in columns. Best for scanning many projects.
-3. **Board View** (kanban) — columns for each status (Not Started, Planning, In Progress, Complete). Drag cards between columns to update status. Best for workflow management.
-
-Toggle between views using a segmented control in the page header. Persist the user's preferred view in localStorage.
-
-### Material Library — Two Views
-1. **Grid** — material cards with name, supplier, quantity, cost
-2. **Table** — dense list view for bulk management and CSV import preview
-
-### Dashboard
-Single view, but with customizable widget ordering (future). Current layout:
-- Top row: KPI cards (active projects, total budget, materials cost, crew deployed)
-- Middle: active projects list (compact cards, sorted by nearest deadline)
-- Bottom: alerts / notifications
+## Radius Tokens
+```css
+--radius-sm: 6px;    /* Badges, small pills */
+--radius-md: 8px;    /* Buttons, inputs, cards */
+--radius-lg: 12px;   /* Larger cards, modals */
+--radius-xl: 16px;   /* Full panels */
+```
 
 ## Accessibility Requirements
 - Color contrast: minimum 4.5:1 for body text, 3:1 for large text (WCAG AA)
-- Focus indicators: visible 2px ring on all interactive elements (keyboard and programmatic focus)
+- Focus indicators: visible 2px ring on all interactive elements
 - Touch targets: minimum 44x44px
 - Screen reader: all icons have aria-labels, status dots have sr-only text
-- Reduced motion: respect prefers-reduced-motion media query
+- Reduced motion: respect `prefers-reduced-motion` media query (all animations have a disable rule in index.css)
 
-## Responsive Breakpoints (reminder)
+## Responsive Breakpoints
 ```css
 /* Phone */
 @media (max-width: 639px) { ... }
@@ -327,24 +391,41 @@ Single view, but with customizable widget ordering (future). Current layout:
 @media (min-width: 1024px) { ... }
 ```
 
-## Implementation Color Reference (from src/index.css)
+### KPI Card Grid
+- Desktop: 4 across (`grid-cols-4`)
+- Tablet: 2×2 (`grid-cols-2`)
+- Phone: stacked (`grid-cols-1`)
 
-> The token names above (--surface-bg, --text-primary, etc.) are the design spec names. The **actual CSS variable names in the codebase** may differ. Always check `src/index.css` as the source of truth. Known codebase variables include:
+### Crew & Equipment Split View
+- Desktop: 50/50 split (crew cards left, schedule right)
+- Tablet: stacked (crew cards above schedule)
+- Phone: stacked
 
+## Implementation Notes
+
+### CSS Variable Naming
+The design spec variable names (above) **are** the actual variable names in `src/index.css`. Legacy aliases (e.g., `--surface`, `--text`, `--border`) exist for backward compatibility but should NOT be used in new code. Always use the full semantic names: `--surface-bg`, `--text-primary`, `--border-default`.
+
+### Sidebar Variables — DEPRECATED
+The following variables exist in `index.css` but are no longer used after the hub rebuild:
 ```css
-/* Codebase variables (dark theme default) */
---green: #2D6A4F;       --green-l: #74C69D;
---surface: #111810;      --surface2: #161E14;    --surface3: #1E2B1A;
---border: #2A3D26;
---text: #F0F4EE;         --text-2: #A8BAA3;      --text-3: #6B7E67;   --text-4: #3D4F3A;
---red: #E05C5C;          --amber: #D4A44C;       --blue: #4A8DB5;
+--sidebar-bg, --sidebar-hover, --sidebar-active, --sidebar-text,
+--sidebar-text-muted, --sidebar-border, --sidebar-accent
 ```
+These can be cleaned up in a future pass. Do not reference them in new code.
 
-When writing sprint prompts with visual tasks, reference the actual variable names from `src/index.css`, not the design spec names.
+### Legacy Aliases — DO NOT USE
+```css
+--surface, --surface2, --surface3, --border, --border2,
+--text, --text-2, --text-3, --text-4, --bg-primary, --bg-secondary,
+--bg-surface, --color-primary, etc.
+```
+These are kept for components not yet migrated. All new code uses the semantic names.
 
 ## How to Iterate on Design
 
 1. **Identify scope** — Is this a theme change (update CSS variables), a component change (update shared component), or a layout change (update the page)?
 2. **Minimal surface area** — Change the CSS variable if possible before touching components
 3. **Consistency check** — If changing a color, check all places that use that variable
-4. **Show the change** — Take a screenshot or describe exactly what changed
+4. **Hub tab consistency** — All 4 tabs must follow the same KPI → visualization → table pattern
+5. **Dark + light** — Every visual change must work in both themes. Test by toggling.

@@ -99,6 +99,7 @@ function formToMember(f: CrewForm): Omit<CrewMember, 'id'> {
   return {
     name: f.name.trim(),
     role: f.role as CrewMember['role'],
+    phone: null,
     skills: f.skills,
     availability: f.availability,
     maxProjects: parseInt(f.maxProjects) || 1,

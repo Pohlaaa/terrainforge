@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
 import type { WizardData } from '@/pages/ProjectWizard';
+import { useOrgStore } from '@/stores/orgStore';
 
 interface Props {
   data: WizardData;
@@ -62,14 +63,25 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
     if (Object.keys(updates).length > 0) onChange(updates);
   }, []); // only on mount
 
+  // Auto-calc labor cost from hours × org default rate
+  const org = useOrgStore((s) => s.org);
+  const orgLaborRate = org?.defaultLaborRate ?? DEFAULT_HOURLY_RATE;
+  useEffect(() => {
+    if (data.estimatedHours && data.estimatedHours > 0 && data.laborBudget == null) {
+      onChange({ laborBudget: data.estimatedHours * orgLaborRate });
+    }
+  }, [data.estimatedHours]);
+
   // Computed financials
   const financials = useMemo(() => {
     const labor = data.laborBudget ?? 0;
     const materials = data.materialsBudget ?? 0;
     const equipment = data.equipmentBudget ?? 0;
     const subs = data.subcontractorBudget ?? 0;
+    const disposal = data.disposalCost ?? 0;
+    const equipCost = data.equipmentCost ?? 0;
     const permits = totalPermitFees;
-    const subtotal = labor + materials + equipment + subs + permits;
+    const subtotal = labor + materials + equipment + subs + disposal + equipCost + permits;
     const overheadPct = data.overheadPct ?? 10;
     const overhead = subtotal * (overheadPct / 100);
     const totalCost = subtotal + overhead;
@@ -78,7 +90,7 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
     const marginPct = quote > 0 ? (profit / quote) * 100 : 0;
 
     return { subtotal, overhead, totalCost, profit, marginPct, permits };
-  }, [data.laborBudget, data.materialsBudget, data.equipmentBudget, data.subcontractorBudget, data.overheadPct, data.clientQuote, totalPermitFees]);
+  }, [data.laborBudget, data.materialsBudget, data.equipmentBudget, data.subcontractorBudget, data.disposalCost, data.equipmentCost, data.overheadPct, data.clientQuote, totalPermitFees]);
 
   const marginColor =
     financials.profit > 0
@@ -220,6 +232,34 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
               </p>
             )}
           </div>
+          <div>
+            <label className={labelClass}>Disposal Cost</label>
+            <input
+              className={inputClass}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={data.disposalCost ?? ''}
+              onChange={(e) =>
+                onChange({ disposalCost: e.target.value ? parseFloat(e.target.value) : null })
+              }
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Equipment Cost</label>
+            <input
+              className={inputClass}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={data.equipmentCost ?? ''}
+              onChange={(e) =>
+                onChange({ equipmentCost: e.target.value ? parseFloat(e.target.value) : null })
+              }
+            />
+          </div>
         </div>
       </div>
 
@@ -282,6 +322,18 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange }) => {
             <span className="text-[var(--text-2)]">Subcontractors</span>
             <span className="text-[var(--text)] font-[500]">{fmt(data.subcontractorBudget)}</span>
           </div>
+          {(data.disposalCost ?? 0) > 0 && (
+            <div className="flex justify-between text-[13px]">
+              <span className="text-[var(--text-2)]">Disposal</span>
+              <span className="text-[var(--text)] font-[500]">{fmt(data.disposalCost)}</span>
+            </div>
+          )}
+          {(data.equipmentCost ?? 0) > 0 && (
+            <div className="flex justify-between text-[13px]">
+              <span className="text-[var(--text-2)]">Equipment Cost</span>
+              <span className="text-[var(--text)] font-[500]">{fmt(data.equipmentCost)}</span>
+            </div>
+          )}
           {financials.permits > 0 && (
             <div className="flex justify-between text-[13px]">
               <span className="text-[var(--text-2)]">Permit Fees</span>

@@ -1,149 +1,166 @@
 # TerrainForge — Claude Code Guide
 
-> **For Claude Code sessions in VSCode.** Code owns sprint execution: implement, self-verify, build, commit, PR.
-> Code does NOT plan sprints — Cowork prepares all sprint prompts in advance.
-> Last updated: 2026-03-31 (batch execution model — chain sprints on one branch)
+> **For Claude Code sessions in VSCode.** Code owns execution: implement, self-verify, build, commit, PR.
+> Last updated: 2026-04-03 (UI hub rebuild — 4-tab layout + contractor features)
 
 ---
 
 ## Your Role
 
-You execute pre-planned sprints. You do not plan them. Your inputs:
-1. `CONTEXT.md` — current project state, Supabase rules, what's working
-2. This file (`CODE_GUIDE.md`) — execution rules
-3. `SPRINT_[N]_PROMPTS.md` — the specific tasks to implement
-
-That's it. You do NOT need to read ORCHESTRATOR.md, ROADMAP.md, or CONSIDERATIONS.md unless the sprint prompt explicitly references them.
+You implement code changes based on instructions provided by Charlie or prepared prompt files. Your inputs:
+1. `CLAUDE.md` (project root) — project context, tech stack, naming conventions, what NOT to do
+2. `ARCHITECTURE.md` — the data flow blueprint. **Every store, fetch pattern, and page composition decision is in this file. Follow it exactly.**
+3. This file (`CODE_GUIDE.md`) — execution rules, git workflow, verification protocol
+4. Sprint/refactor prompt files — the specific work to implement
 
 ---
 
-## Sprint Execution (Batch Model)
-
-Code executes **all sprints in a batch** on a single branch before stopping. Charlie merges and tests the whole batch in one evening session.
+## Execution Workflow
 
 Charlie executes steps marked **(C)**. Claude Code handles **(CC)**.
 
 ### Phase A: Pre-Flight (C)
-1. Check each sprint prompt in the batch for a **SQL migrations** line in the header
-2. If any sprint lists a migration: open the file from `supabase/migrations/`, copy the SQL, run it in Supabase SQL Editor
-3. Kick off Code with: `Read .claude/CODE_GUIDE.md, then execute SPRINT_[N] through SPRINT_[M] in sequence.`
+1. Check the prompt for **SQL migrations** — if listed, run in Supabase SQL Editor first
+2. Kick off Code with instructions referencing the prompt file or describing the work
 
-**Current batch (Sprints 38-40) requires**:
-- `supabase/migrations/012_trial_columns.sql` — run in Supabase SQL Editor before starting
-
-### Phase B: Execute Batch (CC)
-1. Read this file
-2. Create ONE branch for the entire batch: `batch-sprint-[N]-to-[M]`
-3. **For each sprint in the batch**:
-   a. Read SPRINT_[N]_PROMPTS.md
-   b. For each task in that sprint:
-      - Read all target files + referenced components before writing anything
-      - Implement changes
-      - Run `npm run build` — fix TypeScript errors before proceeding
-      - **Self-verify** — see Self-Verification Protocol below
-      - Commit: `S[sprint]-[task]: [description]`
-   c. After all tasks in this sprint: run that sprint's regression checklist
-   d. Run `npm run build` — confirm clean before moving to next sprint
-   e. Commit: `S[sprint]: sprint complete, build passing`
-   f. **Continue immediately to the next sprint in the batch** — do NOT stop, do NOT create a PR, do NOT wait for Charlie
-4. After ALL sprints in the batch are complete:
-   a. Run the FINAL sprint's regression checklist (it covers the most ground)
-   b. Push branch
-   c. Create ONE PR covering all sprints: `"C:\Program Files\GitHub CLI\gh.exe" pr create --base main --head batch-sprint-[N]-to-[M] --title "Batch: Sprints [N]-[M]" --body "[summary of all sprints completed]"`
-   d. Update CONTEXT.md with all sprint results
-   e. Move all sprint prompts to archive: `git mv .claude/SPRINT_[N]_PROMPTS.md .claude/archive/sprints/` (for each sprint)
+### Phase B: Execute (CC)
+1. Read this file + `ARCHITECTURE.md`
+2. Create a feature branch: `refactor-[description]` or `sprint-[N]-[description]`
+3. **Read all target files + referenced components before writing anything**
+4. For each task:
+   - Implement changes
+   - Run `npm run build` — fix TypeScript errors before proceeding
+   - **Self-verify** (see protocol below)
+   - Commit: descriptive message (e.g., `refactor: rebuild projectStore with fetchProjectFull`)
+5. After all tasks complete:
+   - Run full regression checklist
+   - Push branch
+   - Create PR: `"C:\Program Files\GitHub CLI\gh.exe" pr create --base main --head [branch] --title "[title]" --body "[summary]"`
 
 ### Phase C: Merge + Test (C)
-Charlie pastes the post-sprint command block:
 ```powershell
 cd "C:\Users\PohlaDesk\Documents\AI\Terrain Forge\terrainforge"
 git checkout main
-git merge batch-sprint-[N]-to-[M]
+git merge [branch-name]
 git push origin main
-git branch -d batch-sprint-[N]-to-[M]
+git branch -d [branch-name]
 npm run build
 npm run dev
 ```
-Then: open `http://localhost:3000` in incognito, run each sprint's test checklist, report PASS / PARTIAL / FAIL.
+Open `http://localhost:3000` in incognito. Run test checklist. Report PASS / PARTIAL / FAIL.
 
 ### Phase D: Fix if Needed (CC)
-If PARTIAL or FAIL: Code writes a hotfix on the same batch branch, pushes, Charlie re-merges.
+If PARTIAL or FAIL: Code writes a hotfix, pushes, Charlie re-merges.
 
-### Phase E: Wrap Up (C)
-1. Update SPRINT_LOG.md for each sprint in the batch (~2 min per sprint)
-2. Commit docs: `git add .claude/ && git commit -m "docs: Batch [N]-[M] wrap-up" && git push origin main`
+---
 
-### Single-Sprint Mode
-If Charlie kicks off only ONE sprint, Code still follows the same flow — the batch just contains one sprint. Branch name: `sprint-[N]-[description]` (not batch prefix).
+## Architecture Compliance (CRITICAL)
 
-### Key Batch Rules
-- **Never stop between sprints** — the whole point is autonomous execution
-- **Each sprint builds on the previous** — Code is working on the same branch, so Sprint N+1 has access to all code from Sprint N
-- **If `npm run build` fails between sprints**, fix it before continuing — do not start the next sprint with a broken build
-- **Migrations**: Charlie runs all SQL migrations in Pre-Flight before the batch starts. If a sprint prompt includes a migration file task, the file already exists in `supabase/migrations/` — do NOT recreate it, but DO verify it exists. The migration has already been applied to the database.
+**Before writing any store, service, or page code, re-read `ARCHITECTURE.md`.** Key rules:
+
+### Store Rules
+- **Stores are the only data gateway.** Pages never import from `supabaseData.ts`.
+- Each store has clear ownership boundaries (see ARCHITECTURE.md §1).
+- Domain stores (project, crew, schedule, equipment, material) do NOT use localStorage persistence. Always fetch fresh from Supabase.
+- Only `uiStore` (theme toggle) and `orgStore` (preferences) use localStorage.
+
+### Layout Rules
+- App uses a **TopNav** with 4 tabs — no sidebar. See ARCHITECTURE.md §0.
+- Every hub tab follows: KPI cards → visualization → data table.
+- Secondary pages (Manifest, Work Orders, Price Research, Settings, Billing) are in a "More" dropdown.
+- Theme toggle (dark/light) lives in the user menu dropdown. Dark is default.
+
+### Data Flow
+```
+Page → store hook → store action → supabaseData function → Supabase
+                         ↓
+                   store state updated → page re-renders
+```
+
+### Project Fetch Modes
+- `fetchProjects(orgId)` — list mode with summary counts. For Projects page, Dashboard, KPIs.
+- `fetchProjectFull(orgId, projectId)` — complete graph. For ProjectDashboard only. Always fresh.
+
+### Materials
+- Project-level materials (JSONB on projects table) = single source of truth
+- Zone materials = optional drill-down, derived from project materials
+- Org materials library = catalog with unit costs and inventory
+
+### Wizard → Store → Supabase
+- Wizard writes through store actions, not directly to supabaseData
+- On "Create Project": store handles Supabase write + local state update in one action
+- Post-creation editing happens on ProjectDashboard tabs, same store paths
 
 ---
 
 ## Self-Verification Protocol
 
-**This is mandatory.** After each task AND after all tasks are complete, verify your work.
+**Mandatory.** After each task AND after all tasks are complete.
 
-### Per-Task Verification
-After implementing each task, before committing:
+### Per-Task
 1. Run `npm run build` — must pass clean
-2. Check the sprint prompt's **Self-verification** section for that task
-3. If the task modifies a page component, verify the import chain compiles (no missing exports, no circular deps)
-4. If the task modifies supabaseData.ts, verify the function signature matches all call sites
+2. If task modifies a page: verify import chain compiles (no missing exports, no circular deps)
+3. If task modifies supabaseData.ts: verify function signature matches all call sites
+4. If task modifies a store: verify all page consumers still compile
+5. **Verify the architecture rule**: does this change follow the data flow pattern in ARCHITECTURE.md?
 
-### End-of-Sprint Verification
-After all tasks are committed, before creating PR:
-1. Run `npm run build` one final time
-2. Run through the **Regression Checklist** from the sprint prompt
-3. Search for any `console.log` statements you added during debugging — remove them
-4. Verify no files outside the sprint scope were accidentally modified (`git diff --stat`)
+### End-of-Session
+1. `npm run build` — clean pass
+2. Run regression checklist (provided in prompt or below)
+3. Remove any `console.log` statements added during debugging
+4. Verify no files outside scope were modified: `git diff --stat`
 
-### What Self-Verification Does NOT Include
-- You do NOT run `npm run dev` or start a dev server
-- You do NOT test in a browser (Charlie does this)
-- You DO verify everything that can be checked statically
+### Standard Regression Checklist
+- [ ] TopNav renders with 4 tabs, active indicator, and "More" dropdown
+- [ ] Projects tab (`/`) — KPI cards, chart/map toggle, projects table all render
+- [ ] Projects tab — clicking a project navigates to ProjectDashboard
+- [ ] Projects tab — "+ New Project" launches wizard
+- [ ] Materials tab (`/materials`) — KPI cards, low stock banner, inventory table render
+- [ ] Crew & Equipment tab (`/crew`) — KPI cards, crew cards, schedule grid, equipment table render
+- [ ] Project wizard completes and creates project visible on Projects tab
+- [ ] ProjectDashboard loads all 6 tabs without errors
+- [ ] Secondary pages load from "More" dropdown (Manifest, Work Orders, Settings, Billing)
+- [ ] Theme toggle switches between dark/light and persists
+- [ ] Sign out works and redirects to login
+- [ ] `npm run build` passes clean
 
 ---
 
 ## Git Conventions
 
-- Batch branches: `batch-sprint-[N]-to-[M]` (or `sprint-N-description` for single sprints)
-- One commit per task: `S[sprint]-[task]: [description]`
-- One checkpoint commit per sprint: `S[sprint]: sprint complete, build passing`
-- PR covers the entire batch: `"C:\Program Files\GitHub CLI\gh.exe" pr create --base main --head batch-sprint-[N]-to-[M] --title "Batch: Sprints [N]-[M]" --body "[summary of all sprints]"`
+- Feature branches: `refactor-[description]` or `sprint-[N]-[description]`
+- Descriptive commits: `refactor: rebuild projectStore`, `fix: crew assignment persistence`
 - Push to prod: `git push origin HEAD:main` (Netlify watches `main`)
-- GitHub has BOTH `main` and `master` — always use `main`
+- GitHub uses `main` branch (not `master`)
 
 ---
 
 ## Code Standards
 
-> Full architecture rules, naming conventions, and "What NOT to Do" are in `CLAUDE.md` at project root.
+> Full naming conventions and "What NOT to Do" are in `CLAUDE.md` at project root.
 
 ### TypeScript
 - No `any` types — use interfaces from `src/types/index.ts`
 - Imports use `@/` alias: `import { Project } from '@/types'`
 - Business logic lives in `src/lib/`, never in components
+- New types for refactor (ProjectListItem, ProjectFull, ProjectCrewAssignment) go in `src/types/index.ts`
 
 ### Supabase
-- ALL writes go through `src/services/supabaseData.ts`
+- ALL operations go through `src/services/supabaseData.ts`
+- **Stores call supabaseData. Pages call stores. No exceptions.**
 - Always include `org_id` on inserts and fetches
-- Use `onSupabaseError()` for error reporting
-- Field mapping: frontend camelCase ↔ DB snake_case via `toSnakeCase()`/`toCamelCase()`
+- Field mapping: camelCase ↔ snake_case via `toSnakeCase()` / `toCamelCase()`
 - Special mappings: `totalArea` → `total_area_sqft`, `area` → `area_sqft`, `perimeter` → `perimeter_lnft`
+- New contractor fields: `hourlyCost` → `hourly_cost`, `equipmentType` → `equipment_type`, `disposalCost` → `disposal_cost`, `equipmentCost` → `equipment_cost`, `defaultLaborRate` → `default_labor_rate`, `defaultEquipmentRate` → `default_equipment_rate`, `disposalRates` → `disposal_rates`
 - Send NULL (not 0) for optional numeric fields with CHECK constraints
 - NEVER use Postgres ENUM types — always TEXT + CHECK constraints
 
 ### Styling
-- CSS custom properties only: `var(--brand-primary)`, `var(--surface-card)`, etc.
+- CSS custom properties: `var(--brand-primary)`, `var(--surface-card)`, etc.
 - Tailwind for layout utilities
 - Design tokens in `DESIGN_SYSTEM.md`
-- All pages MUST use the shared `PageHeader` component
-- Respect `prefers-reduced-motion` for all animations
+- Hub tabs use the shared `KPICard` and `DataTable` components
+- Theme: dark default, light via `[data-theme="dark"]` CSS selector. Both sets of variables in `index.css`.
 
 ### RLS Policy Reference
 | Table | INSERT requires | Notes |
@@ -154,18 +171,17 @@ After all tasks are committed, before creating PR:
 | materials | designer or admin | |
 | crew_members | foreman or admin | |
 | equipment | foreman or admin | |
-
-`admin` role passes ALL checks (via `user_has_role` function).
+| project_crew_assignments | designer or admin | NEW — same pattern as project_tasks |
 
 ---
 
 ## SQL Migration Protocol
 
-- Write migration files to `supabase/migrations/[NNN]_[description].sql`
+- Files go in `supabase/migrations/[NNN]_[description].sql`
 - Each migration is idempotent (`IF NOT EXISTS`, `DROP IF EXISTS + CREATE`)
 - Include RLS policies and CHECK constraints in the same migration
 - NEVER use Postgres ENUM types — always TEXT + CHECK
-- Sprint prompts REFERENCE the migration file — never embed SQL inline
+- Charlie runs migrations manually in Supabase SQL Editor before Code executes
 
 ---
 
@@ -176,18 +192,17 @@ After all tasks are committed, before creating PR:
 - Don't run SQL against Supabase — Charlie runs migrations manually
 - Don't modify `.env.local` or any secrets file
 - Don't delete files outside `src/` without explicit instruction
-- Don't make product decisions — execute what's in the sprint prompt
-- Don't plan sprints — Cowork does this
+- Don't make architecture decisions — follow ARCHITECTURE.md
 
 ---
 
 ## Key Rules (Learned the Hard Way)
 
-- **Never interact with Claude Code during sprint execution** — causes context breaks
 - **Always verify `git status` is clean before starting**
 - **Close Claude Code sessions before running git commands** — prevents index.lock conflicts
-- **Run SQL migration BEFORE sprint execution** — CRUD functions will fail otherwise
+- **Run SQL migration BEFORE execution** — CRUD functions will fail otherwise
 - **Build before AND after** — pre-flight catches existing issues, post-merge catches regressions
 - **Use incognito for testing** — Zustand persist middleware caches old state in localStorage
 - **Frontend type values must exactly match DB CHECK constraint values** — mismatches cause silent INSERT failures
-- **Don't add widgets to DEFAULT_WIDGET_LAYOUT w
+- **Read all target files before writing** — understand current state before changing anything
+- **Pages never import supabaseData** — always go through stores

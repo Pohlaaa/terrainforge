@@ -129,6 +129,8 @@ function formToEquip(f: EquipForm): Omit<Equipment, 'id'> {
   return {
     name: f.name.trim(),
     type: f.type.trim(),
+    hourlyCost: null,
+    equipmentType: null,
     makeModel: f.makeModel.trim(),
     year: f.year ? parseInt(f.year) : null,
     serial: f.serial.trim(),

@@ -261,6 +261,10 @@ export const MaterialLibrary: React.FC = () => {
   }, [materials]);
 
   const lowStockCount = useMemo(() => materials.filter(isLowStock).length, [materials]);
+  const lowStockItems = useMemo(() => materials.filter(isLowStock), [materials]);
+  const inventoryValue = useMemo(() =>
+    materials.reduce((sum, m) => sum + (m.qtyOnHand * m.cost), 0), [materials]);
+  const totalItems = materials.length;
 
   function getStockStatus(m: Material): 'in' | 'low' | 'out' {
     if (m.qtyOnHand <= 0) return 'out'
@@ -408,10 +412,49 @@ export const MaterialLibrary: React.FC = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="h-full flex flex-col">
-      <PageHeader title="Materials" subtitle="Manage your material library, costs, and suppliers." />
+    <div className="h-full flex flex-col gap-4">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Total Items</div>
+          <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{totalItems}</div>
+        </div>
+        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Low Stock Alerts</div>
+          <div className="text-2xl font-semibold" style={{ color: lowStockCount > 0 ? 'var(--status-amber)' : 'var(--text-primary)' }}>{lowStockCount}</div>
+        </div>
+        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Inventory Value</div>
+          <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>${inventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+        </div>
+        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Pending Orders</div>
+          <div className="text-2xl font-semibold" style={{ color: 'var(--text-disabled)' }}>0</div>
+        </div>
+      </div>
+
+      {/* Low Stock Alert Banner */}
+      {lowStockItems.length > 0 && (
+        <div
+          className="flex items-start gap-2.5 rounded-lg px-4 py-3"
+          style={{ background: 'var(--status-amber-bg)', borderLeft: '4px solid var(--status-amber)' }}
+        >
+          <span className="text-base flex-shrink-0">⚠</span>
+          <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
+            <span className="font-semibold">Low stock: </span>
+            {lowStockItems.slice(0, 5).map((m, i) => (
+              <span key={m.id}>
+                {m.name} ({m.qtyOnHand} {m.unit})
+                {i < Math.min(lowStockItems.length, 5) - 1 ? ', ' : ''}
+              </span>
+            ))}
+            {lowStockItems.length > 5 && <span> and {lowStockItems.length - 5} more</span>}
+          </div>
+        </div>
+      )}
+
       {error && (
-        <div className="mb-[16px]">
+        <div>
           <AlertBanner alert={{ level: 'red', title: 'Load error', msg: error }} />
         </div>
       )}

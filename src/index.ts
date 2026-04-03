@@ -1,16 +1,14 @@
 // Export all page components
-export { Dashboard } from './pages/Dashboard';
-export { Projects } from './pages/Projects';
-export { MaterialLibrary } from './pages/MaterialLibrary';
-export { ManifestEngine } from './pages/ManifestEngine';
-export { WorkOrders } from './pages/WorkOrders';
-export { PriceResearch } from './pages/PriceResearch';
-export { CrewManager } from './pages/CrewManager';
-export { EquipmentManager } from './pages/EquipmentManager';
+export { default as Dashboard } from './pages/Dashboard';
+export { default as MaterialLibrary } from './pages/MaterialLibrary';
+export { default as ManifestEngine } from './pages/ManifestEngine';
+export { default as WorkOrders } from './pages/WorkOrders';
+export { default as PriceResearch } from './pages/PriceResearch';
+export { default as CrewManager } from './pages/CrewManager';
+export { default as EquipmentManager } from './pages/EquipmentManager';
 
 // Export layout components
-export { AppLayout } from './components/layout/AppLayout';
-export { Sidebar } from './components/layout/Sidebar';
+export { default as AppLayout } from './components/layout/AppLayout';
 export { PageHeader } from './components/layout/PageHeader';
 
 // Export shared components

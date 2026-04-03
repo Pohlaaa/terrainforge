@@ -12,6 +12,7 @@ Prefix legend: `[ ]` open · `[?]` needs decision
 
 - [ ] **Active Projects widget** should show project details (location, value, team, fleet, progress) — not just a count. Project dashboard exists now; widget could deep-link.
 - [ ] **Crew & Fleet status cards** should display the active project name if that crew member or equipment is currently assigned.
+- [ ] **Projects on Schedule** — Projects should appear on the Schedule page with their timeline (start/end dates). Currently schedule only shows individual crew schedule entries, not project-level timelines. Contractor feedback (Sprint 40 testing).
 
 ---
 
@@ -84,4 +85,4 @@ These are the three pillars the pilot contractor cares about most:
 - [ ] **SEO strategy** — Organic search as a growth channel. Needs landing page, blog, and keyword strategy. M3 scope.
 - [ ] **Competitor awareness:**
   - **Fieldwire** — Field management, task tracking, plan markup. Their weakness: not landscaping-specific, no manifest/material engine.
-  - **Aurora Solar** — AI-driven design + proposal tool for solar. Relevant model for our M5 3D Studio goal.
+  - **Aurora Solar** — 
