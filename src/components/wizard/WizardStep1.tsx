@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatPhoneNumber } from '@/utils/validation';
 import type { WizardData } from '@/pages/ProjectWizard';
 
 interface Props {
@@ -172,9 +173,10 @@ export const WizardStep1: React.FC<Props> = ({ data, onChange }) => {
             <label className={labelClass}>Phone</label>
             <input
               className={inputClass}
-              placeholder="(555) 123-4567"
+              placeholder="xxx-xxx-xxxx"
+              maxLength={12}
               value={data.clientPhone || ''}
-              onChange={(e) => onChange({ clientPhone: e.target.value || null })}
+              onChange={(e) => onChange({ clientPhone: formatPhoneNumber(e.target.value) || null })}
             />
           </div>
           <div>

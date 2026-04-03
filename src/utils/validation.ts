@@ -1,3 +1,22 @@
+/**
+ * Formats a phone string as xxx-xxx-xxxx.
+ * Strips all non-digit characters, then inserts dashes.
+ * Returns the raw input if it doesn't have exactly 10 digits.
+ */
+export function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length > 6) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  }
+  if (digits.length > 3) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}`;
+  }
+  return digits;
+}
+
 export const validation = {
   email: (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

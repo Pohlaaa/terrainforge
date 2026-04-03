@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ScheduleEntry, CrewMember } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
+import { formatPhoneNumber } from '@/utils/validation';
 import { Modal } from '@/components/shared/Modal';
 
 interface Props {
@@ -547,8 +548,9 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                     className={inputClass}
                     style={{ borderColor: 'var(--border)' }}
                     value={form.clientPhone}
-                    onChange={(e) => setField('clientPhone', e.target.value)}
-                    placeholder="Phone"
+                    onChange={(e) => setField('clientPhone', formatPhoneNumber(e.target.value))}
+                    placeholder="xxx-xxx-xxxx"
+                    maxLength={12}
                   />
                 </div>
                 <div>

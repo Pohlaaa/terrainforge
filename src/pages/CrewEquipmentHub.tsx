@@ -8,6 +8,7 @@ import { Badge } from '@/components/shared/Badge';
 import { Modal } from '@/components/shared/Modal';
 import { NavIcon } from '@/components/layout/NavIcon';
 import { toast } from '@/hooks/useToast';
+import { formatPhoneNumber } from '@/utils/validation';
 import { useBillingGate } from '@/hooks/useBillingGate';
 import { EQUIPMENT_TYPES } from '@/types';
 import type { CrewMember, Equipment, ScheduleEntry, ProjectCrewAssignment } from '@/types';
@@ -463,10 +464,11 @@ const CrewEquipmentHub: React.FC = () => {
             <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Phone</label>
             <input
               value={crewPhone}
-              onChange={(e) => setCrewPhone(e.target.value)}
+              onChange={(e) => setCrewPhone(formatPhoneNumber(e.target.value))}
               className="w-full px-3 py-2 text-sm rounded-md"
               style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-              placeholder="(555) 555-0100"
+              placeholder="xxx-xxx-xxxx"
+              maxLength={12}
             />
           </div>
           <button
