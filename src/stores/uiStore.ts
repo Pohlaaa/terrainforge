@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { DashboardConfig, WidgetConfig } from '@/types'
-import { DEFAULT_SELECTED_KPIS, DEFAULT_WIDGET_LAYOUT } from '@/lib/kpiDefinitions'
+import { DEFAULT_SELECTED_KPIS, DEFAULT_WIDGET_LAYOUT } from '@/lib/kpiCompute'
 
 interface UIStore {
   sidebarCollapsed: boolean

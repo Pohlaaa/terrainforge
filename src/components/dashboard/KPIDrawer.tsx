@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { KPI_LIBRARY } from '@/lib/kpiDefinitions';
+import { KPI_LIBRARY } from '@/lib/kpiCompute';
 import { KPILibraryCard } from './KPILibraryCard';
 
 interface KPIDrawerProps {

@@ -26,7 +26,7 @@ import { TrialBanner } from '@/components/TrialBanner';
 import { ToastContainer } from '@/components/shared/Toast';
 import { useUIStore } from '@/stores/uiStore';
 import { fetchUserPreferences, hasCompletedOnboarding } from '@/services/preferences';
-import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiDefinitions';
+import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiCompute';
 
 // Map onboarding priority labels → KPI library IDs
 const PRIORITY_TO_KPI: Record<string, string> = {

@@ -13,7 +13,7 @@ import { KPIDrawer } from '@/components/dashboard/KPIDrawer';
 import { WidgetGrid } from '@/components/dashboard/WidgetGrid';
 import { useCountUp } from '@/hooks/useCountUp';
 import { toast } from '@/hooks/useToast';
-import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS, DEFAULT_WIDGET_LAYOUT } from '@/lib/kpiDefinitions';
+import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS, DEFAULT_WIDGET_LAYOUT } from '@/lib/kpiCompute';
 import { fetchUserPreferences, updateSelectedKpis } from '@/services/preferences';
 import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
