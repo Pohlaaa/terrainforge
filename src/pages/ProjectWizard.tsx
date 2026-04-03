@@ -344,6 +344,7 @@ export default function ProjectWizard() {
   const handleCreate = async () => {
     if (!orgId || isCreating) return;
     setIsCreating(true);
+    setCreateStatus('Creating project...');
 
     try {
       // Compute budget total for the legacy budget field
@@ -381,7 +382,7 @@ export default function ProjectWizard() {
           design: false,
           access: !!data.gateCode || !!data.permittedHours,
           materials: (data.materialsBudget ?? 0) > 0,
-          crew: (data.crewSize ?? 0) > 0,
+          crew: (data.crewSize ?? 0) > 0 || data.crewSelections.length > 0,
           equipment: data.equipmentSelections.length > 0 || !!data.equipmentNotes,
         },
         // M1.5 fields
@@ -433,6 +434,7 @@ export default function ProjectWizard() {
       }
 
       // Create tasks through store
+      setCreateStatus('Adding tasks...');
       for (const task of data.tasks) {
         if (task.name.trim()) {
           await createProjectTask(
@@ -460,6 +462,7 @@ export default function ProjectWizard() {
       }
 
       // Create subcontractors through store
+      setCreateStatus('Creating subcontractors...');
       for (const sub of data.subcontractors) {
         if (sub.companyName.trim()) {
           await createProjectSubcontractor(
@@ -484,11 +487,78 @@ export default function ProjectWizard() {
         }
       }
 
+      // Crew assignments + schedule entries (new — downstream writes)
+      let downstreamErrors = false;
+      if (data.crewSelections.length > 0) {
+        setCreateStatus('Assigning crew...');
+        for (const crew of data.crewSelections) {
+          try {
+            await scheduleStore.createAssignment(
+              {
+                orgId,
+                projectId,
+                crewMemberId: crew.crewMemberId,
+                roleOnProject: crew.roleOnProject || crew.role,
+              },
+              orgId
+            );
+
+            // Create schedule entries for weekdays in project date range
+            if (data.startDate && data.targetDate) {
+              setCreateStatus('Scheduling...');
+              const dates = getWeekdaysBetween(data.startDate, data.targetDate);
+              for (const date of dates) {
+                await scheduleStore.createEntry(
+                  {
+                    projectId,
+                    crewMemberId: crew.crewMemberId,
+                    equipmentId: null,
+                    scheduledDate: date,
+                    startTime: null,
+                    endTime: null,
+                    status: 'scheduled',
+                    notes: '',
+                  },
+                  orgId
+                );
+              }
+            }
+          } catch (err) {
+            console.error('Crew assignment failed:', err);
+            downstreamErrors = true;
+          }
+        }
+      }
+
+      // Equipment status updates
+      if (data.equipmentSelections.length > 0) {
+        setCreateStatus('Updating equipment...');
+        for (const equip of data.equipmentSelections) {
+          try {
+            if (equip.equipmentId) {
+              await equipmentStore.updateEquipment(equip.equipmentId, {
+                status: 'in-use',
+                assignedProject: projectId,
+              });
+            }
+          } catch (err) {
+            console.error('Equipment update failed:', err);
+            downstreamErrors = true;
+          }
+        }
+      }
+
+      if (downstreamErrors) {
+        console.warn('Project created with some assignment errors. User can fix on dashboard.');
+      }
+
+      setCreateStatus('Done!');
       navigate(`/projects/${projectId}`);
     } catch (err) {
       console.error('Wizard create failed:', err);
     } finally {
       setIsCreating(false);
+      setCreateStatus('');
     }
   };
 
@@ -610,15 +680,20 @@ export default function ProjectWizard() {
               Next
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={handleCreate}
-              loading={isCreating}
-              disabled={!data.name.trim() || isCreating}
-            >
-              Create Project
-            </Button>
+            <div className="flex items-center gap-[8px]">
+              {createStatus && (
+                <span className="text-[12px] text-[var(--text-3)]">{createStatus}</span>
+              )}
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleCreate}
+                loading={isCreating}
+                disabled={!data.name.trim() || isCreating}
+              >
+                Create Project
+              </Button>
+            </div>
           )}
         </div>
       </div>
