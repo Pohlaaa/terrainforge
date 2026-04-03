@@ -252,32 +252,74 @@ Every clickable item in a widget navigates to the appropriate detail view:
 
 ## 5. Wizard Architecture
 
-### Data Flow
+### Intended Workflow
 
-The wizard collects data across steps in local component state (no premature persistence). On "Create Project" (final step), it writes everything through store actions in one coordinated operation:
+Contractors populate their org first (crew profiles, equipment, material library, default rates). When they create a project, AI uses the description + org context to recommend everything. The contractor reviews, edits, and confirms before the wizard writes to all downstream systems.
+
+### AI Recommendation Flow
+
+```
+Step 1 (Project basics) → Step 2 (Site/address)
+                              ↓
+                    AI fires after Step 2 completes
+                    Input: description, projectType, scopeSize, propertyType,
+                           address, siteConditions, org crew[], equipment[],
+                           materials[], defaultRates, existing scheduleEntries[]
+                              ↓
+                    Returns: AIRecommendationSet {
+                      tasks, crewPicks (with availability notes),
+                      equipmentPicks (with availability notes),
+                      materialPicks (from org library),
+                      budgetEstimate, permitSuggestions
+                    }
+                              ↓
+Steps 3-6: Each step shows AI suggestions in a review panel.
+           Contractor accepts/rejects/edits each recommendation.
+           Accepted items populate the form fields.
+                              ↓
+Step 7: Review & submit
+```
+
+### Suggest-then-Accept UX Pattern
+
+Each wizard step (3–6) renders a `SuggestionPanel` alongside the form. The panel shows AI recommendations as cards the contractor can accept (populates form), dismiss, or edit. Items not accepted by the contractor are not included. The form fields remain fully editable after acceptance.
+
+### Data Flow (on submit)
+
+The wizard writes to ALL downstream systems in one coordinated operation:
 
 ```typescript
 // ProjectWizard onCreateProject:
 const project = await projectStore.createProject(projectData);
-// projectData includes materials in the JSONB field
+// projectData includes materials JSONB, all budget fields, site conditions
 
-if (tasks.length > 0) {
-  await projectStore.createProjectTasks(project.id, tasks);
-}
-if (subcontractors.length > 0) {
-  await projectStore.createProjectSubcontractors(project.id, subs);
-}
-if (permits.length > 0) {
-  await projectStore.createProjectPermits(project.id, permits);
+// Child entities
+await projectStore.createProjectTasks(project.id, tasks);
+await projectStore.createProjectSubcontractors(project.id, subs);
+await projectStore.createProjectPermits(project.id, permits);
+
+// Crew assignments + schedule entries
+for (crew of acceptedCrewPicks) {
+  await scheduleStore.createAssignment({ projectId, crewMemberId, roleOnProject });
+  // Create schedule entries for project date range
+  await scheduleStore.createEntry({ projectId, crewMemberId, scheduledDate, ... });
 }
 
-// Navigate to new project's dashboard
+// Equipment status updates
+for (equip of acceptedEquipmentPicks) {
+  await equipmentStore.updateEquipment(equip.id, { status: 'in-use', assignedProject: project.id });
+}
+
 navigate(`/projects/${project.id}`);
 ```
 
+### AI Service Layer
+
+`src/services/aiRecommendations.ts` — dedicated module for project AI recommendations. Calls Claude via `anthropic.ts` with structured prompts. Returns typed recommendation objects. Does NOT write to any store — it's a pure suggestion layer. The wizard owns the accept/reject logic and the store writes.
+
 ### Post-Creation Editing
 
-All editing happens on the ProjectDashboard tabs. Each tab's edit operations write through the same projectStore actions the wizard uses. This guarantees consistency — there's one code path for creating data and one for updating it, both going through the store.
+All editing happens on the ProjectDashboard tabs. Each tab's edit operations write through the same store actions the wizard uses. This guarantees consistency — there's one code path for creating data and one for updating it, both going through the store.
 
 | Dashboard Tab | Edits | Store Action |
 |---------------|-------|-------------|
@@ -354,7 +396,8 @@ src/
     supabase.ts       — Client instance — UNCHANGED
     supabaseData.ts   — ALL Supabase CRUD — refactored
     stripe.ts         — Billing — UNCHANGED
-    anthropic.ts      — AI — UNCHANGED
+    anthropic.ts      — Claude API client (low-level calls)
+    aiRecommendations.ts — AI project recommendation engine (uses anthropic.ts)
   lib/
     manifest.ts       — Manifest engine — UNCHANGED
     workorders.ts     — Work order generation — UNCHANGED
@@ -395,16 +438,9 @@ ALTER TABLE project_crew_assignments ENABLE ROW LEVEL SECURITY;
 
 ---
 
-## 9. What This Architecture Does NOT Cover (Post-Stabilization)
+## 9. Future Considerations
 
-These are documented in `CONTRACTOR_FEEDBACK.md` and will be layered on after the refactor:
-
-- New wizard step for material quantities / disposal categories
-- Org-level rate settings
-- Disposal cost as a budget category
-- Utility locate safety check on crew assignment
-- Equipment type dropdown values
-- Crew phone number field
-- Equipment hourly cost field
-- AI client quote generation
-- Address dropdown keyboard navigation
+- Real-time collaboration (multi-user editing)
+- Offline/PWA support for field crews
+- Advanced reporting and analytics
+- Client portal (read-only project view for clients)

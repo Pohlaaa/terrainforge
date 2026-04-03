@@ -94,9 +94,11 @@ Page → store hook → store action → supabaseData function → Supabase
 - Zone materials = optional drill-down, derived from project materials
 - Org materials library = catalog with unit costs and inventory
 
-### Wizard → Store → Supabase
-- Wizard writes through store actions, not directly to supabaseData
-- On "Create Project": store handles Supabase write + local state update in one action
+### Wizard → AI → Store → Supabase
+- After Step 2, AI generates recommendations using org context (crew, equipment, materials, rates, schedules)
+- AI recommendations are pure suggestions — `aiRecommendations.ts` never writes to stores
+- Contractor reviews suggestions via `SuggestionPanel` in Steps 3–6, accepting/rejecting/editing each
+- On "Create Project": wizard writes to ALL downstream systems (project, tasks, subs, crew assignments, schedule entries, equipment status)
 - Post-creation editing happens on ProjectDashboard tabs, same store paths
 
 ---
@@ -212,6 +214,4 @@ Page → store hook → store action → supabaseData function → Supabase
 - **Run SQL migration BEFORE execution** — CRUD functions will fail otherwise
 - **Build before AND after** — pre-flight catches existing issues, post-merge catches regressions
 - **Use incognito for testing** — Zustand persist middleware caches old state in localStorage
-- **Frontend type values must exactly match DB CHECK constraint values** — mismatches cause silent INSERT failures
-- **Read all target files before writing** — understand current state before changing anything
-- **Pages never import supabaseData** — always go through stores
+- **Frontend type values must exactly match DB CHECK constraint val

@@ -3,15 +3,15 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-03) — Post-Rebuild, Field Alignment Complete
+## Current Status (2026-04-03) — AI Wizard Sprint
 
-**Active work**: 4-tab hub rebuild complete. Budget & Finance tab complete. Wizard↔dashboard field alignment complete (PR #114 pending merge). All wizard-collected fields are now viewable and editable on the ProjectDashboard. Org default rates flow into wizard budget step.
+**Active work**: AI-powered project creation wizard. AI recommends tasks, crew (with availability), equipment, materials, budget, and permits based on project description + org data. Suggest-then-accept UX pattern. Wizard submit writes to all downstream systems (crew assignments, schedule entries, equipment status).
 
-**What's next**: Merge PR #114 (fix-field-alignment), test, then identify next feature sprint.
+**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment (PR #114 merged).
 
 **Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. Currently in M3 "First Revenue".
 
-**Database**: 15+ tables, 75+ RLS policies, 14 migrations applied (including 014_contractor_fields).
+**Database**: 15+ tables, 75+ RLS policies, 14 migrations applied (including 014_contractor_fields). No new migrations needed for AI wizard sprint.
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand 7 stores (Supabase-primary, localStorage for UI only) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)
@@ -145,7 +145,7 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 - `.claude/CODE_GUIDE.md` — Execution workflow, git conventions, verification protocol.
 - `.claude/DESIGN_SYSTEM.md` — Design tokens, color system, spacing, component specs, hub layout patterns.
 - `.claude/CONTRACTOR_FEEDBACK.md` — Real contractor requirements integrated into UI rebuild.
-- _No active execution prompts. All completed prompts archived to `.claude/archive/`._
+- `.claude/AI_WIZARD_PROMPT.md` — **Current execution prompt.** AI-powered wizard with suggest-then-accept UX and downstream writes.
 
 ### Reference Files
 - `.claude/DEPLOY_CHECKLIST.md` — Netlify deploy steps
@@ -160,5 +160,4 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 ### Archived (historical reference only)
 - `.claude/archive/` — Pre-refactor docs, old sprint prompts, superseded files
 - `.claude/archive/REBUILD_PROMPT_completed.md` — 4-tab hub rebuild + contractor features
-- `.claude/archive/BUDGET_TAB_PROMPT_completed.md` — Budget & Finance tab build
-- `.claude/archive/FIELD_ALIGNMENT_PROMPT_completed.md` — Wizard↔dashboard field alignment + org rate defaults
+- `.claude/archive/BUDGET_TAB_PROMP
