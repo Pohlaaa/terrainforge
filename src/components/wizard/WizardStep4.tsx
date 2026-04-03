@@ -119,11 +119,15 @@ export const WizardStep4: React.FC<Props> = ({
     const rec = recommendations?.equipment.find((e) => e.equipmentId === id);
     if (!rec) return;
     if (data.equipmentSelections.some((e) => e.equipmentId === id)) return;
+    // Look up hourly cost from org equipment profile
+    const equipProfile = orgEquipment.find((e) => e.id === rec.equipmentId);
     const entry: WizardEquipment = {
       equipmentId: rec.equipmentId,
       name: rec.equipmentName,
       dailyRate: rec.dailyRate,
       durationDays: rec.estimatedDays,
+      hourlyCost: equipProfile?.hourlyCost ?? undefined,
+      estimatedHours: rec.estimatedDays * 8,
     };
     onChange({ equipmentSelections: [...data.equipmentSelections, entry] });
   };
@@ -138,7 +142,15 @@ export const WizardStep4: React.FC<Props> = ({
       .map((id) => {
         const rec = recommendations?.equipment.find((e) => e.equipmentId === id);
         if (!rec) return null;
-        return { equipmentId: rec.equipmentId, name: rec.equipmentName, dailyRate: rec.dailyRate, durationDays: rec.estimatedDays };
+        const equipProfile = orgEquipment.find((eq) => eq.id === rec.equipmentId);
+        return {
+          equipmentId: rec.equipmentId,
+          name: rec.equipmentName,
+          dailyRate: rec.dailyRate,
+          durationDays: rec.estimatedDays,
+          hourlyCost: equipProfile?.hourlyCost ?? undefined,
+          estimatedHours: rec.estimatedDays * 8,
+        };
       })
       .filter(Boolean) as WizardEquipment[];
     if (newEntries.length > 0) {
@@ -160,6 +172,8 @@ export const WizardStep4: React.FC<Props> = ({
       name: equip.name,
       dailyRate: equip.dailyRate ?? 0,
       durationDays: 1,
+      hourlyCost: equip.hourlyCost ?? undefined,
+      estimatedHours: 8,
     };
     onChange({ equipmentSelections: [...data.equipmentSelections, entry] });
   };

@@ -50,14 +50,41 @@ export function getWeekdayDates(startDate: string, targetDate: string): Date[] {
 }
 
 /**
- * Schedule tasks sequentially on a timeline.
- * Tasks are sorted by phase order, then by sequence number.
- * If total task days exceed available weekdays, compress proportionally.
+ * Group tasks by phase, maintaining phase order.
+ */
+function groupTasksByPhase(tasks: WizardTask[]): Map<string, WizardTask[]> {
+  const groups = new Map<string, WizardTask[]>();
+  // Sort tasks by phase order first, then sequence
+  const sorted = [...tasks].sort((a, b) => {
+    const phaseA = PHASE_ORDER.indexOf(a.phase);
+    const phaseB = PHASE_ORDER.indexOf(b.phase);
+    if (phaseA !== phaseB) return (phaseA === -1 ? 999 : phaseA) - (phaseB === -1 ? 999 : phaseB);
+    return a.sequenceNumber - b.sequenceNumber;
+  });
+  for (const task of sorted) {
+    const existing = groups.get(task.phase);
+    if (existing) {
+      existing.push(task);
+    } else {
+      groups.set(task.phase, [task]);
+    }
+  }
+  return groups;
+}
+
+/**
+ * Schedule tasks on a timeline with phase-based parallelism and crew-aware duration.
+ *
+ * - Tasks within the SAME phase run in parallel (phase duration = max task duration)
+ * - Tasks in DIFFERENT phases run sequentially
+ * - Crew count reduces individual task duration (more crew = fewer days per task)
+ * - If total phase durations exceed available weekdays, compress proportionally
  */
 export function scheduleTasksOnTimeline(
   tasks: WizardTask[],
   startDate: string,
-  targetDate: string
+  targetDate: string,
+  crewCount: number = 1
 ): ScheduledTask[] {
   if (tasks.length === 0) return [];
 
@@ -66,34 +93,59 @@ export function scheduleTasksOnTimeline(
   const totalWeekdays = countWeekdays(start, end);
   if (totalWeekdays <= 0) return [];
 
-  // Sort by phase order, then sequence
-  const sorted = [...tasks].sort((a, b) => {
-    const phaseA = PHASE_ORDER.indexOf(a.phase);
-    const phaseB = PHASE_ORDER.indexOf(b.phase);
-    if (phaseA !== phaseB) return (phaseA === -1 ? 999 : phaseA) - (phaseB === -1 ? 999 : phaseB);
-    return a.sequenceNumber - b.sequenceNumber;
-  });
+  const effectiveCrew = Math.max(1, crewCount);
+  const phases = groupTasksByPhase(tasks);
 
-  // Calculate raw durations
-  const rawDurations = sorted.map((t) =>
-    Math.max(1, Math.ceil((t.estimatedHours ?? 8) / 8))
-  );
-  const totalRawDays = rawDurations.reduce((s, d) => s + d, 0);
-
-  // Compress if needed
-  const compressionRatio = totalRawDays > totalWeekdays ? totalWeekdays / totalRawDays : 1;
-
+  // First pass: calculate raw durations with phase parallelism
+  const result: ScheduledTask[] = [];
   let currentDay = 0;
-  return sorted.map((task, i) => {
-    const duration = Math.max(1, Math.round(rawDurations[i] * compressionRatio));
-    const scheduled: ScheduledTask = {
-      name: task.name || '(untitled)',
-      phase: task.phase,
-      startDay: currentDay,
-      durationDays: duration,
-      estimatedHours: task.estimatedHours ?? 0,
-    };
-    currentDay += duration;
-    return scheduled;
-  });
+  const phaseDurations: number[] = [];
+
+  for (const [phase, phaseTasks] of phases) {
+    let maxDuration = 0;
+    for (const task of phaseTasks) {
+      const duration = Math.max(1, Math.ceil((task.estimatedHours ?? 8) / (8 * effectiveCrew)));
+      result.push({
+        name: task.name || '(untitled)',
+        phase,
+        startDay: currentDay,
+        durationDays: duration,
+        estimatedHours: task.estimatedHours ?? 0,
+      });
+      maxDuration = Math.max(maxDuration, duration);
+    }
+    phaseDurations.push(maxDuration);
+    currentDay += maxDuration;
+  }
+
+  // Compress if total exceeds available weekdays
+  const totalRawDays = currentDay;
+  if (totalRawDays > totalWeekdays) {
+    const ratio = totalWeekdays / totalRawDays;
+    // Rebuild start days with compressed durations
+    let compressedDay = 0;
+    let phaseIdx = 0;
+    let phaseKey = '';
+    let phaseStart = 0;
+    let phaseMaxCompressed = 0;
+
+    for (const scheduled of result) {
+      if (scheduled.phase !== phaseKey) {
+        // New phase — advance by the max compressed duration of previous phase
+        if (phaseKey !== '') {
+          compressedDay = phaseStart + phaseMaxCompressed;
+        }
+        phaseKey = scheduled.phase;
+        phaseStart = compressedDay;
+        phaseMaxCompressed = 0;
+        phaseIdx++;
+      }
+      const compressed = Math.max(1, Math.round(scheduled.durationDays * ratio));
+      scheduled.startDay = phaseStart;
+      scheduled.durationDays = compressed;
+      phaseMaxCompressed = Math.max(phaseMaxCompressed, compressed);
+    }
+  }
+
+  return result;
 }

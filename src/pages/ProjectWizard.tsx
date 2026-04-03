@@ -46,6 +46,8 @@ export interface WizardEquipment {
   name: string;
   dailyRate: number;
   durationDays: number;
+  hourlyCost?: number;
+  estimatedHours?: number;
 }
 
 export interface WizardData {
@@ -106,9 +108,6 @@ export interface WizardData {
   overheadPct: number | null;
   clientQuote: number | null;
 
-  // Budget helpers (wizard-only, not persisted)
-  targetProfitPct: number | null;
-
   // Step 5: Compliance (now before budget)
   noPermitsRequired: boolean;
   permitStatus: string | null;
@@ -160,7 +159,6 @@ const INITIAL_DATA: WizardData = {
   equipmentCost: null,
   overheadPct: null,
   clientQuote: null,
-  targetProfitPct: null,
   noPermitsRequired: false,
   permitStatus: null,
   permitChecklist: [],
@@ -193,6 +191,20 @@ export default function ProjectWizard() {
   const [data, setData] = useState<WizardData>(INITIAL_DATA);
   const [isCreating, setIsCreating] = useState(false);
   const [createStatus, setCreateStatus] = useState('');
+
+  // ── Exit warning: prevent accidental navigation away ─────────────────────
+  const hasUnsavedData = data.name.trim().length > 0 || data.tasks.length > 0;
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedData && !isCreating) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedData, isCreating]);
 
   // AI recommendation state
   const [recommendations, setRecommendations] = useState<AIRecommendationSet | null>(null);
@@ -237,40 +249,44 @@ export default function ProjectWizard() {
     }
   };
 
+  // Shared AI trigger — fires when navigating past Site Intelligence step
+  const triggerAIIfNeeded = useCallback(() => {
+    if (!recommendations && !aiLoading) {
+      setAiLoading(true);
+      generateProjectRecommendations({
+        description: data.description || '',
+        projectType: data.projectType,
+        propertyType: data.propertyType,
+        scopeSize: data.scopeSize,
+        address: data.address || '',
+        siteConditions: {
+          slopeGrade: data.slopeGrade ?? undefined,
+          soilType: data.soilType ?? undefined,
+          sunExposure: data.sunExposure ?? undefined,
+          drainagePattern: data.drainagePattern ?? undefined,
+          climateZone: data.climateZone ?? undefined,
+          hoaFlag: data.hoaFlag,
+        },
+        startDate: data.startDate ?? undefined,
+        targetDate: data.targetDate ?? undefined,
+        orgCrew: crewStore.crew,
+        orgEquipment: equipmentStore.equipment,
+        orgMaterials: materialStore.materials,
+        defaultLaborRate: org?.defaultLaborRate ?? 35,
+        defaultEquipmentRate: org?.defaultEquipmentRate ?? 0,
+        existingAssignments: scheduleStore.assignments,
+        existingScheduleEntries: scheduleStore.entries,
+        existingProjects: projectStore.projects,
+      }).then((result) => {
+        setRecommendations(result);
+        setAiLoading(false);
+      }).catch(() => setAiLoading(false));
+    }
+  }, [recommendations, aiLoading, data, crewStore.crew, equipmentStore.equipment, materialStore.materials, org, scheduleStore.assignments, scheduleStore.entries, projectStore.projects]);
+
   const handleNext = () => {
     if (currentStep < WIZARD_STEPS.length - 1) {
-      // Fire AI when leaving Site Intelligence step (index 1)
-      if (currentStep === 1 && !recommendations && !aiLoading) {
-        setAiLoading(true);
-        generateProjectRecommendations({
-          description: data.description || '',
-          projectType: data.projectType,
-          propertyType: data.propertyType,
-          scopeSize: data.scopeSize,
-          address: data.address || '',
-          siteConditions: {
-            slopeGrade: data.slopeGrade ?? undefined,
-            soilType: data.soilType ?? undefined,
-            sunExposure: data.sunExposure ?? undefined,
-            drainagePattern: data.drainagePattern ?? undefined,
-            climateZone: data.climateZone ?? undefined,
-            hoaFlag: data.hoaFlag,
-          },
-          startDate: data.startDate ?? undefined,
-          targetDate: data.targetDate ?? undefined,
-          orgCrew: crewStore.crew,
-          orgEquipment: equipmentStore.equipment,
-          orgMaterials: materialStore.materials,
-          defaultLaborRate: org?.defaultLaborRate ?? 35,
-          defaultEquipmentRate: org?.defaultEquipmentRate ?? 0,
-          existingAssignments: scheduleStore.assignments,
-          existingScheduleEntries: scheduleStore.entries,
-          existingProjects: projectStore.projects,
-        }).then((result) => {
-          setRecommendations(result);
-          setAiLoading(false);
-        }).catch(() => setAiLoading(false));
-      }
+      if (currentStep === 1) triggerAIIfNeeded();
       setCurrentStep((s) => s + 1);
     }
   };
@@ -282,7 +298,23 @@ export default function ProjectWizard() {
   };
 
   const handleCancel = () => {
-    navigate('/projects');
+    if (hasUnsavedData) {
+      if (window.confirm('You have unsaved project data. Are you sure you want to leave?')) {
+        navigate('/projects');
+      }
+    } else {
+      navigate('/projects');
+    }
+  };
+
+  const handleStepClick = (stepIndex: number) => {
+    if (stepIndex <= currentStep) {
+      // If jumping forward past step 1, trigger AI
+      if (stepIndex > 1 && currentStep <= 1) {
+        triggerAIIfNeeded();
+      }
+      setCurrentStep(stepIndex);
+    }
   };
 
   // AI accept/dismiss helpers
@@ -588,9 +620,7 @@ export default function ProjectWizard() {
         <WizardStepper
           steps={WIZARD_STEPS}
           currentStep={currentStep}
-          onStepClick={(step) => {
-            if (step <= currentStep) setCurrentStep(step);
-          }}
+          onStepClick={handleStepClick}
         />
       </div>
 

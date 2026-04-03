@@ -198,11 +198,12 @@ export const WizardStep3: React.FC<Props> = ({
     count: tasks.filter((t) => t.phase === p.value).length,
   })).filter((g) => g.count > 0);
 
-  // Timeline scheduling
+  // Timeline scheduling (crew-aware + phase parallelism)
+  const crewCount = data.crewSelections?.length ?? 1;
   const scheduledTasks = useMemo(() => {
     if (!data.startDate || !data.targetDate || tasks.length === 0) return [];
-    return scheduleTasksOnTimeline(tasks, data.startDate, data.targetDate);
-  }, [tasks, data.startDate, data.targetDate]);
+    return scheduleTasksOnTimeline(tasks, data.startDate, data.targetDate, crewCount);
+  }, [tasks, data.startDate, data.targetDate, crewCount]);
 
   const weekdayDates = useMemo(() => {
     if (!data.startDate || !data.targetDate) return [];
@@ -448,98 +449,141 @@ export const WizardStep3: React.FC<Props> = ({
       )}
 
       {/* Task Timeline Visualization */}
-      {scheduledTasks.length > 0 && totalTimelineDays > 0 && (
-        <div>
-          <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
-            Task Timeline
-          </h3>
-          <p className="text-[12px] text-[var(--text-4)] mb-[12px]">
-            {totalTimelineDays} weekdays from {data.startDate} to {data.targetDate}
-          </p>
-          <div
-            className="rounded-[8px] border overflow-x-auto"
-            style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
-          >
-            <div style={{ minWidth: Math.max(400, totalTimelineDays * 32) + 140 }}>
-              {/* Day headers */}
-              <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
-                <div className="w-[140px] shrink-0 px-[8px] py-[6px] text-[10px] font-[600] text-[var(--text-3)]">
-                  Task
-                </div>
-                <div className="flex-1 flex">
-                  {weekdayDates.map((d, i) => {
-                    const isWeekStart = d.getDay() === 1;
-                    return (
-                      <div
-                        key={i}
-                        className="flex-1 text-center text-[9px] py-[4px]"
-                        style={{
-                          color: 'var(--text-4)',
-                          borderLeft: isWeekStart ? '1px solid var(--border)' : 'none',
-                          minWidth: 28,
-                        }}
-                      >
-                        {totalTimelineDays <= 15
-                          ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
-                          : isWeekStart
-                            ? d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })
-                            : ''}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+      {scheduledTasks.length > 0 && totalTimelineDays > 0 && (() => {
+        // Group scheduled tasks by phase for phase header rows
+        const phaseOrder: string[] = [];
+        const tasksByPhase: Record<string, typeof scheduledTasks> = {};
+        for (const st of scheduledTasks) {
+          if (!tasksByPhase[st.phase]) {
+            tasksByPhase[st.phase] = [];
+            phaseOrder.push(st.phase);
+          }
+          tasksByPhase[st.phase].push(st);
+        }
 
-              {/* Task rows */}
-              {scheduledTasks.map((task, i) => (
-                <div
-                  key={i}
-                  className="flex items-center border-b last:border-b-0"
-                  style={{ borderColor: 'var(--border)', minHeight: 32 }}
-                >
-                  <div
-                    className="w-[140px] shrink-0 px-[8px] text-[11px] font-[500] truncate"
-                    style={{ color: 'var(--text-2)' }}
-                    title={task.name}
-                  >
-                    {task.name}
+        return (
+          <div>
+            <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
+              Task Timeline
+            </h3>
+            <p className="text-[12px] text-[var(--text-4)] mb-[12px]">
+              {totalTimelineDays} weekdays from {data.startDate} to {data.targetDate}
+              {crewCount > 1 && ` · ${crewCount} crew members (parallel tasks within phases)`}
+            </p>
+            <div
+              className="rounded-[8px] border overflow-x-auto"
+              style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
+            >
+              <div style={{ minWidth: Math.max(400, totalTimelineDays * 32) + 140 }}>
+                {/* Day headers */}
+                <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
+                  <div className="w-[140px] shrink-0 px-[8px] py-[6px] text-[10px] font-[600] text-[var(--text-3)]">
+                    Task
                   </div>
-                  <div className="flex-1 relative" style={{ minHeight: 24 }}>
-                    <div
-                      className="absolute top-[2px] bottom-[2px] rounded-[4px] flex items-center px-[6px]"
-                      style={{
-                        left: `${(task.startDay / totalTimelineDays) * 100}%`,
-                        width: `${Math.max((task.durationDays / totalTimelineDays) * 100, 3)}%`,
-                        backgroundColor: PHASE_COLORS[task.phase] || PHASE_COLORS.custom,
-                        opacity: 0.85,
-                      }}
-                    >
-                      {task.durationDays >= 2 && (
-                        <span className="text-[9px] font-[600] text-white truncate">
-                          {task.estimatedHours > 0 ? `${task.estimatedHours}h` : `${task.durationDays}d`}
-                        </span>
+                  <div className="flex-1 flex">
+                    {weekdayDates.map((d, i) => {
+                      const isWeekStart = d.getDay() === 1;
+                      return (
+                        <div
+                          key={i}
+                          className="flex-1 text-center text-[9px] py-[4px]"
+                          style={{
+                            color: 'var(--text-4)',
+                            borderLeft: isWeekStart ? '1px solid var(--border)' : 'none',
+                            minWidth: 28,
+                          }}
+                        >
+                          {totalTimelineDays <= 15
+                            ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
+                            : isWeekStart
+                              ? d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })
+                              : ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Task rows grouped by phase */}
+                {phaseOrder.map((phase) => {
+                  const phaseTasks = tasksByPhase[phase];
+                  const phaseLabel = PHASES.find((p) => p.value === phase)?.label || phase;
+                  const isParallel = phaseTasks.length > 1;
+
+                  return (
+                    <div key={phase}>
+                      {/* Phase header row (only when multiple tasks in phase) */}
+                      {isParallel && (
+                        <div
+                          className="flex items-center border-b"
+                          style={{ borderColor: 'var(--border)', minHeight: 22 }}
+                        >
+                          <div
+                            className="w-[140px] shrink-0 px-[8px] text-[10px] font-[600] uppercase tracking-wide"
+                            style={{ color: PHASE_COLORS[phase] || PHASE_COLORS.custom }}
+                          >
+                            {phaseLabel}
+                          </div>
+                          <div className="flex-1" />
+                        </div>
                       )}
+                      {phaseTasks.map((task, i) => (
+                        <div
+                          key={`${phase}-${i}`}
+                          className="flex items-center border-b last:border-b-0"
+                          style={{
+                            borderColor: 'var(--border)',
+                            minHeight: 32,
+                            borderLeft: isParallel ? `3px solid ${PHASE_COLORS[phase] || PHASE_COLORS.custom}` : 'none',
+                          }}
+                        >
+                          <div
+                            className="w-[140px] shrink-0 px-[8px] text-[11px] font-[500] truncate"
+                            style={{ color: 'var(--text-2)', paddingLeft: isParallel ? 16 : 8 }}
+                            title={task.name}
+                          >
+                            {task.name}
+                          </div>
+                          <div className="flex-1 relative" style={{ minHeight: 24 }}>
+                            <div
+                              className="absolute top-[2px] bottom-[2px] rounded-[4px] flex items-center px-[6px]"
+                              style={{
+                                left: `${(task.startDay / totalTimelineDays) * 100}%`,
+                                width: `${Math.max((task.durationDays / totalTimelineDays) * 100, 3)}%`,
+                                backgroundColor: PHASE_COLORS[task.phase] || PHASE_COLORS.custom,
+                                opacity: 0.85,
+                              }}
+                            >
+                              {task.durationDays >= 2 && (
+                                <span className="text-[9px] font-[600] text-white truncate">
+                                  {task.estimatedHours > 0 ? `${task.estimatedHours}h` : `${task.durationDays}d`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Phase legend */}
+            <div className="flex gap-[10px] flex-wrap mt-[8px]">
+              {phaseGroups.map((g) => (
+                <div key={g.value} className="flex items-center gap-[4px]">
+                  <div
+                    className="w-[10px] h-[10px] rounded-[2px]"
+                    style={{ backgroundColor: PHASE_COLORS[g.value] || PHASE_COLORS.custom }}
+                  />
+                  <span className="text-[10px] text-[var(--text-4)]">{g.label}</span>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Phase legend */}
-          <div className="flex gap-[10px] flex-wrap mt-[8px]">
-            {phaseGroups.map((g) => (
-              <div key={g.value} className="flex items-center gap-[4px]">
-                <div
-                  className="w-[10px] h-[10px] rounded-[2px]"
-                  style={{ backgroundColor: PHASE_COLORS[g.value] || PHASE_COLORS.custom }}
-                />
-                <span className="text-[10px] text-[var(--text-4)]">{g.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
