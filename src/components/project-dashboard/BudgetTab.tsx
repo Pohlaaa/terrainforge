@@ -31,6 +31,9 @@ interface EditState {
   laborBudget: number;
   materialsBudget: number;
   equipmentBudget: number;
+  subcontractorBudget: number;
+  disposalCost: number;
+  equipmentCost: number;
 }
 
 export const ProjectDashboardBudget: React.FC<Props> = ({
@@ -48,6 +51,9 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
     laborBudget: 0,
     materialsBudget: 0,
     equipmentBudget: 0,
+    subcontractorBudget: 0,
+    disposalCost: 0,
+    equipmentCost: 0,
   });
 
   const startEditing = () => {
@@ -57,6 +63,9 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
       laborBudget: project.laborBudget ?? 0,
       materialsBudget: project.materialsBudget ?? 0,
       equipmentBudget: project.equipmentBudget ?? 0,
+      subcontractorBudget: project.subcontractorBudget ?? 0,
+      disposalCost: project.disposalCost ?? 0,
+      equipmentCost: project.equipmentCost ?? 0,
     });
     setEditing(true);
   };
@@ -73,6 +82,9 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
       laborBudget: editValues.laborBudget || null,
       materialsBudget: editValues.materialsBudget || null,
       equipmentBudget: editValues.equipmentBudget || null,
+      subcontractorBudget: editValues.subcontractorBudget || null,
+      disposalCost: editValues.disposalCost || null,
+      equipmentCost: editValues.equipmentCost || null,
     };
     await useProjectStore.getState().updateProject(project.id, updates);
     setSaving(false);
@@ -89,20 +101,22 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
   const labor = editing ? editValues.laborBudget : (project.laborBudget ?? 0);
   const materials = editing ? editValues.materialsBudget : (project.materialsBudget ?? 0);
   const equipment = editing ? editValues.equipmentBudget : (project.equipmentBudget ?? 0);
+  const subsBudget = editing ? editValues.subcontractorBudget : (project.subcontractorBudget ?? 0);
+  const disposal = editing ? editValues.disposalCost : (project.disposalCost ?? 0);
+  const equipCost = editing ? editValues.equipmentCost : (project.equipmentCost ?? 0);
   const overheadPct = editing ? editValues.overheadPct : (project.overheadPct ?? 10);
   const quote = editing ? editValues.clientQuote : (project.clientQuote ?? project.budget ?? 0);
 
   const financials = useMemo(() => {
-    const subs = project.subcontractorBudget ?? 0;
     const permitFees = permits.reduce((sum, p) => sum + (p.fee ?? 0), 0);
-    const subtotal = labor + materials + equipment + subs + permitFees;
+    const subtotal = labor + materials + equipment + equipCost + disposal + subsBudget + permitFees;
     const overhead = subtotal * (overheadPct / 100);
     const totalCost = subtotal + overhead;
     const profit = quote - totalCost;
     const marginPct = quote > 0 ? (profit / quote) * 100 : 0;
 
-    return { labor, materials, equipment, subs, permitFees, subtotal, overhead, overheadPct, totalCost, quote, profit, marginPct };
-  }, [labor, materials, equipment, overheadPct, quote, project.subcontractorBudget, permits]);
+    return { labor, materials, equipment, equipCost, disposal, subs: subsBudget, permitFees, subtotal, overhead, overheadPct, totalCost, quote, profit, marginPct };
+  }, [labor, materials, equipment, equipCost, disposal, subsBudget, overheadPct, quote, permits]);
 
   const totalHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
 
@@ -112,10 +126,12 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
   const costItems = [
     { label: 'Labor', value: financials.labor, color: '#2D6A4F' },
     { label: 'Materials', value: financials.materials, color: '#52B788' },
-    { label: 'Equipment', value: financials.equipment, color: '#74C69D' },
+    { label: 'Equipment Budget', value: financials.equipment, color: '#74C69D' },
+    { label: 'Equipment Cost', value: financials.equipCost, color: '#40916C' },
+    { label: 'Disposal', value: financials.disposal, color: '#B7E4C7' },
     { label: 'Subcontractors', value: financials.subs, color: '#95D5B2' },
-    { label: 'Permit Fees', value: financials.permitFees, color: '#B7E4C7' },
-    { label: 'Overhead', value: financials.overhead, color: '#D8F3DC' },
+    { label: 'Permit Fees', value: financials.permitFees, color: '#D8F3DC' },
+    { label: 'Overhead', value: financials.overhead, color: '#1B4332' },
   ].filter((item) => item.value > 0);
 
   return (
@@ -256,9 +272,9 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
               )}
             </div>
 
-            {/* Equipment */}
+            {/* Equipment Budget */}
             <div className="flex justify-between items-center text-[13px]">
-              <span className="text-[var(--text)]">Equipment</span>
+              <span className="text-[var(--text)]">Equipment Budget</span>
               {editing ? (
                 <input
                   type="number"
@@ -273,11 +289,56 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
               )}
             </div>
 
+            {/* Equipment Cost */}
+            <div className="flex justify-between items-center text-[13px]">
+              <span className="text-[var(--text)]">Equipment Cost</span>
+              {editing ? (
+                <input
+                  type="number"
+                  className={inputClass}
+                  style={{ borderColor: 'var(--border)', width: '120px' }}
+                  value={editValues.equipmentCost || ''}
+                  onChange={(e) => setField('equipmentCost', e.target.value)}
+                  placeholder="0"
+                />
+              ) : (
+                <span className="text-[var(--text)] font-[600]">{fmt(financials.equipCost)}</span>
+              )}
+            </div>
+
+            {/* Disposal Cost */}
+            <div className="flex justify-between items-center text-[13px]">
+              <span className="text-[var(--text)]">Disposal Cost</span>
+              {editing ? (
+                <input
+                  type="number"
+                  className={inputClass}
+                  style={{ borderColor: 'var(--border)', width: '120px' }}
+                  value={editValues.disposalCost || ''}
+                  onChange={(e) => setField('disposalCost', e.target.value)}
+                  placeholder="0"
+                />
+              ) : (
+                <span className="text-[var(--text)] font-[600]">{fmt(financials.disposal)}</span>
+              )}
+            </div>
+
             {/* Subcontractors */}
             <div>
-              <div className="flex justify-between text-[13px]">
+              <div className="flex justify-between items-center text-[13px]">
                 <span className="text-[var(--text)]">Subcontractors</span>
-                <span className="text-[var(--text)] font-[600]">{fmt(financials.subs)}</span>
+                {editing ? (
+                  <input
+                    type="number"
+                    className={inputClass}
+                    style={{ borderColor: 'var(--border)', width: '120px' }}
+                    value={editValues.subcontractorBudget || ''}
+                    onChange={(e) => setField('subcontractorBudget', e.target.value)}
+                    placeholder="0"
+                  />
+                ) : (
+                  <span className="text-[var(--text)] font-[600]">{fmt(financials.subs)}</span>
+                )}
               </div>
               {subcontractors.length > 0 && (
                 <div className="text-[11px] text-[var(--text-4)]">
