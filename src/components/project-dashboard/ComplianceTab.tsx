@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Project, ProjectPermit, PermitLifecycleStatus, InspectionResult } from '@/types';
+import { useProjectStore } from '@/stores/projectStore';
 
 interface Props {
   project: Project;
@@ -47,6 +48,14 @@ const INSPECTION_RESULTS: { value: InspectionResult | ''; label: string }[] = [
   { value: 'passed', label: 'Passed' },
   { value: 'failed', label: 'Failed' },
   { value: 'conditional', label: 'Conditional' },
+];
+
+const PROJECT_PERMIT_STATUSES = [
+  { value: 'not_started', label: 'Not Started' },
+  { value: 'applied', label: 'Applied' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'denied', label: 'Denied' },
+  { value: 'not_required', label: 'Not Required' },
 ];
 
 function formatDate(d: string | null): string {
@@ -210,6 +219,17 @@ const PermitEditForm: React.FC<{
 
 export const ProjectDashboardCompliance: React.FC<Props> = ({ project, permits, onPermitCreate, onPermitUpdate }) => {
   const [editingPermitId, setEditingPermitId] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [editingAccess, setEditingAccess] = useState(false);
+  const [editingHoa, setEditingHoa] = useState(false);
+  const updateProject = useProjectStore((s) => s.updateProject);
+
+  // Compliance notes draft
+  const [notesDraft, setNotesDraft] = useState('');
+  // Access fields draft
+  const [accessDraft, setAccessDraft] = useState({ gateCode: '', permittedHours: '', parkingRestrictions: '' });
+  // HOA fields draft
+  const [hoaDraft, setHoaDraft] = useState({ hoaFlag: false, hoaRules: '', permitZone: '' });
 
   const totalFees = permits.reduce((sum, p) => sum + (p.fee ?? 0), 0);
   const approvedCount = permits.filter((p) => p.status === 'approved').length;
@@ -217,6 +237,56 @@ export const ProjectDashboardCompliance: React.FC<Props> = ({ project, permits, 
   const handlePermitSave = (permitId: string, updates: Partial<ProjectPermit>) => {
     onPermitUpdate(permitId, updates);
     setEditingPermitId(null);
+  };
+
+  const handlePermitStatusChange = (value: string) => {
+    updateProject(project.id, { permitStatus: value as Project['permitStatus'] });
+  };
+
+  // Compliance notes handlers
+  const startEditNotes = () => {
+    setNotesDraft(project.complianceNotes || '');
+    setEditingNotes(true);
+  };
+  const saveNotes = () => {
+    updateProject(project.id, { complianceNotes: notesDraft.trim() || null });
+    setEditingNotes(false);
+  };
+
+  // Access handlers
+  const startEditAccess = () => {
+    setAccessDraft({
+      gateCode: project.gateCode || '',
+      permittedHours: project.permittedHours || '',
+      parkingRestrictions: project.parkingRestrictions || '',
+    });
+    setEditingAccess(true);
+  };
+  const saveAccess = () => {
+    updateProject(project.id, {
+      gateCode: accessDraft.gateCode.trim() || null,
+      permittedHours: accessDraft.permittedHours.trim() || null,
+      parkingRestrictions: accessDraft.parkingRestrictions.trim() || null,
+    });
+    setEditingAccess(false);
+  };
+
+  // HOA handlers
+  const startEditHoa = () => {
+    setHoaDraft({
+      hoaFlag: project.hoaFlag ?? false,
+      hoaRules: project.hoaRules || '',
+      permitZone: project.permitZone || '',
+    });
+    setEditingHoa(true);
+  };
+  const saveHoa = () => {
+    updateProject(project.id, {
+      hoaFlag: hoaDraft.hoaFlag,
+      hoaRules: hoaDraft.hoaRules.trim() || null,
+      permitZone: hoaDraft.permitZone.trim() || null,
+    });
+    setEditingHoa(false);
   };
 
   return (
@@ -228,9 +298,16 @@ export const ProjectDashboardCompliance: React.FC<Props> = ({ project, permits, 
           style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
         >
           <div className="text-[10px] font-[600] uppercase text-[var(--text-4)] mb-[4px]">Permit Status</div>
-          <div className="text-[16px] font-[700] text-[var(--text)] capitalize">
-            {project.permitStatus?.replace('_', ' ') || 'Not set'}
-          </div>
+          <select
+            className="bg-transparent border rounded-[4px] px-[6px] py-[2px] text-[13px] font-[600] text-[var(--text)] w-full focus:outline-none focus:border-[var(--green)]"
+            style={{ borderColor: 'var(--border)' }}
+            value={project.permitStatus || 'not_started'}
+            onChange={(e) => handlePermitStatusChange(e.target.value)}
+          >
+            {PROJECT_PERMIT_STATUSES.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
         </div>
         <div
           className="rounded-[8px] border p-[12px]"
@@ -378,36 +455,227 @@ export const ProjectDashboardCompliance: React.FC<Props> = ({ project, permits, 
           )}
         </div>
 
-        {/* ── Risk Notes ──────────────────────────────────────────────────────── */}
+        {/* ── Right column: Notes, HOA, Access ────────────────────────────────── */}
         <div className="space-y-[12px]">
-          {project.complianceNotes && (
-            <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-              <div className={cardHead}>Risk & Compliance Notes</div>
+          {/* Risk & Compliance Notes */}
+          <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between mb-[14px]">
+              <div className={cardHead} style={{ marginBottom: 0 }}>Risk & Compliance Notes</div>
+              {!editingNotes && (
+                <button
+                  type="button"
+                  onClick={startEditNotes}
+                  className="text-[11px] bg-transparent border-none cursor-pointer"
+                  style={{ color: 'var(--green-l)' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {editingNotes ? (
+              <div className="space-y-[6px]">
+                <textarea
+                  className={inputClass}
+                  style={{ borderColor: 'var(--border)', minHeight: '80px', resize: 'vertical' }}
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  placeholder="Compliance notes, risk factors, special considerations..."
+                  autoFocus
+                />
+                <div className="flex gap-[4px] justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setEditingNotes(false)}
+                    className="px-[8px] py-[3px] rounded-[4px] border text-[10px] bg-transparent cursor-pointer"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveNotes}
+                    className="px-[8px] py-[3px] rounded-[4px] text-[10px] border-none cursor-pointer font-[600]"
+                    style={{ backgroundColor: 'var(--green)', color: '#fff' }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : project.complianceNotes ? (
               <p className="text-[12px] text-[var(--text-2)] leading-[1.5] whitespace-pre-wrap">
                 {project.complianceNotes}
               </p>
-            </div>
-          )}
+            ) : (
+              <p className="text-[12px] text-[var(--text-4)] italic">No compliance notes yet.</p>
+            )}
+          </div>
 
           {/* HOA */}
-          {project.hoaFlag && (
-            <div
-              className={cardClass}
-              style={{ backgroundColor: 'rgba(212,164,76,0.06)', borderColor: 'var(--status-amber)' }}
-            >
-              <div className="text-[12px] font-[600] text-[var(--status-amber)] mb-[6px]">HOA Property</div>
-              {project.hoaRules ? (
-                <p className="text-[12px] text-[var(--text-2)]">{project.hoaRules}</p>
-              ) : (
-                <p className="text-[12px] text-[var(--text-4)]">No HOA rules documented.</p>
+          <div
+            className={cardClass}
+            style={{
+              backgroundColor: project.hoaFlag ? 'rgba(212,164,76,0.06)' : 'var(--surface2)',
+              borderColor: project.hoaFlag ? 'var(--status-amber)' : 'var(--border)',
+            }}
+          >
+            <div className="flex items-center justify-between mb-[10px]">
+              <div className="text-[12px] font-[600]" style={{ color: project.hoaFlag ? 'var(--status-amber)' : 'var(--text-3)' }}>
+                {project.hoaFlag ? 'HOA Property' : 'HOA'}
+              </div>
+              {!editingHoa && (
+                <button
+                  type="button"
+                  onClick={startEditHoa}
+                  className="text-[11px] bg-transparent border-none cursor-pointer"
+                  style={{ color: 'var(--green-l)' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
               )}
             </div>
-          )}
+            {editingHoa ? (
+              <div className="space-y-[8px]">
+                <label className="flex items-center gap-[8px] text-[12px] text-[var(--text)]">
+                  <input
+                    type="checkbox"
+                    checked={hoaDraft.hoaFlag}
+                    onChange={(e) => setHoaDraft((d) => ({ ...d, hoaFlag: e.target.checked }))}
+                    className="accent-[var(--green)]"
+                  />
+                  HOA property
+                </label>
+                <div>
+                  <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">HOA Rules</label>
+                  <textarea
+                    className={inputClass}
+                    style={{ borderColor: 'var(--border)', minHeight: '50px', resize: 'vertical' }}
+                    value={hoaDraft.hoaRules}
+                    onChange={(e) => setHoaDraft((d) => ({ ...d, hoaRules: e.target.value }))}
+                    placeholder="HOA rules and restrictions"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Permit Zone / Jurisdiction</label>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    style={{ borderColor: 'var(--border)' }}
+                    value={hoaDraft.permitZone}
+                    onChange={(e) => setHoaDraft((d) => ({ ...d, permitZone: e.target.value }))}
+                    placeholder="e.g., Zone B-2"
+                  />
+                </div>
+                <div className="flex gap-[4px] justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setEditingHoa(false)}
+                    className="px-[8px] py-[3px] rounded-[4px] border text-[10px] bg-transparent cursor-pointer"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveHoa}
+                    className="px-[8px] py-[3px] rounded-[4px] text-[10px] border-none cursor-pointer font-[600]"
+                    style={{ backgroundColor: 'var(--green)', color: '#fff' }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : project.hoaFlag ? (
+              <>
+                {project.hoaRules ? (
+                  <p className="text-[12px] text-[var(--text-2)]">{project.hoaRules}</p>
+                ) : (
+                  <p className="text-[12px] text-[var(--text-4)]">No HOA rules documented.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-[12px] text-[var(--text-4)] italic">Not an HOA property.</p>
+            )}
+          </div>
 
-          {/* Access */}
-          {(project.gateCode || project.parkingRestrictions || project.permittedHours) && (
-            <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-              <div className={cardHead}>Access & Logistics</div>
+          {/* Access & Logistics */}
+          <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between mb-[14px]">
+              <div className={cardHead} style={{ marginBottom: 0 }}>Access & Logistics</div>
+              {!editingAccess && (
+                <button
+                  type="button"
+                  onClick={startEditAccess}
+                  className="text-[11px] bg-transparent border-none cursor-pointer"
+                  style={{ color: 'var(--green-l)' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {editingAccess ? (
+              <div className="space-y-[8px]">
+                <div>
+                  <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Gate Code</label>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    style={{ borderColor: 'var(--border)' }}
+                    value={accessDraft.gateCode}
+                    onChange={(e) => setAccessDraft((d) => ({ ...d, gateCode: e.target.value }))}
+                    placeholder="e.g., #1234"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Permitted Work Hours</label>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    style={{ borderColor: 'var(--border)' }}
+                    value={accessDraft.permittedHours}
+                    onChange={(e) => setAccessDraft((d) => ({ ...d, permittedHours: e.target.value }))}
+                    placeholder="e.g., 7am-6pm Mon-Sat"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Parking Restrictions</label>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    style={{ borderColor: 'var(--border)' }}
+                    value={accessDraft.parkingRestrictions}
+                    onChange={(e) => setAccessDraft((d) => ({ ...d, parkingRestrictions: e.target.value }))}
+                    placeholder="e.g., no street parking, use driveway"
+                  />
+                </div>
+                <div className="flex gap-[4px] justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setEditingAccess(false)}
+                    className="px-[8px] py-[3px] rounded-[4px] border text-[10px] bg-transparent cursor-pointer"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveAccess}
+                    className="px-[8px] py-[3px] rounded-[4px] text-[10px] border-none cursor-pointer font-[600]"
+                    style={{ backgroundColor: 'var(--green)', color: '#fff' }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (project.gateCode || project.parkingRestrictions || project.permittedHours) ? (
               <div className="space-y-[4px]">
                 {project.gateCode && (
                   <div className={rowClass}>
@@ -428,8 +696,10 @@ export const ProjectDashboardCompliance: React.FC<Props> = ({ project, permits, 
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-[12px] text-[var(--text-4)] italic">No access info set.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
