@@ -137,6 +137,7 @@ export interface AISiteInference {
   soilType: string | null;
   permitRequirements: string[];
   hoaLikelihood: 'low' | 'medium' | 'high';
+  permitZone: string | null;
 }
 
 /**
@@ -162,7 +163,8 @@ Return JSON matching this schema exactly:
   "climateZone": string or null,
   "soilType": string or null,
   "permitRequirements": string[],
-  "hoaLikelihood": "low" | "medium" | "high"
+  "hoaLikelihood": "low" | "medium" | "high",
+  "permitZone": string or null
 }
 
 Rules:
@@ -170,6 +172,7 @@ Rules:
 - soilType: Most common soil type for the region (e.g., "Clay", "Sandy loam", "Silt loam"). Be specific to the geographic region.
 - permitRequirements: Array of likely permit types needed for landscaping in this area. Use these keys: "grading", "building", "electrical", "plumbing", "stormwater", "tree_removal", "fence", "parking". Only include permits that are commonly required in this jurisdiction.
 - hoaLikelihood: Based on the neighborhood type — suburban subdivisions = "high", rural = "low", urban mixed = "medium".
+- permitZone: The city or county jurisdiction name for permitting purposes (e.g., "City of Austin", "Harris County", "Unincorporated Maricopa County"). Infer from the address.
 - Always return valid JSON with no markdown fencing`;
 
   try {

@@ -229,15 +229,20 @@ export const WizardStep6: React.FC<Props> = ({
               </div>
               <div>
                 <label className={labelClass}>Permit Zone / Jurisdiction</label>
-                <input
-                  className={inputClass}
-                  placeholder="e.g., City of Austin, Travis County"
-                  value={data.permitZone || ''}
-                  onChange={(e) => onChange({ permitZone: e.target.value || null })}
-                />
-                <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
-                  Also editable in Step 2 (Site Intelligence). Permit fees flow into the budget step.
-                </p>
+                {data.permitZone ? (
+                  <div className="flex items-center gap-[8px]">
+                    <span className="text-[13px] text-[var(--text)]">{data.permitZone}</span>
+                    <span className="text-[11px] text-[var(--green-l)] cursor-pointer hover:underline"
+                      onClick={() => {/* Scroll handled by wizard stepper — user clicks Step 2 */}}
+                    >
+                      Edit in Step 2
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-[var(--text-4)] italic">
+                    Set in Step 2 (Site Intelligence) — auto-populated from address.
+                  </p>
+                )}
               </div>
             </div>
           </div>

@@ -62,6 +62,7 @@ export const WizardStep2: React.FC<Props> = ({ data, onChange }) => {
         const updates: Partial<WizardData> = {};
         if (result.climateZone && !data.climateZone) updates.climateZone = result.climateZone;
         if (result.soilType && !data.soilType) updates.soilType = result.soilType;
+        if (result.permitZone && !data.permitZone) updates.permitZone = result.permitZone;
         if (result.hoaLikelihood === 'high' && !data.hoaFlag) updates.hoaFlag = true;
 
         if (Object.keys(updates).length > 0) {
@@ -219,7 +220,10 @@ export const WizardStep2: React.FC<Props> = ({ data, onChange }) => {
             />
           </div>
           <div>
-            <label className={labelClass}>Permit Zone</label>
+            <label className={labelClass}>
+              Permit Zone
+              {aiSuggested && data.permitZone && <AiTag />}
+            </label>
             <input
               className={inputClass}
               placeholder="e.g., City of Austin"
