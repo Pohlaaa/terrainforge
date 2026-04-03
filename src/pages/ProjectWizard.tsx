@@ -287,7 +287,9 @@ export default function ProjectWizard() {
   const handleNext = () => {
     if (currentStep < WIZARD_STEPS.length - 1) {
       if (currentStep === 1) triggerAIIfNeeded();
-      setCurrentStep((s) => s + 1);
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      setHighestVisitedStep(prev => Math.max(prev, nextStep));
     }
   };
 
@@ -307,8 +309,11 @@ export default function ProjectWizard() {
     }
   };
 
+  // Track highest visited step for forward navigation
+  const [highestVisitedStep, setHighestVisitedStep] = useState(0);
+
   const handleStepClick = (stepIndex: number) => {
-    if (stepIndex <= currentStep) {
+    if (stepIndex <= highestVisitedStep) {
       // If jumping forward past step 1, trigger AI
       if (stepIndex > 1 && currentStep <= 1) {
         triggerAIIfNeeded();
@@ -316,6 +321,25 @@ export default function ProjectWizard() {
       setCurrentStep(stepIndex);
     }
   };
+
+  // Reset AI suggestions for a category
+  const handleResetCategory = useCallback((category: string) => {
+    setAcceptedItems(prev => ({ ...prev, [category]: new Set<string>() }));
+    setDismissedItems(prev => ({ ...prev, [category]: new Set<string>() }));
+
+    if (category === 'tasks') {
+      handleChange({ tasks: data.tasks.filter(t => !t.aiGenerated) });
+    }
+    if (category === 'crew') {
+      handleChange({ crewSelections: [] });
+    }
+    if (category === 'equipment') {
+      handleChange({ equipmentSelections: [] });
+    }
+    if (category === 'permits') {
+      handleChange({ permitChecklist: [], permitFees: {} });
+    }
+  }, [data.tasks, handleChange]);
 
   // AI accept/dismiss helpers
   const handleAccept = (category: string, id: string) => {
@@ -620,6 +644,7 @@ export default function ProjectWizard() {
         <WizardStepper
           steps={WIZARD_STEPS}
           currentStep={currentStep}
+          highestVisitedStep={highestVisitedStep}
           onStepClick={handleStepClick}
         />
       </div>
@@ -646,6 +671,7 @@ export default function ProjectWizard() {
             onDismiss={(id) => handleDismiss('tasks', id)}
             onAcceptAll={(ids) => handleAcceptAll('tasks', ids)}
             onDismissAll={(ids) => handleDismissAll('tasks', ids)}
+            onReset={() => handleResetCategory('tasks')}
           />
         )}
         {currentStep === 3 && (
@@ -666,6 +692,8 @@ export default function ProjectWizard() {
             onDismissEquip={(id) => handleDismiss('equipment', id)}
             onAcceptAllEquip={(ids) => handleAcceptAll('equipment', ids)}
             onDismissAllEquip={(ids) => handleDismissAll('equipment', ids)}
+            onResetCrew={() => handleResetCategory('crew')}
+            onResetEquipment={() => handleResetCategory('equipment')}
           />
         )}
         {currentStep === 4 && (
@@ -680,6 +708,7 @@ export default function ProjectWizard() {
             onDismiss={(id) => handleDismiss('permits', id)}
             onAcceptAll={(ids) => handleAcceptAll('permits', ids)}
             onDismissAll={(ids) => handleDismissAll('permits', ids)}
+            onReset={() => handleResetCategory('permits')}
           />
         )}
         {currentStep === 5 && (

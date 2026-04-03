@@ -15,6 +15,7 @@ interface Props {
   onDismiss: (id: string) => void;
   onAcceptAll: (ids: string[]) => void;
   onDismissAll: (ids: string[]) => void;
+  onReset: () => void;
 }
 
 const PERMIT_STATUS_OPTIONS = [
@@ -63,6 +64,7 @@ export const WizardStep6: React.FC<Props> = ({
   onDismiss,
   onAcceptAll,
   onDismissAll,
+  onReset,
 }) => {
   // Map AI permit recommendations to SuggestionItems
   const permitSuggestions: SuggestionItem[] = (recommendations?.permits || []).map((p, i) => ({
@@ -165,18 +167,32 @@ export const WizardStep6: React.FC<Props> = ({
     <div className="space-y-[24px]">
       {/* AI Permit Suggestions */}
       {(aiLoading || permitSuggestions.length > 0) && (
-        <SuggestionPanel
-          title="Permit Recommendations"
-          items={permitSuggestions}
-          onAccept={handleAcceptPermit}
-          onDismiss={onDismiss}
-          onAcceptAll={handleAcceptAllPermits}
-          onDismissAll={handleDismissAllPermits}
-          acceptedIds={acceptedIds}
-          dismissedIds={dismissedIds}
-          isLoading={aiLoading}
-          emptyMessage="No permit suggestions"
-        />
+        <div>
+          <div className="flex items-center justify-between mb-[4px]">
+            <div />
+            {acceptedIds.size > 0 && (
+              <button
+                type="button"
+                onClick={onReset}
+                className="text-[12px] text-[var(--text-4)] hover:text-[var(--text-2)] bg-transparent border-none cursor-pointer px-[8px] py-[4px] rounded-[6px] hover:bg-[var(--surface3)] transition-colors"
+              >
+                ↺ Reset AI Suggestions
+              </button>
+            )}
+          </div>
+          <SuggestionPanel
+            title="Permit Recommendations"
+            items={permitSuggestions}
+            onAccept={handleAcceptPermit}
+            onDismiss={onDismiss}
+            onAcceptAll={handleAcceptAllPermits}
+            onDismissAll={handleDismissAllPermits}
+            acceptedIds={acceptedIds}
+            dismissedIds={dismissedIds}
+            isLoading={aiLoading}
+            emptyMessage="No permit suggestions"
+          />
+        </div>
       )}
 
       {/* No Permits Toggle */}

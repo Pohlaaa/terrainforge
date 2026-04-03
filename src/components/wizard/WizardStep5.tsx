@@ -22,9 +22,10 @@ function fmt(n: number | null | undefined): string {
 }
 
 export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }) => {
-  // Track whether user has manually edited the labor budget or client quote
+  // Track whether user has manually edited certain fields
   const laborManuallyEdited = useRef(false);
   const quoteManuallyEdited = useRef(false);
+  const equipmentCostManuallyEdited = useRef(false);
   const aiBudgetApplied = useRef(false);
 
   // ── Auto-calculated values from earlier steps ──────────────────────────────
@@ -93,7 +94,7 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
     // Fallback: pre-populate from earlier steps
     const updates: Partial<WizardData> = {};
     if (data.laborBudget == null && calcLabor > 0) updates.laborBudget = calcLabor;
-    if (data.equipmentBudget == null && calcEquipment > 0) updates.equipmentBudget = calcEquipment;
+    if (data.equipmentCost == null && calcEquipment > 0) updates.equipmentCost = calcEquipment;
     if (data.subcontractorBudget == null && calcSubs > 0) updates.subcontractorBudget = calcSubs;
     if (data.estimatedHours == null && taskHoursSum > 0) updates.estimatedHours = taskHoursSum;
     if (Object.keys(updates).length > 0) onChange(updates);
@@ -109,6 +110,13 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
       onChange({ laborBudget: data.estimatedHours * effectiveRate });
     }
   }, [data.estimatedHours, effectiveRate]);
+
+  // Auto-calc equipment cost from equipment selections (unless manually overridden)
+  useEffect(() => {
+    if (calcEquipment > 0 && !equipmentCostManuallyEdited.current) {
+      onChange({ equipmentCost: calcEquipment });
+    }
+  }, [calcEquipment]);
 
   // Auto-calculate client quote from overhead % (unless manually overridden)
   useEffect(() => {
@@ -279,7 +287,7 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
             </p>
           </div>
           <div>
-            <label className={labelClass}>Equipment Rental</label>
+            <label className={labelClass}>Equipment Budget</label>
             <input
               className={inputClass}
               type="number"
@@ -291,15 +299,9 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
                 onChange({ equipmentBudget: e.target.value ? parseFloat(e.target.value) : null })
               }
             />
-            {data.equipmentSelections.length > 0 && (
-              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
-                {data.equipmentSelections.map((e) => {
-                  const hr = (e.hourlyCost ?? 0) > 0 ? e.hourlyCost! : orgEquipmentRate;
-                  const hrs = e.estimatedHours ?? (e.durationDays * 8);
-                  return `${e.name} ${hrs}h × $${hr}/hr`;
-                }).join(', ')} = {fmt(calcEquipment)}
-              </p>
-            )}
+            <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+              Planned equipment allocation (rental, fuel, etc.)
+            </p>
           </div>
           <div>
             <label className={labelClass}>Subcontractor Costs</label>
@@ -349,10 +351,20 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
               step="0.01"
               placeholder="0.00"
               value={data.equipmentCost ?? ''}
-              onChange={(e) =>
-                onChange({ equipmentCost: e.target.value ? parseFloat(e.target.value) : null })
-              }
+              onChange={(e) => {
+                equipmentCostManuallyEdited.current = true;
+                onChange({ equipmentCost: e.target.value ? parseFloat(e.target.value) : null });
+              }}
             />
+            {data.equipmentSelections.length > 0 && (
+              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                {data.equipmentSelections.map((e) => {
+                  const hr = (e.hourlyCost ?? 0) > 0 ? e.hourlyCost! : orgEquipmentRate;
+                  const hrs = e.estimatedHours ?? (e.durationDays * 8);
+                  return `${e.name} ${hrs}h × $${hr}/hr`;
+                }).join(', ')} = {fmt(calcEquipment)}
+              </p>
+            )}
           </div>
         </div>
       </div>

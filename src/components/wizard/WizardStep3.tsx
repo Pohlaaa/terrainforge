@@ -18,6 +18,7 @@ interface Props {
   onDismiss: (id: string) => void;
   onAcceptAll: (ids: string[]) => void;
   onDismissAll: (ids: string[]) => void;
+  onReset: () => void;
 }
 
 const PHASES = [
@@ -69,6 +70,7 @@ export const WizardStep3: React.FC<Props> = ({
   onDismiss,
   onAcceptAll,
   onDismissAll,
+  onReset,
 }) => {
   const tasks = data.tasks;
   const [fallbackLoading, setFallbackLoading] = useState(false);
@@ -96,7 +98,7 @@ export const WizardStep3: React.FC<Props> = ({
       name: rec.name,
       description: rec.description || null,
       phase: PHASES.some((p) => p.value === rec.phase) ? rec.phase : 'custom',
-      sequenceNumber: tasks.length,
+      sequenceNumber: rec.sequenceNumber ?? tasks.length,
       estimatedHours: rec.estimatedHours ?? null,
       aiGenerated: true,
     };
@@ -119,7 +121,7 @@ export const WizardStep3: React.FC<Props> = ({
         name: rec.name,
         description: rec.description || null,
         phase: PHASES.some((p) => p.value === rec.phase) ? rec.phase : 'custom',
-        sequenceNumber: tasks.length + newTasks.length,
+        sequenceNumber: rec.sequenceNumber ?? (tasks.length + newTasks.length),
         estimatedHours: rec.estimatedHours ?? null,
         aiGenerated: true,
       });
@@ -226,18 +228,32 @@ export const WizardStep3: React.FC<Props> = ({
 
       {/* AI Suggestion Panel */}
       {(parentAiLoading || taskSuggestions.length > 0) && (
-        <SuggestionPanel
-          title="Task Recommendations"
-          items={taskSuggestions}
-          onAccept={handleAcceptTask}
-          onDismiss={onDismiss}
-          onAcceptAll={handleAcceptAllTasks}
-          onDismissAll={handleDismissAllTasks}
-          acceptedIds={acceptedIds}
-          dismissedIds={dismissedIds}
-          isLoading={parentAiLoading}
-          emptyMessage="No task suggestions available"
-        />
+        <div>
+          <div className="flex items-center justify-between mb-[4px]">
+            <div />
+            {acceptedIds.size > 0 && (
+              <button
+                type="button"
+                onClick={onReset}
+                className="text-[12px] text-[var(--text-4)] hover:text-[var(--text-2)] bg-transparent border-none cursor-pointer px-[8px] py-[4px] rounded-[6px] hover:bg-[var(--surface3)] transition-colors"
+              >
+                ↺ Reset AI Suggestions
+              </button>
+            )}
+          </div>
+          <SuggestionPanel
+            title="Task Recommendations"
+            items={taskSuggestions}
+            onAccept={handleAcceptTask}
+            onDismiss={onDismiss}
+            onAcceptAll={handleAcceptAllTasks}
+            onDismissAll={handleDismissAllTasks}
+            acceptedIds={acceptedIds}
+            dismissedIds={dismissedIds}
+            isLoading={parentAiLoading}
+            emptyMessage="No task suggestions available"
+          />
+        </div>
       )}
 
       {/* Fallback generate button when AI recommendations are null */}
@@ -461,6 +477,11 @@ export const WizardStep3: React.FC<Props> = ({
           tasksByPhase[st.phase].push(st);
         }
 
+        // Total scheduled days (max endDay across all tasks)
+        const totalScheduledDays = scheduledTasks.reduce(
+          (max, t) => Math.max(max, t.startDay + t.durationDays), 0
+        );
+
         return (
           <div>
             <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
@@ -468,17 +489,17 @@ export const WizardStep3: React.FC<Props> = ({
             </h3>
             <p className="text-[12px] text-[var(--text-4)] mb-[12px]">
               {totalTimelineDays} weekdays from {data.startDate} to {data.targetDate}
-              {crewCount > 1 && ` · ${crewCount} crew members (parallel tasks within phases)`}
+              {crewCount > 1 && ` · ${crewCount} crew members`}
             </p>
             <div
               className="rounded-[8px] border overflow-x-auto"
               style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
             >
-              <div style={{ minWidth: Math.max(400, totalTimelineDays * 32) + 140 }}>
+              <div style={{ minWidth: Math.max(500, totalTimelineDays * 32) + 160 }}>
                 {/* Day headers */}
                 <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
-                  <div className="w-[140px] shrink-0 px-[8px] py-[6px] text-[10px] font-[600] text-[var(--text-3)]">
-                    Task
+                  <div className="w-[160px] shrink-0 px-[8px] py-[6px] text-[10px] font-[600] text-[var(--text-3)]">
+                    Phase / Task
                   </div>
                   <div className="flex-1 flex">
                     {weekdayDates.map((d, i) => {
@@ -489,7 +510,7 @@ export const WizardStep3: React.FC<Props> = ({
                           className="flex-1 text-center text-[9px] py-[4px]"
                           style={{
                             color: 'var(--text-4)',
-                            borderLeft: isWeekStart ? '1px solid var(--border)' : 'none',
+                            borderLeft: isWeekStart ? '1px solid var(--border)' : '1px solid var(--surface3)',
                             minWidth: 28,
                           }}
                         >
@@ -508,78 +529,108 @@ export const WizardStep3: React.FC<Props> = ({
                 {phaseOrder.map((phase) => {
                   const phaseTasks = tasksByPhase[phase];
                   const phaseLabel = PHASES.find((p) => p.value === phase)?.label || phase;
-                  const isParallel = phaseTasks.length > 1;
 
                   return (
                     <div key={phase}>
-                      {/* Phase header row (only when multiple tasks in phase) */}
-                      {isParallel && (
+                      {/* Phase header row */}
+                      <div
+                        className="flex items-center border-b"
+                        style={{ borderColor: 'var(--border)', minHeight: 24 }}
+                      >
                         <div
-                          className="flex items-center border-b"
-                          style={{ borderColor: 'var(--border)', minHeight: 22 }}
+                          className="w-[160px] shrink-0 px-[8px] text-[10px] font-[600] uppercase tracking-wide flex items-center gap-[6px]"
+                          style={{ color: PHASE_COLORS[phase] || PHASE_COLORS.custom }}
                         >
                           <div
-                            className="w-[140px] shrink-0 px-[8px] text-[10px] font-[600] uppercase tracking-wide"
-                            style={{ color: PHASE_COLORS[phase] || PHASE_COLORS.custom }}
-                          >
-                            {phaseLabel}
-                          </div>
-                          <div className="flex-1" />
+                            className="w-[8px] h-[8px] rounded-[2px]"
+                            style={{ backgroundColor: PHASE_COLORS[phase] || PHASE_COLORS.custom }}
+                          />
+                          {phaseLabel}
                         </div>
-                      )}
-                      {phaseTasks.map((task, i) => (
-                        <div
-                          key={`${phase}-${i}`}
-                          className="flex items-center border-b last:border-b-0"
-                          style={{
-                            borderColor: 'var(--border)',
-                            minHeight: 32,
-                            borderLeft: isParallel ? `3px solid ${PHASE_COLORS[phase] || PHASE_COLORS.custom}` : 'none',
-                          }}
-                        >
+                        <div className="flex-1" />
+                      </div>
+                      {phaseTasks.map((task, i) => {
+                        const barLeftPct = (task.startDay / totalTimelineDays) * 100;
+                        const barWidthPct = Math.max((task.durationDays / totalTimelineDays) * 100, 3);
+                        const barPixelWidth = (barWidthPct / 100) * Math.max(500, totalTimelineDays * 32);
+                        const nameOverflows = barPixelWidth < 100;
+                        const tooltipText = `${task.name} — ${task.estimatedHours > 0 ? `${task.estimatedHours} hrs` : ''} (${task.durationDays} day${task.durationDays !== 1 ? 's' : ''})`;
+
+                        return (
                           <div
-                            className="w-[140px] shrink-0 px-[8px] text-[11px] font-[500] truncate"
-                            style={{ color: 'var(--text-2)', paddingLeft: isParallel ? 16 : 8 }}
-                            title={task.name}
+                            key={`${phase}-${i}`}
+                            className="flex items-center border-b last:border-b-0"
+                            style={{
+                              borderColor: 'var(--border)',
+                              minHeight: 34,
+                              borderLeft: `3px solid ${PHASE_COLORS[phase] || PHASE_COLORS.custom}`,
+                            }}
                           >
-                            {task.name}
-                          </div>
-                          <div className="flex-1 relative" style={{ minHeight: 24 }}>
                             <div
-                              className="absolute top-[2px] bottom-[2px] rounded-[4px] flex items-center px-[6px]"
-                              style={{
-                                left: `${(task.startDay / totalTimelineDays) * 100}%`,
-                                width: `${Math.max((task.durationDays / totalTimelineDays) * 100, 3)}%`,
-                                backgroundColor: PHASE_COLORS[task.phase] || PHASE_COLORS.custom,
-                                opacity: 0.85,
-                              }}
+                              className="w-[160px] shrink-0 px-[8px] text-[11px] font-[500] truncate"
+                              style={{ color: 'var(--text-2)', paddingLeft: 16 }}
+                              title={tooltipText}
                             >
-                              {task.durationDays >= 2 && (
-                                <span className="text-[9px] font-[600] text-white truncate">
+                              {task.name}
+                            </div>
+                            <div className="flex-1 relative" style={{ minHeight: 26 }}>
+                              <div
+                                className="absolute top-[3px] bottom-[3px] rounded-[4px] flex items-center px-[6px]"
+                                title={tooltipText}
+                                style={{
+                                  left: `${barLeftPct}%`,
+                                  width: `${barWidthPct}%`,
+                                  minWidth: 20,
+                                  backgroundColor: PHASE_COLORS[task.phase] || PHASE_COLORS.custom,
+                                  opacity: 0.85,
+                                }}
+                              >
+                                {!nameOverflows && (
+                                  <span className="text-[9px] font-[600] text-white truncate">
+                                    {task.estimatedHours > 0 ? `${task.estimatedHours}h` : `${task.durationDays}d`}
+                                  </span>
+                                )}
+                              </div>
+                              {/* Overflow label to the right of bar */}
+                              {nameOverflows && (
+                                <span
+                                  className="absolute text-[9px] font-[500] whitespace-nowrap"
+                                  style={{
+                                    left: `calc(${barLeftPct + barWidthPct}% + 6px)`,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: 'var(--text-3)',
+                                  }}
+                                >
                                   {task.estimatedHours > 0 ? `${task.estimatedHours}h` : `${task.durationDays}d`}
                                 </span>
                               )}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Phase legend */}
-            <div className="flex gap-[10px] flex-wrap mt-[8px]">
-              {phaseGroups.map((g) => (
-                <div key={g.value} className="flex items-center gap-[4px]">
-                  <div
-                    className="w-[10px] h-[10px] rounded-[2px]"
-                    style={{ backgroundColor: PHASE_COLORS[g.value] || PHASE_COLORS.custom }}
-                  />
-                  <span className="text-[10px] text-[var(--text-4)]">{g.label}</span>
-                </div>
-              ))}
+            {/* Footer: day count + legend */}
+            <div className="flex items-center justify-between mt-[8px]">
+              <span className="text-[11px] text-[var(--text-3)]">
+                Estimated: {totalScheduledDays} working day{totalScheduledDays !== 1 ? 's' : ''}
+              </span>
+              <div className="flex gap-[10px] flex-wrap">
+                {phaseGroups.map((g) => (
+                  <div key={g.value} className="flex items-center gap-[4px]">
+                    <div
+                      className="w-[10px] h-[10px] rounded-[2px]"
+                      style={{ backgroundColor: PHASE_COLORS[g.value] || PHASE_COLORS.custom }}
+                    />
+                    <span className="text-[10px] text-[var(--text-4)]">{g.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );

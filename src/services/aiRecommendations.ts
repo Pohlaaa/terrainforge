@@ -114,7 +114,7 @@ ${JSON.stringify(materialLibrary, null, 2)}
 
 Return JSON matching this schema EXACTLY (no markdown fencing):
 {
-  "tasks": [{ "name": string, "phase": "demo_prep"|"rough_grade"|"hardscape"|"softscape"|"irrigation"|"lighting"|"cleanup_punchlist"|"custom", "estimatedHours": number, "description": string, "suggestedCrewRole": string }],
+  "tasks": [{ "name": string, "phase": "demo_prep"|"rough_grade"|"hardscape"|"softscape"|"irrigation"|"lighting"|"cleanup_punchlist"|"custom", "sequenceNumber": number, "estimatedHours": number, "description": string, "suggestedCrewRole": string }],
   "crew": [{ "crewMemberId": string, "crewMemberName": string, "role": string, "reason": string, "skills": string[] }],
   "equipment": [{ "equipmentId": string, "equipmentName": string, "type": string, "reason": string, "estimatedDays": number, "dailyRate": number }],
   "materials": [{ "materialId": string|null, "materialName": string, "category": string, "estimatedQuantity": number, "unit": string, "unitCost": number, "reason": string, "inLibrary": boolean }],
@@ -128,6 +128,7 @@ Rules:
 - For materials: prefer items from the org's library (set materialId and inLibrary:true). You may suggest unlisted materials with materialId:null and inLibrary:false.
 - Budget math: use the provided defaultLaborRate ($${ctx.defaultLaborRate}/hr) and actual equipment dailyRate values.
 - Generate 6-15 tasks depending on scope.
+- For sequenceNumber: tasks that can run simultaneously get the SAME number. Tasks that depend on a prior task get a HIGHER number. Within each phase, start at 1 and increment. Example: two parallel hardscape tasks both get sequenceNumber 2, but the cleanup task after them gets sequenceNumber 3.
 - Always return valid JSON with no markdown fencing.`;
 }
 

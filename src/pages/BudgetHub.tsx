@@ -310,7 +310,7 @@ const BudgetHub: React.FC = () => {
           <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Revenue vs Expenses
           </h3>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={0}>
             <LineChart data={lineData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
               <XAxis
@@ -358,7 +358,7 @@ const BudgetHub: React.FC = () => {
             Expense Breakdown
           </h3>
           {donutData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={donutData}

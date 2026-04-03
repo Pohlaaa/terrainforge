@@ -8,20 +8,25 @@ export interface WizardStep {
 interface WizardStepperProps {
   steps: WizardStep[];
   currentStep: number;
+  highestVisitedStep?: number;
   onStepClick?: (step: number) => void;
 }
 
 export const WizardStepper: React.FC<WizardStepperProps> = ({
   steps,
   currentStep,
+  highestVisitedStep,
   onStepClick,
 }) => {
+  const maxClickable = highestVisitedStep ?? currentStep;
+
   return (
     <div className="flex items-center gap-[4px] w-full overflow-x-auto pb-[8px]">
       {steps.map((step, idx) => {
         const isCompleted = idx < currentStep;
+        const isVisited = idx <= maxClickable && idx !== currentStep;
         const isCurrent = idx === currentStep;
-        const isClickable = onStepClick && idx <= currentStep;
+        const isClickable = onStepClick && idx <= maxClickable;
 
         return (
           <React.Fragment key={idx}>
@@ -29,7 +34,7 @@ export const WizardStepper: React.FC<WizardStepperProps> = ({
               <div
                 className="h-[2px] flex-1 min-w-[12px] transition-colors duration-200"
                 style={{
-                  backgroundColor: isCompleted
+                  backgroundColor: isCompleted || isVisited
                     ? 'var(--green)'
                     : 'var(--border)',
                 }}
@@ -45,12 +50,12 @@ export const WizardStepper: React.FC<WizardStepperProps> = ({
               <div
                 className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[13px] font-[600] transition-all duration-200"
                 style={{
-                  backgroundColor: isCompleted
+                  backgroundColor: isCompleted || isVisited
                     ? 'var(--green)'
                     : isCurrent
                       ? 'var(--green)'
                       : 'var(--surface3)',
-                  color: isCompleted || isCurrent
+                  color: isCompleted || isVisited || isCurrent
                     ? '#fff'
                     : 'var(--text-3)',
                   boxShadow: isCurrent
@@ -58,7 +63,7 @@ export const WizardStepper: React.FC<WizardStepperProps> = ({
                     : 'none',
                 }}
               >
-                {isCompleted ? (
+                {isCompleted || isVisited ? (
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -71,7 +76,7 @@ export const WizardStepper: React.FC<WizardStepperProps> = ({
                 style={{
                   color: isCurrent
                     ? 'var(--text)'
-                    : isCompleted
+                    : isCompleted || isVisited
                       ? 'var(--green-l)'
                       : 'var(--text-4)',
                 }}

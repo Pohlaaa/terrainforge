@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/Button';
+import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { SuggestionPanel } from '@/components/shared/SuggestionPanel';
 import type { SuggestionItem } from '@/components/shared/SuggestionPanel';
@@ -23,6 +24,8 @@ interface Props {
   onDismissEquip: (id: string) => void;
   onAcceptAllEquip: (ids: string[]) => void;
   onDismissAllEquip: (ids: string[]) => void;
+  onResetCrew: () => void;
+  onResetEquipment: () => void;
 }
 
 const inputClass =
@@ -59,7 +62,10 @@ export const WizardStep4: React.FC<Props> = ({
   onDismissEquip,
   onAcceptAllEquip,
   onDismissAllEquip,
+  onResetCrew,
+  onResetEquipment,
 }) => {
+  const { crew: orgCrew } = useCrewStore();
   const { equipment: orgEquipment } = useEquipmentStore();
 
   // Map AI crew recommendations to SuggestionItems
@@ -213,26 +219,86 @@ export const WizardStep4: React.FC<Props> = ({
     <div className="space-y-[24px]">
       {/* AI Crew Suggestions */}
       {(aiLoading || crewSuggestions.length > 0) && (
-        <SuggestionPanel
-          title="Crew Recommendations"
-          items={crewSuggestions}
-          onAccept={handleAcceptCrew}
-          onDismiss={onDismissCrew}
-          onAcceptAll={handleAcceptAllCrew}
-          onDismissAll={() => {
-            const ids = crewSuggestions
-              .filter((s) => !acceptedCrewIds.has(s.id) && !dismissedCrewIds.has(s.id))
-              .map((s) => s.id);
-            onDismissAllCrew(ids);
-          }}
-          acceptedIds={acceptedCrewIds}
-          dismissedIds={dismissedCrewIds}
-          isLoading={aiLoading}
-          emptyMessage="No crew suggestions available"
-        />
+        <div>
+          <div className="flex items-center justify-between mb-[4px]">
+            <div />
+            {acceptedCrewIds.size > 0 && (
+              <button
+                type="button"
+                onClick={onResetCrew}
+                className="text-[12px] text-[var(--text-4)] hover:text-[var(--text-2)] bg-transparent border-none cursor-pointer px-[8px] py-[4px] rounded-[6px] hover:bg-[var(--surface3)] transition-colors"
+              >
+                ↺ Reset AI Suggestions
+              </button>
+            )}
+          </div>
+          <SuggestionPanel
+            title="Crew Recommendations"
+            items={crewSuggestions}
+            onAccept={handleAcceptCrew}
+            onDismiss={onDismissCrew}
+            onAcceptAll={handleAcceptAllCrew}
+            onDismissAll={() => {
+              const ids = crewSuggestions
+                .filter((s) => !acceptedCrewIds.has(s.id) && !dismissedCrewIds.has(s.id))
+                .map((s) => s.id);
+              onDismissAllCrew(ids);
+            }}
+            acceptedIds={acceptedCrewIds}
+            dismissedIds={dismissedCrewIds}
+            isLoading={aiLoading}
+            emptyMessage="No crew suggestions available"
+          />
+        </div>
       )}
 
-      {/* Accepted crew members */}
+      {/* Manual crew add from org roster */}
+      {(() => {
+        const selectedCrewIds = new Set(data.crewSelections.map(c => c.crewMemberId));
+        const availableCrew = orgCrew.filter(c => !selectedCrewIds.has(c.id));
+
+        return (
+          <div>
+            {availableCrew.length > 0 && (
+              <div className="mb-[12px]">
+                <label className={labelClass}>Add Crew Member</label>
+                <select
+                  className={inputClass}
+                  value=""
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    const member = orgCrew.find(c => c.id === e.target.value);
+                    if (!member) return;
+                    onChange({
+                      crewSelections: [...data.crewSelections, {
+                        crewMemberId: member.id,
+                        name: member.name,
+                        role: member.role,
+                      }],
+                    });
+                  }}
+                >
+                  <option value="">Select crew member to add...</option>
+                  {availableCrew.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} — {c.role}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {orgCrew.length === 0 && data.crewSelections.length === 0 && !aiLoading && crewSuggestions.length === 0 && (
+              <div
+                className="rounded-[8px] border-2 border-dashed p-[16px] text-center mb-[12px]"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-4)' }}
+              >
+                <p className="text-[13px]">No crew members in your organization yet. Add crew on the Crew & Equipment page, or continue without crew assignments.</p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Assigned crew members */}
       {data.crewSelections.length > 0 && (
         <div>
           <h4 className="text-[13px] font-[600] text-[var(--text-2)] mb-[8px]">
@@ -266,23 +332,37 @@ export const WizardStep4: React.FC<Props> = ({
 
       {/* AI Equipment Suggestions */}
       {(aiLoading || equipSuggestions.length > 0) && (
-        <SuggestionPanel
-          title="Equipment Recommendations"
-          items={equipSuggestions}
-          onAccept={handleAcceptEquip}
-          onDismiss={onDismissEquip}
-          onAcceptAll={handleAcceptAllEquip}
-          onDismissAll={() => {
-            const ids = equipSuggestions
-              .filter((s) => !acceptedEquipIds.has(s.id) && !dismissedEquipIds.has(s.id))
-              .map((s) => s.id);
-            onDismissAllEquip(ids);
-          }}
-          acceptedIds={acceptedEquipIds}
-          dismissedIds={dismissedEquipIds}
-          isLoading={aiLoading}
-          emptyMessage="No equipment suggestions available"
-        />
+        <div>
+          <div className="flex items-center justify-between mb-[4px]">
+            <div />
+            {acceptedEquipIds.size > 0 && (
+              <button
+                type="button"
+                onClick={onResetEquipment}
+                className="text-[12px] text-[var(--text-4)] hover:text-[var(--text-2)] bg-transparent border-none cursor-pointer px-[8px] py-[4px] rounded-[6px] hover:bg-[var(--surface3)] transition-colors"
+              >
+                ↺ Reset AI Suggestions
+              </button>
+            )}
+          </div>
+          <SuggestionPanel
+            title="Equipment Recommendations"
+            items={equipSuggestions}
+            onAccept={handleAcceptEquip}
+            onDismiss={onDismissEquip}
+            onAcceptAll={handleAcceptAllEquip}
+            onDismissAll={() => {
+              const ids = equipSuggestions
+                .filter((s) => !acceptedEquipIds.has(s.id) && !dismissedEquipIds.has(s.id))
+                .map((s) => s.id);
+              onDismissAllEquip(ids);
+            }}
+            acceptedIds={acceptedEquipIds}
+            dismissedIds={dismissedEquipIds}
+            isLoading={aiLoading}
+            emptyMessage="No equipment suggestions available"
+          />
+        </div>
       )}
 
       {/* Equipment from org library */}

@@ -257,7 +257,9 @@ function PainPointCard({ pain, solution, index }: { pain: string; solution: stri
       onMouseLeave={() => setHovered(false)}
       style={{
         background: colors.card,
-        border: `1px solid ${hovered ? 'rgba(45,106,79,0.3)' : colors.border}`,
+        borderLeft: `1px solid ${hovered ? 'rgba(45,106,79,0.3)' : colors.border}`,
+        borderRight: `1px solid ${hovered ? 'rgba(45,106,79,0.3)' : colors.border}`,
+        borderBottom: `1px solid ${hovered ? 'rgba(45,106,79,0.3)' : colors.border}`,
         borderTop: `3px solid ${colors.green}`,
         borderRadius: '12px',
         padding: '32px',

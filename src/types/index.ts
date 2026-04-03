@@ -475,6 +475,7 @@ export interface AIRecommendationSet {
 export interface AITaskRecommendation {
   name: string;
   phase: string;
+  sequenceNumber?: number;
   estimatedHours: number;
   description: string;
   suggestedCrewRole?: string;

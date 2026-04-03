@@ -218,9 +218,9 @@ const Dashboard: React.FC = () => {
         </div>
 
         {viewMode === 'chart' ? (
-          <div style={{ height: '280px' }}>
+          <div style={{ height: '280px', minWidth: '100px' }}>
             {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
                   <XAxis type="number" domain={[0, 100]} tick={{ fill: 'var(--text-tertiary)', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
                   <YAxis type="category" dataKey="name" width={140} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
