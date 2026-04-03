@@ -113,6 +113,11 @@ export interface Project {
   complianceNotes?: string | null;
   permitStatus?: PermitStatus | null;
 
+  // Step 4: Resources (crew & equipment metadata on project)
+  crewSize?: number | null;
+  crewNotes?: string | null;
+  equipmentNotes?: string | null;
+
   // Step 7: Wizard state
   wizardStep?: number;
   wizardCompletedAt?: string | null;
