@@ -3,6 +3,36 @@
  * All TypeScript interfaces and types for the data model
  */
 
+// ── Project aggregate types (data layer refactor) ───────────────────────────
+
+/** Project with computed summary counts — used by list views and dashboard */
+export interface ProjectListItem extends Project {
+  taskCount: number;
+  completedTaskCount: number;
+  crewCount: number;
+  nextScheduledDate: string | null;
+}
+
+/** Complete project graph — used by ProjectDashboard */
+export interface ProjectFull extends Project {
+  tasks: ProjectTask[];
+  subcontractors: ProjectSubcontractor[];
+  permits: ProjectPermit[];
+  crewAssignments: ProjectCrewAssignment[];
+  scheduleEntries: ScheduleEntry[];
+  siteConditions: ProjectSiteCondition[];
+}
+
+/** Persisted crew-to-project assignment */
+export interface ProjectCrewAssignment {
+  id: string;
+  orgId: string;
+  projectId: string;
+  crewMemberId: string;
+  roleOnProject: string | null;
+  assignedAt: string;
+}
+
 // Material category union type
 export type MaterialCategory =
   | 'paver' | 'stone' | 'tile' | 'brick' | 'concrete'
