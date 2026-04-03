@@ -22,8 +22,9 @@ function fmt(n: number | null | undefined): string {
 }
 
 export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }) => {
-  // Track whether user has manually edited the labor budget
+  // Track whether user has manually edited the labor budget or client quote
   const laborManuallyEdited = useRef(false);
+  const quoteManuallyEdited = useRef(false);
   const aiBudgetApplied = useRef(false);
 
   // ── Auto-calculated values from earlier steps ──────────────────────────────
@@ -42,10 +43,15 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
     return taskHoursSum * effectiveRate;
   }, [taskHoursSum, effectiveRate]);
 
-  // Equipment: sum of (daily rate × duration days)
+  // Equipment: sum of (daily rate × duration days), fallback to org default rate
+  const orgEquipmentRate = org?.defaultEquipmentRate ?? 0;
+
   const calcEquipment = useMemo(
-    () => data.equipmentSelections.reduce((sum, e) => sum + e.dailyRate * e.durationDays, 0),
-    [data.equipmentSelections]
+    () => data.equipmentSelections.reduce((sum, e) => {
+      const rate = e.dailyRate > 0 ? e.dailyRate : orgEquipmentRate;
+      return sum + rate * e.durationDays;
+    }, 0),
+    [data.equipmentSelections, orgEquipmentRate]
   );
 
   // Subcontractors: sum of quoted costs
@@ -97,6 +103,32 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
     }
   }, [data.estimatedHours, effectiveRate]);
 
+  // Auto-calculate client quote from target profit % (unless manually overridden)
+  useEffect(() => {
+    if (
+      data.targetProfitPct != null &&
+      data.targetProfitPct > 0 &&
+      data.targetProfitPct < 100 &&
+      !quoteManuallyEdited.current
+    ) {
+      // Need to compute totalCost here (can't reference the useMemo yet)
+      const labor = data.laborBudget ?? 0;
+      const materials = data.materialsBudget ?? 0;
+      const equipment = data.equipmentBudget ?? 0;
+      const subs = data.subcontractorBudget ?? 0;
+      const disposal = data.disposalCost ?? 0;
+      const equipCost = data.equipmentCost ?? 0;
+      const permits = Object.values(data.permitFees).reduce((s, v) => s + v, 0);
+      const subtotal = labor + materials + equipment + subs + disposal + equipCost + permits;
+      const overhead = subtotal * ((data.overheadPct ?? 10) / 100);
+      const totalCost = subtotal + overhead;
+      if (totalCost > 0) {
+        const autoQuote = Math.round(totalCost / (1 - data.targetProfitPct / 100));
+        onChange({ clientQuote: autoQuote });
+      }
+    }
+  }, [data.targetProfitPct, data.laborBudget, data.materialsBudget, data.equipmentBudget, data.subcontractorBudget, data.disposalCost, data.equipmentCost, data.overheadPct, data.permitFees]);
+
   // Org disposal rates
   const disposalRates = org?.disposalRates ?? {};
   const hasDisposalRates = Object.keys(disposalRates).length > 0;
@@ -127,6 +159,16 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
       : financials.profit < 0
         ? 'var(--status-red)'
         : 'var(--text-3)';
+
+  // Target vs actual margin comparison
+  const targetDiff = data.targetProfitPct != null ? financials.marginPct - data.targetProfitPct : null;
+  const onTargetColor = targetDiff == null
+    ? null
+    : Math.abs(targetDiff) < 2
+      ? 'var(--status-green)'
+      : targetDiff >= -5
+        ? 'var(--status-amber)'
+        : 'var(--status-red)';
 
   return (
     <div className="space-y-[24px]">
@@ -329,7 +371,7 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
         </div>
       </div>
 
-      {/* Overhead */}
+      {/* Overhead + Profit + Quote */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
         <div>
           <label className={labelClass}>Overhead / Markup %</label>
@@ -347,6 +389,26 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
           />
         </div>
         <div>
+          <label className={labelClass}>Target Profit %</label>
+          <input
+            className={inputClass}
+            type="number"
+            min="0"
+            max="99"
+            step="1"
+            placeholder="e.g., 25"
+            value={data.targetProfitPct ?? ''}
+            onChange={(e) => {
+              const val = e.target.value ? parseFloat(e.target.value) : null;
+              quoteManuallyEdited.current = false; // Reset manual flag when target changes
+              onChange({ targetProfitPct: val });
+            }}
+          />
+          <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+            Auto-calculates client quote from total cost
+          </p>
+        </div>
+        <div>
           <label className={labelClass}>Client Quote</label>
           <input
             className={inputClass}
@@ -355,11 +417,19 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
             step="0.01"
             placeholder="0.00"
             value={data.clientQuote ?? ''}
-            onChange={(e) =>
-              onChange({ clientQuote: e.target.value ? parseFloat(e.target.value) : null })
-            }
+            onChange={(e) => {
+              quoteManuallyEdited.current = true;
+              onChange({ clientQuote: e.target.value ? parseFloat(e.target.value) : null });
+            }}
           />
-          <p className="text-[11px] text-[var(--text-4)] mt-[4px]">What you're charging the client</p>
+          <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+            {quoteManuallyEdited.current ? 'Manually set' : data.targetProfitPct != null ? 'Auto-calculated from target profit' : 'What you\'re charging the client'}
+          </p>
+          {recommendations?.budget?.clientQuoteRange && recommendations.budget.clientQuoteRange.low > 0 && (
+            <p className="text-[11px] text-[var(--green-l)] mt-[2px]">
+              AI suggests ${recommendations.budget.clientQuoteRange.low.toLocaleString()} – ${recommendations.budget.clientQuoteRange.high.toLocaleString()}
+            </p>
+          )}
         </div>
       </div>
 
@@ -432,6 +502,22 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
               {fmt(financials.profit)} ({financials.marginPct.toFixed(1)}%)
             </span>
           </div>
+
+          {/* Target vs actual margin indicator */}
+          {data.targetProfitPct != null && (data.clientQuote ?? 0) > 0 && onTargetColor && (
+            <div className="flex justify-between text-[12px] pt-[4px]">
+              <span className="text-[var(--text-3)]">
+                Target: {data.targetProfitPct}% → Actual: {financials.marginPct.toFixed(1)}%
+              </span>
+              <span className="font-[600]" style={{ color: onTargetColor }}>
+                {targetDiff != null && Math.abs(targetDiff) < 2
+                  ? 'On Target'
+                  : targetDiff != null && targetDiff >= -5
+                    ? 'Below Target'
+                    : 'Off Target'}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Margin guidance */}

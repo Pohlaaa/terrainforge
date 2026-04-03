@@ -106,6 +106,9 @@ export interface WizardData {
   overheadPct: number | null;
   clientQuote: number | null;
 
+  // Budget helpers (wizard-only, not persisted)
+  targetProfitPct: number | null;
+
   // Step 5: Compliance (now before budget)
   noPermitsRequired: boolean;
   permitStatus: string | null;
@@ -157,6 +160,7 @@ const INITIAL_DATA: WizardData = {
   equipmentCost: null,
   overheadPct: null,
   clientQuote: null,
+  targetProfitPct: null,
   noPermitsRequired: false,
   permitStatus: null,
   permitChecklist: [],
