@@ -66,7 +66,7 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
     { label: 'Job Description', filled: !!data.name.trim() },
     { label: 'Site Intelligence', filled: !!data.address.trim() },
     { label: 'Scope & Tasks', filled: data.tasks.length > 0 },
-    { label: 'Resources', filled: (data.crewSize ?? 0) > 0 || data.subcontractors.length > 0 || data.equipmentSelections.length > 0 },
+    { label: 'Resources', filled: (data.crewSelections?.length ?? 0) > 0 || data.subcontractors.length > 0 || data.equipmentSelections.length > 0 },
     { label: 'Compliance', filled: data.permitChecklist.length > 0 || !!data.complianceNotes },
     { label: 'Budget', filled: (data.clientQuote ?? 0) > 0 },
   ];
@@ -168,13 +168,18 @@ export const WizardStep7: React.FC<Props> = ({ data }) => {
       )}
 
       {/* Step 4: Resources */}
-      {((data.crewSize ?? 0) > 0 || data.subcontractors.length > 0 || data.equipmentSelections.length > 0 || data.equipmentNotes) && (
+      {((data.crewSelections?.length ?? 0) > 0 || data.subcontractors.length > 0 || data.equipmentSelections.length > 0 || data.equipmentNotes) && (
         <div className={sectionClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
           <h4 className={sectionHeadClass}>Resources</h4>
-          {(data.crewSize ?? 0) > 0 && (
-            <div className={rowClass}>
-              <span className={labelSpan}>Crew Size</span>
-              <span className={valueSpan}>{data.crewSize}</span>
+          {data.crewSelections && data.crewSelections.length > 0 && (
+            <div className="mb-[6px]">
+              <span className="text-[11px] text-[var(--text-3)]">Crew ({data.crewSelections.length}):</span>
+              {data.crewSelections.map((c) => (
+                <div key={c.crewMemberId} className={rowClass}>
+                  <span className={labelSpan}>{c.name}</span>
+                  <span className={valueSpan}>{c.role}</span>
+                </div>
+              ))}
             </div>
           )}
           {data.equipmentSelections.length > 0 && (

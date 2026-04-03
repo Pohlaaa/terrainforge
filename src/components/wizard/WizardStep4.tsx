@@ -250,40 +250,6 @@ export const WizardStep4: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Crew Estimate */}
-      <div>
-        <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[16px]">
-          Crew & Labor
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
-          <div>
-            <label className={labelClass}>Estimated Crew Size</label>
-            <input
-              className={inputClass}
-              type="number"
-              min="1"
-              placeholder="e.g., 4"
-              value={data.crewSize ?? ''}
-              onChange={(e) =>
-                onChange({ crewSize: e.target.value ? parseInt(e.target.value) : null })
-              }
-            />
-            <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
-              How many crew members for this job?
-            </p>
-          </div>
-          <div>
-            <label className={labelClass}>Crew Notes</label>
-            <input
-              className={inputClass}
-              placeholder="e.g., Need 2 with hardscape experience"
-              value={data.crewNotes || ''}
-              onChange={(e) => onChange({ crewNotes: e.target.value || null })}
-            />
-          </div>
-        </div>
-      </div>
-
       {/* AI Equipment Suggestions */}
       {(aiLoading || equipSuggestions.length > 0) && (
         <SuggestionPanel
