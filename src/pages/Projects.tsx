@@ -1107,8 +1107,9 @@ export const Projects: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             {projects.map((project, idx) => {
               const status = getProjectStatus(project);
-              const taskTotal = (project as any).taskCount ?? 0;
-              const taskCompleted = (project as any).completedTaskCount ?? 0;
+              const checks = Object.values(project.checklist);
+              const completedCount = checks.filter(Boolean).length;
+              const pct = Math.round((completedCount / checks.length) * 100);
               const statusColor = status.variant === 'green' ? 'var(--status-green)'
                 : status.variant === 'amber' ? 'var(--status-amber)'
                 : status.variant === 'blue' ? 'var(--status-blue)'
@@ -1156,13 +1157,13 @@ export const Projects: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Task progress bar */}
+                  {/* Checklist progress bar */}
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-[4px] rounded-sm overflow-hidden" style={{ background: 'var(--surface-bg)' }}>
-                      <div className="h-full rounded-sm" style={{ width: `${taskTotal > 0 ? (taskCompleted / taskTotal) * 100 : 0}%`, background: statusColor }} />
+                      <div className="h-full rounded-sm" style={{ width: `${pct}%`, background: statusColor }} />
                     </div>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                      {taskTotal > 0 ? `${taskCompleted}/${taskTotal} tasks` : 'No tasks'}
+                      {pct}%
                     </span>
                   </div>
                 </div>
@@ -1176,8 +1177,9 @@ export const Projects: React.FC = () => {
           <div className="flex flex-col" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             {projects.map((project) => {
               const status = getProjectStatus(project);
-              const taskTotal = (project as any).taskCount ?? 0;
-              const taskCompleted = (project as any).completedTaskCount ?? 0;
+              const checks = Object.values(project.checklist);
+              const completedCount = checks.filter(Boolean).length;
+              const pct = Math.round((completedCount / checks.length) * 100);
               const statusColor = status.variant === 'green' ? 'var(--status-green)'
                 : status.variant === 'amber' ? 'var(--status-amber)'
                 : status.variant === 'blue' ? 'var(--status-blue)'
@@ -1216,13 +1218,13 @@ export const Projects: React.FC = () => {
                       <div className="text-[13px] font-bold" style={{ color: 'var(--text-primary)' }}>{project.zones.length}</div>
                       <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>Zones</div>
                     </div>
-                    {/* Task progress */}
+                    {/* Checklist progress */}
                     <div style={{ width: '70px', flexShrink: 0 }}>
                       <div className="h-[4px] rounded-sm overflow-hidden" style={{ background: 'var(--surface-bg)' }}>
-                        <div className="h-full rounded-sm" style={{ width: `${taskTotal > 0 ? (taskCompleted / taskTotal) * 100 : 0}%`, background: statusColor }} />
+                        <div className="h-full rounded-sm" style={{ width: `${pct}%`, background: statusColor }} />
                       </div>
                       <div className="text-right mt-0.5" style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                        {taskTotal > 0 ? `${taskCompleted}/${taskTotal}` : '—'}
+                        {pct}%
                       </div>
                     </div>
                   </div>
