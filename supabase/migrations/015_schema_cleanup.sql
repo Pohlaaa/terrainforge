@@ -6,6 +6,12 @@
 -- 2. Add missing FK on equipment.assigned_project_id → projects.id
 -- 3. Fix inconsistent ON DELETE rules (NO ACTION → CASCADE) for org_id FKs
 
+-- ── 0. Add missing project columns (missed in migration 014) ────────────────────
+-- Already applied manually via SQL Editor. Idempotent here for migration history.
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS crew_size INTEGER;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS crew_notes TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS equipment_notes TEXT;
+
 -- ── 1. Drop dead table ──────────────────────────────────────────────────────────
 DROP TABLE IF EXISTS project_crew;
 
