@@ -50,7 +50,7 @@ export const ForgotPassword: React.FC = () => {
         </div>
 
         {/* Card */}
-        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-8">
+        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-8 shadow-[var(--shadow-panel)]">
           <h2 className="text-xl font-semibold text-[var(--text)] mb-2 text-center">
             Reset Password
           </h2>
@@ -95,7 +95,7 @@ export const ForgotPassword: React.FC = () => {
             <button
               type="submit"
               disabled={loading || success}
-              className="w-full mt-6 py-2 px-4 bg-[var(--green)] hover:bg-[var(--green-l)] text-[var(--surface)] font-semibold rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-6 py-3 px-4 rounded-lg font-semibold text-sm btn-primary btn-primary-gold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Sending...' : 'Send Reset Link'}
             </button>

@@ -1,22 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Package, AlertTriangle, CheckCircle, ShoppingCart } from 'lucide-react';
 import { useMaterialStore } from '@/stores/materialStore';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
 import { RESERVE, CAT_LABELS, MATERIAL_CATEGORIES, UNIT_TYPES } from '@/lib/constants';
 import type { Material, MaterialCategory } from '@/types';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { TextArea } from '@/components/ui/Textarea';
-import { Badge } from '@/components/shared/Badge';
-import { TabPanel } from '@/components/shared/TabPanel';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { SearchFilter } from '@/components/shared/SearchFilter';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { AlertBanner } from '@/components/shared/AlertBanner';
-import { EmptyState, MaterialsIcon } from '@/components/shared/EmptyState';
+import { KPICard } from '@/components/shared/KPICard';
+import { HubHeader } from '@/components/shared/HubHeader';
 import { useBillingGate } from '@/hooks/useBillingGate';
+import { LowStockBanner } from '@/components/materials/LowStockBanner';
+import { MaterialQuickAddBar } from '@/components/materials/MaterialQuickAddBar';
+import { MaterialTable } from '@/components/materials/MaterialTable';
+import { CSVImportModal } from '@/components/materials/CSVImportModal';
+import { MaterialFormModal } from '@/components/materials/MaterialFormModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -413,45 +413,42 @@ export const MaterialLibrary: React.FC = () => {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="h-full flex flex-col gap-4">
+      <HubHeader />
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
-          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Total Items</div>
-          <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{totalItems}</div>
-        </div>
-        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
-          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Low Stock Alerts</div>
-          <div className="text-2xl font-semibold" style={{ color: lowStockCount > 0 ? 'var(--status-amber)' : 'var(--text-primary)' }}>{lowStockCount}</div>
-        </div>
-        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
-          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Inventory Value</div>
-          <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>${inventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-        </div>
-        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
-          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Pending Orders</div>
-          <div className="text-2xl font-semibold" style={{ color: 'var(--text-disabled)' }}>0</div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard
+          label="Total Materials"
+          value={totalItems}
+          icon={<Package size={20} />}
+          iconBg="bg-teal-100 dark:bg-teal-900/40"
+          iconColor="text-teal-600 dark:text-teal-400"
+        />
+        <KPICard
+          label="Low Stock"
+          value={lowStockCount}
+          icon={<AlertTriangle size={20} />}
+          iconBg="bg-red-100 dark:bg-red-900/40"
+          iconColor="text-red-600 dark:text-red-400"
+        />
+        <KPICard
+          label="In Stock"
+          value={`$${inventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+          icon={<CheckCircle size={20} />}
+          iconBg="bg-green-100 dark:bg-green-900/40"
+          iconColor="text-green-600 dark:text-green-400"
+        />
+        <KPICard
+          label="Categories"
+          value={new Set(materials.map(m => m.category)).size}
+          icon={<ShoppingCart size={20} />}
+          iconBg="bg-blue-100 dark:bg-blue-900/40"
+          iconColor="text-blue-600 dark:text-blue-400"
+        />
       </div>
 
       {/* Low Stock Alert Banner */}
-      {lowStockItems.length > 0 && (
-        <div
-          className="flex items-start gap-2.5 rounded-lg px-4 py-3"
-          style={{ background: 'var(--status-amber-bg)', borderLeft: '4px solid var(--status-amber)' }}
-        >
-          <span className="text-base flex-shrink-0">⚠</span>
-          <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
-            <span className="font-semibold">Low stock: </span>
-            {lowStockItems.slice(0, 5).map((m, i) => (
-              <span key={m.id}>
-                {m.name} ({m.qtyOnHand} {m.unit})
-                {i < Math.min(lowStockItems.length, 5) - 1 ? ', ' : ''}
-              </span>
-            ))}
-            {lowStockItems.length > 5 && <span> and {lowStockItems.length - 5} more</span>}
-          </div>
-        </div>
-      )}
+      <LowStockBanner lowStockItems={lowStockItems} />
 
       {error && (
         <div>
@@ -505,55 +502,23 @@ export const MaterialLibrary: React.FC = () => {
           </div>
 
           {/* Quick-add bar */}
-          <div className="px-4 py-3 border-b border-[var(--border-default)] bg-[var(--surface-bg)]">
-            <div className="flex flex-wrap gap-2 items-end">
-              <input
-                type="text"
-                placeholder="Material name"
-                value={quickName}
-                onChange={e => setQuickName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleQuickAdd(); }}
-                className="flex-1 min-w-[180px] h-[40px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
-              />
-              <select
-                value={quickCategory}
-                onChange={e => setQuickCategory(e.target.value)}
-                className="w-[130px] h-[40px] px-2 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none"
-              >
-                {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <select
-                value={quickUnit}
-                onChange={e => setQuickUnit(e.target.value)}
-                className="w-[90px] h-[40px] px-2 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none"
-              >
-                {UNIT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-[var(--text-tertiary)]">$</span>
-                <input
-                  type="number"
-                  placeholder="Cost"
-                  value={quickCost}
-                  onChange={e => setQuickCost(e.target.value)}
-                  className="w-[90px] h-[40px] pl-6 pr-2 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
-                />
-              </div>
-              <input
-                type="number"
-                placeholder="Qty"
-                value={quickQty}
-                onChange={e => setQuickQty(e.target.value)}
-                className="w-[80px] h-[40px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
-              />
-              <Button variant="primary" className="h-[40px]" onClick={handleQuickAdd} disabled={!quickName.trim() || readOnly}>
-                {readOnly ? 'Subscribe to edit' : 'Add'}
-              </Button>
-              <Button variant="secondary" size="sm" className="h-[40px]" onClick={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}>
-                ↑ CSV
-              </Button>
-            </div>
-          </div>
+          <MaterialQuickAddBar
+            quickName={quickName}
+            setQuickName={setQuickName}
+            quickCategory={quickCategory}
+            setQuickCategory={setQuickCategory}
+            quickUnit={quickUnit}
+            setQuickUnit={setQuickUnit}
+            quickCost={quickCost}
+            setQuickCost={setQuickCost}
+            quickQty={quickQty}
+            setQuickQty={setQuickQty}
+            handleQuickAdd={handleQuickAdd}
+            onOpenImport={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}
+            readOnly={readOnly}
+            categoryOptions={CATEGORY_OPTIONS}
+            unitOptions={UNIT_OPTIONS}
+          />
 
           {/* Search and stock filter bar */}
           <div className="px-4 py-3 flex items-center gap-3 border-b border-[var(--border-light)]">
@@ -589,328 +554,43 @@ export const MaterialLibrary: React.FC = () => {
 
           {/* Material table */}
           <div className="flex-1 overflow-x-auto">
-            {displayMaterials.length === 0 ? (
-              materials.length === 0 ? (
-                <EmptyState
-                  icon={<MaterialsIcon />}
-                  title="Stock your material library"
-                  description="Add materials to track inventory and costs across projects."
-                  actionLabel="Add Material"
-                  onAction={openAddModal}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="text-[14px] text-[var(--text-secondary)] mb-2">
-                    No {activeCategory === 'all' ? '' : activeCatDef.label + ' '}materials match your filters
-                  </div>
-                </div>
-              )
-            ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[var(--border-default)] text-[11px] font-[600] uppercase tracking-[0.05em] text-[var(--text-tertiary)]">
-                    <th className="text-left px-4 py-3">Name</th>
-                    <th className="text-left px-4 py-3">Category</th>
-                    <th className="text-right px-4 py-3">Unit</th>
-                    <th className="text-right px-4 py-3">Cost</th>
-                    <th className="text-right px-4 py-3">On Hand</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-left px-4 py-3">Supplier</th>
-                    <th className="text-right px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayMaterials.map(material => {
-                    const status = getStockStatus(material);
-                    return (
-                      <tr key={material.id} className="border-b border-[var(--border-light)] hover:bg-[var(--surface-hover)] cursor-pointer transition-colors">
-                        <td className="px-4 py-3 text-[14px] font-[500] text-[var(--text-primary)]">{material.name}</td>
-                        <td className="px-4 py-3">
-                          <span className="text-[12px] px-2.5 py-1 rounded-full bg-[var(--surface-hover)] text-[var(--text-secondary)] font-[500] capitalize">
-                            {CAT_LABELS[material.category as MaterialCategory] ?? material.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right text-[14px] text-[var(--text-secondary)]">{material.unit}</td>
-                        <td className="px-4 py-3 text-right text-[14px] font-[500] text-[var(--text-primary)]">${material.cost.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right text-[14px] text-[var(--text-primary)]">{material.qtyOnHand}</td>
-                        <td className="px-4 py-3">
-                          {status === 'in' && (
-                            <span className="inline-flex items-center gap-1.5 text-[12px] font-[500] px-2.5 py-1 rounded-full bg-[var(--status-green-bg)] text-[var(--status-green)]">● In Stock</span>
-                          )}
-                          {status === 'low' && (
-                            <span className="inline-flex items-center gap-1.5 text-[12px] font-[500] px-2.5 py-1 rounded-full bg-[var(--status-amber-bg)] text-[var(--status-amber)]">● Low Stock</span>
-                          )}
-                          {status === 'out' && (
-                            <span className="inline-flex items-center gap-1.5 text-[12px] font-[500] px-2.5 py-1 rounded-full bg-[var(--status-red-bg)] text-[var(--status-red)]">● Out</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-[13px] text-[var(--text-secondary)]">{material.supplier_name || '—'}</td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex gap-1 justify-end">
-                            <button
-                              onClick={() => openEditModal(material)}
-                              className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] flex items-center justify-center transition-colors"
-                              title="Edit"
-                            >✏️</button>
-                            <button
-                              onClick={() => toast.info('Material ordering coming in Phase 2')}
-                              className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] flex items-center justify-center transition-colors"
-                              title="Order"
-                            >📦</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+            <MaterialTable
+              displayMaterials={displayMaterials}
+              allMaterialsCount={materials.length}
+              activeCategory={activeCategory}
+              activeCatLabel={activeCatDef.label}
+              openEditModal={openEditModal}
+              openAddModal={openAddModal}
+            />
           </div>
         </div>
       </div>
 
 
       {/* ── CSV Import Modal ──────────────────────────────────────────────────── */}
-      <Modal
-        isOpen={showImportModal}
-        title="Import Materials from CSV"
+      <CSVImportModal
+        showImportModal={showImportModal}
         onClose={() => setShowImportModal(false)}
-        onConfirm={csvPreview.length > 0 ? handleImportConfirm : undefined}
-        confirmText={`Import ${csvPreview.length} Row${csvPreview.length !== 1 ? 's' : ''}`}
-        maxWidth="560px"
-      >
-        <div className="flex flex-col gap-[12px]">
-          <div className="text-[12px] text-[var(--text-2)]">
-            Upload a CSV with columns: <code className="bg-[var(--surface3)] px-[4px] rounded text-[11px]">name, category, unit, unit_cost</code>
-          </div>
-          <input
-            ref={csvInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            onChange={handleCsvFile}
-            className="text-[12px] text-[var(--text-2)]"
-          />
-          {csvError && <div className="text-[12px] text-[var(--color-error)]">{csvError}</div>}
-          {importSuccess && <div className="text-[12px] text-[var(--color-success)]">{importSuccess}</div>}
-          {csvPreview.length > 0 && (
-            <div>
-              <div className="text-[11px] font-[600] text-[var(--text-3)] uppercase tracking-[0.06em] mb-[6px]">
-                Preview ({csvPreview.length} rows)
-              </div>
-              <div className="max-h-[200px] overflow-y-auto border border-[var(--border)] rounded-[8px]">
-                <table className="w-full text-[11px]">
-                  <thead>
-                    <tr className="bg-[var(--surface3)] text-[var(--text-3)] text-left">
-                      <th className="px-[8px] py-[6px]">Name</th>
-                      <th className="px-[8px] py-[6px]">Category</th>
-                      <th className="px-[8px] py-[6px]">Unit</th>
-                      <th className="px-[8px] py-[6px]">Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {csvPreview.map((row, i) => (
-                      <tr key={i} className="border-t border-[var(--border)]">
-                        <td className="px-[8px] py-[5px] text-[var(--text)]">{row.name}</td>
-                        <td className="px-[8px] py-[5px] text-[var(--text-3)]">{row.category}</td>
-                        <td className="px-[8px] py-[5px] text-[var(--text-3)]">{row.unit}</td>
-                        <td className="px-[8px] py-[5px] text-[var(--text-3)]">${row.cost}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
+        csvPreview={csvPreview}
+        csvError={csvError}
+        importSuccess={importSuccess}
+        handleCsvFile={handleCsvFile}
+        handleImportConfirm={handleImportConfirm}
+        csvInputRef={csvInputRef}
+      />
 
       {/* ── Add / Edit Material Modal ─────────────────────────────────────────── */}
-      <Modal
-        isOpen={showMaterialModal}
-        title={editingId ? 'Edit Material' : 'Add Material'}
+      <MaterialFormModal
+        showMaterialModal={showMaterialModal}
+        editingId={editingId}
+        form={form}
+        formErrors={formErrors}
+        setField={setField}
+        onSave={handleSave}
         onClose={closeMaterialModal}
-        onConfirm={handleSave}
-        confirmText={editingId ? 'Save Changes' : 'Add Material'}
-        maxWidth="680px"
-      >
-        <div className="flex flex-col gap-[18px]">
-          {/* Core fields */}
-          <div>
-            <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[10px]">
-              Material Details
-            </div>
-            <div className="flex flex-col gap-[10px]">
-              <Input
-                label="Material Name"
-                required
-                value={form.name}
-                error={formErrors.name}
-                onChange={e => setField('name', e.target.value)}
-                placeholder="Concrete Pavers 12×12"
-              />
-              <div className="grid grid-cols-3 gap-[10px]">
-                <Select
-                  label="Category"
-                  required
-                  value={form.category}
-                  options={CATEGORY_OPTIONS}
-                  onChange={e => setField('category', e.target.value)}
-                />
-                <Select
-                  label="Unit"
-                  required
-                  value={form.unit}
-                  options={UNIT_OPTIONS}
-                  onChange={e => setField('unit', e.target.value)}
-                />
-                <Input
-                  label="Unit Cost ($)"
-                  required
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.cost}
-                  error={formErrors.cost}
-                  onChange={e => setField('cost', e.target.value)}
-                  placeholder="4.50"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-[10px]">
-                <Input
-                  label="Coverage (per unit)"
-                  type="number"
-                  min="0"
-                  value={form.coverage}
-                  onChange={e => setField('coverage', e.target.value)}
-                  placeholder="1"
-                  hint="sqft, lnft, etc."
-                />
-                <Input
-                  label="Depth (inches)"
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={form.depthIn}
-                  onChange={e => setField('depthIn', e.target.value)}
-                  placeholder="3"
-                />
-                <Input
-                  label="Reserve Override (%)"
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={form.reserveOverride}
-                  onChange={e => setField('reserveOverride', e.target.value)}
-                  placeholder="10"
-                  hint="Leave blank for default"
-                />
-              </div>
-              <TextArea
-                label="Notes"
-                rows={2}
-                value={form.notes}
-                onChange={e => setField('notes', e.target.value)}
-                placeholder="Material specs, usage notes..."
-              />
-            </div>
-          </div>
-
-          {/* Supplier fields */}
-          <div>
-            <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[10px]">
-              Supplier Info
-            </div>
-            <div className="flex flex-col gap-[10px]">
-              <div className="grid grid-cols-2 gap-[10px]">
-                <Input
-                  label="Supplier Name"
-                  value={form.supplier_name}
-                  onChange={e => setField('supplier_name', e.target.value)}
-                  placeholder="SRS Distribution"
-                />
-                <Input
-                  label="Contact Person"
-                  value={form.supplier_contact}
-                  onChange={e => setField('supplier_contact', e.target.value)}
-                  placeholder="Mike Johnson"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-[10px]">
-                <Input
-                  label="Phone"
-                  type="tel"
-                  value={form.supplier_phone}
-                  onChange={e => setField('supplier_phone', e.target.value)}
-                  placeholder="(512) 555-0101"
-                />
-                <Input
-                  label="SKU / Part #"
-                  value={form.supplier_sku}
-                  onChange={e => setField('supplier_sku', e.target.value)}
-                  placeholder="CP-1212-GRY"
-                />
-                <Input
-                  label="Lead Time (days)"
-                  type="number"
-                  min="0"
-                  value={form.lead_time_days}
-                  onChange={e => setField('lead_time_days', e.target.value)}
-                  placeholder="3"
-                />
-              </div>
-              <Input
-                label="Price Updated"
-                type="date"
-                value={form.price_update_date}
-                onChange={e => setField('price_update_date', e.target.value)}
-              />
-              <TextArea
-                label="Supplier Notes"
-                rows={2}
-                value={form.supplier_notes}
-                onChange={e => setField('supplier_notes', e.target.value)}
-                placeholder="Volume discounts, delivery terms, seasonal availability..."
-              />
-            </div>
-          </div>
-
-          {/* Inventory fields */}
-          <div>
-            <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[10px]">
-              Inventory
-            </div>
-            <div className="grid grid-cols-2 gap-[10px]">
-              <Input
-                label="Qty On Hand"
-                type="number"
-                min="0"
-                value={form.qtyOnHand}
-                onChange={e => setField('qtyOnHand', e.target.value)}
-              />
-              <Input
-                label="Min Stock Level"
-                type="number"
-                min="0"
-                value={form.minStockLevel}
-                onChange={e => setField('minStockLevel', e.target.value)}
-                hint="Alert threshold for reorder"
-              />
-              <Input
-                label="Storage Location"
-                value={form.storageLocation}
-                onChange={e => setField('storageLocation', e.target.value)}
-                placeholder="Warehouse A, Rack 12"
-              />
-              <Input
-                label="Last Restocked"
-                type="date"
-                value={form.lastRestocked}
-                onChange={e => setField('lastRestocked', e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-      </Modal>
+        categoryOptions={CATEGORY_OPTIONS}
+        unitOptions={UNIT_OPTIONS}
+      />
 
       {/* ── Adjust Stock Modal ────────────────────────────────────────────────── */}
       {adjustingMaterial && (

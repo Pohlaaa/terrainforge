@@ -60,8 +60,6 @@ export const SetupChecklist: React.FC = () => {
   const dismissed = localStorage.getItem('tf-setup-dismissed') === 'true';
   const [localDismissed, setLocalDismissed] = useState(() => {
     if (dismissed) return true;
-    // Existing users: if they already have projects + crew + equipment (steps 1-3 done)
-    // but never saw the checklist, auto-dismiss — they're not new users.
     const dataSteps = steps.slice(0, 3);
     if (dataSteps.every((s) => s.complete) && !localStorage.getItem('tf-setup-seen')) {
       localStorage.setItem('tf-setup-dismissed', 'true');
@@ -80,33 +78,16 @@ export const SetupChecklist: React.FC = () => {
 
   if (allComplete) {
     return (
-      <div
-        style={{
-          background: 'var(--surface2)',
-          border: '2px solid var(--green-l)',
-          borderRadius: 'var(--radius-lg, 12px)',
-          padding: '24px',
-          marginBottom: '16px',
-          textAlign: 'center',
-        }}
-      >
-        <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--green-l)', marginBottom: '4px' }}>
+      <div className="bg-[var(--surface-card)] border-2 border-[var(--status-green)] rounded-xl p-6 mb-4 text-center">
+        <div className="text-base font-bold text-[var(--status-green)] mb-1">
           You're all set!
         </div>
-        <div style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '16px' }}>
+        <div className="text-[13px] text-[var(--text-secondary)] mb-4">
           Your TerrainForge workspace is ready.
         </div>
         <button
           onClick={handleDismiss}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-3)',
-            fontSize: '12px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            padding: '6px 12px',
-          }}
+          className="bg-transparent border-none text-[var(--text-tertiary)] text-xs font-semibold cursor-pointer px-3 py-1.5"
         >
           Dismiss
         </button>
@@ -117,105 +98,63 @@ export const SetupChecklist: React.FC = () => {
   const firstIncompleteIndex = steps.findIndex((s) => !s.complete);
 
   return (
-    <div
-      style={{
-        background: 'var(--surface2)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg, 12px)',
-        padding: '24px',
-        marginBottom: '16px',
-      }}
-    >
+    <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl p-6 mb-4">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center">
+          <span className="text-base font-bold text-[var(--text-primary)]">
             Get Started
           </span>
           <HelpIcon tooltip="Complete these steps to set up your workspace. You can dismiss this anytime." position="right" />
         </div>
-        <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+        <span className="text-xs text-[var(--text-tertiary)]">
           {completedCount} of {steps.length} complete
         </span>
       </div>
 
       {/* Progress bar */}
-      <div
-        style={{
-          height: '4px',
-          borderRadius: '9999px',
-          background: 'var(--surface3)',
-          marginBottom: '16px',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="h-1 rounded-full bg-[var(--surface-hover)] mb-4 overflow-hidden">
         <div
-          style={{
-            height: '100%',
-            width: `${(completedCount / steps.length) * 100}%`,
-            background: 'var(--green-l)',
-            borderRadius: '9999px',
-            transition: 'width 0.3s ease',
-          }}
+          className="h-full rounded-full bg-[var(--status-green)] transition-[width] duration-300 ease-in-out"
+          style={{ width: `${(completedCount / steps.length) * 100}%` }}
         />
       </div>
 
       {/* Steps */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div className="flex flex-col gap-2">
         {steps.map((step, i) => {
           const isNext = i === firstIncompleteIndex;
           return (
             <div
               key={step.label}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                borderLeft: isNext ? '3px solid var(--green)' : '3px solid transparent',
-                background: isNext ? 'var(--surface3)' : 'transparent',
-              }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${
+                isNext
+                  ? 'border-l-[3px] border-l-[var(--brand-primary)] bg-[var(--surface-hover)]'
+                  : 'border-l-[3px] border-l-transparent'
+              }`}
             >
               {/* Checkbox icon */}
               {step.complete ? (
-                <div
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: '50%',
-                    background: 'var(--green-l)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
+                <div className="w-[22px] h-[22px] rounded-full bg-[var(--status-green)] flex items-center justify-center flex-shrink-0">
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
               ) : (
                 <div
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: '50%',
-                    border: `2px solid ${isNext ? 'var(--green)' : 'var(--text-4)'}`,
-                    flexShrink: 0,
-                  }}
+                  className={`w-[22px] h-[22px] rounded-full flex-shrink-0 border-2 ${
+                    isNext ? 'border-[var(--brand-primary)]' : 'border-[var(--text-secondary)]'
+                  }`}
                 />
               )}
 
               {/* Label */}
               <span
-                style={{
-                  flex: 1,
-                  fontSize: '14px',
-                  fontWeight: isNext ? 600 : 400,
-                  color: step.complete ? 'var(--text-3)' : 'var(--text-2)',
-                  textDecoration: step.complete ? 'line-through' : 'none',
-                }}
+                className={`flex-1 text-sm ${
+                  step.complete
+                    ? 'text-[var(--text-tertiary)] line-through'
+                    : 'text-[var(--text-secondary)]'
+                } ${isNext ? 'font-semibold' : 'font-normal'}`}
               >
                 {step.label}
               </span>
@@ -224,16 +163,7 @@ export const SetupChecklist: React.FC = () => {
               {isNext && (
                 <button
                   onClick={() => navigate(step.path)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--green-l)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="bg-transparent border-none text-[var(--brand-primary)] text-[13px] font-semibold cursor-pointer px-2 py-1 whitespace-nowrap"
                 >
                   Go &rarr;
                 </button>
@@ -244,16 +174,10 @@ export const SetupChecklist: React.FC = () => {
       </div>
 
       {/* Dismiss link */}
-      <div style={{ textAlign: 'right', marginTop: '12px' }}>
+      <div className="text-right mt-3">
         <button
           onClick={handleDismiss}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-4)',
-            fontSize: '11px',
-            cursor: 'pointer',
-          }}
+          className="bg-transparent border-none text-[var(--text-secondary)] text-[11px] cursor-pointer"
         >
           Dismiss checklist
         </button>

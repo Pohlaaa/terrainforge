@@ -331,7 +331,7 @@ const Billing: React.FC = () => {
         <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[rgba(251,146,60,.1)] border border-[rgba(251,146,60,.4)] flex items-center gap-[12px]">
           <span className="text-[18px] flex-shrink-0">⚠️</span>
           <div>
-            <div className="text-[13px] font-[600] text-[#FB923C]">
+            <div className="text-[13px] font-[600] text-[var(--status-amber)]">
               Your trial ends in {daysRemaining} day{daysRemaining === 1 ? '' : 's'}
             </div>
             <div className="text-[11px] text-[var(--text-3)] mt-[2px]">
@@ -366,7 +366,7 @@ const Billing: React.FC = () => {
         <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[rgba(220,38,38,.1)] border border-[rgba(220,38,38,.4)] flex items-center gap-[12px]">
           <span className="text-[18px] flex-shrink-0">🔒</span>
           <div>
-            <div className="text-[13px] font-[600] text-[#DC2626]">Your free trial has ended</div>
+            <div className="text-[13px] font-[600] text-[var(--status-red)]">Your free trial has ended</div>
             <div className="text-[11px] text-[var(--text-3)] mt-[2px]">
               Your data is preserved. Subscribe below to regain full access.
             </div>
@@ -379,7 +379,7 @@ const Billing: React.FC = () => {
         <div className="mb-[20px] px-[16px] py-[12px] rounded-[8px] bg-[rgba(220,38,38,.1)] border border-[rgba(220,38,38,.4)] flex items-center gap-[12px]">
           <span className="text-[18px] flex-shrink-0">💳</span>
           <div className="flex-1">
-            <div className="text-[13px] font-[600] text-[#DC2626]">Payment failed</div>
+            <div className="text-[13px] font-[600] text-[var(--status-red)]">Payment failed</div>
             <div className="text-[11px] text-[var(--text-3)] mt-[2px]">
               Please update your payment method to keep your subscription active.
             </div>
@@ -387,7 +387,7 @@ const Billing: React.FC = () => {
           <button
             onClick={handleManageBilling}
             disabled={openingPortal}
-            className="px-[12px] py-[7px] text-[12px] font-[600] bg-[#DC2626] text-white rounded-[8px] hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            className="px-[12px] py-[7px] text-[12px] font-[600] bg-[var(--status-red)] text-white rounded-[8px] hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
           >
             {openingPortal ? 'Opening…' : 'Update Card'}
           </button>
@@ -396,7 +396,7 @@ const Billing: React.FC = () => {
 
       {/* Action error */}
       {actionError && (
-        <div className="mb-[20px] px-[16px] py-[10px] rounded-[8px] bg-[rgba(220,38,38,.1)] border border-[rgba(220,38,38,.3)] text-[12px] text-[#DC2626]">
+        <div className="mb-[20px] px-[16px] py-[10px] rounded-[8px] bg-[rgba(220,38,38,.1)] border border-[rgba(220,38,38,.3)] text-[12px] text-[var(--status-red)]">
           {actionError}
         </div>
       )}
@@ -415,9 +415,9 @@ const Billing: React.FC = () => {
                 subStatus === 'active'
                   ? 'bg-[rgba(116,198,157,.15)] text-[var(--green-l)]'
                   : subStatus === 'trialing'
-                  ? 'bg-[rgba(251,146,60,.15)] text-[#FB923C]'
+                  ? 'bg-[rgba(251,146,60,.15)] text-[var(--status-amber)]'
                   : subStatus === 'past_due'
-                  ? 'bg-[rgba(220,38,38,.15)] text-[#DC2626]'
+                  ? 'bg-[rgba(220,38,38,.15)] text-[var(--status-red)]'
                   : subStatus === 'canceled'
                   ? 'bg-[var(--surface3)] text-[var(--text-3)]'
                   : 'bg-[var(--surface3)] text-[var(--text-4)]'

@@ -8,7 +8,7 @@ interface AlertBannerProps {
 
 export const AlertBanner: React.FC<AlertBannerProps> = ({ alert, onDismiss }) => {
   const levelClasses: Record<'red' | 'amber' | 'info', string> = {
-    red: 'bg-[rgba(220,38,38,.1)] border-[rgba(220,38,38,.3)] text-[#F87171]',
+    red: 'bg-[rgba(220,38,38,.1)] border-[rgba(220,38,38,.3)] text-[var(--status-red)]',
     amber: 'bg-[rgba(217,119,6,.1)] border-[rgba(217,119,6,.3)] text-[var(--amber-l)]',
     info: 'bg-[rgba(37,99,235,.1)] border-[rgba(37,99,235,.3)] text-[var(--blue-l)]',
   };

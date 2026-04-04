@@ -271,7 +271,7 @@ export const PriceResearch: React.FC = () => {
               Find current retail and wholesale prices near you — powered by Claude
             </p>
           </div>
-          <span className="flex-shrink-0 inline-flex items-center gap-[5px] bg-[rgba(124,58,237,.12)] border border-[rgba(124,58,237,.3)] rounded-[8px] px-[8px] py-[3px] text-[10px] font-[600] text-[#A78BFA] ml-[12px]">
+          <span className="flex-shrink-0 inline-flex items-center gap-[5px] bg-[rgba(124,58,237,.12)] border border-[rgba(124,58,237,.3)] rounded-[8px] px-[8px] py-[3px] text-[10px] font-[600] text-[var(--purple-l)] ml-[12px]">
             ✦ AI
           </span>
         </div>
@@ -446,7 +446,7 @@ export const PriceResearch: React.FC = () => {
           <div className="flex items-start gap-[12px]">
             <span className="text-[20px] flex-shrink-0">⚠️</span>
             <div className="flex-1">
-              <div className="text-[13px] font-[600] text-[#F87171] mb-[4px]">Search Failed</div>
+              <div className="text-[13px] font-[600] text-[var(--status-red)] mb-[4px]">Search Failed</div>
               <div className="text-[12px] text-[var(--text-3)] mb-[14px]">{searchError}</div>
               <Button variant="outline" size="sm" onClick={handleRetry}>
                 ↺ Try Again
@@ -551,9 +551,9 @@ export const PriceResearch: React.FC = () => {
 
               {/* Disclaimer */}
               <div className="px-[20px] py-[12px] bg-[rgba(251,146,60,.05)] border-t border-[rgba(251,146,60,.2)] flex items-start gap-[8px]">
-                <span className="flex-shrink-0 text-[12px] text-[#FB923C] mt-[1px]">⬥</span>
+                <span className="flex-shrink-0 text-[12px] text-[var(--status-amber)] mt-[1px]">⬥</span>
                 <div className="text-[11px] text-[var(--text-3)] leading-[1.6]">
-                  <span className="font-[600] text-[#FB923C]">Results may vary</span> — verify prices
+                  <span className="font-[600] text-[var(--status-amber)]">Results may vary</span> — verify prices
                   with local suppliers before committing to a budget. Prices are AI estimates based on
                   typical regional market rates and may not reflect current stock or seasonal changes.
                 </div>

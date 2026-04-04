@@ -75,7 +75,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
               style={{
                 borderRadius: 'var(--radius-md)',
                 background: active ? 'var(--sidebar-active)' : 'transparent',
-                color: active ? '#FFFFFF' : 'var(--sidebar-text-muted)',
+                color: active ? 'var(--text-on-dark)' : 'var(--sidebar-text-muted)',
               }}
               onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
               onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = active ? 'var(--sidebar-active)' : 'transparent'; }}
@@ -105,7 +105,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
               style={{
                 borderRadius: 'var(--radius-md)',
                 background: active ? 'var(--sidebar-active)' : 'transparent',
-                color: active ? '#FFFFFF' : 'var(--sidebar-text-muted)',
+                color: active ? 'var(--text-on-dark)' : 'var(--sidebar-text-muted)',
               }}
               onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
               onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = active ? 'var(--sidebar-active)' : 'transparent'; }}
@@ -138,9 +138,9 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({ onClose }) => {
         <button
           onClick={handleSignOut}
           className="flex items-center gap-2 text-sm cursor-pointer border-none bg-transparent transition-colors duration-100"
-          style={{ color: '#F87171' }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#FCA5A5'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = '#F87171'; }}
+          style={{ color: 'var(--status-red)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red-l)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--status-red)'; }}
         >
           <NavIcon name="log-out" size={14} />
           Sign Out

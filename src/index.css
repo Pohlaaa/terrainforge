@@ -5,6 +5,9 @@
 @tailwind utilities;
 
 :root {
+  /* ── Topographic background pattern ────────────────────────────────────── */
+  --topo-pattern: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 120c20-30 60-30 80 0s60 30 80 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.06'/%3E%3Cpath d='M20 80c30-25 70-25 100 0s70 25 100 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.04'/%3E%3Cpath d='M0 160c25-35 75-35 100 0s75 35 100 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.04'/%3E%3Cpath d='M60 40c15-20 45-20 60 0s45 20 60 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
+
   /* ── Surfaces ──────────────────────────────────────────────────────────── */
   --surface-bg: #FAFAFA;
   --surface-card: #FFFFFF;
@@ -83,27 +86,12 @@
   --text-3: var(--text-tertiary);
   --text-4: var(--text-secondary);
   --bg-primary: var(--surface-bg);
-  --bg-secondary: var(--surface-card);
-  --bg-surface: var(--surface-card);
   --color-primary: var(--brand-primary);
-  --color-primary-hover: var(--brand-primary-hover);
-  --color-primary-light: var(--brand-primary-bg);
-  --color-secondary: var(--brand-secondary);
-  --color-secondary-hover: #C49A3A;
-  --border-color: var(--border-default);
-  --shadow-md: var(--shadow-card);
-  --shadow-lg: var(--shadow-panel);
   --color-error: var(--status-red);
   --color-success: var(--status-green);
   --color-warning: var(--status-amber);
   --color-info: var(--status-blue);
   --bg-sidebar: var(--sidebar-bg);
-  --sidebar-text-2: var(--sidebar-text-muted);
-  --sidebar-text-3: var(--sidebar-text-muted);
-  --sidebar-text-4: var(--sidebar-text-muted);
-  --sidebar-surface2: var(--sidebar-hover);
-  --text-primary-fallback: #1A1A2E;
-  --text-secondary-fallback: #4B5563;
   --text-muted: var(--text-tertiary);
   --text-on-dark: #FFFFFF;
   --text-on-primary: #FFFFFF;
@@ -128,6 +116,8 @@
 }
 
 [data-theme="dark"] {
+  --topo-pattern: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 120c20-30 60-30 80 0s60 30 80 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.07'/%3E%3Cpath d='M20 80c30-25 70-25 100 0s70 25 100 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.05'/%3E%3Cpath d='M0 160c25-35 75-35 100 0s75 35 100 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.05'/%3E%3Cpath d='M60 40c15-20 45-20 60 0s45 20 60 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
+
   --surface-bg: #0F172A;
   --surface-card: #1E293B;
   --surface-hover: #334155;
@@ -166,8 +156,6 @@
   --text-muted: var(--text-tertiary);
   --text-on-dark: #FFFFFF;
   --text-on-primary: #0F172A;
-  --text-primary-fallback: #F1F5F9;
-  --text-secondary-fallback: #CBD5E1;
 }
 
 * {
@@ -181,15 +169,14 @@ body,
 }
 
 body {
-  background: linear-gradient(180deg, #FAFAFA 0%, #F0F2F0 100%);
+  background-color: var(--surface-bg);
+  background-image: var(--topo-pattern);
+  background-repeat: repeat;
+  background-size: 200px 200px;
   color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: background-color 0.2s ease, color 0.2s ease;
   @apply h-full w-full;
-}
-
-[data-theme="dark"] body {
-  background: linear-gradient(180deg, #0F172A 0%, #0A1120 100%);
 }
 
 /* Consistent shadow for all card containers */
@@ -212,6 +199,23 @@ body {
 /* KPI card accent bar */
 .kpi-card-accent {
   border-left: 4px solid var(--brand-primary) !important;
+}
+
+/* Primary button with gold hover glow */
+.btn-primary {
+  background: var(--brand-primary);
+  color: var(--text-on-primary);
+}
+.btn-primary:hover {
+  background: var(--brand-primary-hover);
+}
+.btn-primary-gold:hover {
+  box-shadow: 0 0 0 3px rgba(212, 168, 67, 0.2);
+}
+
+/* Danger button hover glow */
+.btn-danger:hover {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
 }
 
 /* Spinner keyframe */
@@ -256,35 +260,14 @@ a:hover {
   100% { box-shadow: 0 0 0 0 rgba(45,106,79,0); }
 }
 
-@keyframes shimmerSweep {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 @keyframes cardBirth {
   0% { opacity: 0; transform: translateY(12px) scale(0.97); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes dropSettle {
-  0% { transform: scale(1.03) translateY(-4px); }
-  50% { transform: scale(0.99) translateY(1px); }
-  100% { transform: scale(1) translateY(0); }
-}
-
-@keyframes placeholderPulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.6; }
-}
-
 @keyframes skeletonShimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
-}
-
-@keyframes breathe {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
 }
 
 @keyframes btnPulse {
@@ -345,9 +328,6 @@ a:hover {
 
 .animate-completion-pulse { animation: completionPulse 0.6s ease-out; }
 .animate-card-birth { animation: cardBirth 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.animate-drop-settle { animation: dropSettle 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.animate-placeholder-pulse { animation: placeholderPulse 1.5s ease-in-out infinite; }
-.animate-breathe { animation: breathe 2s ease-in-out infinite; }
 .animate-btn-pulse { animation: btnPulse 0.15s ease; }
 .animate-error-shake { animation: errorShake 0.4s ease; }
 .animate-bell-ring { animation: bellRing 0.6s ease; }
@@ -367,9 +347,6 @@ a:hover {
 @media (prefers-reduced-motion: reduce) {
   .animate-completion-pulse,
   .animate-card-birth,
-  .animate-drop-settle,
-  .animate-placeholder-pulse,
-  .animate-breathe,
   .animate-btn-pulse,
   .animate-error-shake,
   .animate-bell-ring,

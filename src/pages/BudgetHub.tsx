@@ -4,10 +4,11 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X, DollarSign, TrendingDown, TrendingUp } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { KPICard } from '@/components/shared/KPICard';
+import { HubHeader } from '@/components/shared/HubHeader';
 import { Badge } from '@/components/shared/Badge';
 import { toast } from '@/hooks/useToast';
 import type { Project, ProjectListItem } from '@/types';
@@ -236,18 +237,22 @@ const BudgetHub: React.FC = () => {
     color: 'var(--text-primary)',
     fontSize: '13px',
   };
+  const tooltipLabelStyle = { color: 'var(--text-primary)', fontWeight: 600, marginBottom: '4px' };
+  const tooltipItemStyle = { color: 'var(--text-secondary)', padding: '2px 0' };
+  const tooltipCursor = { fill: 'var(--surface-hover)' };
 
   // ── Empty state ─────────────────────────────────────────────────────────────
 
   if (projects.length === 0) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="space-y-6">
+        <HubHeader />
         {/* KPI cards - empty */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <KPICard label="Total Revenue" value="$0" />
-          <KPICard label="Total Expenses" value="$0" />
-          <KPICard label="Net Profit" value="$0" />
-          <KPICard label="Outstanding" value="$0" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPICard label="Revenue" value="$0" icon={<DollarSign size={20} />} iconBg="bg-teal-100 dark:bg-teal-900/40" iconColor="text-teal-600 dark:text-teal-400" />
+          <KPICard label="Expenses" value="$0" icon={<TrendingDown size={20} />} iconBg="bg-pink-100 dark:bg-pink-900/40" iconColor="text-pink-600 dark:text-pink-400" />
+          <KPICard label="Profit" value="$0" icon={<TrendingUp size={20} />} iconBg="bg-blue-100 dark:bg-blue-900/40" iconColor="text-blue-600 dark:text-blue-400" />
+          <KPICard label="Avg Budget" value="$0" icon={<DollarSign size={20} />} iconBg="bg-orange-100 dark:bg-orange-900/40" iconColor="text-orange-600 dark:text-orange-400" />
         </div>
         <div
           className="rounded-xl p-12 text-center"
@@ -281,26 +286,49 @@ const BudgetHub: React.FC = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-6">
+    <div className="space-y-6">
+      <HubHeader />
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Total Revenue" value={fmt(kpis.totalRevenue)} />
-        <KPICard label="Total Expenses" value={fmt(kpis.totalExpenses)} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
-          label="Net Profit"
+          label="Revenue"
+          value={fmt(kpis.totalRevenue)}
+          icon={<DollarSign size={20} />}
+          iconBg="bg-teal-100 dark:bg-teal-900/40"
+          iconColor="text-teal-600 dark:text-teal-400"
+        />
+        <KPICard
+          label="Expenses"
+          value={fmt(kpis.totalExpenses)}
+          icon={<TrendingDown size={20} />}
+          iconBg="bg-pink-100 dark:bg-pink-900/40"
+          iconColor="text-pink-600 dark:text-pink-400"
+        />
+        <KPICard
+          label="Profit"
           value={fmt(kpis.netProfit)}
-          subtitle={kpis.totalRevenue > 0
+          subtext={kpis.totalRevenue > 0
             ? `${((kpis.netProfit / kpis.totalRevenue) * 100).toFixed(1)}% margin`
             : undefined}
+          icon={<TrendingUp size={20} />}
+          iconBg="bg-blue-100 dark:bg-blue-900/40"
+          iconColor="text-blue-600 dark:text-blue-400"
         />
-        <KPICard label="Outstanding" value={fmt(kpis.outstanding)} />
+        <KPICard
+          label="Avg Budget"
+          value={fmt(kpis.outstanding)}
+          icon={<DollarSign size={20} />}
+          iconBg="bg-orange-100 dark:bg-orange-900/40"
+          iconColor="text-orange-600 dark:text-orange-400"
+        />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts — A5: Revenue 60% + Expense 40% */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Revenue vs Expenses Line Chart */}
         <div
-          className="rounded-xl p-5"
+          className="lg:col-span-3 rounded-xl p-5"
           style={{
             background: 'var(--surface-card)',
             border: '1px solid var(--border-default)',
@@ -325,6 +353,9 @@ const BudgetHub: React.FC = () => {
               />
               <Tooltip
                 contentStyle={tooltipStyle}
+                labelStyle={tooltipLabelStyle}
+                itemStyle={tooltipItemStyle}
+                cursor={tooltipCursor}
                 formatter={(value) => fmt(Number(value ?? 0))}
               />
               <Line
@@ -347,7 +378,7 @@ const BudgetHub: React.FC = () => {
 
         {/* Expense Breakdown Donut Chart */}
         <div
-          className="rounded-xl p-5"
+          className="lg:col-span-2 rounded-xl p-5"
           style={{
             background: 'var(--surface-card)',
             border: '1px solid var(--border-default)',
@@ -380,6 +411,8 @@ const BudgetHub: React.FC = () => {
                 </Pie>
                 <Tooltip
                   contentStyle={tooltipStyle}
+                  labelStyle={tooltipLabelStyle}
+                  itemStyle={tooltipItemStyle}
                   formatter={(value) => fmt(Number(value ?? 0))}
                 />
                 <Legend
@@ -426,7 +459,7 @@ const BudgetHub: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr style={{ background: 'var(--surface-hover)' }}>
+              <tr>
                 {([
                   ['name', 'Project'],
                   ['clientName', 'Client'],
@@ -439,8 +472,7 @@ const BudgetHub: React.FC = () => {
                   <th
                     key={key}
                     onClick={() => handleSort(key)}
-                    className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider cursor-pointer select-none"
-                    style={{ color: 'var(--text-tertiary)' }}
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)] border-b border-[var(--border-default)] cursor-pointer select-none"
                   >
                     {label}
                     {sortKey === key && (

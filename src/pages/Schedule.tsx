@@ -68,8 +68,8 @@ function StatusBadge({ status }: { status: ScheduleEntry['status'] }) {
   const map: Record<string, { label: string; color: string }> = {
     scheduled: { label: 'Scheduled', color: 'var(--text-3)' },
     in_progress: { label: 'In Progress', color: 'var(--green-l)' },
-    completed: { label: 'Done', color: '#60A5FA' },
-    cancelled: { label: 'Cancelled', color: '#F87171' },
+    completed: { label: 'Done', color: 'var(--status-blue)' },
+    cancelled: { label: 'Cancelled', color: 'var(--status-red)' },
   };
   const s = map[status] ?? map.scheduled;
   return (
@@ -568,10 +568,10 @@ export const Schedule: React.FC = () => {
                       {(() => {
                         const st = crewStatuses[member.id];
                         const statusColors: Record<string, string> = {
-                          en_route: '#60A5FA',
+                          en_route: 'var(--status-blue)',
                           on_site: 'var(--green-l)',
-                          on_break: '#FCD34D',
-                          done: '#A78BFA',
+                          on_break: 'var(--status-amber)',
+                          done: 'var(--purple-l)',
                         };
                         const color = st ? statusColors[st] : null;
                         if (!color) return null;
@@ -633,7 +633,7 @@ export const Schedule: React.FC = () => {
                               position: 'absolute', top: '4px', right: '4px',
                               cursor: 'help', zIndex: 2,
                               width: '16px', height: '16px', borderRadius: '50%',
-                              background: '#F59E0B', color: '#000', fontSize: '11px',
+                              background: 'var(--status-amber)', color: '#000', fontSize: '11px',
                               fontWeight: 800, display: 'flex', alignItems: 'center',
                               justifyContent: 'center', lineHeight: 1,
                             }}

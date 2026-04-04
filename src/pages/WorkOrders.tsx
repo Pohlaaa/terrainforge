@@ -284,9 +284,9 @@ export const WorkOrders: React.FC = () => {
                             const member = crew.find(m => m.id === zone.crew);
                             return member
                               ? <span className="text-[var(--text-4)]"> · 👤 {member.name}</span>
-                              : <span className="text-[#F87171]"> · ⚠ No crew assigned</span>;
+                              : <span className="text-[var(--status-red)]"> · ⚠ No crew assigned</span>;
                           })()
-                        : <span className="text-[#F87171]"> · ⚠ No crew assigned</span>
+                        : <span className="text-[var(--status-red)]"> · ⚠ No crew assigned</span>
                       }
                     </div>
                   </div>

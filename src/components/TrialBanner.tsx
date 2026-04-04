@@ -50,7 +50,7 @@ export const TrialBanner: React.FC<TrialBannerProps> = ({ daysRemaining }) => {
     ? 'rgba(146, 64, 14, 0.4)'
     : 'rgba(45, 106, 79, 0.3)';
 
-  const accentColor = isUrgent ? '#DC2626' : isNudge ? '#D97706' : 'var(--green-l)';
+  const accentColor = isUrgent ? 'var(--status-red)' : isNudge ? 'var(--status-amber)' : 'var(--green-l)';
 
   const height = isUrgent ? '48px' : isNudge ? '44px' : '40px';
 
@@ -72,7 +72,7 @@ export const TrialBanner: React.FC<TrialBannerProps> = ({ daysRemaining }) => {
           className="text-[13px] font-semibold no-underline transition-colors px-3 py-1 rounded-md"
           style={
             isUrgent
-              ? { background: '#DC2626', color: '#fff' }
+              ? { background: 'var(--status-red)', color: '#fff' }
               : isNudge
               ? { border: `1px solid ${accentColor}`, color: accentColor }
               : { color: accentColor }

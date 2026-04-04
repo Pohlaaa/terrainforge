@@ -95,7 +95,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
               style={{
                 background: 'var(--brand-primary)',
                 borderRadius: 'var(--radius-md)',
-                color: '#FFFFFF',
+                color: 'var(--text-on-primary)',
               }}
             >
               TF
@@ -108,38 +108,22 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
             </span>
           </button>
 
-          {/* Tab links — hidden on mobile */}
-          <nav className="hidden lg:flex items-center gap-0.5">
+          {/* Tab links — pill style, hidden on mobile, horizontal scroll on tablet */}
+          <nav className="hidden md:flex items-center gap-1 p-1 rounded-xl bg-[var(--surface-card)] border border-[var(--border-light)] overflow-x-auto">
             {primaryTabs.map((tab) => {
               const active = isActiveTab(tab.path, location.pathname);
               return (
                 <button
                   key={tab.path}
                   onClick={() => navigate(tab.path)}
-                  className="relative px-3 py-4 text-sm font-medium cursor-pointer border-none bg-transparent transition-colors duration-100"
-                  style={{
-                    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
+                  className={`tab-link whitespace-nowrap px-5 py-2 text-sm font-medium cursor-pointer border-none rounded-full transition-colors duration-150 ${
+                    active
+                      ? 'bg-[var(--brand-primary)] text-[var(--text-on-primary)]'
+                      : 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
+                  }`}
                 >
                   <span className="hidden xl:inline">{tab.label}</span>
                   <span className="xl:hidden">{tab.shortLabel}</span>
-                  {/* Active underline */}
-                  {active && (
-                    <div
-                      className="absolute bottom-0 left-3 right-3"
-                      style={{
-                        height: '2px',
-                        background: 'var(--brand-primary)',
-                        borderRadius: '1px',
-                      }}
-                    />
-                  )}
                 </button>
               );
             })}
@@ -287,7 +271,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
                 <button
                   onClick={handleSignOut}
                   className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 cursor-pointer border-none bg-transparent transition-colors duration-100"
-                  style={{ color: '#F87171' }}
+                  style={{ color: 'var(--status-red)' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >

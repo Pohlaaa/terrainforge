@@ -124,7 +124,7 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
     financials.profit > 0 ? 'var(--status-green)' : financials.profit < 0 ? 'var(--status-red)' : 'var(--text-3)';
 
   const costItems = [
-    { label: 'Labor', value: financials.labor, color: '#2D6A4F' },
+    { label: 'Labor', value: financials.labor, color: 'var(--brand-primary)' },
     { label: 'Materials', value: financials.materials, color: '#52B788' },
     { label: 'Equipment Budget', value: financials.equipment, color: '#74C69D' },
     { label: 'Equipment Cost', value: financials.equipCost, color: '#40916C' },

@@ -8,10 +8,10 @@ interface MapWidgetProps {
 }
 
 const STATUS_LEGEND = [
-  { label: 'On Track', color: '#16A34A' },
-  { label: 'In Progress', color: '#2563EB' },
-  { label: 'Attention', color: '#F59E0B' },
-  { label: 'Not Started', color: '#9CA3AF' },
+  { label: 'On Track', color: 'var(--status-green)' },
+  { label: 'In Progress', color: 'var(--status-blue)' },
+  { label: 'Attention', color: 'var(--status-amber)' },
+  { label: 'Not Started', color: 'var(--status-gray)' },
 ];
 
 export const MapWidget: React.FC<MapWidgetProps> = ({ projects }) => {
@@ -101,7 +101,7 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ projects }) => {
       {!loaded && (
         <div
           className="skeleton-shimmer"
-          style={{ width: '100%', height: '280px', borderRadius: '8px', marginTop: '6px' }}
+          style={{ width: '100%', height: '100%', borderRadius: '8px', marginTop: '6px' }}
         />
       )}
       <div style={{ position: 'relative' }}>
@@ -109,7 +109,7 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ projects }) => {
           ref={mapRef}
           style={{
             width: '100%',
-            height: '280px',
+            height: '100%',
             borderRadius: '8px',
             overflow: 'hidden',
             display: loaded ? 'block' : 'none',

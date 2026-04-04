@@ -110,7 +110,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const showExpiredOverlay = isExpiredTrial && !expiredOverlayDismissed;
 
   return (
-    <div className="flex flex-col h-screen" style={{ backgroundColor: 'var(--surface-bg)' }}>
+    <div className="flex flex-col h-screen bg-transparent">
       {/* TopNav — always visible */}
       <TopNav
         onMobileMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
@@ -142,11 +142,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {showPastDue && (
         <div className="flex-shrink-0 flex items-center justify-between gap-3 px-5 py-2 bg-[rgba(220,38,38,.08)] border-b border-[rgba(220,38,38,.25)]">
           <div className="flex items-center gap-2.5 text-xs">
-            <span className="text-[#DC2626] font-bold flex-shrink-0">&#x1F4B3;</span>
+            <span className="text-[var(--status-red)] font-bold flex-shrink-0">&#x1F4B3;</span>
             <span style={{ color: 'var(--text-secondary)' }}>Your last payment failed.</span>
             <Link
               to="/billing"
-              className="font-semibold text-[#DC2626] hover:text-[#B91C1C] underline underline-offset-2 transition-colors flex-shrink-0"
+              className="font-semibold text-[var(--status-red)] hover:brightness-110 underline underline-offset-2 transition-colors flex-shrink-0"
             >
               Update payment method &rarr;
             </Link>
@@ -154,16 +154,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           <button
             onClick={() => setPastDueBannerDismissed(true)}
             aria-label="Dismiss payment banner"
-            className="flex-shrink-0 text-[#DC2626] hover:text-[#B91C1C] text-base leading-none transition-colors bg-transparent border-none cursor-pointer p-0.5"
+            className="flex-shrink-0 text-[var(--status-red)] hover:brightness-110 text-base leading-none transition-colors bg-transparent border-none cursor-pointer p-0.5"
           >
             &#x2715;
           </button>
         </div>
       )}
 
-      {/* Page content — full width */}
-      <main className="flex-1 overflow-auto px-3 py-2 sm:px-4 sm:py-3 lg:px-6 lg:py-4">
-        {children}
+      {/* Page content — centered with max-width */}
+      <main className="flex-1 overflow-y-auto bg-transparent">
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          {children}
+        </div>
       </main>
 
       {/* Expired trial overlay */}
@@ -177,19 +179,19 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             style={{
               maxWidth: '480px',
               width: '90%',
-              background: '#1A1A1A',
+              background: 'var(--surface-card)',
               borderRadius: '16px',
               padding: '40px',
             }}
           >
-            <h2 className="text-[28px] font-bold text-white mb-3">Your trial has ended</h2>
-            <p className="text-base mb-8" style={{ color: 'rgba(255,255,255,0.7)' }}>
+            <h2 className="text-[28px] font-bold mb-3" style={{ color: 'var(--text-primary)' }}>Your trial has ended</h2>
+            <p className="text-base mb-8" style={{ color: 'var(--text-secondary)' }}>
               Your projects and data are still here. Subscribe to pick up where you left off.
             </p>
             <Link
               to="/billing"
-              className="block w-full py-3 rounded-lg text-[15px] font-semibold text-white text-center no-underline transition-colors mb-3"
-              style={{ background: '#2D6A4F' }}
+              className="block w-full py-3 rounded-lg text-[15px] font-semibold text-center no-underline transition-colors mb-3"
+              style={{ background: 'var(--brand-primary)', color: 'var(--text-on-primary)' }}
             >
               Choose a Plan
             </Link>
@@ -197,8 +199,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               onClick={() => setExpiredOverlayDismissed(true)}
               className="w-full py-3 rounded-lg text-sm font-medium bg-transparent cursor-pointer transition-colors"
               style={{
-                color: 'rgba(255,255,255,0.6)',
-                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-default)',
               }}
             >
               View Your Data (Read Only)

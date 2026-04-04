@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import type { Project, ProjectSubcontractor, ScheduleEntry, CrewMember, SubcontractorStatus } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
+import { CrewAssignmentPanel } from './resources/CrewAssignmentPanel';
+import { EquipmentAssignmentPanel } from './resources/EquipmentAssignmentPanel';
 
 interface Props {
   project: Project;
@@ -59,309 +61,63 @@ const SubEditForm: React.FC<{
   const handleSave = () => {
     if (!companyName.trim()) return;
     onSave({
-      companyName: companyName.trim(),
-      trade: trade.trim() || null,
+      companyName: companyName.trim(), trade: trade.trim() || null,
       scopeDescription: scopeDescription.trim() || null,
       quotedCost: quotedCost ? parseFloat(quotedCost) : null,
       actualCost: actualCost ? parseFloat(actualCost) : null,
       status: status as SubcontractorStatus,
-      contactName: contactName.trim() || null,
-      phone: phone.trim() || null,
-      email: email.trim() || null,
+      contactName: contactName.trim() || null, phone: phone.trim() || null, email: email.trim() || null,
     });
   };
 
   return (
-    <div
-      className="rounded-[8px] border px-[12px] py-[10px] space-y-[8px]"
-      style={{ borderColor: 'var(--green)', backgroundColor: 'var(--surface3)' }}
-    >
+    <div className="rounded-[8px] border px-[12px] py-[10px] space-y-[8px]" style={{ borderColor: 'var(--green)', backgroundColor: 'var(--surface3)' }}>
       <div className="grid grid-cols-2 gap-[8px]">
-        <div>
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Company Name</label>
-          <input
-            type="text"
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="Company name"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Trade</label>
-          <input
-            type="text"
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={trade}
-            onChange={(e) => setTrade(e.target.value)}
-            placeholder="e.g., electrician, plumber"
-          />
-        </div>
-        <div className="col-span-2">
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Scope</label>
-          <input
-            type="text"
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={scopeDescription}
-            onChange={(e) => setScopeDescription(e.target.value)}
-            placeholder="What they're doing on this job"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Quoted Cost</label>
-          <input
-            type="number"
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={quotedCost}
-            onChange={(e) => setQuotedCost(e.target.value)}
-            placeholder="0"
-            min={0}
-          />
-        </div>
-        <div>
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Actual Cost</label>
-          <input
-            type="number"
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={actualCost}
-            onChange={(e) => setActualCost(e.target.value)}
-            placeholder="0"
-            min={0}
-          />
-        </div>
-        <div>
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Status</label>
-          <select
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={status}
-            onChange={(e) => setStatus(e.target.value as SubcontractorStatus)}
-          >
-            {SUB_STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Contact Name</label>
-          <input
-            type="text"
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={contactName}
-            onChange={(e) => setContactName(e.target.value)}
-            placeholder="Contact name"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Phone</label>
-          <input
-            type="tel"
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Email</label>
-          <input
-            type="email"
-            className={inputClass}
-            style={{ borderColor: 'var(--border)' }}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-          />
-        </div>
+        <div><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Company Name</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Company name" /></div>
+        <div><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Trade</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={trade} onChange={(e) => setTrade(e.target.value)} placeholder="e.g., electrician, plumber" /></div>
+        <div className="col-span-2"><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Scope</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder="What they're doing on this job" /></div>
+        <div><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Quoted Cost</label><input type="number" className={inputClass} style={{ borderColor: 'var(--border)' }} value={quotedCost} onChange={(e) => setQuotedCost(e.target.value)} placeholder="0" min={0} /></div>
+        <div><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Actual Cost</label><input type="number" className={inputClass} style={{ borderColor: 'var(--border)' }} value={actualCost} onChange={(e) => setActualCost(e.target.value)} placeholder="0" min={0} /></div>
+        <div><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Status</label><select className={inputClass} style={{ borderColor: 'var(--border)' }} value={status} onChange={(e) => setStatus(e.target.value as SubcontractorStatus)}>{SUB_STATUSES.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}</select></div>
+        <div><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Contact Name</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name" /></div>
+        <div><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Phone</label><input type="tel" className={inputClass} style={{ borderColor: 'var(--border)' }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" /></div>
+        <div><label className="text-[10px] text-[var(--text-4)] mb-[2px] block">Email</label><input type="email" className={inputClass} style={{ borderColor: 'var(--border)' }} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" /></div>
       </div>
-
       <div className="flex items-center justify-between">
         {confirmDelete ? (
           <div className="flex items-center gap-[4px]">
             <span className="text-[11px] text-[var(--status-red)]">Delete this sub?</span>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="px-[8px] py-[3px] rounded-[4px] text-[10px] font-[600] border-none cursor-pointer"
-              style={{ backgroundColor: 'rgba(224,92,92,0.15)', color: 'var(--status-red)' }}
-            >
-              Yes, delete
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(false)}
-              className="px-[6px] py-[3px] text-[10px] bg-transparent border-none cursor-pointer"
-              style={{ color: 'var(--text-4)' }}
-            >
-              No
-            </button>
+            <button type="button" onClick={onDelete} className="px-[8px] py-[3px] rounded-[4px] text-[10px] font-[600] border-none cursor-pointer" style={{ backgroundColor: 'rgba(224,92,92,0.15)', color: 'var(--status-red)' }}>Yes, delete</button>
+            <button type="button" onClick={() => setConfirmDelete(false)} className="px-[6px] py-[3px] text-[10px] bg-transparent border-none cursor-pointer" style={{ color: 'var(--text-4)' }}>No</button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-            className="text-[11px] bg-transparent border-none cursor-pointer"
-            style={{ color: 'var(--text-4)' }}
-          >
-            Delete
-          </button>
+          <button type="button" onClick={() => setConfirmDelete(true)} className="text-[11px] bg-transparent border-none cursor-pointer" style={{ color: 'var(--text-4)' }}>Delete</button>
         )}
         <div className="flex gap-[6px]">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-[10px] py-[4px] rounded-[5px] border text-[11px] bg-transparent cursor-pointer"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="px-[10px] py-[4px] rounded-[5px] text-[11px] border-none cursor-pointer font-[600]"
-            style={{ backgroundColor: 'var(--green)', color: '#fff' }}
-          >
-            Save
-          </button>
+          <button type="button" onClick={onCancel} className="px-[10px] py-[4px] rounded-[5px] border text-[11px] bg-transparent cursor-pointer" style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}>Cancel</button>
+          <button type="button" onClick={handleSave} className="px-[10px] py-[4px] rounded-[5px] text-[11px] border-none cursor-pointer font-[600]" style={{ backgroundColor: 'var(--green)', color: '#fff' }}>Save</button>
         </div>
-      </div>
-    </div>
-  );
-};
-
-// Inline editable field component
-const InlineEditField: React.FC<{
-  label: string;
-  value: string;
-  type?: 'text' | 'number' | 'textarea';
-  placeholder?: string;
-  onSave: (value: string) => void;
-}> = ({ label, value, type = 'text', placeholder, onSave }) => {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-
-  const startEdit = () => {
-    setDraft(value);
-    setEditing(true);
-  };
-
-  const handleSave = () => {
-    onSave(draft);
-    setEditing(false);
-  };
-
-  const handleCancel = () => {
-    setDraft(value);
-    setEditing(false);
-  };
-
-  if (!editing) {
-    return (
-      <div className="flex items-center justify-between py-[4px]">
-        <div>
-          <span className="text-[11px] text-[var(--text-4)] mr-[8px]">{label}:</span>
-          <span className="text-[12px] text-[var(--text)]">{value || '—'}</span>
-        </div>
-        <button
-          type="button"
-          onClick={startEdit}
-          className="text-[11px] bg-transparent border-none cursor-pointer shrink-0"
-          style={{ color: 'var(--green-l)' }}
-        >
-          Edit
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="py-[4px] space-y-[4px]">
-      <label className="text-[11px] text-[var(--text-4)] block">{label}</label>
-      {type === 'textarea' ? (
-        <textarea
-          className={inputClass}
-          style={{ borderColor: 'var(--border)', minHeight: '50px', resize: 'vertical' }}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={placeholder}
-          autoFocus
-        />
-      ) : (
-        <input
-          type={type}
-          className={inputClass}
-          style={{ borderColor: 'var(--border)' }}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={placeholder}
-          min={type === 'number' ? 0 : undefined}
-          autoFocus
-        />
-      )}
-      <div className="flex gap-[4px] justify-end">
-        <button
-          type="button"
-          onClick={handleCancel}
-          className="px-[8px] py-[3px] rounded-[4px] border text-[10px] bg-transparent cursor-pointer"
-          style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="px-[8px] py-[3px] rounded-[4px] text-[10px] border-none cursor-pointer font-[600]"
-          style={{ backgroundColor: 'var(--green)', color: '#fff' }}
-        >
-          Save
-        </button>
       </div>
     </div>
   );
 };
 
 export const ProjectDashboardResources: React.FC<Props> = ({
-  project,
-  subcontractors,
-  crew,
-  scheduleEntries,
-  onSubCreate,
-  onSubUpdate,
-  onSubDelete,
+  project, subcontractors, crew, scheduleEntries, onSubCreate, onSubUpdate, onSubDelete,
 }) => {
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
   const updateProject = useProjectStore((s) => s.updateProject);
 
-  // Unique crew members scheduled for this project
   const scheduledCrewIds = [...new Set(scheduleEntries.map((e) => e.crewMemberId))];
-  const scheduledCrew = scheduledCrewIds
-    .map((id) => crew.find((c) => c.id === id))
-    .filter(Boolean) as CrewMember[];
+  const scheduledCrew = scheduledCrewIds.map((id) => crew.find((c) => c.id === id)).filter(Boolean) as CrewMember[];
 
-  const handleSubSave = (subId: string, updates: Partial<ProjectSubcontractor>) => {
-    onSubUpdate(subId, updates);
-    setEditingSubId(null);
-  };
-
-  const handleSubDelete = (subId: string) => {
-    onSubDelete(subId);
-    setEditingSubId(null);
-  };
+  const handleSubSave = (subId: string, updates: Partial<ProjectSubcontractor>) => { onSubUpdate(subId, updates); setEditingSubId(null); };
+  const handleSubDelete = (subId: string) => { onSubDelete(subId); setEditingSubId(null); };
 
   const handleCrewFieldSave = (field: 'crewSize' | 'crewNotes', value: string) => {
     const update: Partial<Project> = {};
-    if (field === 'crewSize') {
-      update.crewSize = value ? parseInt(value, 10) : null;
-    } else {
-      update.crewNotes = value.trim() || null;
-    }
+    if (field === 'crewSize') { update.crewSize = value ? parseInt(value, 10) : null; }
+    else { update.crewNotes = value.trim() || null; }
     updateProject(project.id, update);
   };
 
@@ -371,122 +127,37 @@ export const ProjectDashboardResources: React.FC<Props> = ({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-[16px]">
-      {/* ── Crew ──────────────────────────────────────────────────────────────── */}
-      <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-        <div className={cardHead}>
-          Crew
-        </div>
+      <CrewAssignmentPanel
+        project={project}
+        scheduledCrew={scheduledCrew}
+        scheduleEntries={scheduleEntries}
+        onCrewFieldSave={handleCrewFieldSave}
+      />
 
-        {/* Editable crew size and notes */}
-        <div className="mb-[12px] space-y-[2px]">
-          <InlineEditField
-            label="Crew Size"
-            value={project.crewSize?.toString() || ''}
-            type="number"
-            placeholder="e.g., 4"
-            onSave={(v) => handleCrewFieldSave('crewSize', v)}
-          />
-          <InlineEditField
-            label="Crew Notes"
-            value={project.crewNotes || ''}
-            type="text"
-            placeholder="e.g., need bilingual foreman"
-            onSave={(v) => handleCrewFieldSave('crewNotes', v)}
-          />
-        </div>
-
-        {scheduledCrew.length === 0 ? (
-          <p className="text-[12px] text-[var(--text-4)]">
-            No crew scheduled yet. Assign crew on the Schedule page.
-          </p>
-        ) : (
-          <div className="space-y-[8px]">
-            {scheduledCrew.map((member) => {
-              const entries = scheduleEntries.filter((e) => e.crewMemberId === member.id);
-              return (
-                <div
-                  key={member.id}
-                  className="flex items-center gap-[10px] rounded-[8px] border px-[10px] py-[8px]"
-                  style={{ borderColor: 'var(--border)' }}
-                >
-                  <div
-                    className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[13px] font-[600] shrink-0"
-                    style={{ backgroundColor: 'rgba(45,106,79,0.15)', color: 'var(--green-l)' }}
-                  >
-                    {member.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-[500] text-[var(--text)]">{member.name}</div>
-                    <div className="text-[11px] text-[var(--text-4)]">
-                      {member.role} · {entries.length} day{entries.length !== 1 ? 's' : ''} scheduled
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-      </div>
-
-      {/* ── Subcontractors ────────────────────────────────────────────────────── */}
+      {/* Subcontractors */}
       <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
         <div className="flex items-center justify-between mb-[14px]">
           <div className={cardHead} style={{ marginBottom: 0 }}>Subcontractors ({subcontractors.length})</div>
-          <button
-            type="button"
-            onClick={onSubCreate}
-            className="flex items-center gap-[4px] text-[12px] font-[500] cursor-pointer bg-transparent border-none"
-            style={{ color: 'var(--green-l)' }}
-          >
+          <button type="button" onClick={onSubCreate} className="flex items-center gap-[4px] text-[12px] font-[500] cursor-pointer bg-transparent border-none" style={{ color: 'var(--green-l)' }}>
             <span className="text-[14px] leading-none">+</span> Add Sub
           </button>
         </div>
-
         {subcontractors.length === 0 ? (
-          <p className="text-[12px] text-[var(--text-4)]">
-            No subcontractors assigned to this project.
-          </p>
+          <p className="text-[12px] text-[var(--text-4)]">No subcontractors assigned to this project.</p>
         ) : (
           <div className="space-y-[10px]">
             {subcontractors.map((sub) => {
               if (editingSubId === sub.id) {
-                return (
-                  <SubEditForm
-                    key={sub.id}
-                    sub={sub}
-                    onSave={(updates) => handleSubSave(sub.id, updates)}
-                    onCancel={() => setEditingSubId(null)}
-                    onDelete={() => handleSubDelete(sub.id)}
-                  />
-                );
+                return <SubEditForm key={sub.id} sub={sub} onSave={(updates) => handleSubSave(sub.id, updates)} onCancel={() => setEditingSubId(null)} onDelete={() => handleSubDelete(sub.id)} />;
               }
-
               return (
-                <div
-                  key={sub.id}
-                  className="rounded-[8px] border px-[12px] py-[10px] cursor-pointer transition-colors hover:border-[var(--green)]"
-                  style={{ borderColor: 'var(--border)' }}
-                  onClick={() => setEditingSubId(sub.id)}
-                >
+                <div key={sub.id} className="rounded-[8px] border px-[12px] py-[10px] cursor-pointer transition-colors hover:border-[var(--green)]" style={{ borderColor: 'var(--border)' }} onClick={() => setEditingSubId(sub.id)}>
                   <div className="flex items-center justify-between mb-[4px]">
                     <span className="text-[13px] font-[600] text-[var(--text)]">{sub.companyName}</span>
-                    <span
-                      className="text-[10px] font-[500] px-[6px] py-[1px] rounded-[4px]"
-                      style={{
-                        color: STATUS_COLORS[sub.status] || 'var(--text-4)',
-                        backgroundColor: `${STATUS_COLORS[sub.status] || 'var(--text-4)'}15`,
-                      }}
-                    >
-                      {sub.status}
-                    </span>
+                    <span className="text-[10px] font-[500] px-[6px] py-[1px] rounded-[4px]" style={{ color: STATUS_COLORS[sub.status] || 'var(--text-4)', backgroundColor: `${STATUS_COLORS[sub.status] || 'var(--text-4)'}15` }}>{sub.status}</span>
                   </div>
-                  {sub.trade && (
-                    <div className="text-[11px] text-[var(--text-3)] mb-[2px]">{sub.trade}</div>
-                  )}
-                  {sub.scopeDescription && (
-                    <div className="text-[11px] text-[var(--text-4)]">{sub.scopeDescription}</div>
-                  )}
+                  {sub.trade && <div className="text-[11px] text-[var(--text-3)] mb-[2px]">{sub.trade}</div>}
+                  {sub.scopeDescription && <div className="text-[11px] text-[var(--text-4)]">{sub.scopeDescription}</div>}
                   <div className="flex justify-between text-[12px] py-[4px] mt-[6px]">
                     <span className="text-[var(--text-4)]">Quoted</span>
                     <span className="text-[var(--text)] font-[500]">{fmt(sub.quotedCost)}</span>
@@ -494,26 +165,13 @@ export const ProjectDashboardResources: React.FC<Props> = ({
                   {sub.actualCost != null && sub.quotedCost != null && (
                     <div className="flex justify-between text-[12px] py-[2px]">
                       <span className="text-[var(--text-4)]">Actual</span>
-                      <span
-                        className="font-[500]"
-                        style={{
-                          color: sub.actualCost <= sub.quotedCost ? 'var(--status-green)' : 'var(--status-red)',
-                        }}
-                      >
+                      <span className="font-[500]" style={{ color: sub.actualCost <= sub.quotedCost ? 'var(--status-green)' : 'var(--status-red)' }}>
                         {fmt(sub.actualCost)}
-                        {sub.actualCost !== sub.quotedCost && (
-                          <span className="text-[10px] ml-[4px]">
-                            ({sub.actualCost > sub.quotedCost ? '+' : ''}{fmt(sub.actualCost - sub.quotedCost)})
-                          </span>
-                        )}
+                        {sub.actualCost !== sub.quotedCost && <span className="text-[10px] ml-[4px]">({sub.actualCost > sub.quotedCost ? '+' : ''}{fmt(sub.actualCost - sub.quotedCost)})</span>}
                       </span>
                     </div>
                   )}
-                  {sub.contactName && (
-                    <div className="text-[11px] text-[var(--text-4)] mt-[4px]">
-                      Contact: {sub.contactName}{sub.phone ? ` · ${sub.phone}` : ''}
-                    </div>
-                  )}
+                  {sub.contactName && <div className="text-[11px] text-[var(--text-4)] mt-[4px]">Contact: {sub.contactName}{sub.phone ? ` · ${sub.phone}` : ''}</div>}
                 </div>
               );
             })}
@@ -521,85 +179,11 @@ export const ProjectDashboardResources: React.FC<Props> = ({
         )}
       </div>
 
-      {/* ── Equipment ─────────────────────────────────────────────────────────── */}
-      {(() => {
-        // Dedupe equipment across all zones
-        const equipMap = new Map<string, { name: string; zones: string[] }>();
-        for (const zone of project.zones) {
-          for (const eq of zone.equipment || []) {
-            if (!equipMap.has(eq.equipId)) {
-              equipMap.set(eq.equipId, { name: eq.name, zones: [] });
-            }
-            equipMap.get(eq.equipId)!.zones.push(zone.name);
-          }
-        }
-        // Also include equipment referenced in schedule entries
-        for (const entry of scheduleEntries) {
-          if (entry.equipmentId && !equipMap.has(entry.equipmentId)) {
-            equipMap.set(entry.equipmentId, { name: `Equipment ${entry.equipmentId.slice(0, 8)}`, zones: [] });
-          }
-        }
-        const equipList = [...equipMap.values()];
-
-        return (
-          <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-            <div className={cardHead}>Equipment ({equipList.length})</div>
-
-            {/* Editable equipment notes */}
-            <div className="mb-[10px]">
-              <InlineEditField
-                label="Equipment Notes"
-                value={project.equipmentNotes || ''}
-                type="textarea"
-                placeholder="e.g., mini-excavator needed for trenching"
-                onSave={handleEquipmentNotesSave}
-              />
-            </div>
-
-            {equipList.length === 0 ? (
-              <p className="text-[12px] text-[var(--text-4)]">
-                No equipment assigned. Assign equipment to zones or schedule entries.
-              </p>
-            ) : (
-              <div className="space-y-[6px]">
-                {equipList.map((eq, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between rounded-[6px] px-[10px] py-[6px]"
-                    style={{ backgroundColor: 'var(--surface3)' }}
-                  >
-                    <span className="text-[12px] font-[500] text-[var(--text)]">{eq.name}</span>
-                    {eq.zones.length > 0 && (
-                      <span className="text-[11px] text-[var(--text-4)]">{eq.zones.join(', ')}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ── Zones ─────────────────────────────────────────────────────────────── */}
-      {project.zones.length > 0 && (
-        <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-          <div className={cardHead}>Zones ({project.zones.length})</div>
-          <div className="space-y-[6px]">
-            {project.zones.map((zone) => (
-              <div
-                key={zone.id}
-                className="flex items-center justify-between rounded-[6px] px-[10px] py-[6px]"
-                style={{ backgroundColor: 'var(--surface3)' }}
-              >
-                <span className="text-[12px] font-[500] text-[var(--text)]">{zone.name}</span>
-                <span className="text-[11px] text-[var(--text-4)]">
-                  {zone.area.toLocaleString()} sqft · {zone.materials?.length ?? 0} materials
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <EquipmentAssignmentPanel
+        project={project}
+        scheduleEntries={scheduleEntries}
+        onEquipmentNotesSave={handleEquipmentNotesSave}
+      />
     </div>
   );
 };

@@ -4,14 +4,17 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
-import { Badge } from '@/components/shared/Badge';
+import { HubHeader } from '@/components/shared/HubHeader';
 import { Modal } from '@/components/shared/Modal';
 import { NavIcon } from '@/components/layout/NavIcon';
 import { toast } from '@/hooks/useToast';
 import { formatPhoneNumber } from '@/utils/validation';
 import { useBillingGate } from '@/hooks/useBillingGate';
 import { EQUIPMENT_TYPES } from '@/types';
-import type { CrewMember, Equipment, ScheduleEntry, ProjectCrewAssignment } from '@/types';
+import { CrewEquipmentKPIs } from '@/components/crew/CrewEquipmentKPIs';
+import { CrewTable } from '@/components/crew/CrewTable';
+import { EquipmentTable } from '@/components/crew/EquipmentTable';
+import type { CrewMember, ScheduleEntry } from '@/types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,11 +50,6 @@ function formatWeekRange(mondayStr: string): string {
   const frStr = fri.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return `${moStr} - ${frStr}`;
 }
-
-const ROLE_BADGE: Record<string, 'green' | 'amber' | 'blue' | 'purple' | 'teal' | 'red'> = {
-  foreman: 'green', lead: 'teal', installer: 'blue',
-  laborer: 'amber', specialist: 'purple', apprentice: 'amber',
-};
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -191,103 +189,23 @@ const CrewEquipmentHub: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* ── KPI Cards ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
-          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Total Crew</div>
-          <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{crew.length}</div>
-        </div>
-        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
-          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Available</div>
-          <div className="text-2xl font-semibold" style={{ color: availableCrew.length > 0 ? 'var(--status-green)' : 'var(--text-primary)' }}>{availableCrew.length}</div>
-        </div>
-        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
-          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Total Equipment</div>
-          <div className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{equipment.length}</div>
-        </div>
-        <div className="kpi-card-accent rounded-lg p-4" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}>
-          <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Maintenance Due</div>
-          <div className="text-2xl font-semibold" style={{ color: maintenanceDue.length > 0 ? 'var(--status-amber)' : 'var(--text-primary)' }}>{maintenanceDue.length}</div>
-        </div>
-      </div>
+      <HubHeader />
+
+      <CrewEquipmentKPIs
+        crewCount={crew.length}
+        availableCount={availableCrew.length}
+        equipmentCount={equipment.length}
+        maintenanceDueCount={maintenanceDue.length}
+      />
 
       {/* ── Split View: Crew Cards + Weekly Schedule ────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Crew Cards */}
-        <div
-          className="rounded-xl p-4"
-          style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Crew Members</h2>
-            {!readOnly && (
-              <button
-                onClick={() => setShowAddCrew(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md cursor-pointer border-none transition-colors"
-                style={{ background: 'var(--brand-primary)', color: '#FFFFFF' }}
-              >
-                + Add
-              </button>
-            )}
-          </div>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {crew.length === 0 ? (
-              <div className="text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                No crew members yet. Add your first team member.
-              </div>
-            ) : (
-              crew.map(member => {
-                const assignment = getCrewAssignment(member.id);
-                return (
-                  <div
-                    key={member.id}
-                    className="rounded-lg p-3 transition-colors cursor-pointer"
-                    style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-strong)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-default)'; }}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{member.name}</span>
-                          {member.phone && (
-                            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                              <NavIcon name="phone" size={12} />
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-0.5">
-                          <Badge variant={ROLE_BADGE[member.role] || 'blue'}>{member.role}</Badge>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span
-                          className="text-xs font-medium"
-                          style={{ color: assignment ? 'var(--text-secondary)' : 'var(--status-green)' }}
-                        >
-                          {assignment || 'Available'}
-                        </span>
-                      </div>
-                    </div>
-                    {member.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {member.skills.slice(0, 4).map(skill => (
-                          <span
-                            key={skill}
-                            className="text-[10px] px-1.5 py-0.5 rounded-md"
-                            style={{ background: 'var(--surface-hover)', color: 'var(--text-tertiary)' }}
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        <CrewTable
+          crew={crew}
+          getCrewAssignment={getCrewAssignment}
+          readOnly={readOnly}
+          onAddCrew={() => setShowAddCrew(true)}
+        />
 
         {/* Weekly Schedule Grid */}
         <div
@@ -360,76 +278,11 @@ const CrewEquipmentHub: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Equipment Table ────────────────────────────────────────────────── */}
-      <div
-        className="rounded-xl"
-        style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
-      >
-        <div className="flex items-center justify-between p-3">
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Equipment</h2>
-          {!readOnly && (
-            <button
-              onClick={() => setShowAddEquip(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md cursor-pointer border-none transition-colors"
-              style={{ background: 'var(--brand-primary)', color: '#FFFFFF' }}
-            >
-              + Add Equipment
-            </button>
-          )}
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr style={{ background: 'var(--surface-hover)' }}>
-                <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Name</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Type</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Status</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--text-tertiary)' }}>Hourly Cost</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-tertiary)' }}>Next Maintenance</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-tertiary)' }}>Assigned</th>
-              </tr>
-            </thead>
-            <tbody>
-              {equipment.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                    No equipment yet. Add your first piece of equipment.
-                  </td>
-                </tr>
-              ) : (
-                equipment.map(equip => {
-                  const statusBadge: Record<string, 'green' | 'amber' | 'blue' | 'red'> = {
-                    'available': 'green', 'in-use': 'blue', 'maintenance': 'amber', 'out-of-service': 'red',
-                  };
-                  const typeLabel = EQUIPMENT_TYPES.find(t => t.value === equip.equipmentType)?.label || equip.type || '—';
-                  return (
-                    <tr
-                      key={equip.id}
-                      className="border-t transition-colors"
-                      style={{ borderColor: 'var(--border-default)' }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                    >
-                      <td className="px-3 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>{equip.name}</td>
-                      <td className="px-3 py-3" style={{ color: 'var(--text-secondary)' }}>{typeLabel}</td>
-                      <td className="px-3 py-3"><Badge variant={statusBadge[equip.status] || 'blue'}>{equip.status}</Badge></td>
-                      <td className="px-3 py-3 hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>
-                        {equip.hourlyCost ? `$${equip.hourlyCost}/hr` : '—'}
-                      </td>
-                      <td className="px-3 py-3 hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
-                        {equip.nextService ? new Date(equip.nextService).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-3 py-3 hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
-                        {equip.assignedProject || '—'}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <EquipmentTable
+        equipment={equipment}
+        readOnly={readOnly}
+        onAddEquipment={() => setShowAddEquip(true)}
+      />
 
       {/* ── Add Crew Modal ─────────────────────────────────────────────────── */}
       <Modal isOpen={showAddCrew} onClose={() => setShowAddCrew(false)} title="Add Crew Member">
@@ -475,7 +328,7 @@ const CrewEquipmentHub: React.FC = () => {
             onClick={handleAddCrew}
             disabled={!crewName.trim()}
             className="w-full py-2.5 text-sm font-semibold rounded-lg cursor-pointer border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: 'var(--brand-primary)', color: '#FFFFFF' }}
+            style={{ background: 'var(--brand-primary)', color: 'var(--text-on-primary)' }}
           >
             Add Crew Member
           </button>
@@ -524,7 +377,7 @@ const CrewEquipmentHub: React.FC = () => {
             onClick={handleAddEquipment}
             disabled={!equipName.trim()}
             className="w-full py-2.5 text-sm font-semibold rounded-lg cursor-pointer border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: 'var(--brand-primary)', color: '#FFFFFF' }}
+            style={{ background: 'var(--brand-primary)', color: 'var(--text-on-primary)' }}
           >
             Add Equipment
           </button>

@@ -55,10 +55,10 @@ export const AlertsWidget: React.FC<AlertsWidgetProps> = ({ appState }) => {
                 style={{ cursor: 'pointer' }}
                 className={`px-[10px] py-[8px] rounded-[6px] text-[11px] transition-opacity hover:opacity-80 ${
                   alert.level === 'red'
-                    ? 'bg-[rgba(220,38,38,.1)] border border-[rgba(220,38,38,.3)] text-[#DC2626]'
+                    ? 'bg-[rgba(220,38,38,.1)] border border-[rgba(220,38,38,.3)] text-[var(--status-red)]'
                     : alert.level === 'amber'
-                    ? 'bg-[rgba(251,146,60,.1)] border border-[rgba(251,146,60,.3)] text-[#FB923C]'
-                    : 'bg-[rgba(59,130,246,.1)] border border-[rgba(59,130,246,.3)] text-[#3B82F6]'
+                    ? 'bg-[rgba(251,146,60,.1)] border border-[rgba(251,146,60,.3)] text-[var(--status-amber)]'
+                    : 'bg-[rgba(59,130,246,.1)] border border-[rgba(59,130,246,.3)] text-[var(--status-blue)]'
                 }`}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
