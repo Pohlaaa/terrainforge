@@ -3,15 +3,15 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-03) — AI Wizard Sprint
+## Current Status (2026-04-03) — Cleanup & Account Management Sprint
 
-**Active work**: AI-powered project creation wizard. AI recommends tasks, crew (with availability), equipment, materials, budget, and permits based on project description + org data. Suggest-then-accept UX pattern. Wizard submit writes to all downstream systems (crew assignments, schedule entries, equipment status).
+**Active work**: Three-track cleanup sprint — (1) Architecture cleanup: split 2,171-line supabaseData.ts into domain modules, fix 5 pages bypassing store layer, eliminate `any` types. (2) UI polish: extract oversized components, migrate inline styles to Tailwind/CSS vars, responsive improvements. (3) Account management: rebuild Settings page, org profile editing, role-based visibility, onboarding polish.
 
-**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment (PR #114 merged).
+**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment (PR #114), AI wizard with suggest-then-accept UX (PR #115), 3 rounds of wizard refinements (PRs #116-#118). AI wizard is feature-complete.
 
-**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. Currently in M3 "First Revenue".
+**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. AI wizard complete. Currently in M3 "First Revenue".
 
-**Database**: 15+ tables, 75+ RLS policies, 14 migrations applied (including 014_contractor_fields). No new migrations needed for AI wizard sprint. Migration 015 (schema cleanup) staged — run AFTER AI wizard merge.
+**Database**: 15+ tables, 75+ RLS policies, 15 migrations applied (015_schema_cleanup applied — dropped dead project_crew table, added equipment FK, fixed cascade rules).
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand 7 stores (Supabase-primary, localStorage for UI only) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)
@@ -107,7 +107,8 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 - `011_project_intelligence_resources.sql` — project_subcontractors, project_documents, project_permits
 - `012_trial_columns.sql` — trial_starts_at, trial_ends_at on organizations
 - `013_project_crew_assignments.sql` — crew-to-project assignment persistence
-- `014_contractor_fields.sql` — **PENDING** — crew phone, equipment type/hourly cost, disposal/equipment cost, org rates
+- `014_contractor_fields.sql` — crew phone, equipment type/hourly cost, disposal/equipment cost, org rates
+- `015_schema_cleanup.sql` — Drop dead project_crew table, add equipment FK, fix cascade rules, add missing project columns
 
 ## Business Logic (src/lib/)
 - **manifest.ts:** `computeQty()`, `generateManifest()`, `computeProjectCostRaw()` — material quantities, cost rollup
@@ -145,7 +146,9 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 - `.claude/CODE_GUIDE.md` — Execution workflow, git conventions, verification protocol.
 - `.claude/DESIGN_SYSTEM.md` — Design tokens, color system, spacing, component specs, hub layout patterns.
 - `.claude/CONTRACTOR_FEEDBACK.md` — Real contractor requirements integrated into UI rebuild.
-- `.claude/AI_WIZARD_PROMPT.md` — **Current execution prompt.** AI-powered wizard with suggest-then-accept UX and downstream writes.
+- `.claude/CLEANUP_TRACK1_ARCHITECTURE_PROMPT.md` — **Current sprint.** Split supabaseData.ts, fix store bypasses, type safety.
+- `.claude/CLEANUP_TRACK2_UI_POLISH_PROMPT.md` — **Current sprint.** Extract oversized components, migrate styles, responsive.
+- `.claude/CLEANUP_TRACK3_ACCOUNT_MGMT_PROMPT.md` — **Current sprint.** Settings rebuild, org profile, roles, onboarding.
 
 ### Reference Files
 - `.claude/DEPLOY_CHECKLIST.md` — Netlify deploy steps
