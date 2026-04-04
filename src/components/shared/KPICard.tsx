@@ -32,7 +32,7 @@ export const KPICard: React.FC<KPICardProps> = ({
 }) => {
   const sub = subtext || subtitle;
   return (
-    <div className="kpi-card-hover bg-[var(--surface-card)] border border-[var(--border-light)] rounded-xl p-5">
+    <div className="kpi-card-hover card-interactive bg-[var(--surface-card)] border border-[var(--border-light)] rounded-xl p-5">
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1">

@@ -9,17 +9,17 @@
   --topo-pattern: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 120c20-30 60-30 80 0s60 30 80 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.06'/%3E%3Cpath d='M20 80c30-25 70-25 100 0s70 25 100 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.04'/%3E%3Cpath d='M0 160c25-35 75-35 100 0s75 35 100 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.04'/%3E%3Cpath d='M60 40c15-20 45-20 60 0s45 20 60 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
 
   /* ── Surfaces ──────────────────────────────────────────────────────────── */
-  --surface-bg: #FAFAFA;
+  --surface-bg: #FAF9F7;
   --surface-card: #FFFFFF;
-  --surface-hover: #F3F4F6;
-  --surface-active: #E5E7EB;
+  --surface-hover: #F3F1EE;
+  --surface-active: #E5E3DF;
   --surface-selected: #D1FAE5;
 
   /* ── Text ───────────────────────────────────────────────────────────────── */
   --text-primary: #111827;
-  --text-secondary: #4B5563;
-  --text-tertiary: #9CA3AF;
-  --text-disabled: #D1D5DB;
+  --text-secondary: #57534E;
+  --text-tertiary: #A8A29E;
+  --text-disabled: #D6D3D1;
 
   /* ── Brand ──────────────────────────────────────────────────────────────── */
   --brand-primary: #2D6A4F;
@@ -28,9 +28,9 @@
   --brand-secondary: #D4A843;
 
   /* ── Borders ────────────────────────────────────────────────────────────── */
-  --border-light: #F3F4F6;
-  --border-default: #E5E7EB;
-  --border-strong: #D1D5DB;
+  --border-light: #F3F1EE;
+  --border-default: #E7E5E4;
+  --border-strong: #D6D3D1;
 
   /* ── Shadows ────────────────────────────────────────────────────────────── */
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
@@ -118,24 +118,27 @@
 [data-theme="dark"] {
   --topo-pattern: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 120c20-30 60-30 80 0s60 30 80 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.07'/%3E%3Cpath d='M20 80c30-25 70-25 100 0s70 25 100 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.05'/%3E%3Cpath d='M0 160c25-35 75-35 100 0s75 35 100 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.05'/%3E%3Cpath d='M60 40c15-20 45-20 60 0s45 20 60 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
 
-  --surface-bg: #0F172A;
-  --surface-card: #1E293B;
-  --surface-hover: #334155;
-  --surface-active: #475569;
+  --surface-bg: #171412;
+  --surface-card: #231F1C;
+  --surface-hover: #332E2A;
+  --surface-active: #47413B;
   --surface-selected: #064E3B;
 
   --text-primary: #F1F5F9;
-  --text-secondary: #CBD5E1;
-  --text-tertiary: #64748B;
-  --text-disabled: #475569;
+  --text-secondary: #C8C2BA;
+  --text-tertiary: #78716C;
+  --text-disabled: #47413B;
 
   --brand-primary: #34D399;
   --brand-primary-hover: #6EE7B7;
   --brand-primary-bg: #064E3B;
+  --brand-secondary: #E5BE5A;
+  --brand-secondary-hover: #F0D06A;
+  --brand-secondary-bg: #3D2E0A;
 
-  --border-light: #1E293B;
-  --border-default: #334155;
-  --border-strong: #475569;
+  --border-light: #231F1C;
+  --border-default: #332E2A;
+  --border-strong: #47413B;
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
   --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
@@ -216,6 +219,37 @@ body {
 /* Danger button hover glow */
 .btn-danger:hover {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+/* KPI card hover — gold top border */
+.kpi-card-hover {
+  border-top: 2px solid transparent;
+  transition: border-color 150ms ease;
+}
+.kpi-card-hover:hover {
+  border-top: 2px solid var(--brand-secondary);
+}
+
+/* B4: Spring micro-interactions */
+@media (prefers-reduced-motion: no-preference) {
+  .card-interactive {
+    transition: transform 200ms var(--spring), box-shadow 200ms ease;
+    cursor: pointer;
+  }
+  .card-interactive:hover { box-shadow: var(--shadow-hover); }
+  .card-interactive:active { transform: scale(0.98); }
+
+  .progress-fill { transition: width 600ms var(--spring); }
+
+  .tab-link {
+    transition: background-color 150ms ease, color 150ms ease, transform 100ms var(--spring);
+  }
+  .tab-link:active { transform: scale(0.96); }
+
+  button, [role="button"] {
+    transition: transform 100ms var(--spring), background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  }
+  button:active, [role="button"]:active { transform: scale(0.97); }
 }
 
 /* Spinner keyframe */

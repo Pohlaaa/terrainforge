@@ -343,12 +343,14 @@ const BudgetHub: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
               <XAxis
                 dataKey="name"
-                tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-                stroke="var(--border-light)"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }}
               />
               <YAxis
-                tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-                stroke="var(--border-light)"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }}
                 tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
               />
               <Tooltip
@@ -363,14 +365,16 @@ const BudgetHub: React.FC = () => {
                 dataKey="Revenue"
                 stroke="var(--status-green)"
                 strokeWidth={2}
-                dot={{ fill: 'var(--status-green)', r: 4 }}
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 2 }}
               />
               <Line
                 type="monotone"
                 dataKey="Expenses"
                 stroke="var(--status-red)"
                 strokeWidth={2}
-                dot={{ fill: 'var(--status-red)', r: 4 }}
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>
