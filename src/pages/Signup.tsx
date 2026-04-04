@@ -13,7 +13,6 @@ export const Signup: React.FC = () => {
   }, [user, navigate])
 
   const [fullName, setFullName] = useState('')
-  const [companyName, setCompanyName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -27,10 +26,6 @@ export const Signup: React.FC = () => {
   const validateForm = (): boolean => {
     if (!fullName.trim()) {
       setError('Full name is required')
-      return false
-    }
-    if (!companyName.trim()) {
-      setError('Company name is required')
       return false
     }
     if (!email.trim()) {
@@ -71,7 +66,6 @@ export const Signup: React.FC = () => {
     try {
       await signUp(email, password, {
         full_name: fullName,
-        company_name: companyName,
       })
       // Check if email confirmation is required
       const { data: { session } } = await supabase.auth.getSession()
@@ -227,22 +221,6 @@ export const Signup: React.FC = () => {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 transition-colors"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Company Name Input */}
-            <div>
-              <label htmlFor="companyName" className="block text-sm text-[var(--text-2)] mb-2">
-                Company Name
-              </label>
-              <input
-                id="companyName"
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Your Company"
                 className="w-full px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 transition-colors"
                 disabled={loading}
               />

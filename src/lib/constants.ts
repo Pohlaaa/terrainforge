@@ -3,36 +3,8 @@
  */
 
 import type { MaterialCategory } from '../types';
-
-export const RESERVE: Record<MaterialCategory, number> = {
-  paver: 0.10, stone: 0.10, tile: 0.12, brick: 0.10, sod: 0.08,
-  seed: 0.15, mulch: 0.15, gravel: 0.12, sand: 0.15, soil: 0.10,
-  edging: 0.08, plant: 0, tree: 0, shrub: 0, lighting: 0,
-  irrigation: 0.05, concrete: 0.10, lumber: 0.12, misc: 0.10,
-};
-
-export const CAT_LABELS: Record<MaterialCategory, string> = {
-  paver: 'Paver', stone: 'Stone', tile: 'Tile', brick: 'Brick', concrete: 'Concrete',
-  sod: 'Sod', seed: 'Seed', mulch: 'Mulch', gravel: 'Gravel',
-  sand: 'Sand', soil: 'Soil', edging: 'Edging', plant: 'Plant',
-  shrub: 'Shrub', tree: 'Tree', lighting: 'Lighting', irrigation: 'Irrigation',
-  lumber: 'Lumber', misc: 'Misc',
-};
-
-export const CAT_BADGE: Record<MaterialCategory, string> = {
-  paver: 'badge-blue', stone: 'badge-blue', tile: 'badge-blue', brick: 'badge-blue',
-  concrete: 'badge-blue', sod: 'badge-green', seed: 'badge-green',
-  mulch: 'badge-green', gravel: 'badge-amber', sand: 'badge-amber',
-  soil: 'badge-green', edging: 'badge-teal', plant: 'badge-green',
-  shrub: 'badge-green', tree: 'badge-green', lighting: 'badge-amber',
-  irrigation: 'badge-blue', lumber: 'badge-amber', misc: 'badge-purple',
-};
-
-export const MATERIAL_CATEGORIES: MaterialCategory[] = [
-  'paver', 'stone', 'tile', 'brick', 'concrete', 'sod', 'seed',
-  'mulch', 'gravel', 'sand', 'soil', 'edging', 'plant', 'shrub',
-  'tree', 'lighting', 'irrigation', 'lumber', 'misc',
-];
+// Re-export from canonical categories module for backward compat
+export { CATEGORY_RESERVES as RESERVE, CATEGORY_LABELS as CAT_LABELS, CATEGORY_BADGES as CAT_BADGE, MATERIAL_CATEGORIES } from './categories';
 
 export const UNIT_TYPES = [
   { id: 'sqft', label: 'Square Feet' },

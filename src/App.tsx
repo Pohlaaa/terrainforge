@@ -12,7 +12,6 @@ import Dashboard from '@/pages/Dashboard'
 const ProjectWizard = React.lazy(() => import('@/pages/ProjectWizard'))
 const ProjectDashboard = React.lazy(() => import('@/pages/ProjectDashboard'))
 import MaterialLibrary from '@/pages/MaterialLibrary'
-import ManifestEngine from '@/pages/ManifestEngine'
 import WorkOrders from '@/pages/WorkOrders'
 import PriceResearch from '@/pages/PriceResearch'
 import Billing from '@/pages/Billing'
@@ -158,7 +157,8 @@ function App() {
                     } />
 
                     {/* Secondary pages (More dropdown) */}
-                    <Route path="/manifest" element={<ErrorBoundary><ManifestEngine /></ErrorBoundary>} />
+                    {/* Redirect old manifest URL to projects */}
+                    <Route path="/manifest" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/work-orders" element={<ErrorBoundary><WorkOrders /></ErrorBoundary>} />
                     <Route path="/price-research" element={<ErrorBoundary><PriceResearch /></ErrorBoundary>} />
                     <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />

@@ -6,6 +6,10 @@ import type { Material, Zone, Equipment, CrewMember } from '@/types';
 import { ZONE_EQUIP_RULES, EQUIP_CERT_MAP } from './constants';
 import { getCrewCertAlerts } from './alerts';
 
+/**
+ * @deprecated Zone-based material suggestions are legacy. The new material flow is project-level.
+ * This function is kept for reference only and is not used by current components.
+ */
 export function suggestMaterials(zoneName: string, materialLibrary: Material[]): Material[] {
   const nameWords = zoneName.toLowerCase().split(/\s+/);
 
@@ -32,6 +36,9 @@ export function suggestMaterials(zoneName: string, materialLibrary: Material[]):
   return materialLibrary.filter((m) => suggestedCats.has(m.category));
 }
 
+/**
+ * @deprecated Zone-based equipment scoring is legacy. Not used by current components.
+ */
 export function scoreEquipment(equipment: Equipment, zone: Zone, zoneMaterials: Material[]): number {
   let score = 0;
   const zoneName = zone.name.toLowerCase();
@@ -58,6 +65,9 @@ export function scoreEquipment(equipment: Equipment, zone: Zone, zoneMaterials: 
   return score;
 }
 
+/**
+ * @deprecated Zone-based equipment suggestions are legacy. Not used by current components.
+ */
 export function suggestEquipment(
   zone: Zone,
   equipmentFleet: Equipment[],

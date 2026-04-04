@@ -67,6 +67,9 @@ export interface Project {
   };
   zones: Zone[];
 
+  /** Project-level materials (JSONB). Primary source of truth for what materials this project needs. */
+  materials: ProjectMaterial[];
+
   // ── M1.5 Project Intelligence fields (all nullable) ──────────────────────
 
   // Step 1: Client info (inline)
@@ -121,6 +124,10 @@ export interface Project {
   // Step 7: Wizard state
   wizardStep?: number;
   wizardCompletedAt?: string | null;
+
+  // Project closeout
+  status?: 'active' | 'completed' | 'on_hold';
+  completedAt?: string | null;
 }
 
 export interface Zone {
@@ -174,6 +181,18 @@ export interface Material {
   minStockLevel: number;
   storageLocation: string;
   lastRestocked: string;
+}
+
+/** Project-level material entry stored in projects.materials JSONB */
+export interface ProjectMaterial {
+  id: string;
+  materialId: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  actualUsage?: number | null;  // recorded when project closes
 }
 
 export interface CrewMember {
@@ -247,6 +266,7 @@ export interface ManifestItem {
   unitCost: number;
   subtotal: number;
   unit: string;
+  category: string;
   // Supplier info (populated when supplier prices are available)
   supplierId: string | null;
   supplierName: string | null;
@@ -361,6 +381,16 @@ export interface SupplierPrice {
   materialName?: string;
 }
 
+export interface PriceHistoryEntry {
+  id: string;
+  orgId: string;
+  materialId: string;
+  supplierId: string;
+  unitCost: number;
+  recordedAt: string;
+  source: 'manual' | 'quote' | 'import';
+}
+
 // ── Quote Requests ───────────────────────────────────────────────────────────
 
 export type QuoteRequestStatus = 'draft' | 'sent' | 'received' | 'accepted' | 'declined' | 'expired';
@@ -397,24 +427,8 @@ export interface QuoteRequestItem {
   notes: string;
 }
 
-export interface ProjectMaterial {
-  id: string;
-  materialId: string;
-  name: string;
-  quantity: number;
-  unit: string;
-  subtotal: number;
-}
-
-/** Per-project material assignment (junction: project ↔ material with qty) */
-export interface ProjectMaterialEntry {
-  id: string;
-  materialId: string;
-  name: string;
-  quantity: number;
-  unit: string;
-  unitCost: number;
-}
+/** @deprecated Use ProjectMaterial from line ~183 instead */
+// Removed duplicate ProjectMaterial and ProjectMaterialEntry — consolidated into single ProjectMaterial interface above
 
 /** Per-project crew assignment */
 export interface ProjectCrewEntry {

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { toast } from '@/hooks/useToast';
 import { EmptyState, MaterialsIcon } from '@/components/shared/EmptyState';
-import { CAT_LABELS } from '@/lib/constants';
-import type { Material, MaterialCategory } from '@/types';
+import { getCategoryLabel } from '@/lib/categories';
+import { useSupplierStore } from '@/stores/supplierStore';
+import type { Material } from '@/types';
 
 function getStockStatus(m: Material): 'in' | 'low' | 'out' {
   if (m.qtyOnHand <= 0) return 'out';
@@ -27,6 +28,15 @@ export const MaterialTable: React.FC<MaterialTableProps> = ({
   openEditModal,
   openAddModal,
 }) => {
+  const getPreferredSupplier = useSupplierStore((s) => s.getPreferredSupplier);
+  const supplierPrices = useSupplierStore((s) => s.supplierPrices);
+  const fetchPrices = useSupplierStore((s) => s.fetchSupplierPrices);
+
+  // Load supplier prices once so the Supplier column can display preferred supplier names
+  useEffect(() => {
+    if (supplierPrices.length === 0) fetchPrices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   if (displayMaterials.length === 0) {
     if (allMaterialsCount === 0) {
       return (
@@ -70,7 +80,7 @@ export const MaterialTable: React.FC<MaterialTableProps> = ({
               <td className="px-4 py-3 text-[14px] font-[500] text-[var(--text-primary)]">{material.name}</td>
               <td className="px-4 py-3">
                 <span className="text-[12px] px-2.5 py-1 rounded-full bg-[var(--surface-hover)] text-[var(--text-secondary)] font-[500] capitalize">
-                  {CAT_LABELS[material.category as MaterialCategory] ?? material.category}
+                  {getCategoryLabel(material.category)}
                 </span>
               </td>
               <td className="px-4 py-3 text-right text-[14px] text-[var(--text-secondary)]">{material.unit}</td>
@@ -87,7 +97,12 @@ export const MaterialTable: React.FC<MaterialTableProps> = ({
                   <span className="inline-flex items-center gap-1.5 text-[12px] font-[500] px-2.5 py-1 rounded-full bg-[var(--status-red-bg)] text-[var(--status-red)]">● Out</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-[13px] text-[var(--text-secondary)]">—</td>
+              <td className="px-4 py-3 text-[13px] text-[var(--text-secondary)]">
+                {(() => {
+                  const preferred = getPreferredSupplier(material.id);
+                  return preferred?.supplierName ?? '—';
+                })()}
+              </td>
               <td className="px-4 py-3 text-right">
                 <div className="flex gap-1 justify-end">
                   <button

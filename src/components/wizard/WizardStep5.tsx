@@ -97,6 +97,10 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
     if (data.equipmentCost == null && calcEquipment > 0) updates.equipmentCost = calcEquipment;
     if (data.subcontractorBudget == null && calcSubs > 0) updates.subcontractorBudget = calcSubs;
     if (data.estimatedHours == null && taskHoursSum > 0) updates.estimatedHours = taskHoursSum;
+    // Auto-populate materials budget from accepted materials
+    if (data.materialsBudget == null && data.materialSelections.length > 0) {
+      updates.materialsBudget = data.materialSelections.reduce((s, m) => s + m.quantity * m.unitCost, 0);
+    }
     if (Object.keys(updates).length > 0) onChange(updates);
   }, []); // only on mount
 
@@ -212,33 +216,6 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
         </div>
       )}
 
-      {/* AI Materials Summary */}
-      {recommendations?.materials && recommendations.materials.length > 0 && (
-        <div
-          className="rounded-[8px] border px-[14px] py-[10px] text-[12px]"
-          style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
-        >
-          <h4 className="text-[13px] font-[600] text-[var(--text-2)] mb-[6px]">
-            AI Suggested Materials
-          </h4>
-          <div className="space-y-[4px]">
-            {recommendations.materials.map((m, i) => (
-              <div key={i} className="flex items-center justify-between text-[var(--text-3)]">
-                <span>
-                  {m.materialName}
-                  {!m.inLibrary && (
-                    <span className="text-[10px] text-[var(--text-4)] ml-[6px]">(not in library)</span>
-                  )}
-                </span>
-                <span className="text-[var(--text-2)]">
-                  {m.estimatedQuantity} {m.unit} × ${m.unitCost} = ${(m.estimatedQuantity * m.unitCost).toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Cost Breakdown */}
       <div>
         <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
@@ -282,9 +259,12 @@ export const WizardStep5: React.FC<Props> = ({ data, onChange, recommendations }
                 onChange({ materialsBudget: e.target.value ? parseFloat(e.target.value) : null })
               }
             />
-            <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
-              Add materials in the project dashboard after creation.
-            </p>
+            {data.materialSelections.length > 0 && (
+              <p className="text-[11px] text-[var(--text-4)] mt-[4px]">
+                From {data.materialSelections.length} accepted material{data.materialSelections.length !== 1 ? 's' : ''}:
+                {' '}${data.materialSelections.reduce((s, m) => s + m.quantity * m.unitCost, 0).toLocaleString()}
+              </p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Equipment Budget</label>

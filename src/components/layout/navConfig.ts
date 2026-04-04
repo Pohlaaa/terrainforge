@@ -21,7 +21,6 @@ export const primaryTabs: NavTab[] = [
 
 /** Secondary pages — shown in "More" dropdown */
 export const secondaryPages: NavSecondary[] = [
-  { path: '/manifest', label: 'Manifest Engine', icon: 'clipboard' },
   { path: '/work-orders', label: 'Work Orders', icon: 'check-square' },
   { path: '/price-research', label: 'Price Research', icon: 'search' },
   { path: '/settings', label: 'Settings', icon: 'settings' },

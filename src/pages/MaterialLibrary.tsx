@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Package, AlertTriangle, CheckCircle, ShoppingCart } from 'lucide-react';
+import { Package, AlertTriangle, CheckCircle, ShoppingCart, Truck, Users } from 'lucide-react';
 import { useMaterialStore } from '@/stores/materialStore';
+import { useSupplierStore } from '@/stores/supplierStore';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { toast } from '@/hooks/useToast';
-import { RESERVE, CAT_LABELS, MATERIAL_CATEGORIES, UNIT_TYPES } from '@/lib/constants';
-import type { Material, MaterialCategory } from '@/types';
+import { MATERIAL_CATEGORIES, UNIT_TYPES } from '@/lib/constants';
+import { getCategoryLabel, getCategoryReserve, getCategoryBadge as getCategoryBadgeClass } from '@/lib/categories';
+import type { Material, MaterialCategory, Supplier } from '@/types';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -13,28 +15,32 @@ import { KPICard } from '@/components/shared/KPICard';
 import { HubHeader } from '@/components/shared/HubHeader';
 import { useBillingGate } from '@/hooks/useBillingGate';
 import { LowStockBanner } from '@/components/materials/LowStockBanner';
-import { MaterialQuickAddBar } from '@/components/materials/MaterialQuickAddBar';
+// MaterialQuickAddBar removed — replaced by toolbar buttons
 import { MaterialTable } from '@/components/materials/MaterialTable';
 import { CSVImportModal } from '@/components/materials/CSVImportModal';
 import { MaterialFormModal } from '@/components/materials/MaterialFormModal';
+import { SupplierTable } from '@/components/materials/SupplierTable';
+import { SupplierFormModal } from '@/components/materials/SupplierFormModal';
+import { ReorderPanel } from '@/components/materials/ReorderPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
 
 function getCategoryBadge(category: string): BadgeVariant {
-  if (['sod', 'seed', 'plant', 'shrub', 'tree', 'soil', 'mulch'].includes(category)) return 'green';
-  if (['paver', 'stone', 'tile', 'brick', 'concrete', 'irrigation'].includes(category)) return 'blue';
-  if (['gravel', 'sand', 'lumber', 'lighting'].includes(category)) return 'amber';
-  if (category === 'edging') return 'teal';
-  if (category === 'misc') return 'purple';
+  const badgeClass = getCategoryBadgeClass(category);
+  if (badgeClass === 'badge-green') return 'green';
+  if (badgeClass === 'badge-blue') return 'blue';
+  if (badgeClass === 'badge-amber') return 'amber';
+  if (badgeClass === 'badge-teal') return 'teal';
+  if (badgeClass === 'badge-purple') return 'purple';
   return 'blue';
 }
 
 function getReservePct(material: Material): number {
   if (material.reserveOverride !== null) return Math.round(material.reserveOverride * 100);
-  const cat = material.category as MaterialCategory;
-  return Math.round((RESERVE[cat] ?? 0.10) * 100);
+  const reserve = getCategoryReserve(material.category);
+  return Math.round(reserve * 100);
 }
 
 function isLowStock(material: Material): boolean {
@@ -100,7 +106,7 @@ function formToMaterial(f: MaterialForm): Omit<Material, 'id'> {
 
 const CATEGORY_OPTIONS = MATERIAL_CATEGORIES.map((cat) => ({
   value: cat,
-  label: CAT_LABELS[cat],
+  label: getCategoryLabel(cat),
 }));
 
 const FILTER_OPTIONS = CATEGORY_OPTIONS; // same list, reused for filter
@@ -111,6 +117,10 @@ const UNIT_OPTIONS = UNIT_TYPES.map(u => ({ value: u.id, label: u.label }));
 
 export const MaterialLibrary: React.FC = () => {
   const { materials, addMaterial, updateMaterial, deleteMaterial, adjustStock, isLoading, error } = useMaterialStore();
+  const {
+    suppliers, fetchSuppliers, addSupplier, updateSupplier, deleteSupplier,
+    isLoading: suppliersLoading,
+  } = useSupplierStore();
   const { readOnly } = useBillingGate();
 
   const [initialLoad, setInitialLoad] = useState(true);
@@ -138,18 +148,74 @@ export const MaterialLibrary: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'low' | 'out'>('all');
-  const [quickName, setQuickName] = useState('');
-  const [quickCategory, setQuickCategory] = useState('paver');
-  const [quickUnit, setQuickUnit] = useState('sqft');
-  const [quickCost, setQuickCost] = useState('');
-  const [quickQty, setQuickQty] = useState('');
-
   // CSV import state
   const [showImportModal, setShowImportModal] = useState(false);
   const [csvPreview, setCsvPreview] = useState<Array<{ name: string; category: string; unit: string; cost: string }>>([]);
   const [csvError, setCsvError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
   const csvInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'inventory' | 'suppliers' | 'library'>('inventory');
+
+  // Supplier UI state
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [deleteSupplierTarget, setDeleteSupplierTarget] = useState<string | null>(null);
+  const [supplierSearch, setSupplierSearch] = useState('');
+
+  // Load suppliers when tab switches to suppliers
+  useEffect(() => {
+    if (activeTab === 'suppliers' && suppliers.length === 0) {
+      fetchSuppliers();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Filtered suppliers
+  const filteredSuppliers = useMemo(() => {
+    if (!supplierSearch) return suppliers;
+    const q = supplierSearch.toLowerCase();
+    return suppliers.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.contactName.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q) ||
+        s.categories.some((c) => c.toLowerCase().includes(q))
+    );
+  }, [suppliers, supplierSearch]);
+
+  // Supplier handlers
+  function openAddSupplier() {
+    setEditingSupplier(null);
+    setShowSupplierModal(true);
+  }
+
+  function openEditSupplier(supplier: Supplier) {
+    setEditingSupplier(supplier);
+    setShowSupplierModal(true);
+  }
+
+  async function handleSaveSupplier(data: Partial<Supplier>) {
+    if (editingSupplier) {
+      await updateSupplier(editingSupplier.id, data);
+      toast.success('Supplier updated');
+    } else {
+      await addSupplier(data);
+      toast.success('Supplier added');
+    }
+    setShowSupplierModal(false);
+    setEditingSupplier(null);
+  }
+
+  async function handleDeleteSupplier() {
+    if (!deleteSupplierTarget) return;
+    await deleteSupplier(deleteSupplierTarget);
+    toast.info('Supplier deleted');
+    setDeleteSupplierTarget(null);
+  }
+
+  const deletingSupplier = deleteSupplierTarget ? suppliers.find((s) => s.id === deleteSupplierTarget) : null;
 
   function parseCSV(text: string) {
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -255,18 +321,6 @@ export const MaterialLibrary: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [materials, activeCategory, search, stockFilter, activeCatDef]);
 
-  async function handleQuickAdd() {
-    if (!quickName.trim()) return;
-    await addMaterial({
-      name: quickName.trim(), category: quickCategory, unit: quickUnit,
-      cost: parseFloat(quickCost) || 0, qtyOnHand: parseInt(quickQty) || 0,
-      minStockLevel: 0, reserveOverride: null, coverage: null, depthIn: null,
-      notes: '', storageLocation: '', lastRestocked: '',
-    });
-    const name = quickName.trim();
-    setQuickName(''); setQuickCost(''); setQuickQty('');
-    toast.success(`${name} added to library`);
-  }
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -397,8 +451,31 @@ export const MaterialLibrary: React.FC = () => {
         />
       </div>
 
-      {/* Low Stock Alert Banner */}
-      <LowStockBanner lowStockItems={lowStockItems} />
+      {/* Tab bar */}
+      <div className="flex gap-0 border-b border-[var(--border-default)]">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={`px-5 py-3 text-[13px] font-[500] cursor-pointer transition-colors relative ${
+              activeTab === tab.id
+                ? 'text-[var(--brand-primary)]'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            {tab.label}
+            {activeTab === tab.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--brand-primary)] rounded-t-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Low Stock Alert Banner — only on inventory tab */}
+      {activeTab === 'inventory' && <LowStockBanner lowStockItems={lowStockItems} />}
+
+      {/* Reorder Panel — only on inventory tab */}
+      {activeTab === 'inventory' && <ReorderPanel />}
 
       {error && (
         <div>
@@ -406,8 +483,92 @@ export const MaterialLibrary: React.FC = () => {
         </div>
       )}
 
-      {/* Legacy inline toast removed — toasts now rendered by ToastContainer in AppLayout */}
+      {/* ══════════════ Suppliers Tab ══════════════ */}
+      {activeTab === 'suppliers' && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Supplier search + add bar */}
+          <div className="px-4 py-3 flex items-center gap-3 border-b border-[var(--border-light)]">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px]">🔍</span>
+              <input
+                type="text"
+                placeholder="Search suppliers..."
+                value={supplierSearch}
+                onChange={(e) => setSupplierSearch(e.target.value)}
+                className="w-full h-[40px] pl-9 pr-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[13px] text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+              />
+            </div>
+            {!readOnly && (
+              <button
+                onClick={openAddSupplier}
+                className="h-[40px] px-4 rounded-lg bg-[var(--brand-primary)] text-white text-[13px] font-[500] hover:opacity-90 transition-opacity flex items-center gap-2 whitespace-nowrap"
+              >
+                + Add Supplier
+              </button>
+            )}
+          </div>
 
+          {/* Supplier KPI row */}
+          <div className="px-4 py-3 flex gap-4">
+            <div className="flex items-center gap-2 text-[13px]">
+              <Truck size={16} className="text-[var(--brand-primary)]" />
+              <span className="text-[var(--text-secondary)]">
+                <span className="font-[600] text-[var(--text-primary)]">{suppliers.length}</span> suppliers
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[13px]">
+              <Users size={16} className="text-[var(--status-green)]" />
+              <span className="text-[var(--text-secondary)]">
+                <span className="font-[600] text-[var(--text-primary)]">{suppliers.filter((s) => s.isActive).length}</span> active
+              </span>
+            </div>
+          </div>
+
+          {/* Supplier table */}
+          <div className="flex-1 overflow-x-auto">
+            {suppliersLoading ? (
+              <div className="p-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="flex gap-[12px] items-center py-[10px]" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                    <Skeleton width="140px" height="12px" />
+                    <Skeleton width="100px" height="12px" />
+                    <Skeleton width="80px" height="12px" />
+                    <Skeleton width="120px" height="12px" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <SupplierTable
+                suppliers={filteredSuppliers}
+                onEdit={openEditSupplier}
+                onAdd={openAddSupplier}
+                onDelete={(id) => setDeleteSupplierTarget(id)}
+              />
+            )}
+          </div>
+
+          {/* Supplier modals */}
+          <SupplierFormModal
+            isOpen={showSupplierModal}
+            supplier={editingSupplier}
+            onSave={handleSaveSupplier}
+            onClose={() => { setShowSupplierModal(false); setEditingSupplier(null); }}
+          />
+
+          <ConfirmDialog
+            isOpen={deleteSupplierTarget !== null}
+            title="Delete Supplier"
+            message={`Are you sure you want to delete "${deletingSupplier?.name ?? 'this supplier'}"? This will also remove all pricing records for this supplier.`}
+            confirmText="Delete Supplier"
+            confirmVariant="danger"
+            onConfirm={handleDeleteSupplier}
+            onCancel={() => setDeleteSupplierTarget(null)}
+          />
+        </div>
+      )}
+
+      {/* ══════════════ Inventory / Library Tab ══════════════ */}
+      {(activeTab === 'inventory' || activeTab === 'library') && (
       <div className="flex gap-0 flex-1 overflow-hidden">
         {/* Category sidebar — hidden on phone */}
         <aside className="hidden md:block w-[200px] border-r border-[var(--border-default)] bg-[var(--surface-card)] overflow-y-auto flex-shrink-0">
@@ -451,26 +612,7 @@ export const MaterialLibrary: React.FC = () => {
             ))}
           </div>
 
-          {/* Quick-add bar */}
-          <MaterialQuickAddBar
-            quickName={quickName}
-            setQuickName={setQuickName}
-            quickCategory={quickCategory}
-            setQuickCategory={setQuickCategory}
-            quickUnit={quickUnit}
-            setQuickUnit={setQuickUnit}
-            quickCost={quickCost}
-            setQuickCost={setQuickCost}
-            quickQty={quickQty}
-            setQuickQty={setQuickQty}
-            handleQuickAdd={handleQuickAdd}
-            onOpenImport={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}
-            readOnly={readOnly}
-            categoryOptions={CATEGORY_OPTIONS}
-            unitOptions={UNIT_OPTIONS}
-          />
-
-          {/* Search and stock filter bar */}
+          {/* Search, filter, and action bar */}
           <div className="px-4 py-3 flex items-center gap-3 border-b border-[var(--border-light)]">
             <div className="relative flex-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px]">🔍</span>
@@ -500,6 +642,22 @@ export const MaterialLibrary: React.FC = () => {
                 );
               })}
             </div>
+            {!readOnly && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}
+                  className="h-[40px] px-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-secondary)] text-[13px] font-[500] hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2 whitespace-nowrap"
+                >
+                  ↑ CSV Import
+                </button>
+                <button
+                  onClick={openAddModal}
+                  className="h-[40px] px-4 rounded-lg bg-[var(--brand-primary)] text-white text-[13px] font-[500] hover:opacity-90 transition-opacity flex items-center gap-2 whitespace-nowrap"
+                >
+                  + Add Material
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Material table */}
@@ -516,6 +674,8 @@ export const MaterialLibrary: React.FC = () => {
         </div>
       </div>
 
+
+      )}
 
       {/* ── CSV Import Modal ──────────────────────────────────────────────────── */}
       <CSVImportModal

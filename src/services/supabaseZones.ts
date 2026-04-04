@@ -2,8 +2,11 @@ import { supabase } from './supabase'
 import { toCamelCase, toSnakeCase, onSupabaseError } from './supabaseCore'
 import type { Zone, ZoneMaterial, ZoneMaterialDetail, ZoneEquipment } from '@/types'
 
-// ===== ZONES =====
+// ===== ZONES (LEGACY — backward compat only) =====
 
+/**
+ * @deprecated Zones are legacy. The wizard doesn't create them. Kept for backward compat with older projects.
+ */
 export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'createdAt'>, orgId: string): Promise<Zone | null> {
   try {
     const { materials, equipment, ...zoneData } = zone
@@ -39,6 +42,9 @@ export async function createZone(projectId: string, zone: Omit<Zone, 'id' | 'cre
   }
 }
 
+/**
+ * @deprecated Zones are legacy. Kept for backward compat with older projects.
+ */
 export async function updateZone(zoneId: string, updates: Partial<Zone>): Promise<Zone | null> {
   try {
     const { materials, equipment, ...updateData } = updates
@@ -72,6 +78,9 @@ export async function updateZone(zoneId: string, updates: Partial<Zone>): Promis
   }
 }
 
+/**
+ * @deprecated Zones are legacy. Kept for backward compat with older projects.
+ */
 export async function deleteZone(zoneId: string): Promise<boolean> {
   try {
     const { error } = await supabase
@@ -87,6 +96,9 @@ export async function deleteZone(zoneId: string): Promise<boolean> {
   }
 }
 
+/**
+ * @deprecated Zone materials are legacy. Kept for backward compat only.
+ */
 export async function setZoneMaterials(zoneId: string, materials: ZoneMaterial[]): Promise<boolean> {
   try {
     // Delete existing materials for this zone
@@ -120,6 +132,9 @@ export async function setZoneMaterials(zoneId: string, materials: ZoneMaterial[]
   }
 }
 
+/**
+ * @deprecated Zone equipment is legacy. Kept for backward compat only.
+ */
 export async function setZoneEquipment(zoneId: string, equipment: ZoneEquipment[]): Promise<boolean> {
   try {
     // Delete existing equipment for this zone
@@ -152,8 +167,12 @@ export async function setZoneEquipment(zoneId: string, equipment: ZoneEquipment[
   }
 }
 
-// ===== ZONE MATERIAL DETAILS (for Materials tab) =====
+// ===== ZONE MATERIAL DETAILS (for Materials tab) — LEGACY =====
 
+/**
+ * @deprecated Zone material details are legacy. Kept for backward compat only.
+ * The new flow uses Project.materials (JSONB). This is no longer called by any active page.
+ */
 export async function fetchZoneMaterialDetails(
   projectId: string
 ): Promise<ZoneMaterialDetail[]> {

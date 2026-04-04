@@ -43,6 +43,24 @@ export {
   ZONE_EQUIP_RULES,
 } from './constants';
 
+// Categories (canonical module)
+export {
+  CATEGORY_LABELS,
+  CATEGORY_BADGES,
+  CATEGORY_RESERVES,
+  CATEGORY_GROUPS,
+  getCategoryLabel,
+  getCategoryBadge,
+  getCategoryReserve,
+  getCategoryGroup,
+  normalizeCategory,
+  scoreSuppliers,
+  scoreSuppliersForGroup,
+  type CategoryGroupDef,
+  type CategoryGroupKey,
+  type SupplierMatchScore,
+} from './categories';
+
 // Manifest & calculations
 export {
   computeQty,

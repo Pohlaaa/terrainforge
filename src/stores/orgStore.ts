@@ -138,9 +138,18 @@ export const useOrgStore = create<OrgStore>()(
                 .single()
 
               if (insertError) {
-                // Row may have been created by a concurrent trigger — fall back to safe defaults
-                console.error('fetchOrg: org INSERT failed', insertError)
-                set({ org: makeDefaultOrg(orgId), isLoading: false })
+                // Row may have been created by a concurrent call or trigger — re-fetch it
+                console.warn('fetchOrg: org INSERT conflict (likely race), re-fetching', insertError.code)
+                const { data: existingOrg } = await supabase
+                  .from('organizations')
+                  .select('id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates')
+                  .eq('id', orgId)
+                  .single()
+                if (existingOrg) {
+                  set({ org: mapOrgRow(existingOrg as OrgRow), isLoading: false })
+                } else {
+                  set({ org: makeDefaultOrg(orgId), isLoading: false })
+                }
               } else {
                 // Bug 2 fix: create organization_members row so RLS policies pass
                 const { error: memberError } = await supabase

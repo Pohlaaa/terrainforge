@@ -13,7 +13,8 @@ import { ProjectDashboardBudget } from '@/components/project-dashboard/BudgetTab
 import { ProjectDashboardResources } from '@/components/project-dashboard/ResourcesTab';
 import { ProjectDashboardCompliance } from '@/components/project-dashboard/ComplianceTab';
 import { ProjectDashboardMaterials } from '@/components/project-dashboard/MaterialsTab';
-import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ZoneMaterialDetail, TaskStatus, TaskPhase } from '@/types';
+import { CloseoutTab } from '@/components/project-dashboard/CloseoutTab';
+import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, TaskStatus, TaskPhase } from '@/types';
 
 // ── Status helpers ───────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ const PROJECT_TYPE_LABELS: Record<string, string> = {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-type TabId = 'overview' | 'tasks' | 'budget' | 'materials' | 'resources' | 'compliance';
+type TabId = 'overview' | 'tasks' | 'budget' | 'materials' | 'resources' | 'compliance' | 'closeout';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -50,6 +51,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'materials', label: 'Materials' },
   { id: 'resources', label: 'Resources' },
   { id: 'compliance', label: 'Compliance' },
+  { id: 'closeout', label: 'Closeout' },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -71,16 +73,12 @@ export default function ProjectDashboard() {
     deleteProjectSubcontractor,
     createProjectPermit,
     updateProjectPermit,
-    fetchZoneMaterialDetails,
-    zoneMaterialDetails,
   } = useProjectStore();
   const { org } = useOrgStore();
   const { crew } = useCrewStore();
   const orgId = org?.id;
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const zoneMaterials = zoneMaterialDetails;
-  const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -88,15 +86,6 @@ export default function ProjectDashboard() {
   useEffect(() => {
     if (!orgId || !id) return;
     fetchProjectFull(orgId, id);
-
-    // Fetch zone materials separately (doesn't need orgId filter — filtered by project's zones)
-    setLoadingMaterials(true);
-    fetchZoneMaterialDetails(id)
-      .then(() => setLoadingMaterials(false))
-      .catch((err) => {
-        console.error('Failed to load zone materials:', err);
-        setLoadingMaterials(false);
-      });
 
     return () => {
       clearActiveProject();
@@ -385,8 +374,8 @@ export default function ProjectDashboard() {
       )}
       {activeTab === 'materials' && (
         <ProjectDashboardMaterials
-          materials={zoneMaterials}
-          loading={loadingMaterials}
+          project={project}
+          loading={loading}
         />
       )}
       {activeTab === 'resources' && (
@@ -407,6 +396,15 @@ export default function ProjectDashboard() {
           orgId={orgId!}
           onPermitCreate={handlePermitCreate}
           onPermitUpdate={handlePermitUpdate}
+        />
+      )}
+      {activeTab === 'closeout' && (
+        <CloseoutTab
+          project={project}
+          onProjectUpdated={() => {
+            // Closeout tab has already updated via store, just ensure UI refreshes
+            fetchProjectFull(orgId!, id!);
+          }}
         />
       )}
 

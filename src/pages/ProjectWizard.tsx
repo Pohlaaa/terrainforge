@@ -9,6 +9,7 @@ import { WizardStep4 } from '@/components/wizard/WizardStep4';
 import { WizardStep5 } from '@/components/wizard/WizardStep5';
 import { WizardStep6 } from '@/components/wizard/WizardStep6';
 import { WizardStep7 } from '@/components/wizard/WizardStep7';
+import { WizardStepMaterials } from '@/components/wizard/WizardStepMaterials';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { useCrewStore } from '@/stores/crewStore';
@@ -16,8 +17,9 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { generateProjectRecommendations } from '@/services/aiRecommendations';
-import type { Project, ProjectTask, AIRecommendationSet } from '@/types';
+import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
+import { normalizeCategory } from '@/lib/categories';
 
 // ── Wizard data shape (local state until project is created) ────────────────
 
@@ -48,6 +50,17 @@ export interface WizardEquipment {
   durationDays: number;
   hourlyCost?: number;
   estimatedHours?: number;
+}
+
+export interface WizardMaterial {
+  tempId: string;
+  materialId: string | null;  // null if not in library
+  materialName: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  inLibrary: boolean;
 }
 
 export interface WizardData {
@@ -94,6 +107,9 @@ export interface WizardData {
   equipmentSelections: WizardEquipment[];
   equipmentNotes: string | null;
   subcontractors: WizardSubcontractor[];
+
+  // Step 4b: Materials
+  materialSelections: WizardMaterial[];
 
   // Step 5: Timeline & Budget
   startDate: string | null;
@@ -148,6 +164,7 @@ const INITIAL_DATA: WizardData = {
   equipmentSelections: [],
   equipmentNotes: null,
   subcontractors: [],
+  materialSelections: [],
   startDate: null,
   targetDate: null,
   estimatedHours: null,
@@ -171,6 +188,7 @@ const WIZARD_STEPS = [
   { label: 'Site Intelligence', shortLabel: 'Site' },
   { label: 'Scope & Tasks', shortLabel: 'Tasks' },
   { label: 'Resources', shortLabel: 'Resources' },
+  { label: 'Materials', shortLabel: 'Materials' },
   { label: 'Compliance', shortLabel: 'Permits' },
   { label: 'Budget & Cost Breakdown', shortLabel: 'Budget' },
   { label: 'Review & Create', shortLabel: 'Review' },
@@ -336,6 +354,9 @@ export default function ProjectWizard() {
     if (category === 'equipment') {
       handleChange({ equipmentSelections: [] });
     }
+    if (category === 'materials') {
+      handleChange({ materialSelections: [] });
+    }
     if (category === 'permits') {
       handleChange({ permitChecklist: [], permitFees: {} });
     }
@@ -434,6 +455,7 @@ export default function ProjectWizard() {
         ].filter(Boolean).join('; '),
         lat: data.lat ?? undefined,
         lng: data.lng ?? undefined,
+        materials: [], // Will be populated after project creation
         zones: [],
         checklist: {
           permit: data.permitChecklist.length > 0,
@@ -608,6 +630,77 @@ export default function ProjectWizard() {
         }
       }
 
+      // Materials: save to project JSONB (primary), best-effort add to library
+      if (data.materialSelections.length > 0) {
+        setCreateStatus('Saving materials...');
+        const projectMaterials: ProjectMaterial[] = [];
+
+        for (const mat of data.materialSelections) {
+          let resolvedMaterialId = mat.materialId;
+
+          // Best-effort: add new materials to the org library
+          // Project creation continues even if this fails
+          if (!mat.inLibrary || !resolvedMaterialId) {
+            try {
+              await materialStore.addMaterial({
+                name: mat.materialName,
+                category: mat.category,
+                unit: mat.unit,
+                cost: mat.unitCost,
+                reserveOverride: null,
+                coverage: null,
+                depthIn: null,
+                notes: 'Auto-added by project wizard',
+                qtyOnHand: 0,
+                minStockLevel: 0,
+                storageLocation: '',
+                lastRestocked: '',
+              });
+              // Find the newly created material in the store
+              const found = useMaterialStore.getState().materials.find(
+                (m) => m.name === mat.materialName && m.category === mat.category
+              );
+              if (found) {
+                resolvedMaterialId = found.id;
+              }
+              // Clear any store error from the add attempt
+              if (useMaterialStore.getState().error) {
+                useMaterialStore.setState({ error: null });
+              }
+            } catch (err) {
+              console.warn('Auto-add to library failed (non-blocking):', err);
+              // Clear the error so it doesn't show on Material Library page
+              useMaterialStore.setState({ error: null });
+            }
+          }
+
+          projectMaterials.push({
+            id: crypto.randomUUID(),
+            materialId: resolvedMaterialId ?? mat.materialId ?? '',
+            name: mat.materialName,
+            category: normalizeCategory(mat.category),
+            quantity: mat.quantity,
+            unit: mat.unit,
+            unitCost: mat.unitCost,
+          });
+        }
+
+        // Save project materials to JSONB — this is the critical path
+        if (projectMaterials.length > 0) {
+          try {
+            const { updateProjectMaterials } = await import('@/services/supabaseData');
+            const saved = await updateProjectMaterials(projectId, projectMaterials);
+            if (!saved) {
+              console.error('Failed to save project materials JSONB');
+              downstreamErrors = true;
+            }
+          } catch (err) {
+            console.error('Failed to save project materials:', err);
+            downstreamErrors = true;
+          }
+        }
+      }
+
       if (downstreamErrors) {
         console.warn('Project created with some assignment errors. User can fix on dashboard.');
       }
@@ -697,6 +790,21 @@ export default function ProjectWizard() {
           />
         )}
         {currentStep === 4 && (
+          <WizardStepMaterials
+            data={data}
+            onChange={handleChange}
+            recommendations={recommendations}
+            aiLoading={aiLoading}
+            acceptedIds={acceptedItems.materials}
+            dismissedIds={dismissedItems.materials}
+            onAccept={(id) => handleAccept('materials', id)}
+            onDismiss={(id) => handleDismiss('materials', id)}
+            onAcceptAll={(ids) => handleAcceptAll('materials', ids)}
+            onDismissAll={(ids) => handleDismissAll('materials', ids)}
+            onReset={() => handleResetCategory('materials')}
+          />
+        )}
+        {currentStep === 5 && (
           <WizardStep6
             data={data}
             onChange={handleChange}
@@ -711,14 +819,14 @@ export default function ProjectWizard() {
             onReset={() => handleResetCategory('permits')}
           />
         )}
-        {currentStep === 5 && (
+        {currentStep === 6 && (
           <WizardStep5
             data={data}
             onChange={handleChange}
             recommendations={recommendations}
           />
         )}
-        {currentStep === 6 && <WizardStep7 data={data} />}
+        {currentStep === 7 && <WizardStep7 data={data} />}
       </div>
 
       {/* Navigation buttons */}

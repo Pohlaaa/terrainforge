@@ -44,11 +44,6 @@ function useSetupSteps(): SetupStep[] {
       complete: localStorage.getItem('tf-visited-schedule') === 'true',
       path: '/schedule',
     },
-    {
-      label: 'Explore the manifest engine',
-      complete: localStorage.getItem('tf-visited-manifest') === 'true',
-      path: '/manifest',
-    },
   ];
 }
 

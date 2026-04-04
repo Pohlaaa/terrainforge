@@ -39,6 +39,7 @@ export { insertSampleData, clearSampleData, diagnoseUserRole } from './supabaseS
 export {
   fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
   fetchSupplierPrices, upsertSupplierPrice, deleteSupplierPrice, getPreferredPrice,
+  recordPriceHistory, fetchPriceHistory,
 } from './supabaseSuppliers'
 
 export {

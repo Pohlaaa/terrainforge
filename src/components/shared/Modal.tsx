@@ -9,6 +9,7 @@ interface ModalProps {
   children: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
+  confirmDisabled?: boolean;
   maxWidth?: string;
 }
 
@@ -20,6 +21,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
+  confirmDisabled = false,
   maxWidth = '560px',
 }) => {
   if (!isOpen) return null;
@@ -47,7 +49,7 @@ export const Modal: React.FC<ModalProps> = ({
             {cancelText}
           </Button>
           {onConfirm && (
-            <Button variant="primary" onClick={onConfirm}>
+            <Button variant="primary" onClick={onConfirm} disabled={confirmDisabled}>
               {confirmText}
             </Button>
           )}

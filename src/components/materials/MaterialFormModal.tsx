@@ -3,6 +3,7 @@ import { Modal } from '@/components/shared/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { TextArea } from '@/components/ui/Textarea';
+import { SupplierPriceSection } from '@/components/materials/SupplierPriceSection';
 
 interface MaterialForm {
   name: string;
@@ -174,6 +175,14 @@ export const MaterialFormModal: React.FC<MaterialFormModalProps> = ({
             />
           </div>
         </div>
+
+        {/* Supplier Pricing — only shown when editing an existing material */}
+        {editingId && (
+          <SupplierPriceSection
+            materialId={editingId}
+            materialName={form.name}
+          />
+        )}
       </div>
     </Modal>
   );

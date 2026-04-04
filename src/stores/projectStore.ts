@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type {
   Project, Zone, ProjectListItem, ProjectFull,
   ProjectTask, ProjectSubcontractor, ProjectPermit,
-  ProjectCrewAssignment, ProjectSiteCondition, ProjectMaterialEntry, ProjectCrewEntry,
+  ProjectCrewAssignment, ProjectSiteCondition, ProjectMaterial, ProjectCrewEntry,
   ZoneMaterialDetail,
 } from '@/types'
 import { computeProjectCostRaw } from '@/lib/manifest'
@@ -22,12 +22,14 @@ interface ProjectStore {
   // State
   projects: ProjectListItem[]
   activeProject: ProjectFull | null
+  /** @deprecated Zone materials are legacy. Kept for backward compat only. */
   zoneMaterialDetails: ZoneMaterialDetail[]
   loading: boolean
   error: string | null
 
   // List actions
   fetchProjects: (orgId?: string) => Promise<void>
+  /** @deprecated Zone materials are legacy. Materials live in Project.materials JSONB. Kept for backward compat. */
   fetchZoneMaterialDetails: (projectId: string) => Promise<void>
   fetchProjectFull: (orgId: string, projectId: string) => Promise<void>
   clearActiveProject: () => void
@@ -47,9 +49,12 @@ interface ProjectStore {
   createProjectPermit: (permit: Omit<ProjectPermit, 'id' | 'createdAt' | 'updatedAt'>, orgId: string) => Promise<ProjectPermit | null>
   updateProjectPermit: (id: string, updates: Partial<ProjectPermit>) => Promise<ProjectPermit | null>
 
-  // Zone operations (kept for backward compatibility)
+  // Zone operations (kept for backward compatibility with older projects)
+  /** @deprecated Zones are legacy. Kept for backward compat with pre-wizard projects. */
   addZone: (projectId: string, zone: Omit<Zone, 'id' | 'createdAt'>) => Promise<void>
+  /** @deprecated Zones are legacy. Kept for backward compat with pre-wizard projects. */
   updateZone: (projectId: string, zoneId: string, updates: Partial<Zone>) => Promise<void>
+  /** @deprecated Zones are legacy. Kept for backward compat with pre-wizard projects. */
   deleteZone: (projectId: string, zoneId: string) => Promise<void>
   toggleChecklist: (projectId: string, key: keyof Project['checklist']) => Promise<void>
 
@@ -68,11 +73,11 @@ interface ProjectStore {
   reset: () => void
   isLoading: boolean
   /** @deprecated Materials live in Project.materials JSONB — backward compat shim */
-  projectMaterials: Record<string, ProjectMaterialEntry[]>
+  projectMaterials: Record<string, ProjectMaterial[]>
   /** @deprecated Crew assignments live in project_crew_assignments — backward compat shim */
   projectCrew: Record<string, ProjectCrewEntry[]>
-  addProjectMaterial: (projectId: string, entry: Omit<ProjectMaterialEntry, 'id'>) => Promise<void>
-  updateProjectMaterial: (projectId: string, entryId: string, updates: Partial<ProjectMaterialEntry>) => void
+  addProjectMaterial: (projectId: string, entry: Omit<ProjectMaterial, 'id'>) => Promise<void>
+  updateProjectMaterial: (projectId: string, entryId: string, updates: Partial<ProjectMaterial>) => void
   removeProjectMaterial: (projectId: string, entryId: string) => void
   addProjectCrew: (projectId: string, entry: Omit<ProjectCrewEntry, 'id'>) => void
   removeProjectCrew: (projectId: string, entryId: string) => void
@@ -109,11 +114,11 @@ export const useProjectStore = create<ProjectStore>()(
       try {
         const projects = await db.fetchProjects(orgId)
         // Build backward-compat projectMaterials map
-        const projectMaterials: Record<string, ProjectMaterialEntry[]> = {}
+        const projectMaterials: Record<string, ProjectMaterial[]> = {}
         for (const p of projects) {
           const pMats = (p as unknown as Record<string, unknown>).materials;
           if (Array.isArray(pMats) && pMats.length > 0) {
-            projectMaterials[p.id] = pMats as ProjectMaterialEntry[]
+            projectMaterials[p.id] = pMats as ProjectMaterial[]
           }
         }
         set({ projects, loading: false, isLoading: false, projectMaterials })
@@ -442,7 +447,7 @@ export const useProjectStore = create<ProjectStore>()(
 
     // Material backward-compat shims
     addProjectMaterial: async (projectId, entry) => {
-      const newEntry: ProjectMaterialEntry = { ...entry, id: crypto.randomUUID() }
+      const newEntry: ProjectMaterial = { ...entry, id: crypto.randomUUID() }
       set((state) => ({
         projectMaterials: {
           ...state.projectMaterials,
@@ -453,7 +458,7 @@ export const useProjectStore = create<ProjectStore>()(
       await db.updateProjectMaterials(projectId, allEntries)
     },
 
-    updateProjectMaterial: (projectId, entryId, updates) => {
+    updateProjectMaterial: async (projectId, entryId, updates) => {
       set((state) => ({
         projectMaterials: {
           ...state.projectMaterials,
@@ -462,15 +467,19 @@ export const useProjectStore = create<ProjectStore>()(
           ),
         },
       }))
+      const allEntries = get().projectMaterials[projectId] ?? []
+      await db.updateProjectMaterials(projectId, allEntries)
     },
 
-    removeProjectMaterial: (projectId, entryId) => {
+    removeProjectMaterial: async (projectId, entryId) => {
       set((state) => ({
         projectMaterials: {
           ...state.projectMaterials,
           [projectId]: (state.projectMaterials[projectId] ?? []).filter((e) => e.id !== entryId),
         },
       }))
+      const allEntries = get().projectMaterials[projectId] ?? []
+      await db.updateProjectMaterials(projectId, allEntries)
     },
 
     addProjectCrew: (projectId, entry) => {

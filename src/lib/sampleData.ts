@@ -39,6 +39,7 @@ export function getSampleProjects(): Omit<Project, 'id' | 'createdAt'>[] {
         crew: false,
         equipment: false,
       },
+      materials: [],
       zones: [
         {
           id: '', name: 'Main Patio', area: 1200, perimeter: 140, sequence: 1,
@@ -78,6 +79,7 @@ export function getSampleProjects(): Omit<Project, 'id' | 'createdAt'>[] {
         crew: false,
         equipment: false,
       },
+      materials: [],
       zones: [
         {
           id: '', name: 'Driveway Border', area: 800, perimeter: 120, sequence: 1,
@@ -112,6 +114,7 @@ export function getSampleProjects(): Omit<Project, 'id' | 'createdAt'>[] {
         crew: false,
         equipment: false,
       },
+      materials: [],
       zones: [
         {
           id: '', name: 'Pool Deck', area: 2800, perimeter: 210, sequence: 1,

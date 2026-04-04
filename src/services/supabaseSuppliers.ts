@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { toCamelCase, toSnakeCase, sanitizeTimestamps, onSupabaseError } from './supabaseCore'
-import type { Supplier, SupplierPrice, MaterialCategory } from '@/types'
+import type { Supplier, SupplierPrice, MaterialCategory, PriceHistoryEntry } from '@/types'
 
 // ===== SUPPLIERS =====
 
@@ -193,5 +193,63 @@ export async function getPreferredPrice(
   } catch (err) {
     onSupabaseError('SELECT', 'supplier_prices', err)
     return null
+  }
+}
+
+// ===== SUPPLIER PRICE HISTORY =====
+
+export async function recordPriceHistory(
+  orgId: string,
+  materialId: string,
+  supplierId: string,
+  unitCost: number,
+  source: 'manual' | 'quote' | 'import' = 'manual'
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('supplier_price_history')
+      .insert([{
+        org_id: orgId,
+        material_id: materialId,
+        supplier_id: supplierId,
+        unit_cost: unitCost,
+        source,
+      }])
+
+    if (error) throw error
+    return true
+  } catch (err) {
+    onSupabaseError('INSERT', 'supplier_price_history', err)
+    return false
+  }
+}
+
+export async function fetchPriceHistory(
+  orgId: string,
+  materialId: string,
+  supplierId?: string,
+  limit: number = 20
+): Promise<PriceHistoryEntry[]> {
+  try {
+    let query = supabase
+      .from('supplier_price_history')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('material_id', materialId)
+      .order('recorded_at', { ascending: false })
+      .limit(limit)
+
+    if (supplierId) {
+      query = query.eq('supplier_id', supplierId)
+    }
+
+    const { data, error } = await query
+
+    if (error) throw error
+
+    return (data || []).map(d => toCamelCase(d) as unknown as PriceHistoryEntry)
+  } catch (err) {
+    onSupabaseError('SELECT', 'supplier_price_history', err)
+    return []
   }
 }

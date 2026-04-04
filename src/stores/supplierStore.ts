@@ -137,6 +137,10 @@ export const useSupplierStore = create<SupplierStore>()(
           set({ error: 'Failed to save supplier price.' })
           return
         }
+        // Auto-record price history on successful upsert
+        if (priceData.materialId && priceData.supplierId && priceData.unitCost !== undefined) {
+          await db.recordPriceHistory(orgId, priceData.materialId, priceData.supplierId, priceData.unitCost, 'manual')
+        }
         // Refresh prices for this material
         if (priceData.materialId) {
           await get().fetchSupplierPrices(priceData.materialId)

@@ -1,9 +1,17 @@
 /**
  * Manifest Engine - Core calculation logic
+ *
+ * Supports two material sources:
+ * 1. Project-level materials (project.materials JSONB) — primary, used by wizard-created projects
+ * 2. Zone-level materials (project.zones[].materials[]) — legacy, computed from zone geometry
+ *
+ * If project.materials has entries, those are used directly (quantities are already known).
+ * Otherwise falls back to zone-based calculation for backward compatibility.
  */
 
 import type { Material, Zone, Project, ManifestItem, SupplierPrice } from '@/types';
 import { RESERVE } from './constants';
+import { normalizeCategory } from './categories';
 
 export function computeQty(mat: Material, zone: Zone): number {
   const area = zone.area;
@@ -49,12 +57,58 @@ export function getReservePct(mat: Material): number {
   return categoryReserve ?? 0.1;
 }
 
-export function generateManifest(
+/**
+ * Generate a manifest from project-level materials (JSONB).
+ * Quantities come directly from the stored entries. Reserve % is applied
+ * using the library material's category if found, otherwise defaults to 10%.
+ */
+function generateFromProjectMaterials(
+  project: Project,
+  libraryMaterials: Material[],
+  supplierPrices?: SupplierPrice[]
+): ManifestItem[] {
+  return project.materials.map((pm) => {
+    // Try to find the library material for reserve % and supplier pricing
+    const libMat = libraryMaterials.find((m) => m.id === pm.materialId);
+    const reservePct = libMat ? getReservePct(libMat) : 0.10;
+    const reserveQty = pm.quantity * reservePct;
+    const totalOrder = Math.ceil(pm.quantity + reserveQty);
+
+    // Resolve unit cost: preferred supplier → project entry cost → library cost
+    const preferredPrice = supplierPrices?.find(
+      (sp) => sp.materialId === pm.materialId && sp.isPreferred
+    );
+    const unitCost = preferredPrice?.unitCost ?? pm.unitCost;
+    const subtotal = totalOrder * unitCost;
+
+    return {
+      materialId: pm.materialId,
+      materialName: pm.name,
+      zoneName: 'Project',
+      zoneId: '',
+      qtyNeeded: pm.quantity,
+      reserveQty,
+      totalOrder,
+      unitCost,
+      subtotal,
+      unit: pm.unit,
+      category: normalizeCategory(pm.category),
+      supplierId: preferredPrice?.supplierId ?? null,
+      supplierName: preferredPrice?.supplierName ?? null,
+    };
+  });
+}
+
+/**
+ * @deprecated Generate manifest from zone-level materials (legacy path).
+ * Quantities are computed from zone geometry.
+ * Kept for backward compat with pre-wizard projects. New projects use project.materials (JSONB).
+ */
+function generateFromZoneMaterials(
   project: Project,
   materials: Material[],
   supplierPrices?: SupplierPrice[]
 ): ManifestItem[] {
-  const lineItems: ManifestItem[] = [];
   const matMap: Record<string, { mat: Material; computed: number; zones: string[] }> = {};
 
   project.zones.forEach((zone) => {
@@ -72,35 +126,47 @@ export function generateManifest(
     });
   });
 
-  Object.values(matMap).forEach(({ mat, computed, zones }) => {
+  return Object.values(matMap).map(({ mat, computed, zones }) => {
     const reservePct = getReservePct(mat);
     const reserveQty = computed * reservePct;
     const totalOrder = Math.ceil(computed + reserveQty);
 
-    // Resolve unit cost: prefer supplier price, fall back to catalog cost
     const preferredPrice = supplierPrices?.find(
       (sp) => sp.materialId === mat.id && sp.isPreferred
     );
     const unitCost = preferredPrice?.unitCost ?? mat.cost;
     const subtotal = totalOrder * unitCost;
 
-    lineItems.push({
+    return {
       materialId: mat.id,
       materialName: mat.name,
       zoneName: zones.join(', '),
       zoneId: '',
       qtyNeeded: computed,
-      reserveQty: reserveQty,
-      totalOrder: totalOrder,
-      unitCost: unitCost,
-      subtotal: subtotal,
+      reserveQty,
+      totalOrder,
+      unitCost,
+      subtotal,
       unit: mat.unit,
+      category: normalizeCategory(mat.category),
       supplierId: preferredPrice?.supplierId ?? null,
       supplierName: preferredPrice?.supplierName ?? null,
-    });
+    };
   });
+}
 
-  return lineItems;
+export function generateManifest(
+  project: Project,
+  materials: Material[],
+  supplierPrices?: SupplierPrice[]
+): ManifestItem[] {
+  // Primary path: project-level materials (wizard-created projects)
+  if (project.materials && project.materials.length > 0) {
+    return generateFromProjectMaterials(project, materials, supplierPrices);
+  }
+
+  // Legacy path: zone-based calculation
+  return generateFromZoneMaterials(project, materials, supplierPrices);
 }
 
 export function computeProjectCostRaw(project: Project, materials: Material[]): number {
