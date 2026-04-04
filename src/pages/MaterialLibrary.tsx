@@ -421,29 +421,25 @@ export const MaterialLibrary: React.FC = () => {
           label="Total Materials"
           value={totalItems}
           icon={<Package size={20} />}
-          iconBg="bg-teal-100 dark:bg-teal-900/40"
-          iconColor="text-teal-600 dark:text-teal-400"
+          iconVariant="teal"
         />
         <KPICard
           label="Low Stock"
           value={lowStockCount}
           icon={<AlertTriangle size={20} />}
-          iconBg="bg-red-100 dark:bg-red-900/40"
-          iconColor="text-red-600 dark:text-red-400"
+          iconVariant="red"
         />
         <KPICard
           label="In Stock"
           value={`$${inventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
           icon={<CheckCircle size={20} />}
-          iconBg="bg-green-100 dark:bg-green-900/40"
-          iconColor="text-green-600 dark:text-green-400"
+          iconVariant="green"
         />
         <KPICard
           label="Categories"
           value={new Set(materials.map(m => m.category)).size}
           icon={<ShoppingCart size={20} />}
-          iconBg="bg-blue-100 dark:bg-blue-900/40"
-          iconColor="text-blue-600 dark:text-blue-400"
+          iconVariant="blue"
         />
       </div>
 

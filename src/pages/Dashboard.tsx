@@ -94,7 +94,7 @@ const Dashboard: React.FC = () => {
 
   const chartData = useMemo(() => {
     return activeProjects.slice(0, 12).map(p => ({
-      name: p.name.length > 20 ? p.name.slice(0, 20) + '...' : p.name,
+      name: p.name.length > 35 ? p.name.slice(0, 35) + '...' : p.name,
       completion: getChecklistPct(p),
       id: p.id,
     }));
@@ -165,31 +165,27 @@ const Dashboard: React.FC = () => {
           value={activeProjects.length}
           subtext={`of ${projects.length} total`}
           icon={<TrendingUp size={20} />}
-          iconBg="bg-green-100 dark:bg-green-900/40"
-          iconColor="text-green-600 dark:text-green-400"
+          iconVariant="green"
         />
         <KPICard
           label="Completed This Month"
           value={completedThisMonth}
           icon={<Calendar size={20} />}
-          iconBg="bg-blue-100 dark:bg-blue-900/40"
-          iconColor="text-blue-600 dark:text-blue-400"
+          iconVariant="blue"
         />
         <KPICard
           label="Pipeline Value"
           value={formatBudget(pipelineValue)}
           subtext="active project budgets"
           icon={<BarChart3 size={20} />}
-          iconBg="bg-orange-100 dark:bg-orange-900/40"
-          iconColor="text-orange-600 dark:text-orange-400"
+          iconVariant="orange"
         />
         <KPICard
           label="Average Completion"
           value={`${avgCompletion}%`}
           subtext="across active projects"
           icon={<Users size={20} />}
-          iconBg="bg-purple-100 dark:bg-purple-900/40"
-          iconColor="text-purple-600 dark:text-purple-400"
+          iconVariant="purple"
         />
       </div>
 
@@ -244,7 +240,7 @@ const Dashboard: React.FC = () => {
                 <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" horizontal vertical={false} />
                   <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
-                  <YAxis type="category" dataKey="name" width={140} axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} />
+                  <YAxis type="category" dataKey="name" width={220} axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} />
                   <Tooltip
                     formatter={(value) => [`${value}%`, 'Completion']}
                     contentStyle={{
@@ -370,7 +366,7 @@ const Dashboard: React.FC = () => {
                     >
                       <td className="px-3 py-3">
                         <div className="font-medium text-[var(--text-primary)]">{project.name}</div>
-                        <div className="text-xs mt-0.5 truncate max-w-[200px] text-[var(--text-tertiary)]">{project.address}</div>
+                        <div className="text-xs mt-0.5 truncate max-w-[320px] text-[var(--text-tertiary)]">{project.address}</div>
                       </td>
                       <td className="px-3 py-3 text-[var(--text-secondary)]">
                         {project.clientName || project.client || '—'}

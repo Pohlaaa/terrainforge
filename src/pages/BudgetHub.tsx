@@ -249,10 +249,10 @@ const BudgetHub: React.FC = () => {
         <HubHeader />
         {/* KPI cards - empty */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard label="Revenue" value="$0" icon={<DollarSign size={20} />} iconBg="bg-teal-100 dark:bg-teal-900/40" iconColor="text-teal-600 dark:text-teal-400" />
-          <KPICard label="Expenses" value="$0" icon={<TrendingDown size={20} />} iconBg="bg-pink-100 dark:bg-pink-900/40" iconColor="text-pink-600 dark:text-pink-400" />
-          <KPICard label="Profit" value="$0" icon={<TrendingUp size={20} />} iconBg="bg-blue-100 dark:bg-blue-900/40" iconColor="text-blue-600 dark:text-blue-400" />
-          <KPICard label="Avg Budget" value="$0" icon={<DollarSign size={20} />} iconBg="bg-orange-100 dark:bg-orange-900/40" iconColor="text-orange-600 dark:text-orange-400" />
+          <KPICard label="Revenue" value="$0" icon={<DollarSign size={20} />} iconVariant="teal" />
+          <KPICard label="Expenses" value="$0" icon={<TrendingDown size={20} />} iconVariant="pink" />
+          <KPICard label="Profit" value="$0" icon={<TrendingUp size={20} />} iconVariant="blue" />
+          <KPICard label="Avg Budget" value="$0" icon={<DollarSign size={20} />} iconVariant="orange" />
         </div>
         <div
           className="rounded-xl p-12 text-center"
@@ -295,15 +295,13 @@ const BudgetHub: React.FC = () => {
           label="Revenue"
           value={fmt(kpis.totalRevenue)}
           icon={<DollarSign size={20} />}
-          iconBg="bg-teal-100 dark:bg-teal-900/40"
-          iconColor="text-teal-600 dark:text-teal-400"
+          iconVariant="teal"
         />
         <KPICard
           label="Expenses"
           value={fmt(kpis.totalExpenses)}
           icon={<TrendingDown size={20} />}
-          iconBg="bg-pink-100 dark:bg-pink-900/40"
-          iconColor="text-pink-600 dark:text-pink-400"
+          iconVariant="pink"
         />
         <KPICard
           label="Profit"
@@ -312,15 +310,13 @@ const BudgetHub: React.FC = () => {
             ? `${((kpis.netProfit / kpis.totalRevenue) * 100).toFixed(1)}% margin`
             : undefined}
           icon={<TrendingUp size={20} />}
-          iconBg="bg-blue-100 dark:bg-blue-900/40"
-          iconColor="text-blue-600 dark:text-blue-400"
+          iconVariant="blue"
         />
         <KPICard
           label="Avg Budget"
           value={fmt(kpis.outstanding)}
           icon={<DollarSign size={20} />}
-          iconBg="bg-orange-100 dark:bg-orange-900/40"
-          iconColor="text-orange-600 dark:text-orange-400"
+          iconVariant="orange"
         />
       </div>
 

@@ -1,12 +1,18 @@
 import React from 'react';
 
+type IconColor = 'green' | 'blue' | 'orange' | 'purple' | 'teal' | 'red' | 'pink';
+
 interface KPICardProps {
   label: string;
   value: string | number;
   subtext?: string;
   subtextColor?: 'green' | 'red' | 'amber' | 'default';
   icon?: React.ReactNode;
+  /** Color key for icon circle — uses CSS variables for theme support */
+  iconVariant?: IconColor;
+  /** @deprecated Use iconVariant instead. Tailwind classes get purged. */
   iconBg?: string;
+  /** @deprecated Use iconVariant instead. */
   iconColor?: string;
   unit?: string;
   subtitle?: string;
@@ -25,12 +31,28 @@ export const KPICard: React.FC<KPICardProps> = ({
   subtext,
   subtextColor = 'default',
   icon,
+  iconVariant,
   iconBg,
   iconColor,
   unit,
   subtitle,
 }) => {
   const sub = subtext || subtitle;
+
+  // Resolve icon circle styles — prefer CSS variable approach via iconVariant
+  let circleStyle: React.CSSProperties | undefined;
+  let circleClassName = '';
+
+  if (iconVariant) {
+    circleStyle = {
+      backgroundColor: `var(--icon-${iconVariant}-bg)`,
+      color: `var(--icon-${iconVariant}-text)`,
+    };
+  } else if (iconBg || iconColor) {
+    // Legacy fallback — Tailwind classes (may be purged)
+    circleClassName = `${iconBg || ''} ${iconColor || ''}`;
+  }
+
   return (
     <div className="kpi-card-hover card-interactive bg-[var(--surface-card)] border border-[var(--border-light)] rounded-xl p-5">
       <div className="flex items-start justify-between">
@@ -49,7 +71,10 @@ export const KPICard: React.FC<KPICardProps> = ({
           )}
         </div>
         {icon && (
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${iconBg || ''} ${iconColor || ''}`}>
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${circleClassName}`}
+            style={circleStyle}
+          >
             {icon}
           </div>
         )}

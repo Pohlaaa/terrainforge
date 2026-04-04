@@ -75,7 +75,7 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ projects }) => {
   }
 
   return (
-    <div style={{ padding: '0 12px 12px', position: 'relative' }}>
+    <div style={{ padding: '0 12px 12px', position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Satellite toggle in header area */}
       {loaded && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 0 6px' }}>
@@ -104,12 +104,13 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ projects }) => {
           style={{ width: '100%', height: '100%', borderRadius: '8px', marginTop: '6px' }}
         />
       )}
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
         <div
           ref={mapRef}
           style={{
             width: '100%',
             height: '100%',
+            minHeight: '250px',
             borderRadius: '8px',
             overflow: 'hidden',
             display: loaded ? 'block' : 'none',

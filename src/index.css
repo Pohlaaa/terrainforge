@@ -6,7 +6,23 @@
 
 :root {
   /* ── Topographic background pattern ────────────────────────────────────── */
-  --topo-pattern: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 120c20-30 60-30 80 0s60 30 80 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.06'/%3E%3Cpath d='M20 80c30-25 70-25 100 0s70 25 100 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.04'/%3E%3Cpath d='M0 160c25-35 75-35 100 0s75 35 100 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.04'/%3E%3Cpath d='M60 40c15-20 45-20 60 0s45 20 60 0' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
+  --topo-pattern: url("data:image/svg+xml,%3Csvg width='300' height='300' xmlns='http://www.w3.org/2000/svg'%3E%3Cellipse cx='150' cy='150' rx='60' ry='45' fill='none' stroke='%232D6A4F' stroke-width='0.6' opacity='0.05'/%3E%3Cellipse cx='150' cy='150' rx='90' ry='70' fill='none' stroke='%232D6A4F' stroke-width='0.6' opacity='0.04'/%3E%3Cellipse cx='150' cy='150' rx='125' ry='95' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.035'/%3E%3Cellipse cx='80' cy='60' rx='40' ry='30' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.04'/%3E%3Cellipse cx='80' cy='60' rx='65' ry='48' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.03'/%3E%3Cellipse cx='250' cy='250' rx='35' ry='28' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.04'/%3E%3Cellipse cx='250' cy='250' rx='55' ry='42' fill='none' stroke='%232D6A4F' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
+
+  /* ── KPI icon circle colors ──────────────────────────────────────────── */
+  --icon-green-bg: #DCFCE7;
+  --icon-green-text: #16A34A;
+  --icon-blue-bg: #DBEAFE;
+  --icon-blue-text: #2563EB;
+  --icon-orange-bg: #FFEDD5;
+  --icon-orange-text: #EA580C;
+  --icon-purple-bg: #F3E8FF;
+  --icon-purple-text: #7C3AED;
+  --icon-teal-bg: #CCFBF1;
+  --icon-teal-text: #0D9488;
+  --icon-red-bg: #FEE2E2;
+  --icon-red-text: #DC2626;
+  --icon-pink-bg: #FCE7F3;
+  --icon-pink-text: #DB2777;
 
   /* ── Surfaces ──────────────────────────────────────────────────────────── */
   --surface-bg: #FAF9F7;
@@ -114,7 +130,23 @@
 }
 
 [data-theme="dark"] {
-  --topo-pattern: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 120c20-30 60-30 80 0s60 30 80 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.07'/%3E%3Cpath d='M20 80c30-25 70-25 100 0s70 25 100 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.05'/%3E%3Cpath d='M0 160c25-35 75-35 100 0s75 35 100 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.05'/%3E%3Cpath d='M60 40c15-20 45-20 60 0s45 20 60 0' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
+  --topo-pattern: url("data:image/svg+xml,%3Csvg width='300' height='300' xmlns='http://www.w3.org/2000/svg'%3E%3Cellipse cx='150' cy='150' rx='60' ry='45' fill='none' stroke='%2334D399' stroke-width='0.6' opacity='0.06'/%3E%3Cellipse cx='150' cy='150' rx='90' ry='70' fill='none' stroke='%2334D399' stroke-width='0.6' opacity='0.05'/%3E%3Cellipse cx='150' cy='150' rx='125' ry='95' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.04'/%3E%3Cellipse cx='80' cy='60' rx='40' ry='30' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.05'/%3E%3Cellipse cx='80' cy='60' rx='65' ry='48' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.035'/%3E%3Cellipse cx='250' cy='250' rx='35' ry='28' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.05'/%3E%3Cellipse cx='250' cy='250' rx='55' ry='42' fill='none' stroke='%2334D399' stroke-width='0.5' opacity='0.035'/%3E%3C/svg%3E");
+
+  /* ── KPI icon circle colors (dark) ───────────────────────────────────── */
+  --icon-green-bg: rgba(22, 163, 74, 0.15);
+  --icon-green-text: #4ADE80;
+  --icon-blue-bg: rgba(37, 99, 235, 0.15);
+  --icon-blue-text: #60A5FA;
+  --icon-orange-bg: rgba(234, 88, 12, 0.15);
+  --icon-orange-text: #FB923C;
+  --icon-purple-bg: rgba(124, 58, 237, 0.15);
+  --icon-purple-text: #A78BFA;
+  --icon-teal-bg: rgba(13, 148, 136, 0.15);
+  --icon-teal-text: #2DD4BF;
+  --icon-red-bg: rgba(220, 38, 38, 0.15);
+  --icon-red-text: #F87171;
+  --icon-pink-bg: rgba(219, 39, 119, 0.15);
+  --icon-pink-text: #F472B6;
 
   --surface-bg: #171412;
   --surface-card: #231F1C;
@@ -172,7 +204,7 @@ body {
   background-color: var(--surface-bg);
   background-image: var(--topo-pattern);
   background-repeat: repeat;
-  background-size: 200px 200px;
+  background-size: 300px 300px;
   color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: background-color 0.2s ease, color 0.2s ease;

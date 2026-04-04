@@ -20,29 +20,25 @@ export const CrewEquipmentKPIs: React.FC<CrewEquipmentKPIsProps> = ({
       label="Total Crew"
       value={crewCount}
       icon={<Users size={20} />}
-      iconBg="bg-purple-100 dark:bg-purple-900/40"
-      iconColor="text-purple-600 dark:text-purple-400"
+      iconVariant="purple"
     />
     <KPICard
       label="Available"
       value={availableCount}
       icon={<Laptop size={20} />}
-      iconBg="bg-green-100 dark:bg-green-900/40"
-      iconColor="text-green-600 dark:text-green-400"
+      iconVariant="green"
     />
     <KPICard
       label="Total Equipment"
       value={equipmentCount}
       icon={<Wrench size={20} />}
-      iconBg="bg-orange-100 dark:bg-orange-900/40"
-      iconColor="text-orange-600 dark:text-orange-400"
+      iconVariant="orange"
     />
     <KPICard
       label="Maintenance Due"
       value={maintenanceDueCount}
       icon={<AlertTriangle size={20} />}
-      iconBg="bg-red-100 dark:bg-red-900/40"
-      iconColor="text-red-600 dark:text-red-400"
+      iconVariant="red"
     />
   </div>
 );
