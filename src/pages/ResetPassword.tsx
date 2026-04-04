@@ -38,9 +38,9 @@ export const ResetPassword: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-8 text-center">
+          <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl shadow-[var(--shadow-panel)] p-8 text-center">
             <div className="text-4xl text-[var(--green-l)] mb-4">&#10003;</div>
             <h2 className="text-xl font-semibold text-[var(--text)] mb-4">Password Updated!</h2>
             <p className="text-[var(--text-2)]">Redirecting to login...</p>
@@ -51,16 +51,16 @@ export const ResetPassword: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <span className="text-4xl text-[var(--green-l)]">&#x2B21;</span>
-            <h1 className="text-3xl font-serif text-[var(--text)]">TerrainForge</h1>
+            <span className="text-4xl text-[var(--brand-primary)]">&#x2B21;</span>
+            <h1 className="text-3xl font-serif text-[var(--text-primary)]">TerrainForge</h1>
           </div>
         </div>
 
-        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-8">
+        <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl shadow-[var(--shadow-panel)] p-8">
           <h2 className="text-xl font-semibold text-[var(--text)] mb-6 text-center">
             Set New Password
           </h2>
@@ -82,7 +82,7 @@ export const ResetPassword: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 8 characters"
-                className="w-full px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 transition-colors"
+                className="w-full px-4 py-2 bg-transparent border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 transition-colors"
                 disabled={loading}
               />
             </div>
@@ -97,7 +97,7 @@ export const ResetPassword: React.FC = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter your password"
-                className="w-full px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 transition-colors"
+                className="w-full px-4 py-2 bg-transparent border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)] focus:ring-opacity-30 transition-colors"
                 disabled={loading}
               />
             </div>

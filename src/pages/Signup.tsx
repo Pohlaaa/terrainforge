@@ -106,22 +106,31 @@ export const Signup: React.FC = () => {
   const handleResend = useCallback(async () => {
     if (resendCooldown > 0) return
     setResendMessage('')
-    await supabase.auth.resend({ type: 'signup', email })
-    setResendCount(prev => prev + 1)
-    setResendCooldown(60)
-    setResendMessage('Email resent!')
-  }, [email, resendCooldown])
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email })
+      if (error) {
+        // Fallback: re-call signUp which resends confirmation
+        const { error: fallbackError } = await supabase.auth.signUp({ email, password })
+        if (fallbackError) throw fallbackError
+      }
+      setResendMessage('Verification email resent!')
+      setResendCount(prev => prev + 1)
+      setResendCooldown(60)
+    } catch (err) {
+      setResendMessage(`Failed to resend: ${(err as Error).message}`)
+    }
+  }, [email, password, resendCooldown])
 
   if (showVerification) {
     return (
-      <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-8 text-center">
+          <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl p-8 text-center shadow-[var(--shadow-panel)]">
             <div className="text-5xl mb-4">&#9993;</div>
-            <h2 className="text-xl font-semibold text-[var(--text)] mb-4">
+            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">
               Check your email
             </h2>
-            <p className="text-[var(--text-2)] mb-6">
+            <p className="text-[var(--text-secondary)] mb-6">
               We sent a verification link to <strong className="text-[var(--text)]">{email}</strong>. Click the link to activate your account.
             </p>
             {resendMessage && (
@@ -156,14 +165,14 @@ export const Signup: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-8 text-center">
-            <div className="text-4xl text-[var(--green-l)] mb-4">✓</div>
-            <h2 className="text-xl font-semibold text-[var(--text)] mb-4">
+          <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl p-8 text-center shadow-[var(--shadow-panel)]">
+            <div className="text-4xl text-[var(--brand-primary)] mb-4">✓</div>
+            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">
               Account Created Successfully!
             </h2>
-            <p className="text-[var(--text-2)] mb-6">
+            <p className="text-[var(--text-secondary)] mb-6">
               You'll be redirected to set up your account in a moment.
             </p>
             <Link
@@ -179,21 +188,21 @@ export const Signup: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Brand Section */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <span className="text-4xl text-[var(--green-l)]">⬡</span>
-            <h1 className="text-3xl font-serif text-[var(--text)]">TerrainForge</h1>
+            <span className="text-4xl text-[var(--brand-primary)]">⬡</span>
+            <h1 className="text-3xl font-serif text-[var(--text-primary)]">TerrainForge</h1>
           </div>
-          <p className="text-xs text-[var(--text-4)] font-mono tracking-[0.05em]">
-            PHASE 1 · MVP
+          <p className="text-xs text-[var(--text-tertiary)] font-mono tracking-[0.05em]">
+            Landscaping Project Management
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-8">
+        <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl p-8 shadow-[var(--shadow-panel)]">
           <h2 className="text-xl font-semibold text-[var(--text)] mb-6 text-center">
             Create Account
           </h2>
@@ -291,14 +300,14 @@ export const Signup: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-6 py-2 px-4 bg-[var(--green)] hover:bg-[var(--green-l)] text-[var(--surface)] font-semibold rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-6 py-3 px-4 btn-primary btn-primary-gold font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-none cursor-pointer"
             >
               {loading ? 'Creating Account...' : 'Start Free Trial'}
             </button>
           </form>
 
           {/* Trial note */}
-          <p className="mt-4 text-center text-[14px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <p className="mt-4 text-center text-sm text-[var(--text-tertiary)]">
             Start your 14-day free trial. No credit card required.
           </p>
 

@@ -89,11 +89,9 @@
   --color-primary: var(--brand-primary);
   --color-error: var(--status-red);
   --color-success: var(--status-green);
-  --color-warning: var(--status-amber);
   --color-info: var(--status-blue);
   --bg-sidebar: var(--sidebar-bg);
   --text-muted: var(--text-tertiary);
-  --text-on-dark: #FFFFFF;
   --text-on-primary: #FFFFFF;
 
   /* ── Status semantic aliases ─────────────────────────────────────────────── */
@@ -157,7 +155,6 @@
   --text-3: var(--text-tertiary);
   --text-4: var(--text-secondary);
   --text-muted: var(--text-tertiary);
-  --text-on-dark: #FFFFFF;
   --text-on-primary: #0F172A;
 }
 
@@ -336,11 +333,6 @@ a:hover {
 @keyframes stockPulseOut {
   0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
   50% { box-shadow: 0 0 0 4px rgba(220,38,38,0); }
-}
-
-@keyframes inkDrop {
-  0% { transform: scale(0); opacity: 0.4; }
-  100% { transform: scale(2.5); opacity: 0; }
 }
 
 @keyframes toastSlideIn {

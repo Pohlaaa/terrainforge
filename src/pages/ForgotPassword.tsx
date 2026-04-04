@@ -36,21 +36,21 @@ export const ForgotPassword: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Brand Section */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <span className="text-4xl text-[var(--green-l)]">⬡</span>
-            <h1 className="text-3xl font-serif text-[var(--text)]">TerrainForge</h1>
+            <span className="text-4xl text-[var(--brand-primary)]">⬡</span>
+            <h1 className="text-3xl font-serif text-[var(--text-primary)]">TerrainForge</h1>
           </div>
-          <p className="text-xs text-[var(--text-4)] font-mono tracking-[0.05em]">
-            PHASE 1 · MVP
+          <p className="text-xs text-[var(--text-tertiary)] font-mono tracking-[0.05em]">
+            Landscaping Project Management
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-8 shadow-[var(--shadow-panel)]">
+        <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl p-8 shadow-[var(--shadow-panel)]">
           <h2 className="text-xl font-semibold text-[var(--text)] mb-2 text-center">
             Reset Password
           </h2>
