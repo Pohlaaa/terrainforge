@@ -90,6 +90,8 @@ export const ManifestEngine: React.FC = () => {
           unitCost: mat.cost,
           subtotal: totalOrder * mat.cost,
           unit: mat.unit,
+          supplierId: null,
+          supplierName: null,
         }];
       });
       const missing = zone.materials.filter(zm => !materials.find(m => m.id === zm.materialId));

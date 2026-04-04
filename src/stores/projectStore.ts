@@ -9,7 +9,6 @@ import { computeProjectCostRaw } from '@/lib/manifest'
 import { useMaterialStore } from './materialStore'
 import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
-import { supabase } from '@/services/supabase'
 import { toast } from '@/hooks/useToast'
 
 // Wire up Supabase error reporter — shows toasts and structured console logs
@@ -451,10 +450,7 @@ export const useProjectStore = create<ProjectStore>()(
         },
       }))
       const allEntries = get().projectMaterials[projectId] ?? []
-      await supabase
-        .from('projects')
-        .update({ materials: allEntries })
-        .eq('id', projectId)
+      await db.updateProjectMaterials(projectId, allEntries)
     },
 
     updateProjectMaterial: (projectId, entryId, updates) => {

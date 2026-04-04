@@ -13,13 +13,6 @@ interface MaterialForm {
   depthIn: string;
   reserveOverride: string;
   notes: string;
-  supplier_name: string;
-  supplier_sku: string;
-  supplier_phone: string;
-  supplier_contact: string;
-  lead_time_days: string;
-  price_update_date: string;
-  supplier_notes: string;
   qtyOnHand: string;
   minStockLevel: string;
   storageLocation: string;
@@ -145,64 +138,6 @@ export const MaterialFormModal: React.FC<MaterialFormModalProps> = ({
           </div>
         </div>
 
-        {/* Supplier fields */}
-        <div>
-          <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[10px]">
-            Supplier Info
-          </div>
-          <div className="flex flex-col gap-[10px]">
-            <div className="grid grid-cols-2 gap-[10px]">
-              <Input
-                label="Supplier Name"
-                value={form.supplier_name}
-                onChange={e => setField('supplier_name', e.target.value)}
-                placeholder="SRS Distribution"
-              />
-              <Input
-                label="Contact Person"
-                value={form.supplier_contact}
-                onChange={e => setField('supplier_contact', e.target.value)}
-                placeholder="Mike Johnson"
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-[10px]">
-              <Input
-                label="Phone"
-                type="tel"
-                value={form.supplier_phone}
-                onChange={e => setField('supplier_phone', e.target.value)}
-                placeholder="(512) 555-0101"
-              />
-              <Input
-                label="SKU / Part #"
-                value={form.supplier_sku}
-                onChange={e => setField('supplier_sku', e.target.value)}
-                placeholder="CP-1212-GRY"
-              />
-              <Input
-                label="Lead Time (days)"
-                type="number"
-                min="0"
-                value={form.lead_time_days}
-                onChange={e => setField('lead_time_days', e.target.value)}
-                placeholder="3"
-              />
-            </div>
-            <Input
-              label="Price Updated"
-              type="date"
-              value={form.price_update_date}
-              onChange={e => setField('price_update_date', e.target.value)}
-            />
-            <TextArea
-              label="Supplier Notes"
-              rows={2}
-              value={form.supplier_notes}
-              onChange={e => setField('supplier_notes', e.target.value)}
-              placeholder="Volume discounts, delivery terms, seasonal availability..."
-            />
-          </div>
-        </div>
 
         {/* Inventory fields */}
         <div>

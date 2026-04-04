@@ -113,7 +113,7 @@ export const useMaterialStore = create<MaterialStore>()(
       return get().materials.filter((m) =>
         m.name.toLowerCase().includes(lowerQuery) ||
         m.category.toLowerCase().includes(lowerQuery) ||
-        m.supplier_name.toLowerCase().includes(lowerQuery)
+        m.notes.toLowerCase().includes(lowerQuery)
       )
     },
   })

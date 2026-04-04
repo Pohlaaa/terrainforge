@@ -164,18 +164,12 @@ export interface Material {
   name: string;
   category: string;
   unit: string;
-  cost: number;
+  cost: number;                   // default/catalog cost (used when no supplier price exists)
   reserveOverride: number | null;
   coverage: number | null;
   depthIn: number | null;
   notes: string;
-  supplier_name: string;
-  supplier_sku: string;
-  supplier_phone: string;
-  supplier_contact: string;
-  lead_time_days: number | null;
-  price_update_date: string;
-  supplier_notes: string;
+  // Inventory tracking
   qtyOnHand: number;
   minStockLevel: number;
   storageLocation: string;
@@ -253,6 +247,9 @@ export interface ManifestItem {
   unitCost: number;
   subtotal: number;
   unit: string;
+  // Supplier info (populated when supplier prices are available)
+  supplierId: string | null;
+  supplierName: string | null;
 }
 
 export interface Alert {
@@ -327,11 +324,76 @@ export interface InventoryItem {
   lastRestocked: string;
 }
 
+// ── Suppliers ────────────────────────────────────────────────────────────────
+
 export interface Supplier {
   id: string;
+  orgId: string;
   name: string;
-  contact: string;
+  contactName: string;
   phone: string;
+  email: string;
+  address: string;
+  website: string;
+  categories: MaterialCategory[];
+  notes: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupplierPrice {
+  id: string;
+  orgId: string;
+  materialId: string;
+  supplierId: string;
+  unitCost: number;
+  sku: string;
+  leadTimeDays: number | null;
+  minOrderQty: number | null;
+  notes: string;
+  isPreferred: boolean;
+  quotedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  // Joined fields (populated by fetch queries)
+  supplierName?: string;
+  materialName?: string;
+}
+
+// ── Quote Requests ───────────────────────────────────────────────────────────
+
+export type QuoteRequestStatus = 'draft' | 'sent' | 'received' | 'accepted' | 'declined' | 'expired';
+
+export interface QuoteRequest {
+  id: string;
+  orgId: string;
+  projectId: string;
+  supplierId: string;
+  status: QuoteRequestStatus;
+  sentAt: string | null;
+  respondedAt: string | null;
+  expiresAt: string | null;
+  totalQuoted: number | null;
+  notes: string;
+  pdfUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  // Joined fields
+  supplierName?: string;
+  projectName?: string;
+}
+
+export interface QuoteRequestItem {
+  id: string;
+  quoteRequestId: string;
+  materialId: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  estimatedCost: number | null;
+  quotedCost: number | null;
+  quotedTotal: number | null;
   notes: string;
 }
 

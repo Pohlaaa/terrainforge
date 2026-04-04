@@ -328,3 +328,23 @@ export async function deleteProject(id: string): Promise<boolean> {
     return false
   }
 }
+
+// ===== PROJECT MATERIALS (JSONB) =====
+
+export async function updateProjectMaterials(
+  projectId: string,
+  materials: unknown[]
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .update({ materials })
+      .eq('id', projectId)
+
+    if (error) throw error
+    return true
+  } catch (err: unknown) {
+    onSupabaseError('UPDATE', 'projects (materials JSONB)', err)
+    return false
+  }
+}

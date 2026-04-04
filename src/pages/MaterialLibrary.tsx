@@ -50,13 +50,6 @@ interface MaterialForm {
   depthIn: string;
   reserveOverride: string;
   notes: string;
-  supplier_name: string;
-  supplier_sku: string;
-  supplier_phone: string;
-  supplier_contact: string;
-  lead_time_days: string;
-  price_update_date: string;
-  supplier_notes: string;
   qtyOnHand: string;
   minStockLevel: string;
   storageLocation: string;
@@ -66,8 +59,6 @@ interface MaterialForm {
 const EMPTY_FORM: MaterialForm = {
   name: '', category: 'paver', unit: 'sqft', cost: '',
   coverage: '', depthIn: '', reserveOverride: '', notes: '',
-  supplier_name: '', supplier_sku: '', supplier_phone: '', supplier_contact: '',
-  lead_time_days: '', price_update_date: '', supplier_notes: '',
   qtyOnHand: '0', minStockLevel: '0', storageLocation: '', lastRestocked: '',
 };
 
@@ -81,13 +72,6 @@ function materialToForm(m: Material): MaterialForm {
     depthIn: m.depthIn !== null ? String(m.depthIn) : '',
     reserveOverride: m.reserveOverride !== null ? String(m.reserveOverride * 100) : '',
     notes: m.notes,
-    supplier_name: m.supplier_name,
-    supplier_sku: m.supplier_sku,
-    supplier_phone: m.supplier_phone,
-    supplier_contact: m.supplier_contact,
-    lead_time_days: m.lead_time_days !== null ? String(m.lead_time_days) : '',
-    price_update_date: m.price_update_date,
-    supplier_notes: m.supplier_notes,
     qtyOnHand: String(m.qtyOnHand),
     minStockLevel: String(m.minStockLevel),
     storageLocation: m.storageLocation,
@@ -105,13 +89,6 @@ function formToMaterial(f: MaterialForm): Omit<Material, 'id'> {
     depthIn: f.depthIn ? parseFloat(f.depthIn) : null,
     reserveOverride: f.reserveOverride ? parseFloat(f.reserveOverride) / 100 : null,
     notes: f.notes.trim(),
-    supplier_name: f.supplier_name.trim(),
-    supplier_sku: f.supplier_sku.trim(),
-    supplier_phone: f.supplier_phone.trim(),
-    supplier_contact: f.supplier_contact.trim(),
-    lead_time_days: f.lead_time_days ? parseInt(f.lead_time_days) : null,
-    price_update_date: f.price_update_date || new Date().toISOString().split('T')[0],
-    supplier_notes: f.supplier_notes.trim(),
     qtyOnHand: parseInt(f.qtyOnHand) || 0,
     minStockLevel: parseInt(f.minStockLevel) || 0,
     storageLocation: f.storageLocation.trim(),
@@ -208,10 +185,7 @@ export const MaterialLibrary: React.FC = () => {
       await addMaterial({
         name: row.name, category: row.category, unit: row.unit,
         cost: parseFloat(row.cost) || 0, reserveOverride: null, coverage: null,
-        depthIn: null, notes: '', supplier_name: '', supplier_sku: '', supplier_phone: '',
-        supplier_contact: '', lead_time_days: null,
-        price_update_date: new Date().toISOString().split('T')[0],
-        supplier_notes: '', qtyOnHand: 0, minStockLevel: 0,
+        depthIn: null, notes: '', qtyOnHand: 0, minStockLevel: 0,
         storageLocation: '', lastRestocked: '',
       });
       count++;
@@ -225,7 +199,7 @@ export const MaterialLibrary: React.FC = () => {
   const filteredMaterials = useMemo(() => {
     const q = searchTerm.toLowerCase();
     return materials.filter((m) => {
-      const matchSearch = !q || m.name.toLowerCase().includes(q) || m.supplier_name.toLowerCase().includes(q);
+      const matchSearch = !q || m.name.toLowerCase().includes(q);
       const matchCat = !filterCategory || m.category === filterCategory;
       return matchSearch && matchCat;
     });
@@ -240,25 +214,7 @@ export const MaterialLibrary: React.FC = () => {
     });
   }, [materials, invSearch, invFilter]);
 
-  // Unique suppliers derived from materials
-  const supplierMap = useMemo(() => {
-    const map = new Map<string, { contact: string; phone: string; notes: string; materials: string[] }>();
-    for (const m of materials) {
-      if (!m.supplier_name) continue;
-      const existing = map.get(m.supplier_name);
-      if (existing) {
-        existing.materials.push(m.name);
-      } else {
-        map.set(m.supplier_name, {
-          contact: m.supplier_contact,
-          phone: m.supplier_phone,
-          notes: m.supplier_notes,
-          materials: [m.name],
-        });
-      }
-    }
-    return map;
-  }, [materials]);
+  // Note: Supplier information is now managed separately from materials
 
   const lowStockCount = useMemo(() => materials.filter(isLowStock).length, [materials]);
   const lowStockItems = useMemo(() => materials.filter(isLowStock), [materials]);
@@ -291,7 +247,7 @@ export const MaterialLibrary: React.FC = () => {
   const displayMaterials = useMemo(() => {
     return materials.filter(m => {
       const matchCat = activeCatDef.match(m.category);
-      const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) || (m.supplier_name ?? '').toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase());
       const status = getStockStatus(m);
       const matchStock = stockFilter === 'all' || status === stockFilter;
       return matchCat && matchSearch && matchStock;
@@ -305,9 +261,7 @@ export const MaterialLibrary: React.FC = () => {
       name: quickName.trim(), category: quickCategory, unit: quickUnit,
       cost: parseFloat(quickCost) || 0, qtyOnHand: parseInt(quickQty) || 0,
       minStockLevel: 0, reserveOverride: null, coverage: null, depthIn: null,
-      notes: '', supplier_name: '', supplier_sku: '', supplier_phone: '',
-      supplier_contact: '', lead_time_days: null, price_update_date: '',
-      supplier_notes: '', storageLocation: '', lastRestocked: '',
+      notes: '', storageLocation: '', lastRestocked: '',
     });
     const name = quickName.trim();
     setQuickName(''); setQuickCost(''); setQuickQty('');

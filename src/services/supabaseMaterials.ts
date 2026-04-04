@@ -37,7 +37,7 @@ export async function createMaterial(material: Omit<Material, 'id'>, id: string,
     if ('reserve_override' in snakeData) { snakeData.reserve_override_pct = snakeData.reserve_override; delete snakeData.reserve_override }
 
     // Sanitize empty strings for timestamp columns — Postgres rejects "" for TIMESTAMPTZ
-    const MATERIAL_TIMESTAMP_FIELDS = ['price_update_date', 'last_restocked', 'created_at', 'updated_at'];
+    const MATERIAL_TIMESTAMP_FIELDS = ['last_restocked', 'created_at', 'updated_at'];
     const cleanData = sanitizeTimestamps(snakeData, MATERIAL_TIMESTAMP_FIELDS);
 
     const { data, error } = await supabase

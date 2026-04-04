@@ -4,7 +4,7 @@
 
 export { setSupabaseErrorReporter, toCamelCase, toSnakeCase, sanitizeTimestamps, onSupabaseError } from './supabaseCore'
 
-export { fetchProjects, fetchProjectFull, createProject, updateProject, deleteProject } from './supabaseProjects'
+export { fetchProjects, fetchProjectFull, createProject, updateProject, deleteProject, updateProjectMaterials } from './supabaseProjects'
 
 export { createZone, updateZone, deleteZone, setZoneMaterials, setZoneEquipment, fetchZoneMaterialDetails } from './supabaseZones'
 
@@ -35,3 +35,13 @@ export {
 } from './supabaseProjectDetails'
 
 export { insertSampleData, clearSampleData, diagnoseUserRole } from './supabaseSampleData'
+
+export {
+  fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
+  fetchSupplierPrices, upsertSupplierPrice, deleteSupplierPrice, getPreferredPrice,
+} from './supabaseSuppliers'
+
+export {
+  fetchQuoteRequests, createQuoteRequest, updateQuoteRequestStatus,
+  fetchQuoteRequestItems, updateQuoteRequestItem,
+} from './supabaseQuotes'

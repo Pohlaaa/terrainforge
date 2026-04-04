@@ -2,7 +2,7 @@
  * Manifest Engine - Core calculation logic
  */
 
-import type { Material, Zone, Project, ManifestItem } from '@/types';
+import type { Material, Zone, Project, ManifestItem, SupplierPrice } from '@/types';
 import { RESERVE } from './constants';
 
 export function computeQty(mat: Material, zone: Zone): number {
@@ -49,7 +49,11 @@ export function getReservePct(mat: Material): number {
   return categoryReserve ?? 0.1;
 }
 
-export function generateManifest(project: Project, materials: Material[]): ManifestItem[] {
+export function generateManifest(
+  project: Project,
+  materials: Material[],
+  supplierPrices?: SupplierPrice[]
+): ManifestItem[] {
   const lineItems: ManifestItem[] = [];
   const matMap: Record<string, { mat: Material; computed: number; zones: string[] }> = {};
 
@@ -72,7 +76,13 @@ export function generateManifest(project: Project, materials: Material[]): Manif
     const reservePct = getReservePct(mat);
     const reserveQty = computed * reservePct;
     const totalOrder = Math.ceil(computed + reserveQty);
-    const subtotal = totalOrder * mat.cost;
+
+    // Resolve unit cost: prefer supplier price, fall back to catalog cost
+    const preferredPrice = supplierPrices?.find(
+      (sp) => sp.materialId === mat.id && sp.isPreferred
+    );
+    const unitCost = preferredPrice?.unitCost ?? mat.cost;
+    const subtotal = totalOrder * unitCost;
 
     lineItems.push({
       materialId: mat.id,
@@ -82,9 +92,11 @@ export function generateManifest(project: Project, materials: Material[]): Manif
       qtyNeeded: computed,
       reserveQty: reserveQty,
       totalOrder: totalOrder,
-      unitCost: mat.cost,
+      unitCost: unitCost,
       subtotal: subtotal,
       unit: mat.unit,
+      supplierId: preferredPrice?.supplierId ?? null,
+      supplierName: preferredPrice?.supplierName ?? null,
     });
   });
 

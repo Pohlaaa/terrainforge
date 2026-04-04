@@ -87,7 +87,7 @@ export const MaterialTable: React.FC<MaterialTableProps> = ({
                   <span className="inline-flex items-center gap-1.5 text-[12px] font-[500] px-2.5 py-1 rounded-full bg-[var(--status-red-bg)] text-[var(--status-red)]">● Out</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-[13px] text-[var(--text-secondary)]">{material.supplier_name || '—'}</td>
+              <td className="px-4 py-3 text-[13px] text-[var(--text-secondary)]">—</td>
               <td className="px-4 py-3 text-right">
                 <div className="flex gap-1 justify-end">
                   <button
