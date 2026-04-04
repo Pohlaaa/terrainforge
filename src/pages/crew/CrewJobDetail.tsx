@@ -9,8 +9,8 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useOrgStore } from '@/stores/orgStore';
-import { fetchScheduleEntries, fetchCrewStatus, upsertCrewStatus, fetchChecklistProgress, saveChecklistStep, removeChecklistStep, uploadCrewPhoto, fetchCrewPhotos, getPhotoUrl } from '@/services/supabaseData';
-import type { CrewPhoto } from '@/services/supabaseData';
+import { useScheduleStore } from '@/stores/scheduleStore';
+import type { CrewPhoto } from '@/services/supabaseCrewOps';
 import { generateSteps } from '@/lib/workorders';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import type { ScheduleEntry } from '@/types';
@@ -22,6 +22,7 @@ export const CrewJobDetail: React.FC = () => {
   const { materials } = useMaterialStore();
   const { equipment } = useEquipmentStore();
   const orgId = useOrgStore((s) => s.org?.id);
+  const schedule = useScheduleStore();
 
   const [entry, setEntry] = useState<ScheduleEntry | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,8 +39,8 @@ export const CrewJobDetail: React.FC = () => {
   useEffect(() => {
     if (!orgId || !entryId) return;
     const today = new Date().toISOString().split('T')[0];
-    fetchScheduleEntries(orgId, today, today).then((all) => {
-      const found = all.find(e => e.id === entryId) || null;
+    schedule.fetchEntries(orgId, today, today).then(() => {
+      const found = useScheduleStore.getState().entries.find(e => e.id === entryId) || null;
       setEntry(found);
       setLoading(false);
     });
@@ -48,7 +49,7 @@ export const CrewJobDetail: React.FC = () => {
   // Fetch persisted checklist progress
   useEffect(() => {
     if (!entry) return;
-    fetchChecklistProgress(entry.id).then((rows) => {
+    schedule.fetchChecklistProgress(entry.id).then((rows) => {
       const map: Record<string, Set<number>> = {};
       for (const { zoneId, stepNumber } of rows) {
         if (!map[zoneId]) map[zoneId] = new Set();
@@ -61,9 +62,9 @@ export const CrewJobDetail: React.FC = () => {
   // Fetch photos
   useEffect(() => {
     if (!entry) return;
-    fetchCrewPhotos(entry.id).then(async (list) => {
+    schedule.fetchCrewPhotos(entry.id).then(async (list) => {
       const withUrls = await Promise.all(
-        list.map(async (p) => ({ ...p, url: await getPhotoUrl(p.storagePath) }))
+        list.map(async (p) => ({ ...p, url: await schedule.getPhotoUrl(p.storagePath) }))
       );
       setPhotos(withUrls);
     });
@@ -72,7 +73,7 @@ export const CrewJobDetail: React.FC = () => {
   // Fetch current crew status
   useEffect(() => {
     if (!crewMemberId) return;
-    fetchCrewStatus(crewMemberId).then(setCrewStatus);
+    schedule.fetchCrewStatus(crewMemberId).then(setCrewStatus);
   }, [crewMemberId]);
 
   const project = entry ? projects.find(p => p.id === entry.projectId) || null : null;
@@ -100,10 +101,10 @@ export const CrewJobDetail: React.FC = () => {
       const zoneSet = new Set(prev[zoneId] ?? []);
       if (zoneSet.has(stepN)) {
         zoneSet.delete(stepN);
-        removeChecklistStep(entry.id, zoneId, stepN);
+        schedule.removeChecklistStep(entry.id, zoneId, stepN);
       } else {
         zoneSet.add(stepN);
-        saveChecklistStep(orgId, entry.id, crewMemberId, zoneId, stepN);
+        schedule.saveChecklistStep(orgId, entry.id, crewMemberId, zoneId, stepN);
       }
       return { ...prev, [zoneId]: zoneSet };
     });
@@ -113,9 +114,9 @@ export const CrewJobDetail: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !orgId || !crewMemberId || !entry) return;
     setUploading(true);
-    const photo = await uploadCrewPhoto(orgId, entry.id, crewMemberId, file);
+    const photo = await schedule.uploadCrewPhoto(orgId, entry.id, crewMemberId, file);
     if (photo) {
-      const url = await getPhotoUrl(photo.storagePath);
+      const url = await schedule.getPhotoUrl(photo.storagePath);
       setPhotos(prev => [...prev, { ...photo, url }]);
     }
     setUploading(false);
@@ -125,7 +126,7 @@ export const CrewJobDetail: React.FC = () => {
   async function handleStatusUpdate(status: string) {
     if (!orgId || !crewMemberId || !entryId || statusUpdating) return;
     setStatusUpdating(true);
-    await upsertCrewStatus(orgId, crewMemberId, entryId, status);
+    await schedule.upsertCrewStatus(orgId, crewMemberId, entryId, status);
     setCrewStatus(status);
     setStatusUpdating(false);
   }

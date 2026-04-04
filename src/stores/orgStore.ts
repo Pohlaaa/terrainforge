@@ -12,6 +12,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/services/supabase';
+import * as db from '@/services/supabaseData';
 import type { Organization, SubscriptionStatus, SubscriptionTier } from '@/types';
 
 // ── Store interface ───────────────────────────────────────────────────────────
@@ -32,6 +33,10 @@ interface OrgStore {
   }) => Promise<void>;
   /** Clear org data on sign-out. */
   clearOrg: () => void;
+  /** Insert sample data for the current org. */
+  insertSampleData: () => Promise<{ success: boolean; error?: string }>;
+  /** Clear sample data for the current org. */
+  clearSampleData: () => Promise<{ success: boolean; error?: string }>;
 }
 
 // ── DB row type (snake_case from Supabase) ────────────────────────────────────
@@ -93,7 +98,7 @@ function makeDefaultOrg(orgId: string): Organization {
 
 export const useOrgStore = create<OrgStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       org: null,
       isLoading: false,
       error: null,
@@ -203,6 +208,18 @@ export const useOrgStore = create<OrgStore>()(
       },
 
       clearOrg: () => set({ org: null, error: null, isLoading: false }),
+
+      insertSampleData: async (): Promise<{ success: boolean; error?: string }> => {
+        const orgId = get().org?.id;
+        if (!orgId) return { success: false, error: 'No org loaded' };
+        return db.insertSampleData(orgId);
+      },
+
+      clearSampleData: async (): Promise<{ success: boolean; error?: string }> => {
+        const orgId = get().org?.id;
+        if (!orgId) return { success: false, error: 'No org loaded' };
+        return db.clearSampleData(orgId);
+      },
     }),
     { name: 'tf_org' }
   )

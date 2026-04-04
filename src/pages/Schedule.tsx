@@ -6,8 +6,7 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useOrgStore } from '@/stores/orgStore';
-import { fetchAllCrewStatuses, fetchChecklistProgressCounts, fetchCrewPhotos, getPhotoUrl } from '@/services/supabaseData';
-import type { CrewPhoto } from '@/services/supabaseData';
+import type { CrewPhoto } from '@/services/supabaseCrewOps';
 import { generateSteps } from '@/lib/workorders';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { HelpIcon } from '@/components/shared/Tooltip';
@@ -289,7 +288,7 @@ const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, existingE
 
 export const Schedule: React.FC = () => {
   const navigate = useNavigate();
-  const { entries, moveEntry, deleteEntry, getEntriesForCrewMember, hasConflict, fetchSchedule } = useScheduleStore();
+  const { entries, moveEntry, deleteEntry, getEntriesForCrewMember, hasConflict, fetchSchedule, fetchAllCrewStatuses, fetchChecklistProgressCounts, fetchCrewPhotos, getPhotoUrl } = useScheduleStore();
   const { projects } = useProjectStore();
   const { crew } = useCrewStore();
   const { equipment } = useEquipmentStore();

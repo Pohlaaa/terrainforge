@@ -33,8 +33,8 @@ export const useEquipmentStore = create<EquipmentStore>()(
       try {
         const equipment = await db.fetchEquipment(orgId)
         set({ equipment, isLoading: false })
-      } catch (err: any) {
-        set({ isLoading: false, error: err.message })
+      } catch (err: unknown) {
+        set({ isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     addEquipment: async (equipData) => {
@@ -55,10 +55,10 @@ export const useEquipmentStore = create<EquipmentStore>()(
           return
         }
         await get().fetchEquipment()
-      } catch (err: any) {
+      } catch (err: unknown) {
         set((state) => ({
           equipment: state.equipment.filter((e) => e.id !== newEquipment.id),
-          error: err.message
+          error: err instanceof Error ? err.message : 'Unknown error'
         }))
       }
     },
@@ -70,8 +70,8 @@ export const useEquipmentStore = create<EquipmentStore>()(
       }))
       try {
         await db.updateEquipment(id, updates)
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     deleteEquipment: async (id) => {
@@ -85,8 +85,8 @@ export const useEquipmentStore = create<EquipmentStore>()(
           equipment: state.equipment.filter((e) => e.id !== id),
         }))
         await get().fetchEquipment()
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     addMaintenanceEntry: async (equipId, entryData) => {
@@ -103,8 +103,8 @@ export const useEquipmentStore = create<EquipmentStore>()(
       }))
       try {
         await db.addMaintenanceEntry(equipId, entryData)
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     getByStatus: (status) =>

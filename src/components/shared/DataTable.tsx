@@ -3,7 +3,7 @@ import React from 'react';
 interface Column<T> {
   header: string;
   accessor: keyof T;
-  render?: (value: any, row: T) => React.ReactNode;
+  render?: (value: T[keyof T], row: T) => React.ReactNode;
 }
 
 interface DataTableProps<T extends { id: string }> {

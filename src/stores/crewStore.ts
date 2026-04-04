@@ -31,8 +31,8 @@ export const useCrewStore = create<CrewStore>()(
       try {
         const crew = await db.fetchCrew(orgId)
         set({ crew, isLoading: false })
-      } catch (err: any) {
-        set({ isLoading: false, error: err.message })
+      } catch (err: unknown) {
+        set({ isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     addCrewMember: async (memberData) => {
@@ -46,8 +46,8 @@ export const useCrewStore = create<CrewStore>()(
       try {
         const result = await db.createCrewMember(memberData, newMember.id, orgId)
         if (!result) console.error('addCrewMember: createCrewMember returned null — Supabase write failed')
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     updateCrewMember: async (id, updates) => {
@@ -58,8 +58,8 @@ export const useCrewStore = create<CrewStore>()(
       }))
       try {
         await db.updateCrewMember(id, updates)
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     deleteCrewMember: async (id) => {
@@ -68,8 +68,8 @@ export const useCrewStore = create<CrewStore>()(
       }))
       try {
         await db.deleteCrewMember(id)
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     getAvailableToday: () => {

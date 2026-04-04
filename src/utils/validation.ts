@@ -45,15 +45,15 @@ export const validation = {
     return value.length <= max
   },
 
-  required: (value: any): boolean => {
+  required: (value: unknown): boolean => {
     if (typeof value === 'string') {
       return value.trim().length > 0
     }
     return value !== null && value !== undefined
   },
 
-  number: (value: any): boolean => {
-    return !isNaN(parseFloat(value)) && isFinite(value)
+  number: (value: unknown): boolean => {
+    return !isNaN(parseFloat(String(value))) && isFinite(Number(value))
   },
 
   positive: (value: number): boolean => {

@@ -7,12 +7,12 @@ interface UIStore {
   sidebarCollapsed: boolean
   theme: 'dark' | 'light'
   currentModal: string | null
-  modalData: any
+  modalData: unknown
   dashboardConfig: DashboardConfig
   searchQuery: string
   setTheme: (theme: 'dark' | 'light') => void
   toggleSidebar: () => void
-  openModal: (name: string, data?: any) => void
+  openModal: (name: string, data?: unknown) => void
   closeModal: () => void
   updateDashboardConfig: (updates: Partial<DashboardConfig>) => void
   setSearchQuery: (query: string) => void
@@ -115,8 +115,9 @@ export const useUIStore = create<UIStore>()(
     }),
     {
       name: 'tf_ui',
-      merge: (persistedState: any, currentState: UIStore) => {
-        const merged = { ...currentState, ...persistedState };
+      merge: (persistedState: unknown, currentState: UIStore) => {
+        const persisted = (persistedState ?? {}) as Partial<UIStore>;
+        const merged = { ...currentState, ...persisted };
         // Ensure new widgets added in future sprints are appended to cached layouts
         if (merged.widgetLayout && Array.isArray(merged.widgetLayout)) {
           const existingTypes = new Set(merged.widgetLayout.map((w: WidgetConfig) => w.type));

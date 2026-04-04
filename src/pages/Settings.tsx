@@ -10,7 +10,6 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { toast } from '@/hooks/useToast';
-import { insertSampleData, clearSampleData } from '@/services/supabaseData';
 import { createPortalSession } from '@/services/stripe';
 import { upsertUserPreferences } from '@/services/preferences';
 import { supabase } from '@/services/supabase';
@@ -38,7 +37,7 @@ function applyTheme(newTheme: 'light' | 'dark' | 'system') {
 
 export const Settings: React.FC = () => {
   const { user } = useAuth()
-  const { org, updateOrgName } = useOrgStore()
+  const { org, updateOrgName, insertSampleData, clearSampleData } = useOrgStore()
   const { projects, setProjects, setActiveProject, fetchProjects } = useProjectStore()
   const { setMaterials, fetchMaterials } = useMaterialStore()
   const { setCrew, fetchCrew } = useCrewStore()
@@ -162,7 +161,7 @@ export const Settings: React.FC = () => {
   async function handleClearSampleData() {
     if (!org?.id) return
     setSampleLoading(true)
-    const result = await clearSampleData(org.id)
+    const result = await clearSampleData()
     if (result.success) {
       // Refresh all stores including schedule
       const monday = new Date();

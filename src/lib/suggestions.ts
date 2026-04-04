@@ -38,12 +38,12 @@ export function scoreEquipment(equipment: Equipment, zone: Zone, zoneMaterials: 
   const matCats = zoneMaterials.map((m) => m.category);
   const caps = equipment.capabilities || [];
 
-  ZONE_EQUIP_RULES.forEach((rule: any) => {
-    const nameMatch = rule.keywords.some((kw: string) => zoneName.includes(kw));
-    const matMatch = rule.matCats.some((cat: string) => matCats.includes(cat));
+  ZONE_EQUIP_RULES.forEach((rule: { keywords: string[]; matCats: string[]; caps: string[] }) => {
+    const nameMatch = rule.keywords.some((kw) => zoneName.includes(kw));
+    const matMatch = rule.matCats.some((cat) => matCats.includes(cat));
 
     if (nameMatch || matMatch) {
-      const capMatches = rule.caps.filter((c: string) => caps.includes(c)).length;
+      const capMatches = rule.caps.filter((c) => caps.includes(c)).length;
       if (capMatches > 0) {
         score += capMatches * 2 + (nameMatch ? 1 : 0) + (matMatch ? 1 : 0);
       }

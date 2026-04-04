@@ -14,7 +14,6 @@ import { ProjectDashboardResources } from '@/components/project-dashboard/Resour
 import { ProjectDashboardCompliance } from '@/components/project-dashboard/ComplianceTab';
 import { ProjectDashboardMaterials } from '@/components/project-dashboard/MaterialsTab';
 import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ZoneMaterialDetail, TaskStatus, TaskPhase } from '@/types';
-import { fetchZoneMaterialDetails } from '@/services/supabaseData';
 
 // ── Status helpers ───────────────────────────────────────────────────────────
 
@@ -72,13 +71,15 @@ export default function ProjectDashboard() {
     deleteProjectSubcontractor,
     createProjectPermit,
     updateProjectPermit,
+    fetchZoneMaterialDetails,
+    zoneMaterialDetails,
   } = useProjectStore();
   const { org } = useOrgStore();
   const { crew } = useCrewStore();
   const orgId = org?.id;
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [zoneMaterials, setZoneMaterials] = useState<ZoneMaterialDetail[]>([]);
+  const zoneMaterials = zoneMaterialDetails;
   const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -91,9 +92,11 @@ export default function ProjectDashboard() {
     // Fetch zone materials separately (doesn't need orgId filter — filtered by project's zones)
     setLoadingMaterials(true);
     fetchZoneMaterialDetails(id)
-      .then((m) => setZoneMaterials(m ?? []))
-      .catch((err) => console.error('Failed to load zone materials:', err))
-      .finally(() => setLoadingMaterials(false));
+      .then(() => setLoadingMaterials(false))
+      .catch((err) => {
+        console.error('Failed to load zone materials:', err);
+        setLoadingMaterials(false);
+      });
 
     return () => {
       clearActiveProject();

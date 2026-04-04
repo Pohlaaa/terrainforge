@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ScheduleEntry, ProjectCrewAssignment } from '@/types'
+import type { CrewPhoto } from '@/services/supabaseCrewOps'
 import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
 
@@ -38,6 +39,20 @@ interface ScheduleStore {
   isLoading: boolean
   reset: () => void
   setEntries: (entries: ScheduleEntry[]) => void
+
+  // Crew operations (routed through store to avoid page→supabaseData imports)
+  fetchTodayEntriesForCrew: (orgId: string, crewMemberId: string) => Promise<ScheduleEntry[]>
+  fetchCrewStatus: (crewMemberId: string) => Promise<string>
+  upsertCrewStatus: (orgId: string, crewMemberId: string, scheduleEntryId: string, status: string) => Promise<void>
+  fetchAllCrewStatuses: (orgId: string) => Promise<Array<{ crewMemberId: string; status: string }>>
+  fetchChecklistProgress: (scheduleEntryId: string) => Promise<Array<{ zoneId: string; stepNumber: number }>>
+  saveChecklistStep: (orgId: string, scheduleEntryId: string, crewMemberId: string, zoneId: string, stepNumber: number) => Promise<void>
+  removeChecklistStep: (scheduleEntryId: string, zoneId: string, stepNumber: number) => Promise<void>
+  fetchChecklistProgressCounts: (scheduleEntryIds: string[]) => Promise<Record<string, number>>
+  uploadCrewPhoto: (orgId: string, scheduleEntryId: string, crewMemberId: string, file: File, zoneId?: string, stepNumber?: number, caption?: string) => Promise<CrewPhoto | null>
+  fetchCrewPhotos: (scheduleEntryId: string) => Promise<CrewPhoto[]>
+  getPhotoUrl: (storagePath: string) => Promise<string>
+  deleteCrewPhoto: (id: string, storagePath: string) => Promise<boolean>
 }
 
 function isoDate(d: Date): string {
@@ -66,8 +81,8 @@ export const useScheduleStore = create<ScheduleStore>()(
       try {
         const assignments = await db.fetchAllProjectCrewAssignments(orgId);
         set({ assignments });
-      } catch (err: any) {
-        set({ error: err.message });
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' });
       }
     },
 
@@ -78,8 +93,8 @@ export const useScheduleStore = create<ScheduleStore>()(
         if (!result) return null;
         set((state) => ({ assignments: [...state.assignments, result] }));
         return result;
-      } catch (err: any) {
-        set({ error: err.message });
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' });
         return null;
       }
     },
@@ -92,8 +107,8 @@ export const useScheduleStore = create<ScheduleStore>()(
         if (!success) {
           set({ assignments: prev, error: 'Failed to delete assignment' });
         }
-      } catch (err: any) {
-        set({ assignments: prev, error: err.message });
+      } catch (err: unknown) {
+        set({ assignments: prev, error: err instanceof Error ? err.message : 'Unknown error' });
       }
     },
 
@@ -104,8 +119,8 @@ export const useScheduleStore = create<ScheduleStore>()(
       try {
         const entries = await db.fetchScheduleEntries(orgId, startDate, endDate);
         set({ entries, loading: false, isLoading: false });
-      } catch (err: any) {
-        set({ loading: false, isLoading: false, error: err.message });
+      } catch (err: unknown) {
+        set({ loading: false, isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' });
       }
     },
 
@@ -130,10 +145,10 @@ export const useScheduleStore = create<ScheduleStore>()(
       set((state) => ({ entries: [...state.entries, newEntry] }));
       try {
         await db.createScheduleEntry({ ...entryData, orgId }, newEntry.id, orgId);
-      } catch (err: any) {
+      } catch (err: unknown) {
         set((state) => ({
           entries: state.entries.filter((e) => e.id !== newEntry.id),
-          error: err.message,
+          error: err instanceof Error ? err.message : 'Unknown error',
         }));
       }
     },
@@ -150,8 +165,8 @@ export const useScheduleStore = create<ScheduleStore>()(
       }));
       try {
         await db.updateScheduleEntry(id, updates);
-      } catch (err: any) {
-        set({ error: err.message });
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' });
       }
     },
 
@@ -160,8 +175,8 @@ export const useScheduleStore = create<ScheduleStore>()(
       set((state) => ({ entries: state.entries.filter((e) => e.id !== id) }));
       try {
         await db.deleteScheduleEntry(id);
-      } catch (err: any) {
-        set({ entries: prev, error: err.message });
+      } catch (err: unknown) {
+        set({ entries: prev, error: err instanceof Error ? err.message : 'Unknown error' });
       }
     },
 
@@ -193,5 +208,39 @@ export const useScheduleStore = create<ScheduleStore>()(
       ).length;
       return count >= 2;
     },
+
+    // ── Crew operations ────────────────────────────────────────────────────
+
+    fetchTodayEntriesForCrew: async (orgId, crewMemberId) => {
+      const today = new Date().toISOString().split('T')[0];
+      const all = await db.fetchScheduleEntries(orgId, today, today);
+      return all.filter(e => e.crewMemberId === crewMemberId);
+    },
+
+    fetchCrewStatus: (crewMemberId) => db.fetchCrewStatus(crewMemberId),
+
+    upsertCrewStatus: (orgId, crewMemberId, scheduleEntryId, status) =>
+      db.upsertCrewStatus(orgId, crewMemberId, scheduleEntryId, status),
+
+    fetchAllCrewStatuses: (orgId) => db.fetchAllCrewStatuses(orgId),
+
+    fetchChecklistProgress: (scheduleEntryId) => db.fetchChecklistProgress(scheduleEntryId),
+
+    saveChecklistStep: (orgId, scheduleEntryId, crewMemberId, zoneId, stepNumber) =>
+      db.saveChecklistStep(orgId, scheduleEntryId, crewMemberId, zoneId, stepNumber),
+
+    removeChecklistStep: (scheduleEntryId, zoneId, stepNumber) =>
+      db.removeChecklistStep(scheduleEntryId, zoneId, stepNumber),
+
+    fetchChecklistProgressCounts: (scheduleEntryIds) => db.fetchChecklistProgressCounts(scheduleEntryIds),
+
+    uploadCrewPhoto: (orgId, scheduleEntryId, crewMemberId, file, zoneId, stepNumber, caption) =>
+      db.uploadCrewPhoto(orgId, scheduleEntryId, crewMemberId, file, zoneId, stepNumber, caption),
+
+    fetchCrewPhotos: (scheduleEntryId) => db.fetchCrewPhotos(scheduleEntryId),
+
+    getPhotoUrl: (storagePath) => db.getPhotoUrl(storagePath),
+
+    deleteCrewPhoto: (id, storagePath) => db.deleteCrewPhoto(id, storagePath),
   })
 );

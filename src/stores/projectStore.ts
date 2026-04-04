@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import type {
   Project, Zone, ProjectListItem, ProjectFull,
   ProjectTask, ProjectSubcontractor, ProjectPermit,
-  ProjectCrewAssignment, ProjectSiteCondition, ProjectMaterialEntry, ProjectCrewEntry
+  ProjectCrewAssignment, ProjectSiteCondition, ProjectMaterialEntry, ProjectCrewEntry,
+  ZoneMaterialDetail,
 } from '@/types'
 import { computeProjectCostRaw } from '@/lib/manifest'
 import { useMaterialStore } from './materialStore'
@@ -14,18 +15,21 @@ import { toast } from '@/hooks/useToast'
 // Wire up Supabase error reporter — shows toasts and structured console logs
 db.setSupabaseErrorReporter((operation, table, error) => {
   console.error(`[TF-SUPABASE] ${operation} on ${table} failed:`, error);
-  toast.error(`Database error on ${table}: ${error?.message || 'Unknown error'}. Check console.`);
+  const message = error instanceof Error ? error.message : (error as Record<string, unknown>)?.message || 'Unknown error';
+  toast.error(`Database error on ${table}: ${message}. Check console.`);
 });
 
 interface ProjectStore {
   // State
   projects: ProjectListItem[]
   activeProject: ProjectFull | null
+  zoneMaterialDetails: ZoneMaterialDetail[]
   loading: boolean
   error: string | null
 
   // List actions
   fetchProjects: (orgId?: string) => Promise<void>
+  fetchZoneMaterialDetails: (projectId: string) => Promise<void>
   fetchProjectFull: (orgId: string, projectId: string) => Promise<void>
   clearActiveProject: () => void
 
@@ -80,6 +84,7 @@ export const useProjectStore = create<ProjectStore>()(
     // State
     projects: [],
     activeProject: null,
+    zoneMaterialDetails: [],
     loading: false,
     error: null,
     activeProjectId: null,
@@ -88,7 +93,7 @@ export const useProjectStore = create<ProjectStore>()(
     projectCrew: {},
 
     reset: () => set({
-      projects: [], activeProject: null, loading: false, error: null,
+      projects: [], activeProject: null, zoneMaterialDetails: [], loading: false, error: null,
       activeProjectId: null, isLoading: false, projectMaterials: {}, projectCrew: {}
     }),
 
@@ -107,13 +112,14 @@ export const useProjectStore = create<ProjectStore>()(
         // Build backward-compat projectMaterials map
         const projectMaterials: Record<string, ProjectMaterialEntry[]> = {}
         for (const p of projects) {
-          if (Array.isArray((p as any).materials) && (p as any).materials.length > 0) {
-            projectMaterials[p.id] = (p as any).materials
+          const pMats = (p as unknown as Record<string, unknown>).materials;
+          if (Array.isArray(pMats) && pMats.length > 0) {
+            projectMaterials[p.id] = pMats as ProjectMaterialEntry[]
           }
         }
         set({ projects, loading: false, isLoading: false, projectMaterials })
-      } catch (err: any) {
-        set({ loading: false, isLoading: false, error: err.message })
+      } catch (err: unknown) {
+        set({ loading: false, isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
 
@@ -122,12 +128,22 @@ export const useProjectStore = create<ProjectStore>()(
       try {
         const project = await db.fetchProjectFull(orgId, projectId)
         set({ activeProject: project, loading: false, isLoading: false })
-      } catch (err: any) {
-        set({ loading: false, isLoading: false, error: err.message })
+      } catch (err: unknown) {
+        set({ loading: false, isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
 
-    clearActiveProject: () => set({ activeProject: null, activeProjectId: null }),
+    fetchZoneMaterialDetails: async (projectId: string) => {
+      try {
+        const details = await db.fetchZoneMaterialDetails(projectId);
+        set({ zoneMaterialDetails: details });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        console.error('fetchZoneMaterialDetails error:', message);
+      }
+    },
+
+    clearActiveProject: () => set({ activeProject: null, activeProjectId: null, zoneMaterialDetails: [] }),
 
     // ── Project CRUD ─────────────────────────────────────────────────────────
 
@@ -142,8 +158,8 @@ export const useProjectStore = create<ProjectStore>()(
         // Refresh project list
         await get().fetchProjects(orgId)
         return result
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return null
       }
     },
@@ -181,11 +197,11 @@ export const useProjectStore = create<ProjectStore>()(
         // Refresh project list to get accurate summaries
         const orgId = useOrgStore.getState().org?.id
         if (orgId) await get().fetchProjects(orgId)
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (previous) {
           set((state) => ({
             projects: state.projects.map((p) => p.id === id ? previous as ProjectListItem : p),
-            error: err.message,
+            error: err instanceof Error ? err.message : 'Unknown error',
           }))
         }
       }
@@ -203,8 +219,8 @@ export const useProjectStore = create<ProjectStore>()(
           activeProject: state.activeProject?.id === id ? null : state.activeProject,
           activeProjectId: state.activeProjectId === id ? null : state.activeProjectId,
         }))
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
 
@@ -222,8 +238,8 @@ export const useProjectStore = create<ProjectStore>()(
             : state.activeProject,
         }))
         return result
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return null
       }
     },
@@ -238,8 +254,8 @@ export const useProjectStore = create<ProjectStore>()(
             : state.activeProject,
         }))
         return result
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return null
       }
     },
@@ -254,8 +270,8 @@ export const useProjectStore = create<ProjectStore>()(
             : state.activeProject,
         }))
         return true
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return false
       }
     },
@@ -271,8 +287,8 @@ export const useProjectStore = create<ProjectStore>()(
             : state.activeProject,
         }))
         return result
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return null
       }
     },
@@ -287,8 +303,8 @@ export const useProjectStore = create<ProjectStore>()(
             : state.activeProject,
         }))
         return result
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return null
       }
     },
@@ -303,8 +319,8 @@ export const useProjectStore = create<ProjectStore>()(
             : state.activeProject,
         }))
         return true
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return false
       }
     },
@@ -320,8 +336,8 @@ export const useProjectStore = create<ProjectStore>()(
             : state.activeProject,
         }))
         return result
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return null
       }
     },
@@ -336,8 +352,8 @@ export const useProjectStore = create<ProjectStore>()(
             : state.activeProject,
         }))
         return result
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
         return null
       }
     },
@@ -359,8 +375,8 @@ export const useProjectStore = create<ProjectStore>()(
       }))
       try {
         await db.createZone(projectId, zoneData, orgId)
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
 
@@ -374,8 +390,8 @@ export const useProjectStore = create<ProjectStore>()(
       }))
       try {
         await db.updateZone(zoneId, updates)
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
 
@@ -387,8 +403,8 @@ export const useProjectStore = create<ProjectStore>()(
       }))
       try {
         await db.deleteZone(zoneId)
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
 
@@ -403,8 +419,8 @@ export const useProjectStore = create<ProjectStore>()(
       }))
       try {
         await db.updateProject(projectId, { checklist: newChecklist })
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
 

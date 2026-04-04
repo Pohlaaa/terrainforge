@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useCrewStore } from '@/stores/crewStore';
 import { useOrgStore } from '@/stores/orgStore';
-import { fetchScheduleEntries } from '@/services/supabaseData';
+import { useScheduleStore } from '@/stores/scheduleStore';
 import { Badge } from '@/components/shared/Badge';
 import type { ScheduleEntry } from '@/types';
 
@@ -38,6 +38,7 @@ export const CrewDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { projects } = useProjectStore();
   const { crew } = useCrewStore();
+  const { fetchTodayEntriesForCrew } = useScheduleStore();
   const orgId = useOrgStore((s) => s.org?.id);
 
   const [crewMemberId, setCrewMemberId] = useState<string | null>(
@@ -53,9 +54,8 @@ export const CrewDashboard: React.FC = () => {
   const loadSchedule = React.useCallback(() => {
     if (!orgId || !crewMemberId) return;
     setLoading(true);
-    const today = todayStr();
-    fetchScheduleEntries(orgId, today, today).then((all) => {
-      setEntries(all.filter(e => e.crewMemberId === crewMemberId));
+    fetchTodayEntriesForCrew(orgId, crewMemberId).then((filtered) => {
+      setEntries(filtered);
       setLoading(false);
       setLastFetched(new Date());
     });

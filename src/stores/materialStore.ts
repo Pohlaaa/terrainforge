@@ -33,8 +33,8 @@ export const useMaterialStore = create<MaterialStore>()(
       try {
         const materials = await db.fetchMaterials(orgId)
         set({ materials, isLoading: false })
-      } catch (err: any) {
-        set({ isLoading: false, error: err.message })
+      } catch (err: unknown) {
+        set({ isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     addMaterial: async (materialData) => {
@@ -55,10 +55,10 @@ export const useMaterialStore = create<MaterialStore>()(
           return
         }
         await get().fetchMaterials()
-      } catch (err: any) {
+      } catch (err: unknown) {
         set((state) => ({
           materials: state.materials.filter((m) => m.id !== newMaterial.id),
-          error: err.message
+          error: err instanceof Error ? err.message : 'Unknown error'
         }))
       }
     },
@@ -70,8 +70,8 @@ export const useMaterialStore = create<MaterialStore>()(
       }))
       try {
         await db.updateMaterial(id, updates)
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     deleteMaterial: async (id) => {
@@ -85,8 +85,8 @@ export const useMaterialStore = create<MaterialStore>()(
           materials: state.materials.filter((m) => m.id !== id),
         }))
         await get().fetchMaterials()
-      } catch (err: any) {
-        set({ error: err.message })
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
       }
     },
     getMaterialById: (id) =>
@@ -103,8 +103,8 @@ export const useMaterialStore = create<MaterialStore>()(
         }))
         try {
           await db.updateMaterial(id, { qtyOnHand: material.qtyOnHand + qty })
-        } catch (err: any) {
-          set({ error: err.message })
+        } catch (err: unknown) {
+          set({ error: err instanceof Error ? err.message : 'Unknown error' })
         }
       }
     },
