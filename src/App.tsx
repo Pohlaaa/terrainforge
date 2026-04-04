@@ -24,6 +24,8 @@ import Onboarding from '@/pages/Onboarding'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
 import ForgotPassword from '@/pages/ForgotPassword'
+import AuthCallback from '@/pages/AuthCallback'
+import ResetPassword from '@/pages/ResetPassword'
 const Landing = React.lazy(() => import('@/pages/Landing'))
 
 // Lazy-load new hub pages
@@ -90,6 +92,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Onboarding — requires auth but no layout */}
           <Route path="/onboarding" element={

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/services/supabase'
 
 export const Signup: React.FC = () => {
   const { user, signUp } = useAuth()
@@ -19,6 +20,10 @@ export const Signup: React.FC = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showVerification, setShowVerification] = useState(false)
+  const [resendCount, setResendCount] = useState(0)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendMessage, setResendMessage] = useState('')
   const validateForm = (): boolean => {
     if (!fullName.trim()) {
       setError('Full name is required')
@@ -68,16 +73,85 @@ export const Signup: React.FC = () => {
         full_name: fullName,
         company_name: companyName,
       })
-      setSuccess(true)
-      setTimeout(() => {
-        navigate('/onboarding')
-      }, 2000)
+      // Check if email confirmation is required
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        // No session = email confirmation required
+        setShowVerification(true)
+      } else {
+        // Auto-confirmed — go to onboarding
+        setSuccess(true)
+        setTimeout(() => navigate('/onboarding'), 2000)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create account'
       setError(message)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) { clearInterval(timer); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
+  const handleResend = useCallback(async () => {
+    if (resendCooldown > 0) return
+    setResendMessage('')
+    await supabase.auth.resend({ type: 'signup', email })
+    setResendCount(prev => prev + 1)
+    setResendCooldown(60)
+    setResendMessage('Email resent!')
+  }, [email, resendCooldown])
+
+  if (showVerification) {
+    return (
+      <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-8 text-center">
+            <div className="text-5xl mb-4">&#9993;</div>
+            <h2 className="text-xl font-semibold text-[var(--text)] mb-4">
+              Check your email
+            </h2>
+            <p className="text-[var(--text-2)] mb-6">
+              We sent a verification link to <strong className="text-[var(--text)]">{email}</strong>. Click the link to activate your account.
+            </p>
+            {resendMessage && (
+              <p className="text-[var(--green-l)] text-sm mb-4">{resendMessage}</p>
+            )}
+            {resendCount >= 2 ? (
+              <p className="text-[var(--text-3)] text-sm mb-4">
+                Still not receiving emails? Check your spam folder or try a different email address.
+              </p>
+            ) : (
+              <button
+                onClick={handleResend}
+                disabled={resendCooldown > 0}
+                className="text-sm text-[var(--blue-l)] hover:text-[var(--blue)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : "Didn't receive it? Resend"}
+              </button>
+            )}
+            <div className="mt-6">
+              <Link
+                to="/login"
+                className="text-sm text-[var(--text-3)] hover:text-[var(--text-2)] transition-colors"
+              >
+                Back to login
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (success) {
