@@ -10,6 +10,7 @@ import { WizardStep5 } from '@/components/wizard/WizardStep5';
 import { WizardStep6 } from '@/components/wizard/WizardStep6';
 import { WizardStep7 } from '@/components/wizard/WizardStep7';
 import { WizardStepMaterials } from '@/components/wizard/WizardStepMaterials';
+import WizardStepMeasurements from '@/components/wizard/WizardStepMeasurements';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { useCrewStore } from '@/stores/crewStore';
@@ -201,14 +202,15 @@ const INITIAL_DATA: WizardData = {
 };
 
 const WIZARD_STEPS = [
-  { label: 'Job Description', shortLabel: 'Job' },
-  { label: 'Site Intelligence', shortLabel: 'Site' },
-  { label: 'Scope & Tasks', shortLabel: 'Tasks' },
-  { label: 'Resources', shortLabel: 'Resources' },
-  { label: 'Materials', shortLabel: 'Materials' },
-  { label: 'Compliance', shortLabel: 'Permits' },
-  { label: 'Budget & Cost Breakdown', shortLabel: 'Budget' },
-  { label: 'Review & Create', shortLabel: 'Review' },
+  { label: 'Job Description', shortLabel: 'Job' },           // 0
+  { label: 'Site Intelligence', shortLabel: 'Site' },         // 1
+  { label: 'Project Measurements', shortLabel: 'Measurements' }, // 2 — NEW
+  { label: 'Scope & Tasks', shortLabel: 'Tasks' },            // 3
+  { label: 'Resources', shortLabel: 'Resources' },            // 4
+  { label: 'Materials', shortLabel: 'Materials' },             // 5
+  { label: 'Compliance', shortLabel: 'Permits' },             // 6
+  { label: 'Budget & Cost Breakdown', shortLabel: 'Budget' }, // 7
+  { label: 'Review & Create', shortLabel: 'Review' },         // 8
 ];
 
 export default function ProjectWizard() {
@@ -718,6 +720,38 @@ export default function ProjectWizard() {
         }
       }
 
+      // Save project elements (measurement-driven architecture)
+      if (data.elements.length > 0) {
+        setCreateStatus('Saving measurements...');
+        for (const el of data.elements) {
+          try {
+            const computedArea = (el.lengthFt && el.widthFt)
+              ? el.lengthFt * el.widthFt
+              : el.areaSqft ?? 0;
+
+            await projectStore.addElement({
+              orgId,
+              projectId,
+              name: el.name.trim() || `${el.elementType} ${data.elements.indexOf(el) + 1}`,
+              elementType: el.elementType,
+              lengthFt: el.lengthFt,
+              widthFt: el.widthFt,
+              areaSqft: el.areaSqft,
+              linearFt: el.linearFt,
+              heightFt: el.heightFt,
+              depthIn: el.depthIn,
+              computedAreaSqft: computedArea,
+              notes: el.notes || '',
+              sequence: data.elements.indexOf(el),
+              createdAt: new Date().toISOString(),
+            }, orgId);
+          } catch (err) {
+            console.error('Element save failed:', err);
+            downstreamErrors = true;
+          }
+        }
+      }
+
       if (downstreamErrors) {
         console.warn('Project created with some assignment errors. User can fix on dashboard.');
       }
@@ -770,6 +804,12 @@ export default function ProjectWizard() {
         {currentStep === 0 && <WizardStep1 data={data} onChange={handleChange} />}
         {currentStep === 1 && <WizardStep2 data={data} onChange={handleChange} />}
         {currentStep === 2 && (
+          <WizardStepMeasurements
+            data={data}
+            onChange={handleChange}
+          />
+        )}
+        {currentStep === 3 && (
           <WizardStep3
             data={data}
             onChange={handleChange}
@@ -784,7 +824,7 @@ export default function ProjectWizard() {
             onReset={() => handleResetCategory('tasks')}
           />
         )}
-        {currentStep === 3 && (
+        {currentStep === 4 && (
           <WizardStep4
             data={data}
             onChange={handleChange}
@@ -806,7 +846,7 @@ export default function ProjectWizard() {
             onResetEquipment={() => handleResetCategory('equipment')}
           />
         )}
-        {currentStep === 4 && (
+        {currentStep === 5 && (
           <WizardStepMaterials
             data={data}
             onChange={handleChange}
@@ -821,7 +861,7 @@ export default function ProjectWizard() {
             onReset={() => handleResetCategory('materials')}
           />
         )}
-        {currentStep === 5 && (
+        {currentStep === 6 && (
           <WizardStep6
             data={data}
             onChange={handleChange}
@@ -836,14 +876,14 @@ export default function ProjectWizard() {
             onReset={() => handleResetCategory('permits')}
           />
         )}
-        {currentStep === 6 && (
+        {currentStep === 7 && (
           <WizardStep5
             data={data}
             onChange={handleChange}
             recommendations={recommendations}
           />
         )}
-        {currentStep === 7 && <WizardStep7 data={data} />}
+        {currentStep === 8 && <WizardStep7 data={data} />}
       </div>
 
       {/* Navigation buttons */}
