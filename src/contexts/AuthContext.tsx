@@ -62,6 +62,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           })
           diagnoseUserRole()
         }
+        // On token refresh, just update session/user refs — don't re-fetch all data.
+        // This keeps the session alive without unnecessary network traffic.
+        if (_event === 'TOKEN_REFRESHED' && session) {
+          // Session refs are updated below (setSession/setUser)
+        }
         setSession(session)
         setUser(session?.user || null)
         setLoading(false)

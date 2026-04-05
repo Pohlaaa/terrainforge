@@ -3,11 +3,11 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-03) — Cleanup & Account Management Sprint
+## Current Status (2026-04-04) — Contractor Feedback & Architecture Sprint
 
-**Active work**: Three-track cleanup sprint — (1) Architecture cleanup: split 2,171-line supabaseData.ts into domain modules, fix 5 pages bypassing store layer, eliminate `any` types. (2) UI polish: extract oversized components, migrate inline styles to Tailwind/CSS vars, responsive improvements. (3) Account management: rebuild Settings page, org profile editing, role-based visibility, onboarding polish.
+**Active work**: Contractor feedback response — (1) Measurement-input architecture (ProjectElement system), (2) Material formula corrections (polymeric sand coverage, base depth minimums), (3) Project lifecycle expansion (estimate→approved→scheduled→in_progress→completed), (4) Man hours vs clock hours clarification, (5) Bug fixes (equipment maintenance, session persistence). Plus ongoing: architecture cleanup, UI polish, account management.
 
-**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment (PR #114), AI wizard with suggest-then-accept UX (PR #115), 3 rounds of wizard refinements (PRs #116-#118). AI wizard is feature-complete.
+**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment (PR #114), AI wizard with suggest-then-accept UX (PR #115), 3 rounds of wizard refinements (PRs #116-#118). AI wizard is feature-complete. Local supplier search rebuilt (Nominatim v5). Landing page updated with green brand identity and full feature coverage. First real contractor feedback received and solution documented.
 
 **Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. AI wizard complete. Currently in M3 "First Revenue".
 
@@ -129,6 +129,22 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 - **Pages NEVER import from supabaseData.ts** — always go through stores
 - **Domain stores do NOT use localStorage persistence** — always fetch fresh from Supabase
 - Don't embed SQL in markdown docs — migrations go in `supabase/migrations/`
+
+## Data Model Principles (Contractor-Validated)
+These principles were established from real contractor field testing and are non-negotiable for all new feature work.
+
+1. **Measurements are King** — Every material quantity must trace back to a real measurement. Chain: Contractor Measurement → Element Dimension → Formula Calculation → Material Quantity. If any link is an AI guess without contractor verification, the output is untrusted.
+2. **Objects Reflect Physical Reality** — Data structures map to things a contractor can point at on a job site. A `ProjectElement` is a patio, a wall, a garden bed — not an abstract zone. Materials attach to elements because that's how contractors think.
+3. **AI Assists, Contractor Decides** — AI should suggest, estimate, and pre-fill. Every AI-generated value must be editable and clearly marked as "estimated." When the contractor enters a real value, it replaces the estimate and becomes the source of truth.
+4. **Status Gates Control Visibility** — Project data is only actionable at the right lifecycle stage. Dates on estimates are noise. Material orders on un-approved projects are premature. Status gates what's shown and what actions are available.
+5. **Industry Formulas are Sacred** — Material quantity formulas must match field standards: `sqft / 324 × depth_inches` for bulk materials, 50lb bag per 65sqft for polymeric sand, 6″ base minimum. These are industry standards built into the calculation engine, not configurable preferences.
+6. **Man Hours are the Unit of Labor** — All labor estimation uses man-hours as the base unit. Clock hours are derived: `clockHours = manHours / crewSize`. Display both, store man-hours.
+
+## Project Lifecycle Model
+Projects follow a pipeline: `estimate` → `approved` → `scheduled` → `in_progress` → `completed` (+ `on_hold`). Start/end dates are only assigned after client approval. The wizard creates projects in "estimate" status. Calendar views only show scheduled/in_progress projects.
+
+## Measurement-Driven Architecture (Planned)
+The `ProjectElement` type represents a measurable area of work (patio, wall, garden bed, sod area, edging run). Each element has contractor-supplied dimensions and materials attach to elements. The manifest engine calculates quantities from element dimensions — never from AI guesses. See `Contractor_Feedback_Solution.docx` for full architecture spec.
 
 ## Codebase Quality Rules
 - Prefer editing existing files over creating new ones

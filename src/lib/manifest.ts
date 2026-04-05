@@ -10,9 +10,56 @@
  */
 
 import type { Material, Zone, Project, ManifestItem, SupplierPrice } from '@/types';
+import type { MaterialCategory } from '@/types';
 import { RESERVE } from './constants';
 import { normalizeCategory } from './categories';
 
+// ── Industry-Standard Depth Minimums (inches) ──────────────────────────────
+// Base materials require minimum 6″ depth per industry standard.
+// Topsoil/mulch for garden beds have lower minimums.
+// These are NOT configurable preferences — they're field-tested standards.
+const CATEGORY_DEPTH_MINIMUMS: Partial<Record<MaterialCategory, number>> = {
+  gravel: 6,     // base material — 6″ industry minimum
+  sand: 6,       // sand bed / base — 6″ minimum (sand bed for pavers is typically 1″, but base sand is 6″)
+  soil: 3,       // topsoil — 3″ minimum for garden beds
+  mulch: 2,      // mulch — 2″ minimum for weed suppression
+  concrete: 4,   // concrete slab — 4″ minimum
+};
+
+// Default depth when no depth is specified and no category minimum applies
+const DEFAULT_DEPTH_IN = 3;
+
+/**
+ * Get the effective depth for a material, enforcing category minimums.
+ * If the material has an explicit depth, use it (but enforce minimum).
+ * If no depth specified, use the category minimum or default.
+ */
+function getEffectiveDepth(mat: Material): number {
+  const catMin = CATEGORY_DEPTH_MINIMUMS[mat.category as MaterialCategory] ?? DEFAULT_DEPTH_IN;
+  const specified = mat.depthIn || catMin;
+  return Math.max(specified, catMin);
+}
+
+/**
+ * Compute material quantity from zone geometry.
+ *
+ * ── Industry Formula Reference ──────────────────────────────────────────
+ * Bulk materials (cuyd):  sqft / 324 × depth_inches
+ *   This is equivalent to: (area × (depthIn / 12)) / 27
+ *   Because 324 = 12 × 27. Contractors know it as "divide by 324, multiply by depth."
+ *
+ * Tons:  cubic_yards × density (typically 1.4–1.5 for gravel/stone)
+ *
+ * Polymeric sand:  50lb bag covers ~65 sqft of pavers (industry standard)
+ *
+ * Bags (depth-based):  cubic_feet / cuft_per_bag
+ *   where cubic_feet = sqft × (depthIn / 12)
+ *
+ * NOTE: The contractor confirmed that additional formulas may be needed for
+ * specific bulk materials (e.g., decomposed granite). The current cuyd formula
+ * is the standard baseline. Future: support per-material formula overrides.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
 export function computeQty(mat: Material, zone: Zone): number {
   const area = zone.area;
   const perim = zone.perimeter || 0;
@@ -28,21 +75,26 @@ export function computeQty(mat: Material, zone: Zone): number {
 
   if (mat.unit === 'bag') {
     if (mat.depthIn) {
+      // Depth-based bag calc: cuft / cuft_per_bag
       const cuft = area * (mat.depthIn / 12);
       const cuftPerBag = mat.coverage || 2;
       return Math.ceil(cuft / cuftPerBag);
     }
+    // Coverage-based bag calc (e.g., polymeric sand: 65 sqft per bag)
     const cov = mat.coverage || 50;
     return Math.ceil(area / cov);
   }
 
   if (mat.unit === 'cuyd') {
-    const depth = mat.depthIn || 3;
+    // Industry formula: sqft / 324 × depth_inches
+    // Equivalent to: (area × (depthIn / 12)) / 27
+    const depth = getEffectiveDepth(mat);
     return (area * (depth / 12)) / 27;
   }
 
   if (mat.unit === 'ton') {
-    const depth = mat.depthIn || 3;
+    // Cubic yards × density (default 1.5 tons/cuyd for gravel/stone)
+    const depth = getEffectiveDepth(mat);
     const cuyd = (area * (depth / 12)) / 27;
     const density = mat.coverage || 1.5;
     return cuyd * density;

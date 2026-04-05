@@ -79,7 +79,7 @@ export const MAINTENANCE_TYPES = [
 
 export const DEFAULT_MATERIALS = [
   { name: 'Bluestone Pavers 12"×12"', category: 'paver', unit: 'each', cost: 4.80, coverage: 1, sku: 'BS-1212-GRY' },
-  { name: 'Polymeric Sand (50 lb bag)', category: 'sand', unit: 'bag', cost: 28.00, coverage: 40, sku: 'PS-50-STD' },
+  { name: 'Polymeric Sand (50 lb bag)', category: 'sand', unit: 'bag', cost: 28.00, coverage: 65, sku: 'PS-50-STD' },
   { name: 'Granite Steppers 24"×24"', category: 'stone', unit: 'each', cost: 65.00, sku: 'GS-2424-LT' },
   { name: 'Steel Landscape Edging 5"', category: 'edging', unit: 'lnft', cost: 2.10, sku: 'SLE-5-BLK' },
   { name: 'Zoysia Sod (sq ft)', category: 'sod', unit: 'sqft', cost: 0.55, sku: 'SOD-ZOY' },

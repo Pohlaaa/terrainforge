@@ -134,12 +134,26 @@ export const WizardStep2: React.FC<Props> = ({ data, onChange }) => {
               Soil Type
               {aiSuggested && data.soilType && <AiTag />}
             </label>
-            <input
+            <select
               className={inputClass}
-              placeholder="e.g., Clay, Sandy loam, Rocky"
               value={data.soilType || ''}
               onChange={(e) => onChange({ soilType: e.target.value || null })}
-            />
+            >
+              <option value="">Select soil type...</option>
+              <option value="Clay">Clay</option>
+              <option value="Sandy loam">Sandy loam</option>
+              <option value="Loam">Loam</option>
+              <option value="Sandy">Sandy</option>
+              <option value="Silt loam">Silt loam</option>
+              <option value="Rocky / Stony">Rocky / Stony</option>
+              <option value="Fill / Compacted">Fill / Compacted</option>
+              <option value="Peat / Organic">Peat / Organic</option>
+            </select>
+            {aiSuggested && data.soilType && (
+              <p className="text-[10px] text-[var(--text-4)] mt-[3px]">
+                AI suggested based on your area — change if you know your soil conditions.
+              </p>
+            )}
           </div>
 
           <div>

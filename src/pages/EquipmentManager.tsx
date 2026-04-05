@@ -296,6 +296,12 @@ export const EquipmentManager: React.FC = () => {
   }
 
   function closeMaintModal() {
+    // If in add mode, "Back to Log" returns to the log view instead of closing
+    if (maintMode === 'add') {
+      setMaintMode('log');
+      setMaintForm(EMPTY_MAINT_FORM);
+      return;
+    }
     setMaintEquip(null);
     setMaintMode('log');
     setMaintForm(EMPTY_MAINT_FORM);
@@ -318,8 +324,9 @@ export const EquipmentManager: React.FC = () => {
       nextDue: maintForm.nextDue,
     };
     await addMaintenanceEntry(maintEquip.id, entry);
-    // Update the local maintEquip reference so the log refreshes in the modal
-    const updated = equipment.find(e => e.id === maintEquip.id);
+    // Read fresh from store — the closure's `equipment` ref is stale after the async update
+    const freshEquipment = useEquipmentStore.getState().equipment;
+    const updated = freshEquipment.find(e => e.id === maintEquip.id);
     if (updated) setMaintEquip(updated);
     setMaintMode('log');
     setMaintForm(EMPTY_MAINT_FORM);
