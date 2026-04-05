@@ -46,3 +46,7 @@ export {
   fetchQuoteRequests, createQuoteRequest, updateQuoteRequestStatus,
   fetchQuoteRequestItems, updateQuoteRequestItem,
 } from './supabaseQuotes'
+
+export {
+  fetchProjectElements, createProjectElement, updateProjectElement, deleteProjectElement,
+} from './supabaseElements'

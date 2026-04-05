@@ -21,6 +21,7 @@ export interface ProjectFull extends Project {
   crewAssignments: ProjectCrewAssignment[];
   scheduleEntries: ScheduleEntry[];
   siteConditions: ProjectSiteCondition[];
+  elements?: ProjectElement[];
 }
 
 /** Persisted crew-to-project assignment */
@@ -31,6 +32,42 @@ export interface ProjectCrewAssignment {
   crewMemberId: string;
   roleOnProject: string | null;
   assignedAt: string;
+}
+
+// ── Project Elements (measurement-driven architecture) ─────────────────────
+
+export type ElementType =
+  | 'patio' | 'wall' | 'garden_bed' | 'sod_area' | 'edging' | 'walkway'
+  | 'driveway' | 'retaining_wall' | 'fire_pit' | 'pool_deck' | 'other';
+
+export interface ProjectElement {
+  id: string;
+  orgId: string;
+  projectId: string;
+  name: string;
+  elementType: ElementType;
+  lengthFt: number | null;
+  widthFt: number | null;
+  areaSqft: number | null;
+  linearFt: number | null;
+  heightFt: number | null;
+  depthIn: number | null;
+  computedAreaSqft: number;
+  notes: string;
+  sequence: number;
+  createdAt: string;
+  materials: ProjectElementMaterial[];
+}
+
+export interface ProjectElementMaterial {
+  id: string;
+  elementId: string;
+  materialId: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
 }
 
 // Material category union type

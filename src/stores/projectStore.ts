@@ -3,6 +3,7 @@ import type {
   Project, Zone, ProjectListItem, ProjectFull,
   ProjectTask, ProjectSubcontractor, ProjectPermit,
   ProjectCrewAssignment, ProjectSiteCondition, ProjectMaterial, ProjectCrewEntry,
+  ProjectElement,
   ZoneMaterialDetail,
 } from '@/types'
 import { computeProjectCostRaw } from '@/lib/manifest'
@@ -48,6 +49,12 @@ interface ProjectStore {
   deleteProjectSubcontractor: (id: string) => Promise<boolean>
   createProjectPermit: (permit: Omit<ProjectPermit, 'id' | 'createdAt' | 'updatedAt'>, orgId: string) => Promise<ProjectPermit | null>
   updateProjectPermit: (id: string, updates: Partial<ProjectPermit>) => Promise<ProjectPermit | null>
+
+  // Element CRUD (measurement-driven architecture)
+  fetchProjectElements: (orgId: string, projectId: string) => Promise<ProjectElement[]>
+  addElement: (element: Omit<ProjectElement, 'id' | 'materials'>, orgId: string) => Promise<ProjectElement | null>
+  updateElement: (id: string, updates: Partial<ProjectElement>) => Promise<ProjectElement | null>
+  deleteElement: (id: string) => Promise<boolean>
 
   // Zone operations (kept for backward compatibility with older projects)
   /** @deprecated Zones are legacy. Kept for backward compat with pre-wizard projects. */
@@ -499,6 +506,81 @@ export const useProjectStore = create<ProjectStore>()(
           [projectId]: (state.projectCrew[projectId] ?? []).filter((e) => e.id !== entryId),
         },
       }))
+    },
+
+    // ── Element CRUD (measurement-driven architecture) ─────────────────────
+    fetchProjectElements: async (orgId, projectId) => {
+      try {
+        const elements = await db.fetchProjectElements(orgId, projectId)
+        // Update activeProject if it matches
+        set((state) => ({
+          activeProject: state.activeProject?.id === projectId
+            ? { ...state.activeProject, elements }
+            : state.activeProject,
+        }))
+        return elements
+      } catch (err: unknown) {
+        console.error('fetchProjectElements error:', err instanceof Error ? err.message : err)
+        return []
+      }
+    },
+
+    addElement: async (elementData, orgId) => {
+      try {
+        const id = crypto.randomUUID()
+        const result = await db.createProjectElement(elementData, id, orgId)
+        if (!result) return null
+        // Add to activeProject elements
+        set((state) => ({
+          activeProject: state.activeProject?.id === elementData.projectId
+            ? { ...state.activeProject, elements: [...(state.activeProject.elements || []), result] }
+            : state.activeProject,
+        }))
+        return result
+      } catch (err: unknown) {
+        console.error('addElement error:', err instanceof Error ? err.message : err)
+        return null
+      }
+    },
+
+    updateElement: async (id, updates) => {
+      try {
+        const result = await db.updateProjectElement(id, updates)
+        if (!result) return null
+        set((state) => ({
+          activeProject: state.activeProject
+            ? {
+                ...state.activeProject,
+                elements: (state.activeProject.elements || []).map(
+                  (el) => el.id === id ? { ...el, ...result } : el
+                ),
+              }
+            : null,
+        }))
+        return result
+      } catch (err: unknown) {
+        console.error('updateElement error:', err instanceof Error ? err.message : err)
+        return null
+      }
+    },
+
+    deleteElement: async (id) => {
+      try {
+        const success = await db.deleteProjectElement(id)
+        if (!success) return false
+        set((state) => ({
+          activeProject: state.activeProject
+            ? {
+                ...state.activeProject,
+                elements: (state.activeProject.elements || []).filter((el) => el.id !== id),
+              }
+            : null,
+        }))
+        return true
+      } catch (err: unknown) {
+        console.error('deleteElement error:', err instanceof Error ? err.message : err)
+        return false
+      }
     },
   })
 )
