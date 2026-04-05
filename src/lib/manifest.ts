@@ -1,15 +1,16 @@
 /**
  * Manifest Engine - Core calculation logic
  *
- * Supports two material sources:
- * 1. Project-level materials (project.materials JSONB) — primary, used by wizard-created projects
- * 2. Zone-level materials (project.zones[].materials[]) — legacy, computed from zone geometry
+ * Supports three material sources (checked in priority order):
+ * 1. Element-based materials (project.elements[].materials[]) — measurement-driven, quantities computed from contractor dimensions
+ * 2. Project-level materials (project.materials JSONB) — wizard-created projects with known quantities
+ * 3. Zone-level materials (project.zones[].materials[]) — legacy, computed from zone geometry
  *
- * If project.materials has entries, those are used directly (quantities are already known).
- * Otherwise falls back to zone-based calculation for backward compatibility.
+ * The element path is the core of the measurement-driven architecture:
+ * Contractor Measurement → Element Dimension → Formula Calculation → Material Quantity
  */
 
-import type { Material, Zone, Project, ManifestItem, SupplierPrice } from '@/types';
+import type { Material, Zone, Project, ManifestItem, SupplierPrice, ProjectElement, ProjectElementMaterial } from '@/types';
 import type { MaterialCategory } from '@/types';
 import { RESERVE } from './constants';
 import { normalizeCategory } from './categories';
@@ -208,18 +209,176 @@ function generateFromZoneMaterials(
 }
 
 export function generateManifest(
-  project: Project,
+  project: Project & { elements?: ProjectElement[] },
   materials: Material[],
   supplierPrices?: SupplierPrice[]
 ): ManifestItem[] {
-  // Primary path: project-level materials (wizard-created projects)
+  // Priority 1: element-based materials (measurement-driven)
+  if (project.elements?.some(el => el.materials?.length > 0)) {
+    return generateFromElementMaterials(project as Project & { elements: ProjectElement[] }, materials, supplierPrices);
+  }
+
+  // Priority 2: project-level materials (wizard-created projects)
   if (project.materials && project.materials.length > 0) {
     return generateFromProjectMaterials(project, materials, supplierPrices);
   }
 
-  // Legacy path: zone-based calculation
+  // Priority 3: zone-based calculation (legacy)
   return generateFromZoneMaterials(project, materials, supplierPrices);
 }
+
+// ── Element-based manifest generation (measurement-driven architecture) ─────
+
+/**
+ * Resolve the effective area for a project element.
+ * Priority: computedAreaSqft → length × width → areaSqft manual override → 0
+ */
+function resolveElementArea(el: ProjectElement): number {
+  if (el.computedAreaSqft && el.computedAreaSqft > 0) return el.computedAreaSqft;
+  if (el.lengthFt && el.widthFt) return el.lengthFt * el.widthFt;
+  if (el.areaSqft && el.areaSqft > 0) return el.areaSqft;
+  return 0;
+}
+
+/**
+ * Build a Material-like adapter from an element material + library material defaults.
+ * Element-level depth overrides library depth (contractor measurement wins).
+ */
+function buildMaterialAdapter(
+  elMat: ProjectElementMaterial,
+  libMat: Material | undefined,
+  elementDepthIn: number | null
+): Material {
+  return {
+    id: elMat.materialId,
+    name: elMat.name,
+    category: elMat.category,
+    unit: elMat.unit,
+    cost: elMat.unitCost,
+    reserveOverride: libMat?.reserveOverride ?? null,
+    coverage: libMat?.coverage ?? null,
+    depthIn: elementDepthIn ?? libMat?.depthIn ?? null,
+    notes: '',
+    qtyOnHand: 0,
+    minStockLevel: 0,
+    storageLocation: '',
+    lastRestocked: '',
+  };
+}
+
+/**
+ * Generate manifest from project elements (measurement-driven path).
+ * Each element's real dimensions drive material quantity calculations.
+ * This is the preferred path when elements exist with materials attached.
+ */
+function generateFromElementMaterials(
+  project: Project & { elements: ProjectElement[] },
+  libraryMaterials: Material[],
+  supplierPrices?: SupplierPrice[]
+): ManifestItem[] {
+  const items: ManifestItem[] = [];
+
+  for (const element of project.elements) {
+    if (!element.materials?.length) continue;
+
+    const area = resolveElementArea(element);
+    const perimeter = element.linearFt || 0;
+
+    // Build a synthetic zone from element dimensions
+    const syntheticZone: Zone = {
+      id: element.id,
+      name: element.name,
+      area,
+      perimeter,
+      sequence: element.sequence,
+      crew: '',
+      dependencies: [],
+      notes: element.notes || '',
+      materials: [],
+      equipment: [],
+      createdAt: element.createdAt,
+    };
+
+    for (const elMat of element.materials) {
+      const libMat = libraryMaterials.find(m => m.id === elMat.materialId);
+      const matAdapter = buildMaterialAdapter(elMat, libMat, element.depthIn);
+
+      const qty = computeQty(matAdapter, syntheticZone);
+      const reservePct = getReservePct(matAdapter);
+      const reserveQty = qty * reservePct;
+      const totalOrder = Math.ceil(qty + reserveQty);
+
+      // Resolve unit cost: preferred supplier → element material cost → library cost
+      const preferredPrice = supplierPrices?.find(
+        sp => sp.materialId === elMat.materialId && sp.isPreferred
+      );
+      const unitCost = preferredPrice?.unitCost ?? elMat.unitCost;
+      const subtotal = totalOrder * unitCost;
+
+      items.push({
+        materialId: elMat.materialId,
+        materialName: elMat.name,
+        zoneName: element.name,
+        zoneId: element.id,
+        qtyNeeded: qty,
+        reserveQty,
+        totalOrder,
+        unitCost,
+        subtotal,
+        unit: elMat.unit,
+        category: normalizeCategory(elMat.category),
+        supplierId: preferredPrice?.supplierId ?? null,
+        supplierName: preferredPrice?.supplierName ?? null,
+      });
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Compute material quantities for a single project element.
+ * Pure function for wizard live previews — shows quantities updating
+ * as the contractor enters/changes dimensions.
+ */
+export function computeElementQuantities(
+  element: ProjectElement,
+  libraryMaterials: Material[]
+): { materialId: string; materialName: string; quantity: number; unit: string }[] {
+  if (!element.materials?.length) return [];
+
+  const area = resolveElementArea(element);
+  const perimeter = element.linearFt || 0;
+
+  const syntheticZone: Zone = {
+    id: element.id,
+    name: element.name,
+    area,
+    perimeter,
+    sequence: 0,
+    crew: '',
+    dependencies: [],
+    notes: '',
+    materials: [],
+    equipment: [],
+    createdAt: '',
+  };
+
+  return element.materials.map(elMat => {
+    const libMat = libraryMaterials.find(m => m.id === elMat.materialId);
+    const matAdapter = buildMaterialAdapter(elMat, libMat, element.depthIn);
+    const quantity = computeQty(matAdapter, syntheticZone);
+
+    return {
+      materialId: elMat.materialId,
+      materialName: elMat.name,
+      quantity,
+      unit: elMat.unit,
+    };
+  });
+}
+
+// ── Cost rollup functions ───────────────────────────────────────────────────
 
 export function computeProjectCostRaw(project: Project, materials: Material[]): number {
   let total = 0;
