@@ -17,7 +17,7 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { generateProjectRecommendations } from '@/services/aiRecommendations';
-import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet } from '@/types';
+import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
 import { normalizeCategory } from '@/lib/categories';
 
@@ -61,6 +61,19 @@ export interface WizardMaterial {
   unit: string;
   unitCost: number;
   inLibrary: boolean;
+}
+
+export interface WizardElement {
+  tempId: string;
+  name: string;
+  elementType: ElementType;
+  lengthFt: number | null;
+  widthFt: number | null;
+  areaSqft: number | null;
+  linearFt: number | null;
+  heightFt: number | null;
+  depthIn: number | null;
+  notes: string;
 }
 
 export interface WizardData {
@@ -107,6 +120,9 @@ export interface WizardData {
   equipmentSelections: WizardEquipment[];
   equipmentNotes: string | null;
   subcontractors: WizardSubcontractor[];
+
+  // Step 2b: Project Elements (measurements)
+  elements: WizardElement[];
 
   // Step 4b: Materials
   materialSelections: WizardMaterial[];
@@ -164,6 +180,7 @@ const INITIAL_DATA: WizardData = {
   equipmentSelections: [],
   equipmentNotes: null,
   subcontractors: [],
+  elements: [],
   materialSelections: [],
   startDate: null,
   targetDate: null,
@@ -871,3 +888,4 @@ export default function ProjectWizard() {
     </div>
   );
 }
+   
