@@ -1,0 +1,20 @@
+Onboarding
+No “Owner” option under Role.
+Need to be able to use the arrow keys & return button when inputting information. 
+The results from using the “Find Local Suppliers” has a ton of schools as results not actual supply yards. Definitely needs to be fixed. Along with the fact that I used different cities to search out of & couldn’t find a few of the big-time suppliers in our area. 
+
+Project Wizard:
+The material estimate below the elements for base material is spot on but once you get into the materials page, the AI suggests a 4” depth on base material.
+Polymeric sand should be priced per bag, not per pound. No one sells it by the pound. Only in bags.
+Once I created a project 
+Once again, I still can’t find where to create a “Zone” to go forward with a project. Some easy clarification would be nice. 
+Materials:
+I tried to import a CSV file to auto download materials from supplier pricing. Did not work. Even formatted CSV per what TF told me it needed, then it only downloaded 50 Rows. Once it got done downloading it said “Load Error: Failed to save Material. Please try again”
+The Manual material upload is a pain in the ass. It functions but no one is going to want to use it for than only a handful of times. 
+Under the suppliers list, my two I selected from onboarding are there but there really is no purpose other than a fancy spot to store their contact information. 
+
+Expense & Breakdown chart is cool, but where is it pulling those expense numbers from?
+
+Task Timeline is probably accurate to the AI’s eyes but not to ours, I told it a weeklong project (it’s telling me based off the chart it is a 13 working days project) I’m assuming because we’re dealing with Man hours & not hours in a day it still can’t chart it correctly. I see it has only like 2mh day one, 16mh day two…. Definitely not calculating time “right”
+
+Under Equipment when I assign some, thing it gives it a funny long assignment name of just random numbers & letters. An Assigned name “Project name” should be inputted not a random name that you can trace back to the project it’s assigned to. 

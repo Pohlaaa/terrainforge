@@ -1,0 +1,39 @@
+Project start date & end date should be added after client confirms green light to go ahead with project. Maybe setting the start date & end date goal should be once the project is pushed over to a work order. We need like I’d say a project portfolio, were they’re in an estimate/bid page then once the client confirms the go ahead you move it to the schedule. Hence putting a date on the project then not right away when creating a new project. 
+
+Base depth minimum of 6”, something simple that the system needs to abide by. Only ever use a minimum of 6” of depth for all base material. 6” of base is the industry standard. 
+
+Is the AI calculating man hours or hours in the day? This is crucial to differentiate. When going through the project steps & it generates ai estimated hours per step, the way it shows the steps on the calendar on the bottom of that page I’m assuming it’s calculating hours in a day and not man hours. Like example if tear out takes 4 hours that’s not 4 actual hours it should be calculated as 4 man hours, so 4 man crew would take one hour to do said tear out. 
+
+The square footage to base material formula is wrong. The formula for soils, sand, and crushed gravels is sqft/324 x depth of coverage (inches) Example: 100sqft at 2’ deep would be 
+100/324x24” = 7.41 yards of product 
+
+It never asked me for patio sqft before giving me material quantities, I did select the Medium tier which is 1,000-5,000sqft and the ai never got my actual sq footage but generated a 400sqft patio…we need to make that dummy proof. 
+
+Sand bed formula for calculating quantity is wrong. Use same equation as the one a couple notes up. 
+
+Polymeric sand formula is wrong as well. In general every brand of polymeric sand should be equated at 50lb bag covers roughly 65sqft of pavers. 
+
+
+Equipment maintenance end of things doesn’t work anymore. I can still add equipment but only the name & type of. I can’t get into the maintenance side of things right now. 
+
+I need a Remember Me, when I exit my browser for more than a minute I get logged out and it’s frustrating to enter my password so frequently.
+
+It needs to ask for measures or we need to have a spot in the wizard to enter all measurements because the ai coming up with random measurements will make or break a project. Really throw the contractors off and frustrate them if the material quantity-cost of materials is way off.
+
+Also I don’t know if the Soil type is supposed to be ai generated based off the project address but if it is then it’s way off.
+
+We need a way for the contractor to enter in patio/wall, sod, garden beds, etc square footage. Lengths & widths of these measurements. Edging linear lengths. The ai generating random square footage & linear lengths out of thin air is producing wrong material quantities.
+
+We need a way for the contractor to enter in patio/wall, sod, garden beds, etc square footage. Lengths & widths of these measurements. Edging linear lengths. The ai generating random square footage & linear lengths out of thin air is producing wrong material quantities.
+
+Example. 
+
+300sqft patio with a 20’ seating wall that is 80sqft, with 300sqft of sod, 250sqft of garden beds, 200’ vinyl edging around those garden beds, with a paver perimeter of 15’x20’ 
+
+Yes all these measurements would all be for one project.
+
+These are measurements that the estimators/designers take when at a clients home and use to come up with their design/estimate/bid 
+
+We need a way to input all these measurements for the ai to use to calculate the budget from there. When you don’t give it any measurements it generates random measurements giving ‘false’ quantities & pricing.
+
+

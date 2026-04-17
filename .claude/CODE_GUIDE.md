@@ -207,6 +207,26 @@ Page → store hook → store action → supabaseData function → Supabase
 
 ---
 
+## Claude Code Session Safety (File Integrity)
+
+Claude Code's `Write` tool can silently truncate large files during full-file rewrites. The tool reports success even on partial writes. This has caused production bugs where files lost their closing brackets, exports, or entire function blocks.
+
+### Prevention Rules
+1. **Never use the Write tool to rewrite an existing file in full.** Always use the `Edit` tool for surgical changes.
+2. **After every file modification**, run `tail -5 <file>` to verify the file ends correctly (closing braces, export statements, etc.).
+3. **If a file is >200 lines**, break changes into multiple `Edit` calls rather than one `Write` call.
+4. **After all tasks complete**, run `npx tsc --noEmit` as a safety net — type errors from truncated files surface instantly as unexpected EOF or missing exports.
+5. **Never trust a Write tool success response** on a file >150 lines without verifying the file's tail.
+
+### Recovery
+If truncation is detected:
+1. `git diff <file>` — see what was lost
+2. `git checkout HEAD -- <file>` — restore the last good version
+3. Re-apply changes using `Edit` tool (surgical diffs only)
+4. Verify with `tail -5` + `npx tsc --noEmit`
+
+---
+
 ## Key Rules (Learned the Hard Way)
 
 - **Always verify `git status` is clean before starting**
@@ -214,4 +234,4 @@ Page → store hook → store action → supabaseData function → Supabase
 - **Run SQL migration BEFORE execution** — CRUD functions will fail otherwise
 - **Build before AND after** — pre-flight catches existing issues, post-merge catches regressions
 - **Use incognito for testing** — Zustand persist middleware caches old state in localStorage
-- **Frontend type values must exactly match DB CHECK constraint val
+- **Frontend type values must exactly match DB CHECK constraint values**

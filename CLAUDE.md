@@ -3,15 +3,15 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-04) — Contractor Feedback & Architecture Sprint
+## Current Status (2026-04-05) — Contractor Feedback Complete, Lifecycle & Man Hours Live
 
-**Active work**: Contractor feedback response — (1) Measurement-input architecture (ProjectElement system), (2) Material formula corrections (polymeric sand coverage, base depth minimums), (3) Project lifecycle expansion (estimate→approved→scheduled→in_progress→completed), (4) Man hours vs clock hours clarification, (5) Bug fixes (equipment maintenance, session persistence). Plus ongoing: architecture cleanup, UI polish, account management.
+**Active work**: Architecture cleanup, UI polish, account management. All contractor feedback items implemented.
 
-**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment (PR #114), AI wizard with suggest-then-accept UX (PR #115), 3 rounds of wizard refinements (PRs #116-#118). AI wizard is feature-complete. Local supplier search rebuilt (Nominatim v5). Landing page updated with green brand identity and full feature coverage. First real contractor feedback received and solution documented.
+**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment (PR #114), AI wizard with suggest-then-accept UX (PR #115), 3 rounds of wizard refinements (PRs #116-#118). AI wizard is feature-complete. Local supplier search rebuilt (Nominatim v5). Landing page updated with green brand identity and full feature coverage. Contractor feedback: measurement-input architecture (ProjectElement system), material formula corrections (polymeric sand, base depth minimums), project lifecycle (estimate→approved→scheduled→in_progress→completed with status gates and transition buttons), man hours as base unit with clock hours derived, equipment maintenance bugfix, session persistence fix, soil type UX.
 
-**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. AI wizard complete. Currently in M3 "First Revenue".
+**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. AI wizard complete. Contractor feedback phases 1-4 complete. Currently in M3 "First Revenue".
 
-**Database**: 15+ tables, 75+ RLS policies, 15 migrations applied (015_schema_cleanup applied — dropped dead project_crew table, added equipment FK, fixed cascade rules).
+**Database**: 17+ tables, 80+ RLS policies, 20 migrations applied (020_project_lifecycle_manhours — status column with lifecycle CHECK, completed_at/approved_at/started_at timestamps).
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand 7 stores (Supabase-primary, localStorage for UI only) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)
@@ -109,6 +109,14 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 - `013_project_crew_assignments.sql` — crew-to-project assignment persistence
 - `014_contractor_fields.sql` — crew phone, equipment type/hourly cost, disposal/equipment cost, org rates
 - `015_schema_cleanup.sql` — Drop dead project_crew table, add equipment FK, fix cascade rules, add missing project columns
+- `019_project_elements.sql` — project_elements table for measurement-driven architecture
+- `020_project_lifecycle_manhours.sql` — status column (estimate→approved→scheduled→in_progress→completed→on_hold), completed_at/approved_at/started_at timestamps
+- `021_project_element_materials.sql` — element↔material junction table
+- `022_missing_indexes.sql` — FK index coverage
+- `023_expand_element_types.sql` — wider element_type CHECK
+- `024_add_quoted_status.sql` — "quoted" project status
+- `025_add_owner_crew_role.sql` — owner crew role
+- `026_materials_engine_upgrade.sql` — Engine columns on materials + element_materials, manifests table, RLS
 
 ## Business Logic (src/lib/)
 - **manifest.ts:** `computeQty()`, `generateManifest()`, `computeProjectCostRaw()` — material quantities, cost rollup
@@ -143,8 +151,40 @@ These principles were established from real contractor field testing and are non
 ## Project Lifecycle Model
 Projects follow a pipeline: `estimate` → `approved` → `scheduled` → `in_progress` → `completed` (+ `on_hold`). Start/end dates are only assigned after client approval. The wizard creates projects in "estimate" status. Calendar views only show scheduled/in_progress projects.
 
-## Measurement-Driven Architecture (Planned)
-The `ProjectElement` type represents a measurable area of work (patio, wall, garden bed, sod area, edging run). Each element has contractor-supplied dimensions and materials attach to elements. The manifest engine calculates quantities from element dimensions — never from AI guesses. See `Contractor_Feedback_Solution.docx` for full architecture spec.
+## Measurement-Driven Architecture (LIVE — Migration 026)
+The `ProjectElement` type represents a measurable area of work (patio, wall, garden bed, sod area, edging run). Each element has contractor-supplied dimensions and materials attach to elements via `project_element_materials`. The manifest engine calculates quantities from element dimensions — never from AI guesses.
+
+### Materials Engine (src/materials-engine/)
+The engine is a pure, stateless TypeScript module with zero dependencies. It computes material quantities from element geometry using 6 computation models. **For full spec, formulas, TypeScript interfaces, starter catalog, and migration details, read `../.claude/skills/terrainforge/references/engine-spec.md`.**
+
+**6 Computation Models** — every material gets exactly one:
+| Model | Formula | Materials |
+|-------|---------|-----------|
+| AREA_COVERAGE | area × (depth/12) → volume → purchase units | Mulch, gravel, topsoil, base rock, sand |
+| UNIT_COVERAGE | area ÷ coverage_per_unit → count | Pavers, flagstone, sod, tile |
+| LINEAR | linear_ft ÷ length_per_unit → count | Edging, border stone, wall caps, wire |
+| POINT_SPACING | area ÷ (spacing/12)² → count, or manual_count | Plants, shrubs, trees, lights |
+| LINEAR_DEPTH | length × height ÷ face_area_per_unit → count | Retaining wall block, stacked stone |
+| SUBSTRATE | area × (1 + overlap) ÷ coverage_per_roll → rolls | Landscape fabric, geotextile |
+
+**Critical rules:**
+1. Waste applied BEFORE purchase rounding (never double-buffer)
+2. Purchase list aggregates from raw totals across elements (not summed rounded values)
+3. Bulk materials (cubic_yard, ton) round to nearest 0.5
+4. Dependent materials are suggestions, not auto-added
+5. Engine is pure — `generateEngineManifest()` has no side effects, React/Zustand handles persistence
+
+**Engine files:** `engine.ts` (core compute), `unit-conversions.ts` (all math), `catalog.ts` (35 starter materials), `supplier-import.ts` (CSV/Excel import with model inference), `types.ts` (in src/types/), `index.ts` (re-exports)
+
+**Database columns added (migration 026):**
+- `materials` table: computation_model, compute_params (JSONB), subcategory, purchase_unit, qty_per_purchase_unit, cost_per_purchase_unit, default_waste_factor, supplier_sku, dependent_material_ids (TEXT[]), metadata (JSONB), is_active
+- `project_element_materials` table: spacing_override_inches, waste_factor_override, manual_count, wall_length_ft, wall_height_ft, computation_model
+- NEW `manifests` table: versioned JSONB snapshots (line_items, purchase_list, summary)
+
+**Known issue:** TypeScript property `wasteFacorOverride` is a typo (missing 't'). The DB column `waste_factor_override` is correct. Fix is pending.
+
+### Full Schema Reference
+For complete column-level schema of all 33+ tables, read `../.claude/skills/terrainforge/references/live-schema.md`.
 
 ## Codebase Quality Rules
 - Prefer editing existing files over creating new ones
