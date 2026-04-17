@@ -96,10 +96,10 @@ export const TaskTable: React.FC<TaskTableProps> = ({
               )}
             </div>
 
-            {/* Hours */}
+            {/* Man Hours */}
             {task.estimatedHours != null && (
-              <span className="text-[11px] text-[var(--text-4)] shrink-0">
-                {task.estimatedHours}h
+              <span className="text-[11px] text-[var(--text-4)] shrink-0" title="Man hours">
+                {task.estimatedHours} man hrs
               </span>
             )}
 

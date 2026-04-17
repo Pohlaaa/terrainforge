@@ -7,28 +7,17 @@ import { fetchProjectPermits } from './supabaseProjectDetails'
 import { fetchProjectSiteConditions } from './supabaseProjectDetails'
 import { fetchProjectCrewAssignments } from './supabaseCrewOps'
 import { fetchScheduleEntriesForProject } from './supabaseSchedule'
+import { fetchProjectElements } from './supabaseElements'
 import type { Project, ProjectListItem, ProjectFull } from '@/types'
 
 // ===== PROJECTS =====
 
 export async function fetchProjects(orgId: string): Promise<ProjectListItem[]> {
   try {
+    // Fetch projects without zone joins — zones are legacy, elements are the new system
     const { data, error } = await supabase
       .from('projects')
-      .select(`
-        *,
-        zones (
-          *,
-          zone_materials (
-            material_id,
-            materials (name)
-          ),
-          zone_equipment (
-            equipment_id,
-            equipment (name)
-          )
-        )
-      `)
+      .select('*')
       .eq('org_id', orgId)
 
     if (error) throw error
@@ -47,28 +36,8 @@ export async function fetchProjects(orgId: string): Promise<ProjectListItem[]> {
       camelProject.totalArea = (camelProject.totalAreaSqft as number) ?? (camelProject.totalArea as number) ?? 0
       camelProject.client = camelProject.clientId ? '' : ''
 
-      // Build zones with materials and equipment
-      const zones = camelProject.zones as Array<Record<string, unknown>> | undefined;
-      camelProject.zones = (zones || []).map((zone) => {
-        const zoneMats = zone.zoneMaterials as Array<Record<string, unknown>> | undefined;
-        zone.materials = (zoneMats || []).map((zm) => ({
-          materialId: zm.materialId,
-          name: (zm.materials as Record<string, unknown>)?.name || ''
-        }))
-        const zoneEquip = zone.zoneEquipment as Array<Record<string, unknown>> | undefined;
-        zone.equipment = (zoneEquip || []).map((ze) => ({
-          equipId: ze.equipmentId,
-          name: (ze.equipment as Record<string, unknown>)?.name || ''
-        }))
-        delete zone.zoneMaterials
-        delete zone.zoneEquipment
-        // Map DB zone column names → frontend field names
-        zone.area = (zone.areaSqft as number) ?? (zone.area as number) ?? 0
-        zone.perimeter = (zone.perimeterLnft as number) ?? (zone.perimeter as number) ?? 0
-        zone.sequence = (zone.sequenceNumber as number) ?? (zone.sequence as number) ?? 0
-        zone.crew = (zone.crewAssignment as string) ?? (zone.crew as string) ?? ''
-        return zone
-      })
+      // Zones: empty array — legacy system superseded by project_elements
+      camelProject.zones = []
 
       // Parse checklist from JSONB
       if (typeof camelProject.checklist === 'string') {
@@ -104,17 +73,10 @@ export async function fetchProjects(orgId: string): Promise<ProjectListItem[]> {
 export async function fetchProjectFull(orgId: string, projectId: string): Promise<ProjectFull | null> {
   try {
     // Fetch project + all related entities in parallel
-    const [projectResult, tasks, subcontractors, permits, crewAssignments, scheduleEntries, siteConditions] = await Promise.all([
+    const [projectResult, tasks, subcontractors, permits, crewAssignments, scheduleEntries, siteConditions, elements] = await Promise.all([
       supabase
         .from('projects')
-        .select(`
-          *,
-          zones (
-            *,
-            zone_materials (material_id, materials (name)),
-            zone_equipment (equipment_id, equipment (name))
-          )
-        `)
+        .select('*')
         .eq('org_id', orgId)
         .eq('id', projectId)
         .single(),
@@ -124,6 +86,7 @@ export async function fetchProjectFull(orgId: string, projectId: string): Promis
       fetchProjectCrewAssignments(orgId, projectId),
       fetchScheduleEntriesForProject(orgId, projectId),
       fetchProjectSiteConditions(orgId, projectId),
+      fetchProjectElements(orgId, projectId),
     ]);
 
     if (projectResult.error) throw projectResult.error;
@@ -133,27 +96,8 @@ export async function fetchProjectFull(orgId: string, projectId: string): Promis
     camelProject.totalArea = (camelProject.totalAreaSqft as number) ?? (camelProject.totalArea as number) ?? 0;
     camelProject.client = camelProject.clientId ? '' : '';
 
-    // Build zones
-    const zones = camelProject.zones as Array<Record<string, unknown>> | undefined;
-    camelProject.zones = (zones || []).map((zone) => {
-      const zoneMats = zone.zoneMaterials as Array<Record<string, unknown>> | undefined;
-      zone.materials = (zoneMats || []).map((zm) => ({
-        materialId: zm.materialId,
-        name: (zm.materials as Record<string, unknown>)?.name || ''
-      }));
-      const zoneEquip = zone.zoneEquipment as Array<Record<string, unknown>> | undefined;
-      zone.equipment = (zoneEquip || []).map((ze) => ({
-        equipId: ze.equipmentId,
-        name: (ze.equipment as Record<string, unknown>)?.name || ''
-      }));
-      delete zone.zoneMaterials;
-      delete zone.zoneEquipment;
-      zone.area = (zone.areaSqft as number) ?? (zone.area as number) ?? 0;
-      zone.perimeter = (zone.perimeterLnft as number) ?? (zone.perimeter as number) ?? 0;
-      zone.sequence = (zone.sequenceNumber as number) ?? (zone.sequence as number) ?? 0;
-      zone.crew = (zone.crewAssignment as string) ?? (zone.crew as string) ?? '';
-      return zone;
-    });
+    // Zones: load as empty array — legacy system superseded by project_elements
+    camelProject.zones = [];
 
     if (typeof camelProject.checklist === 'string') {
       camelProject.checklist = JSON.parse(camelProject.checklist as string);
@@ -173,6 +117,7 @@ export async function fetchProjectFull(orgId: string, projectId: string): Promis
       crewAssignments,
       scheduleEntries,
       siteConditions,
+      elements,
     } as unknown as ProjectFull;
   } catch (err: unknown) {
     onSupabaseError('SELECT', 'projects (full)', err);

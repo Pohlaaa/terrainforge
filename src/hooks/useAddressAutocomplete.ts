@@ -45,7 +45,7 @@ export function useAddressAutocomplete(query: string): UseAddressAutocompleteRet
 
       try {
         const encoded = encodeURIComponent(query);
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${token}&country=us&types=address&limit=5`;
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${token}&country=us&types=address,poi&limit=5&proximity=ip`;
         const res = await fetch(url, { signal: abortRef.current.signal });
         if (!res.ok) throw new Error('Geocoding request failed');
         const data = await res.json();

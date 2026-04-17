@@ -11,10 +11,12 @@ import { toast } from '@/hooks/useToast';
 import { formatPhoneNumber } from '@/utils/validation';
 import { useBillingGate } from '@/hooks/useBillingGate';
 import { EQUIPMENT_TYPES } from '@/types';
+import { searchEquipment, formatEquipmentDisplay } from '@/lib/equipmentKnowledge';
+import type { EquipmentTemplate } from '@/lib/equipmentKnowledge';
 import { CrewEquipmentKPIs } from '@/components/crew/CrewEquipmentKPIs';
 import { CrewTable } from '@/components/crew/CrewTable';
 import { EquipmentTable } from '@/components/crew/EquipmentTable';
-import type { CrewMember, ScheduleEntry } from '@/types';
+import type { CrewMember, Equipment, ScheduleEntry } from '@/types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -60,6 +62,7 @@ const CrewEquipmentHub: React.FC = () => {
   const equipment = useEquipmentStore((s) => s.equipment);
   const equipLoading = useEquipmentStore((s) => s.isLoading);
   const addEquipment = useEquipmentStore((s) => s.addEquipment);
+  const updateEquipment = useEquipmentStore((s) => s.updateEquipment);
   const assignments = useScheduleStore((s) => s.assignments);
   const entries = useScheduleStore((s) => s.entries);
   const fetchEntries = useScheduleStore((s) => s.fetchEntries);
@@ -84,6 +87,12 @@ const CrewEquipmentHub: React.FC = () => {
   const [equipName, setEquipName] = useState('');
   const [equipType, setEquipType] = useState('');
   const [equipHourlyCost, setEquipHourlyCost] = useState('');
+  const [equipSuggestions, setEquipSuggestions] = useState<EquipmentTemplate[]>([]);
+  const [showEquipSuggestions, setShowEquipSuggestions] = useState(false);
+
+  // Equipment edit modal
+  const [editEquipId, setEditEquipId] = useState<string | null>(null);
+  const editEquip = equipment.find(e => e.id === editEquipId) ?? null;
 
   // Fetch schedule data
   useEffect(() => {
@@ -198,6 +207,30 @@ const CrewEquipmentHub: React.FC = () => {
         maintenanceDueCount={maintenanceDue.length}
       />
 
+      {/* Equipment Details Prompt — shows when equipment has missing details */}
+      {equipment.filter(e => !e.hours && !e.insurance && !e.lastService).length > 0 && (
+        <div className="rounded-[10px] border p-[14px] flex items-start gap-[12px]" style={{ backgroundColor: 'rgba(212,164,76,0.08)', borderColor: 'rgba(212,164,76,0.3)' }}>
+          <span className="text-[18px] shrink-0">⚙️</span>
+          <div className="flex-1">
+            <div className="text-[13px] font-[600] text-[var(--text)] mb-[4px]">Complete your equipment profiles</div>
+            <p className="text-[12px] text-[var(--text-3)] mb-[8px]">
+              {equipment.filter(e => !e.hours && !e.insurance && !e.lastService).length} piece(s) of equipment are missing details like clock hours, insurance, maintenance history, and service schedules.
+              Complete these now to enable maintenance alerts and accurate equipment costing.
+            </p>
+            <div className="flex flex-wrap gap-[6px] text-[11px]">
+              <span className="px-[6px] py-[2px] rounded-[4px]" style={{ backgroundColor: 'rgba(212,164,76,0.15)', color: 'var(--status-amber)' }}>Clock hours</span>
+              <span className="px-[6px] py-[2px] rounded-[4px]" style={{ backgroundColor: 'rgba(212,164,76,0.15)', color: 'var(--status-amber)' }}>Service due hours</span>
+              <span className="px-[6px] py-[2px] rounded-[4px]" style={{ backgroundColor: 'rgba(212,164,76,0.15)', color: 'var(--status-amber)' }}>Last service date</span>
+              <span className="px-[6px] py-[2px] rounded-[4px]" style={{ backgroundColor: 'rgba(212,164,76,0.15)', color: 'var(--status-amber)' }}>Insurance provider</span>
+              <span className="px-[6px] py-[2px] rounded-[4px]" style={{ backgroundColor: 'rgba(212,164,76,0.15)', color: 'var(--status-amber)' }}>Insurance expiry</span>
+              <span className="px-[6px] py-[2px] rounded-[4px]" style={{ backgroundColor: 'rgba(212,164,76,0.15)', color: 'var(--status-amber)' }}>Serial number</span>
+              <span className="px-[6px] py-[2px] rounded-[4px]" style={{ backgroundColor: 'rgba(212,164,76,0.15)', color: 'var(--status-amber)' }}>Equipment value</span>
+              <span className="px-[6px] py-[2px] rounded-[4px]" style={{ backgroundColor: 'rgba(212,164,76,0.15)', color: 'var(--status-amber)' }}>Year</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Split View: Crew Cards + Weekly Schedule ────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <CrewTable
@@ -282,6 +315,8 @@ const CrewEquipmentHub: React.FC = () => {
         equipment={equipment}
         readOnly={readOnly}
         onAddEquipment={() => setShowAddEquip(true)}
+        onEditEquipment={(id) => setEditEquipId(id)}
+        projects={projects.map(p => ({ id: p.id, name: p.name }))}
       />
 
       {/* ── Add Crew Modal ─────────────────────────────────────────────────── */}
@@ -305,6 +340,7 @@ const CrewEquipmentHub: React.FC = () => {
               className="w-full px-3 py-2 text-sm rounded-md cursor-pointer"
               style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
             >
+              <option value="owner">Owner/Operator</option>
               <option value="foreman">Foreman</option>
               <option value="lead">Lead</option>
               <option value="installer">Installer</option>
@@ -336,52 +372,145 @@ const CrewEquipmentHub: React.FC = () => {
       </Modal>
 
       {/* ── Add Equipment Modal ────────────────────────────────────────────── */}
-      <Modal isOpen={showAddEquip} onClose={() => setShowAddEquip(false)} title="Add Equipment">
+      {/* Add Equipment Modal — with autofill */}
+      <Modal isOpen={showAddEquip} onClose={() => { setShowAddEquip(false); setEquipSuggestions([]); setShowEquipSuggestions(false); }} title="Add Equipment">
         <div className="space-y-3 p-1">
-          <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Name</label>
-            <input
-              value={equipName}
-              onChange={(e) => setEquipName(e.target.value)}
+          <div className="relative">
+            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Make & Model</label>
+            <input value={equipName}
+              onChange={(e) => {
+                setEquipName(e.target.value);
+                if (e.target.value.length > 0) {
+                  const results = searchEquipment(e.target.value);
+                  setEquipSuggestions(results);
+                  setShowEquipSuggestions(results.length > 0);
+                } else {
+                  setEquipSuggestions([]); setShowEquipSuggestions(false);
+                }
+              }}
               className="w-full px-3 py-2 text-sm rounded-md"
               style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-              placeholder="Equipment name"
+              placeholder="Start typing — e.g., Bobcat, CAT, STIHL..."
             />
+            {showEquipSuggestions && equipSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-[8px] border shadow-lg z-20 max-h-[200px] overflow-y-auto" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-default)' }}>
+                {equipSuggestions.map((s, i) => (
+                  <button key={i} type="button" onClick={() => {
+                    setEquipName(`${s.make} ${s.model}`);
+                    setEquipType(s.type);
+                    setEquipHourlyCost(String(s.typicalHourlyRate));
+                    setShowEquipSuggestions(false);
+                  }} className="w-full text-left px-3 py-2 text-[13px] hover:bg-[var(--surface-hover)] border-b last:border-b-0 bg-transparent border-x-0 border-t-0 cursor-pointer" style={{ borderColor: 'var(--border-default)', color: 'var(--text-secondary)' }}>
+                    {formatEquipmentDisplay(s)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Type</label>
-            <select
-              value={equipType}
-              onChange={(e) => setEquipType(e.target.value)}
+            <select value={equipType} onChange={(e) => setEquipType(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-md cursor-pointer"
-              style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-            >
+              style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>
               <option value="">Select type...</option>
-              {EQUIPMENT_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
+              {EQUIPMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Hourly Cost ($)</label>
-            <input
-              value={equipHourlyCost}
-              onChange={(e) => setEquipHourlyCost(e.target.value)}
-              type="number"
+            <input value={equipHourlyCost} onChange={(e) => setEquipHourlyCost(e.target.value)} type="number"
               className="w-full px-3 py-2 text-sm rounded-md"
               style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-              placeholder="85"
-            />
+              placeholder="85" />
           </div>
-          <button
-            onClick={handleAddEquipment}
-            disabled={!equipName.trim()}
+          <button onClick={handleAddEquipment} disabled={!equipName.trim()}
             className="w-full py-2.5 text-sm font-semibold rounded-lg cursor-pointer border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: 'var(--brand-primary)', color: 'var(--text-on-primary)' }}
-          >
+            style={{ background: 'var(--brand-primary)', color: 'var(--text-on-primary)' }}>
             Add Equipment
           </button>
         </div>
+      </Modal>
+
+      {/* Edit Equipment Modal — full details */}
+      <Modal isOpen={!!editEquipId} onClose={() => setEditEquipId(null)} title={`Edit: ${editEquip?.name || 'Equipment'}`} maxWidth="640px">
+        {editEquip && (
+          <div className="space-y-4 p-1">
+            {/* Basic Info */}
+            <div className="text-[10px] font-[600] uppercase text-[var(--text-tertiary)]">Basic Info</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Name</label>
+                <input defaultValue={editEquip.name} onBlur={(e) => updateEquipment(editEquip.id, { name: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Make & Model</label>
+                <input defaultValue={editEquip.makeModel} onBlur={(e) => updateEquipment(editEquip.id, { makeModel: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Type</label>
+                <select defaultValue={editEquip.type} onChange={(e) => updateEquipment(editEquip.id, { type: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md cursor-pointer" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>
+                  {EQUIPMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Year</label>
+                <input type="number" defaultValue={editEquip.year ?? ''} onBlur={(e) => updateEquipment(editEquip.id, { year: e.target.value ? parseInt(e.target.value) : null })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} placeholder="2023" /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Serial Number</label>
+                <input defaultValue={editEquip.serial} onBlur={(e) => updateEquipment(editEquip.id, { serial: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>License Plate</label>
+                <input defaultValue={editEquip.plate} onBlur={(e) => updateEquipment(editEquip.id, { plate: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+            </div>
+
+            {/* Rates & Value */}
+            <div className="text-[10px] font-[600] uppercase text-[var(--text-tertiary)] pt-2">Rates & Value</div>
+            <div className="grid grid-cols-3 gap-3">
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Hourly Cost ($)</label>
+                <input type="number" defaultValue={editEquip.hourlyCost ?? ''} onBlur={(e) => updateEquipment(editEquip.id, { hourlyCost: e.target.value ? parseFloat(e.target.value) : null })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Daily Rate ($)</label>
+                <input type="number" defaultValue={editEquip.dailyRate ?? ''} onBlur={(e) => updateEquipment(editEquip.id, { dailyRate: e.target.value ? parseFloat(e.target.value) : 0 })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Equipment Value ($)</label>
+                <input type="number" defaultValue={editEquip.value ?? ''} onBlur={(e) => updateEquipment(editEquip.id, { value: e.target.value ? parseFloat(e.target.value) : 0 })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+            </div>
+
+            {/* Hours & Maintenance */}
+            <div className="text-[10px] font-[600] uppercase text-[var(--text-tertiary)] pt-2">Hours & Maintenance</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Current Hours</label>
+                <input type="number" defaultValue={editEquip.hours ?? ''} onBlur={(e) => updateEquipment(editEquip.id, { hours: e.target.value ? parseFloat(e.target.value) : 0 })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} placeholder="0" /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Service Due Hours</label>
+                <input type="number" defaultValue={editEquip.serviceDueHours ?? ''} onBlur={(e) => updateEquipment(editEquip.id, { serviceDueHours: e.target.value ? parseFloat(e.target.value) : 0 })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} placeholder="500" /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Last Service Date</label>
+                <input type="date" defaultValue={editEquip.lastService} onBlur={(e) => updateEquipment(editEquip.id, { lastService: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Next Service Date</label>
+                <input type="date" defaultValue={editEquip.nextService} onBlur={(e) => updateEquipment(editEquip.id, { nextService: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+            </div>
+
+            {/* Insurance & Registration */}
+            <div className="text-[10px] font-[600] uppercase text-[var(--text-tertiary)] pt-2">Insurance & Registration</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Insurance Provider</label>
+                <input defaultValue={editEquip.insurance} onBlur={(e) => updateEquipment(editEquip.id, { insurance: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Insurance Expiry</label>
+                <input type="date" defaultValue={editEquip.insuranceExpiry} onBlur={(e) => updateEquipment(editEquip.id, { insuranceExpiry: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Registration Expiry</label>
+                <input type="date" defaultValue={editEquip.regExpiry} onBlur={(e) => updateEquipment(editEquip.id, { regExpiry: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Inspection Due</label>
+                <input type="date" defaultValue={editEquip.inspectionDue} onBlur={(e) => updateEquipment(editEquip.id, { inspectionDue: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} /></div>
+            </div>
+
+            {/* Status & Notes */}
+            <div className="text-[10px] font-[600] uppercase text-[var(--text-tertiary)] pt-2">Status & Notes</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Status</label>
+                <select defaultValue={editEquip.status} onChange={(e) => updateEquipment(editEquip.id, { status: e.target.value as Equipment['status'] })} className="w-full px-3 py-2 text-sm rounded-md cursor-pointer" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>
+                  <option value="available">Available</option><option value="in-use">In Use</option><option value="maintenance">Maintenance</option><option value="out-of-service">Out of Service</option>
+                </select></div>
+              <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Location</label>
+                <input defaultValue={editEquip.location} onBlur={(e) => updateEquipment(editEquip.id, { location: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }} placeholder="Main yard" /></div>
+            </div>
+            <div><label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Notes</label>
+              <textarea defaultValue={editEquip.notes} onBlur={(e) => updateEquipment(editEquip.id, { notes: e.target.value })} className="w-full px-3 py-2 text-sm rounded-md resize-y" style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', minHeight: 60 }} /></div>
+
+            <button onClick={() => { toast.success('Equipment updated'); setEditEquipId(null); }}
+              className="w-full py-2.5 text-sm font-semibold rounded-lg cursor-pointer border-none"
+              style={{ background: 'var(--brand-primary)', color: 'var(--text-on-primary)' }}>
+              Done
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   );

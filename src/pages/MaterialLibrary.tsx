@@ -10,6 +10,7 @@ import type { Material, MaterialCategory, Supplier } from '@/types';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { inferModel } from '@/materials-engine/supplier-import';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { KPICard } from '@/components/shared/KPICard';
 import { HubHeader } from '@/components/shared/HubHeader';
@@ -60,12 +61,20 @@ interface MaterialForm {
   minStockLevel: string;
   storageLocation: string;
   lastRestocked: string;
+  // Engine fields
+  computationModel: string;
+  purchaseUnit: string;
+  wasteFactor: string;
+  subcategory: string;
+  supplierSku: string;
 }
 
 const EMPTY_FORM: MaterialForm = {
   name: '', category: 'paver', unit: 'sqft', cost: '',
   coverage: '', depthIn: '', reserveOverride: '', notes: '',
   qtyOnHand: '0', minStockLevel: '0', storageLocation: '', lastRestocked: '',
+  computationModel: 'AREA_COVERAGE', purchaseUnit: 'each', wasteFactor: '5',
+  subcategory: '', supplierSku: '',
 };
 
 function materialToForm(m: Material): MaterialForm {
@@ -73,7 +82,7 @@ function materialToForm(m: Material): MaterialForm {
     name: m.name,
     category: m.category,
     unit: m.unit,
-    cost: String(m.cost),
+    cost: String(m.costPerPurchaseUnit ?? m.cost),
     coverage: m.coverage !== null ? String(m.coverage) : '',
     depthIn: m.depthIn !== null ? String(m.depthIn) : '',
     reserveOverride: m.reserveOverride !== null ? String(m.reserveOverride * 100) : '',
@@ -82,15 +91,21 @@ function materialToForm(m: Material): MaterialForm {
     minStockLevel: String(m.minStockLevel),
     storageLocation: m.storageLocation,
     lastRestocked: m.lastRestocked,
+    computationModel: m.computationModel ?? 'AREA_COVERAGE',
+    purchaseUnit: m.purchaseUnit ?? m.unit,
+    wasteFactor: m.defaultWasteFactor != null ? String(m.defaultWasteFactor * 100) : '5',
+    subcategory: m.subcategory ?? '',
+    supplierSku: m.supplierSku ?? '',
   };
 }
 
 function formToMaterial(f: MaterialForm): Omit<Material, 'id'> {
+  const costVal = parseFloat(f.cost) || 0;
   return {
     name: f.name.trim(),
     category: f.category,
-    unit: f.unit,
-    cost: parseFloat(f.cost) || 0,
+    unit: f.purchaseUnit || f.unit,
+    cost: costVal,
     coverage: f.coverage ? parseFloat(f.coverage) : null,
     depthIn: f.depthIn ? parseFloat(f.depthIn) : null,
     reserveOverride: f.reserveOverride ? parseFloat(f.reserveOverride) / 100 : null,
@@ -99,6 +114,14 @@ function formToMaterial(f: MaterialForm): Omit<Material, 'id'> {
     minStockLevel: parseInt(f.minStockLevel) || 0,
     storageLocation: f.storageLocation.trim(),
     lastRestocked: f.lastRestocked || new Date().toISOString().split('T')[0],
+    // Engine fields
+    computationModel: f.computationModel as Material['computationModel'],
+    purchaseUnit: f.purchaseUnit,
+    costPerPurchaseUnit: costVal,
+    defaultWasteFactor: f.wasteFactor ? parseFloat(f.wasteFactor) / 100 : 0.05,
+    subcategory: f.subcategory.trim() || undefined,
+    supplierSku: f.supplierSku.trim() || undefined,
+    isActive: true,
   };
 }
 
@@ -240,23 +263,39 @@ export const MaterialLibrary: React.FC = () => {
       const text = ev.target?.result as string;
       const rows = parseCSV(text);
       if (rows.length === 0) { setCsvError('No valid rows found. Columns needed: name, category, unit, unit_cost'); return; }
-      setCsvPreview(rows.slice(0, 50));
+      setCsvPreview(rows);
     };
     reader.readAsText(file);
   }
 
   async function handleImportConfirm() {
     let count = 0;
+    let errors = 0;
     for (const row of csvPreview) {
-      await addMaterial({
-        name: row.name, category: row.category, unit: row.unit,
-        cost: parseFloat(row.cost) || 0, reserveOverride: null, coverage: null,
-        depthIn: null, notes: '', qtyOnHand: 0, minStockLevel: 0,
-        storageLocation: '', lastRestocked: '',
-      });
-      count++;
+      try {
+        const inferred = inferModel(row.name);
+        await addMaterial({
+          name: row.name,
+          category: row.category || inferred.category,
+          unit: row.unit || inferred.purchaseUnit,
+          cost: parseFloat(row.cost) || 0,
+          reserveOverride: null, coverage: null, depthIn: null,
+          notes: '', qtyOnHand: 0, minStockLevel: 0,
+          storageLocation: '', lastRestocked: '',
+          computationModel: inferred.model,
+          purchaseUnit: row.unit || inferred.purchaseUnit,
+          costPerPurchaseUnit: parseFloat(row.cost) || 0,
+          defaultWasteFactor: 0.05,
+          subcategory: inferred.subcategory,
+          isActive: true,
+        });
+        count++;
+      } catch {
+        errors++;
+      }
     }
-    setImportSuccess(`Imported ${count} material${count !== 1 ? 's' : ''}`);
+    setImportSuccess(`Imported ${count} material${count !== 1 ? 's' : ''}${errors > 0 ? ` (${errors} failed)` : ''}`);
+    if (errors > 0) setCsvError(`${errors} row${errors !== 1 ? 's' : ''} failed to import`);
     setCsvPreview([]);
     if (csvInputRef.current) csvInputRef.current.value = '';
   }

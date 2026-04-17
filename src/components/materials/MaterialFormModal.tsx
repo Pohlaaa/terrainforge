@@ -18,6 +18,12 @@ interface MaterialForm {
   minStockLevel: string;
   storageLocation: string;
   lastRestocked: string;
+  // Engine fields
+  computationModel: string;
+  purchaseUnit: string;
+  wasteFactor: string;
+  subcategory: string;
+  supplierSku: string;
 }
 
 interface SelectOption {
@@ -139,6 +145,67 @@ export const MaterialFormModal: React.FC<MaterialFormModalProps> = ({
           </div>
         </div>
 
+
+        {/* Computation Engine */}
+        <div>
+          <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[10px]">
+            Computation Engine
+          </div>
+          <div className="grid grid-cols-3 gap-[10px]">
+            <Select
+              label="Computation Model"
+              value={form.computationModel}
+              options={[
+                { value: 'AREA_COVERAGE', label: 'Area Coverage (bulk)' },
+                { value: 'UNIT_COVERAGE', label: 'Unit Coverage (pavers, sod)' },
+                { value: 'LINEAR', label: 'Linear (edging, wire)' },
+                { value: 'POINT_SPACING', label: 'Point Spacing (plants)' },
+                { value: 'LINEAR_DEPTH', label: 'Linear Depth (wall block)' },
+                { value: 'SUBSTRATE', label: 'Substrate (fabric, rolls)' },
+              ]}
+              onChange={e => setField('computationModel', e.target.value)}
+            />
+            <Select
+              label="Purchase Unit"
+              value={form.purchaseUnit}
+              options={[
+                { value: 'each', label: 'Each' },
+                { value: 'bag', label: 'Bag' },
+                { value: 'cubic_yard', label: 'Cubic Yard' },
+                { value: 'ton', label: 'Ton' },
+                { value: 'sqft', label: 'Sq Ft' },
+                { value: 'roll', label: 'Roll' },
+                { value: 'pallet', label: 'Pallet' },
+                { value: 'bundle', label: 'Bundle' },
+                { value: 'flat', label: 'Flat' },
+                { value: 'lnft', label: 'Linear Ft' },
+              ]}
+              onChange={e => setField('purchaseUnit', e.target.value)}
+            />
+            <Input
+              label="Waste Factor (%)"
+              type="number" min="0" max="50" step="1"
+              value={form.wasteFactor}
+              onChange={e => setField('wasteFactor', e.target.value)}
+              placeholder="5"
+              hint="Applied before rounding"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-[10px] mt-[10px]">
+            <Input
+              label="Subcategory"
+              value={form.subcategory}
+              onChange={e => setField('subcategory', e.target.value)}
+              placeholder="e.g., Mulch, Pavers, Shrubs"
+            />
+            <Input
+              label="Supplier SKU"
+              value={form.supplierSku}
+              onChange={e => setField('supplierSku', e.target.value)}
+              placeholder="e.g., BEL-CAM-001"
+            />
+          </div>
+        </div>
 
         {/* Inventory fields */}
         <div>

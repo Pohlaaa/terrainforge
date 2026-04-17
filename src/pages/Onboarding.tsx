@@ -6,6 +6,8 @@ import { useCrewStore } from '@/stores/crewStore'
 import { useEquipmentStore } from '@/stores/equipmentStore'
 import { useSupplierStore } from '@/stores/supplierStore'
 import { fetchUserPreferences, upsertUserPreferences } from '@/services/preferences'
+import { useMaterialStore } from '@/stores/materialStore'
+import { STARTER_CATALOG } from '@/materials-engine/catalog'
 import { CompanySetupStep } from '@/components/onboarding/CompanySetupStep'
 import { AddCrewStep } from '@/components/onboarding/AddCrewStep'
 import { AddEquipmentStep } from '@/components/onboarding/AddEquipmentStep'
@@ -224,14 +226,45 @@ const Onboarding: React.FC = () => {
   }
 
   // ── Navigation handlers ─────────────────────────────────────
+  // Seed starter catalog if org has fewer than 10 materials
+  const seedCatalogIfNeeded = async () => {
+    const { materials, addMaterial } = useMaterialStore.getState();
+    if (materials.length >= 10) return; // already has enough
+    for (const entry of STARTER_CATALOG) {
+      // Skip if a material with the same name already exists
+      if (materials.some(m => m.name.toLowerCase() === entry.name.toLowerCase())) continue;
+      try {
+        await addMaterial({
+          name: entry.name, category: entry.category, unit: entry.unit,
+          cost: entry.costPerPurchaseUnit, reserveOverride: null,
+          coverage: entry.computeParams.coverage_sqft_per_unit ?? null,
+          depthIn: entry.computeParams.depth_inches ?? null,
+          notes: '', qtyOnHand: 0, minStockLevel: 0, storageLocation: '', lastRestocked: '',
+          computationModel: entry.computationModel,
+          computeParams: entry.computeParams,
+          subcategory: entry.subcategory,
+          purchaseUnit: entry.purchaseUnit,
+          qtyPerPurchaseUnit: entry.qtyPerPurchaseUnit,
+          costPerPurchaseUnit: entry.costPerPurchaseUnit,
+          defaultWasteFactor: entry.defaultWasteFactor,
+          dependentMaterialIds: entry.dependentMaterialIds,
+          isActive: true,
+        });
+      } catch {
+        // Best-effort — skip failures
+      }
+    }
+  };
+
   const handleProjectWizard = async () => {
     if (user && org) {
       try {
+        await seedCatalogIfNeeded();
         await upsertUserPreferences(user.id, org.id, {
           onboardingCompletedAt: new Date().toISOString(),
         })
       } catch (err) {
-        console.error('Failed to mark onboarding complete:', err)
+        console.error('Failed to complete onboarding:', err)
       }
     }
     navigate('/projects/wizard')
@@ -240,6 +273,7 @@ const Onboarding: React.FC = () => {
   const handleSkip = async () => {
     if (user && org) {
       try {
+        await seedCatalogIfNeeded();
         await upsertUserPreferences(user.id, org.id, {
           onboardingCompletedAt: new Date().toISOString(),
         })

@@ -3,7 +3,7 @@ import type {
   Project, Zone, ProjectListItem, ProjectFull,
   ProjectTask, ProjectSubcontractor, ProjectPermit,
   ProjectCrewAssignment, ProjectSiteCondition, ProjectMaterial, ProjectCrewEntry,
-  ProjectElement,
+  ProjectElement, ProjectElementMaterial,
   ZoneMaterialDetail,
 } from '@/types'
 import { computeProjectCostRaw } from '@/lib/manifest'
@@ -49,12 +49,19 @@ interface ProjectStore {
   deleteProjectSubcontractor: (id: string) => Promise<boolean>
   createProjectPermit: (permit: Omit<ProjectPermit, 'id' | 'createdAt' | 'updatedAt'>, orgId: string) => Promise<ProjectPermit | null>
   updateProjectPermit: (id: string, updates: Partial<ProjectPermit>) => Promise<ProjectPermit | null>
+  createProjectSiteCondition: (condition: Omit<ProjectSiteCondition, 'id' | 'createdAt' | 'updatedAt'>, orgId: string) => Promise<ProjectSiteCondition | null>
 
   // Element CRUD (measurement-driven architecture)
   fetchProjectElements: (orgId: string, projectId: string) => Promise<ProjectElement[]>
   addElement: (element: Omit<ProjectElement, 'id' | 'materials'>, orgId: string) => Promise<ProjectElement | null>
   updateElement: (id: string, updates: Partial<ProjectElement>) => Promise<ProjectElement | null>
   deleteElement: (id: string) => Promise<boolean>
+
+  // Element-material CRUD (connects materials to elements for measurement-driven quantities)
+  addElementMaterial: (elementId: string, material: Omit<ProjectElementMaterial, 'id' | 'createdAt'>, orgId: string) => Promise<ProjectElementMaterial | null>
+  removeElementMaterial: (elementId: string, materialId: string) => Promise<boolean>
+  /** Update materials for project materials JSONB (store action for wizard) */
+  updateProjectMaterials: (projectId: string, materials: ProjectMaterial[]) => Promise<void>
 
   // Zone operations (kept for backward compatibility with older projects)
   /** @deprecated Zones are legacy. Kept for backward compat with pre-wizard projects. */
@@ -369,6 +376,23 @@ export const useProjectStore = create<ProjectStore>()(
       }
     },
 
+    createProjectSiteCondition: async (conditionData, orgId) => {
+      const id = crypto.randomUUID()
+      try {
+        const result = await db.createProjectSiteCondition(conditionData, id, orgId)
+        if (!result) return null
+        set((state) => ({
+          activeProject: state.activeProject
+            ? { ...state.activeProject, siteConditions: [...state.activeProject.siteConditions, result] }
+            : state.activeProject,
+        }))
+        return result
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Unknown error' })
+        return null
+      }
+    },
+
     // ── Zone operations (backward compat) ────────────────────────────────────
 
     addZone: async (projectId, zoneData) => {
@@ -580,6 +604,58 @@ export const useProjectStore = create<ProjectStore>()(
       } catch (err: unknown) {
         console.error('deleteElement error:', err instanceof Error ? err.message : err)
         return false
+      }
+    },
+
+    // ── Element-Material CRUD ────────────────────────────────────────────────
+
+    addElementMaterial: async (elementId, materialData, orgId) => {
+      try {
+        const id = crypto.randomUUID()
+        const result = await db.createElementMaterial(materialData, id, orgId)
+        if (!result) return null
+        // Update activeProject element's materials array in place
+        set((state) => {
+          if (!state.activeProject) return state
+          const elements = (state.activeProject.elements || []).map((el) =>
+            el.id === elementId
+              ? { ...el, materials: [...el.materials, result] }
+              : el
+          )
+          return { activeProject: { ...state.activeProject, elements } }
+        })
+        return result
+      } catch (err: unknown) {
+        console.error('addElementMaterial error:', err instanceof Error ? err.message : err)
+        return null
+      }
+    },
+
+    removeElementMaterial: async (elementId, materialId) => {
+      try {
+        const success = await db.deleteElementMaterial(materialId)
+        if (!success) return false
+        set((state) => {
+          if (!state.activeProject) return state
+          const elements = (state.activeProject.elements || []).map((el) =>
+            el.id === elementId
+              ? { ...el, materials: el.materials.filter((m) => m.id !== materialId) }
+              : el
+          )
+          return { activeProject: { ...state.activeProject, elements } }
+        })
+        return true
+      } catch (err: unknown) {
+        console.error('removeElementMaterial error:', err instanceof Error ? err.message : err)
+        return false
+      }
+    },
+
+    updateProjectMaterials: async (projectId, materials) => {
+      try {
+        await db.updateProjectMaterials(projectId, materials)
+      } catch (err: unknown) {
+        console.error('updateProjectMaterials error:', err instanceof Error ? err.message : err)
       }
     },
   })

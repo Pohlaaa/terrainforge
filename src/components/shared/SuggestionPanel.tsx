@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export interface SuggestionItem {
   id: string;
@@ -20,6 +20,18 @@ interface SuggestionPanelProps {
   dismissedIds: Set<string>;
   isLoading?: boolean;
   emptyMessage?: string;
+  /** Custom renderer for accepted items. When provided, replaces the default accepted card. */
+  renderAccepted?: (item: SuggestionItem) => React.ReactNode;
+  /** Called when user clicks edit on an accepted item. If not provided, inline edit is used. */
+  onEditAccepted?: (id: string) => void;
+  /** Called when user clicks remove on an accepted item (un-accept + remove from data) */
+  onRemoveAccepted?: (id: string) => void;
+  /** Called to save edits to an accepted item's metadata */
+  onUpdateAccepted?: (id: string, metadata: Record<string, string | number>) => void;
+  /** Called when user clicks "Add" at the bottom of the panel */
+  onAdd?: () => void;
+  /** Label for the add button */
+  addLabel?: string;
 }
 
 function SkeletonCard() {
@@ -69,7 +81,14 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({
   dismissedIds,
   isLoading = false,
   emptyMessage = 'No suggestions available',
+  renderAccepted,
+  onEditAccepted,
+  onRemoveAccepted,
+  onAdd,
+  addLabel,
+  onUpdateAccepted,
 }) => {
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const pendingItems = items.filter(
     (i) => !acceptedIds.has(i.id) && !dismissedIds.has(i.id)
   );
@@ -230,22 +249,74 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({
 
         {/* Accepted items */}
         {acceptedItems.map((item) => (
-          <div
-            key={item.id}
-            className="rounded-[8px] border px-[12px] py-[8px] flex items-center gap-[8px]"
-            style={{
-              backgroundColor: 'rgba(45,106,79,0.08)',
-              borderColor: 'var(--green)',
-              opacity: 0.8,
-            }}
-          >
-            <span className="text-[var(--green-l)] text-[14px]">&#10003;</span>
-            <span className="text-[12px] text-[var(--text-2)] flex-1">{item.title}</span>
-            {item.subtitle && (
-              <span className="text-[11px] text-[var(--text-4)]">{item.subtitle}</span>
-            )}
-          </div>
+          renderAccepted ? (
+            <div key={item.id}>{renderAccepted(item)}</div>
+          ) : (
+            <div
+              key={item.id}
+              className="rounded-[8px] border px-[12px] py-[8px] flex items-center gap-[8px]"
+              style={{
+                backgroundColor: 'rgba(45,106,79,0.08)',
+                borderColor: 'var(--green)',
+              }}
+            >
+              <span className="text-[var(--green-l)] text-[14px]">&#10003;</span>
+              <span className="text-[12px] text-[var(--text-2)] flex-1">{item.title}</span>
+              {item.subtitle && (
+                <span className="text-[11px] text-[var(--text-4)]">{item.subtitle}</span>
+              )}
+              {editingItemId === item.id && item.metadata ? (
+                // Inline editing mode
+                Object.entries(item.metadata).map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-[4px]">
+                    <span className="text-[10px] text-[var(--text-4)]">{k}:</span>
+                    <input
+                      className="w-[60px] bg-[var(--surface)] border border-[var(--border)] rounded-[4px] px-[4px] py-[2px] text-[11px] text-[var(--text)] text-right focus:outline-none focus:border-[var(--green)]"
+                      defaultValue={String(v)}
+                      onBlur={(e) => {
+                        if (onUpdateAccepted && item.metadata) {
+                          onUpdateAccepted(item.id, { ...item.metadata, [k]: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
+                ))
+              ) : (
+                item.metadata && Object.entries(item.metadata).map(([k, v]) => (
+                  <span key={k} className="text-[10px] text-[var(--text-4)]">{k}: {v}</span>
+                ))
+              )}
+              <button type="button" onClick={() => {
+                if (editingItemId === item.id) { setEditingItemId(null); }
+                else if (onEditAccepted) { onEditAccepted(item.id); }
+                else { setEditingItemId(item.id); }
+              }}
+                className="w-[22px] h-[22px] rounded-[4px] flex items-center justify-center text-[var(--text-4)] hover:text-[var(--text)] hover:bg-[var(--surface)] cursor-pointer bg-transparent border-none transition-colors" title="Edit">
+                {editingItemId === item.id ? (
+                  <span className="text-[10px] text-[var(--green-l)]">✓</span>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11.5 2.5l2 2L5 13H3v-2L11.5 2.5z" /></svg>
+                )}
+              </button>
+              {onRemoveAccepted && (
+                <button type="button" onClick={() => onRemoveAccepted(item.id)}
+                  className="w-[22px] h-[22px] rounded-[4px] flex items-center justify-center text-[var(--text-4)] hover:text-[var(--status-red)] hover:bg-[var(--surface)] cursor-pointer bg-transparent border-none transition-colors" title="Remove">
+                  ✕
+                </button>
+              )}
+            </div>
+          )
         ))}
+
+        {/* Add button at bottom */}
+        {onAdd && (
+          <button type="button" onClick={onAdd}
+            className="w-full rounded-[6px] border border-dashed py-[6px] text-[12px] font-[500] cursor-pointer bg-transparent transition-colors"
+            style={{ borderColor: 'var(--border)', color: 'var(--green-l)' }}
+          >
+            + {addLabel || 'Add'}
+          </button>
+        )}
 
         {/* Dismissed items */}
         {dismissedItems.map((item) => (

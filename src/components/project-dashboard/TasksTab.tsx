@@ -1,11 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import type { ProjectTask } from '@/types';
+import type { ProjectTask, ProjectMaterial, Equipment } from '@/types';
 import { TaskTable } from './tasks/TaskTable';
+import { getMaterialsForPhase } from '@/lib/elements';
 
 interface Props {
   tasks: ProjectTask[];
   projectId: string;
   orgId: string;
+  projectMaterials?: ProjectMaterial[];
+  projectEquipment?: Equipment[];
   onStatusChange: (taskId: string, newStatus: string) => void;
   onTaskCreate: (phase: string) => void;
   onTaskUpdate: (taskId: string, updates: Partial<ProjectTask>) => void;
@@ -25,6 +28,8 @@ const PHASES: { value: string; label: string }[] = [
 
 export const ProjectDashboardTasks: React.FC<Props> = ({
   tasks,
+  projectMaterials = [],
+  projectEquipment = [],
   onStatusChange,
   onTaskCreate,
   onTaskUpdate,
@@ -48,8 +53,8 @@ export const ProjectDashboardTasks: React.FC<Props> = ({
   }, [tasks]);
 
   const completedCount = tasks.filter((t) => t.status === 'completed').length;
-  const totalHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
-  const completedHours = tasks
+  const totalManHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
+  const completedManHours = tasks
     .filter((t) => t.status === 'completed')
     .reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
 
@@ -93,7 +98,7 @@ export const ProjectDashboardTasks: React.FC<Props> = ({
           <strong className="text-[var(--text)]">{completedCount}</strong> of {tasks.length} tasks complete
         </span>
         <span>
-          <strong className="text-[var(--text)]">{completedHours}</strong> of {totalHours}h estimated
+          <strong className="text-[var(--text)]">{completedManHours}</strong> of {totalManHours} man hrs
         </span>
         <div className="flex-1 h-[6px] rounded-[3px] bg-[var(--surface3)] overflow-hidden">
           <div
@@ -142,6 +147,37 @@ export const ProjectDashboardTasks: React.FC<Props> = ({
               onTaskSave={handleTaskSave}
               onTaskDelete={handleDelete}
             />
+
+            {/* Phase materials & equipment */}
+            {(() => {
+              const phaseMats = getMaterialsForPhase(group.phase, projectMaterials);
+              if (phaseMats.length === 0 && projectEquipment.length === 0) return null;
+              return (
+                <div className="mt-[6px] mb-[4px] px-[12px] py-[8px] rounded-[6px] flex flex-wrap gap-x-[16px] gap-y-[4px]" style={{ backgroundColor: 'rgba(45,106,79,0.04)' }}>
+                  {phaseMats.length > 0 && (
+                    <div className="flex items-center gap-[6px] flex-wrap">
+                      <span className="text-[10px] font-[600] uppercase text-[var(--text-4)]">Materials:</span>
+                      {phaseMats.map((m, i) => (
+                        <span key={i} className="text-[11px] text-[var(--text-3)]">
+                          {m.name} <span className="text-[var(--text-4)]">({m.quantity} {m.unit})</span>
+                          {i < phaseMats.length - 1 ? ',' : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {projectEquipment.length > 0 && group.phase !== 'cleanup_punchlist' && (
+                    <div className="flex items-center gap-[6px] flex-wrap">
+                      <span className="text-[10px] font-[600] uppercase text-[var(--text-4)]">Equipment:</span>
+                      {projectEquipment.map((e, i) => (
+                        <span key={i} className="text-[11px] text-[var(--text-3)]">
+                          {e.name}{i < projectEquipment.length - 1 ? ',' : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <button
               type="button"

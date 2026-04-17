@@ -8,15 +8,15 @@ const CORS_HEADERS = {
 
 // Search terms that a landscaping contractor would buy from
 const SEARCH_QUERIES = [
+  'landscape supply',
   'garden center',
   'nursery',
-  'landscape supply',
-  'hardware store',
-  'building supply',
   'stone yard',
+  'hardscape supply',
+  'building supply',
   'lumber yard',
   'concrete supply',
-  'mulch',
+  'bulk materials',
   'sod farm',
   'equipment rental',
   'irrigation supply',
@@ -126,10 +126,14 @@ serve(async (req) => {
       const cls = item.class || ''
       const skipTypes = ['residential', 'suburb', 'city', 'town', 'village', 'county',
         'state', 'country', 'postcode', 'neighbourhood', 'house', 'apartments',
-        'school', 'university', 'hospital', 'church', 'park', 'forest',
-        'stream', 'river', 'lake', 'cemetery']
+        'school', 'university', 'college', 'kindergarten', 'hospital', 'clinic',
+        'church', 'place_of_worship', 'park', 'forest', 'playground',
+        'stream', 'river', 'lake', 'cemetery', 'memorial',
+        'library', 'community_centre', 'sports_centre', 'stadium', 'theatre',
+        'museum', 'government', 'fire_station', 'police', 'post_office',
+        'bus_stop', 'station', 'parking']
       if (skipTypes.includes(type)) continue
-      if (cls === 'boundary' || cls === 'place' || cls === 'waterway') continue
+      if (cls === 'boundary' || cls === 'place' || cls === 'waterway' || cls === 'amenity' && skipTypes.includes(type)) continue
 
       const addr = item.address || {}
       const extratags = item.extratags || {}

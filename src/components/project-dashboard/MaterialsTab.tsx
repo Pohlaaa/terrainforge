@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { Project, ProjectMaterial, ManifestItem, Material } from '@/types';
+import type { Project, ProjectMaterial, ManifestItem, Material, ProjectElement } from '@/types';
 import { pdf } from '@react-pdf/renderer';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useSupplierStore } from '@/stores/supplierStore';
@@ -15,6 +15,7 @@ import { toast } from '@/hooks/useToast';
 interface Props {
   project: Project | null;
   loading: boolean;
+  elements?: ProjectElement[];
 }
 
 function fmt(n: number): string {

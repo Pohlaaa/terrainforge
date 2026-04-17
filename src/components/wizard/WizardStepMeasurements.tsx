@@ -1,7 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { ELEMENT_TYPE_LABELS, getElementTypesForCategory } from '@/lib/elements';
 import type { WizardData, WizardElement } from '@/pages/ProjectWizard';
 import type { ElementType } from '@/types';
+import { normalizeCategory } from '@/lib/categories';
+import { ElementVisual } from '@/components/shared/ElementVisual';
+import type { ProjectElement } from '@/types';
 
 interface Props {
   data: WizardData;
@@ -26,17 +29,30 @@ type DimensionConfig = {
 };
 
 const DIMENSION_CONFIG: Record<ElementType, DimensionConfig> = {
-  patio:          { lengthWidth: true, manualArea: true },
-  walkway:        { lengthWidth: true, manualArea: true },
-  driveway:       { lengthWidth: true, manualArea: true },
-  pool_deck:      { lengthWidth: true, manualArea: true },
-  fire_pit:       { lengthWidth: true, manualArea: true },
-  wall:           { linearFt: true, heightFt: true },
-  retaining_wall: { linearFt: true, heightFt: true },
-  garden_bed:     { lengthWidth: true, manualArea: true },
-  sod_area:       { lengthWidth: true, manualArea: true },
-  edging:         { linearFt: true },
-  other:          { allFields: true },
+  patio:            { lengthWidth: true, manualArea: true },
+  walkway:          { lengthWidth: true, manualArea: true },
+  driveway:         { lengthWidth: true, manualArea: true },
+  pool_deck:        { lengthWidth: true, manualArea: true },
+  fire_pit:         { lengthWidth: true, manualArea: true },
+  parking_lot:      { lengthWidth: true, manualArea: true },
+  concrete_slab:    { lengthWidth: true, manualArea: true },
+  gravel_area:      { lengthWidth: true, manualArea: true },
+  mulch_area:       { lengthWidth: true, manualArea: true },
+  outdoor_kitchen:  { lengthWidth: true, manualArea: true },
+  wall:             { linearFt: true, heightFt: true },
+  retaining_wall:   { linearFt: true, heightFt: true },
+  fence:            { linearFt: true, heightFt: true },
+  steps_stairs:     { lengthWidth: true, heightFt: true },
+  garden_bed:       { lengthWidth: true, manualArea: true },
+  sod_area:         { lengthWidth: true, manualArea: true },
+  tree_planting:    { manualArea: true },
+  shrub_planting:   { lengthWidth: true, manualArea: true },
+  irrigation_zone:  { manualArea: true },
+  edging:           { linearFt: true },
+  curbing:          { linearFt: true },
+  pergola:          { lengthWidth: true },
+  drainage:         { linearFt: true, depthIn: true },
+  other:            { allFields: true },
 };
 
 // AI suggestion presets based on project type
@@ -89,6 +105,16 @@ function computeArea(el: WizardElement): number | null {
 export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
   const elements = data.elements;
   const [suggestionsApplied, setSuggestionsApplied] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const prevElementCount = useRef(elements.length);
+
+  // Auto-scroll when new elements are added
+  useEffect(() => {
+    if (elements.length > prevElementCount.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+    prevElementCount.current = elements.length;
+  }, [elements.length]);
 
   const updateElement = (tempId: string, updates: Partial<WizardElement>) => {
     onChange({
@@ -119,16 +145,70 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
   };
 
   const applySuggestions = () => {
-    const presetKey = data.projectType || '';
-    const preset = PROJECT_TYPE_PRESETS[presetKey];
-    if (!preset) return;
-    const newElements: WizardElement[] = preset.map((p) => ({
-      ...p,
-      tempId: crypto.randomUUID(),
-    }));
+    const desc = (data.description || '').toLowerCase();
+    const inferred: Omit<WizardElement, 'tempId'>[] = [];
+
+    // Always infer from description keywords — this is the primary source
+    const keywords: [string[], string, ElementType][] = [
+      [['patio', 'paver patio', 'stone patio', 'flagstone'], 'Patio', 'patio'],
+      [['walkway', 'path', 'sidewalk', 'paver walkway', 'stepping stone'], 'Walkway', 'walkway'],
+      [['driveway'], 'Driveway', 'driveway'],
+      [['parking lot', 'parking area', 'parking'], 'Parking Lot', 'parking_lot'],
+      [['retaining wall', 'retaining'], 'Retaining Wall', 'retaining_wall'],
+      [['seating wall', 'seat wall', 'block wall'], 'Wall', 'wall'],
+      [['garden bed', 'garden', 'planting bed', 'flower bed', 'planting area', 'curbed garden'], 'Garden Beds', 'garden_bed'],
+      [['sod', 'turf', 'lawn', 'grass', 'resod'], 'Sod Area', 'sod_area'],
+      [['edging', 'border', 'landscape border', 'paver border'], 'Edging', 'edging'],
+      [['curb', 'curbing'], 'Curbing', 'curbing'],
+      [['fire pit', 'firepit', 'fire feature', 'fire ring'], 'Fire Pit', 'fire_pit'],
+      [['pool deck', 'pool surround'], 'Pool Deck', 'pool_deck'],
+      [['tree', 'trees', 'shade tree', 'ornamental tree', 'oak', 'maple'], 'Tree Planting', 'tree_planting'],
+      [['shrub', 'shrubs', 'hedge', 'hedges', 'bush', 'bushes', 'boxwood'], 'Shrub Planting', 'shrub_planting'],
+      [['mulch', 'wood chips', 'bark'], 'Mulch Area', 'mulch_area'],
+      [['gravel', 'rock', 'decomposed granite', 'river rock'], 'Gravel Area', 'gravel_area'],
+      [['concrete', 'slab', 'pad'], 'Concrete Slab', 'concrete_slab'],
+      [['fence', 'fencing', 'gate'], 'Fence', 'fence'],
+      [['pergola', 'arbor', 'trellis'], 'Pergola', 'pergola'],
+      [['outdoor kitchen', 'grill', 'bbq'], 'Outdoor Kitchen', 'outdoor_kitchen'],
+      [['drain', 'drainage', 'french drain', 'swale'], 'Drainage', 'drainage'],
+      [['step', 'stairs', 'staircase'], 'Steps / Stairs', 'steps_stairs'],
+      [['irrigation', 'sprinkler', 'drip'], 'Irrigation Zone', 'irrigation_zone'],
+      [['seed', 'overseed'], 'Sod Area', 'sod_area'],
+    ];
+
+    for (const [terms, name, elementType] of keywords) {
+      if (terms.some(t => desc.includes(t))) {
+        // Don't add duplicate element types
+        if (!inferred.some(e => e.elementType === elementType)) {
+          inferred.push({ name, elementType, lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' });
+        }
+      }
+    }
+
+    // If description didn't produce anything, fall back to project type presets
+    if (inferred.length === 0) {
+      const presetKey = data.projectType || '';
+      const preset = PROJECT_TYPE_PRESETS[presetKey];
+      if (preset) {
+        const newElements: WizardElement[] = preset.map(p => ({ ...p, tempId: crypto.randomUUID() }));
+        onChange({ elements: [...elements, ...newElements] });
+        setSuggestionsApplied(true);
+        return;
+      }
+      return; // nothing to suggest
+    }
+
+    const newElements: WizardElement[] = inferred.map(p => ({ ...p, tempId: crypto.randomUUID() }));
     onChange({ elements: [...elements, ...newElements] });
     setSuggestionsApplied(true);
   };
+
+  // Auto-suggest on mount if elements are empty
+  useEffect(() => {
+    if (elements.length === 0 && !suggestionsApplied && (data.projectType || data.description)) {
+      applySuggestions();
+    }
+  }, []); // only on mount
 
   // Computed total area across all elements
   const totalArea = useMemo(() => {
@@ -139,7 +219,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
     ? (({ full_install: 'Full Install', renovation: 'Renovation', hardscape: 'Hardscape', softscape: 'Softscape', drainage: 'Drainage', irrigation: 'Irrigation', maintenance: 'Maintenance', mixed: 'Mixed' } as Record<string, string>)[data.projectType] ?? data.projectType)
     : null;
 
-  const hasSuggestions = !!data.projectType && !!PROJECT_TYPE_PRESETS[data.projectType];
+  const hasSuggestions = !!(data.projectType || data.description);
 
   return (
     <div className="space-y-[24px]">
@@ -168,7 +248,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
             <path d="M7 1L8.5 4.5L12.5 5L9.5 7.5L10.5 11.5L7 9.5L3.5 11.5L4.5 7.5L1.5 5L5.5 4.5L7 1Z" fill="var(--green)" />
           </svg>
           <span className="text-[13px] font-[500]" style={{ color: 'var(--green-l)' }}>
-            Suggest elements for {projectTypeLabel} project
+            Suggest elements from job description
           </span>
           <span className="text-[11px] text-[var(--text-4)] ml-auto">
             Pre-fills typical areas — all values editable
@@ -202,11 +282,21 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
           const showDepth = cfg.depthIn || cfg.allFields;
           const showManualArea = cfg.manualArea || cfg.allFields;
 
+          // Flag elements that have no contractor-entered dimensions
+          const hasDimensions = !!(
+            (el.lengthFt && el.widthFt) ||
+            el.areaSqft ||
+            el.linearFt
+          );
+
           return (
             <div
               key={el.tempId}
               className="rounded-[10px] border p-[16px]"
-              style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
+              style={{
+                backgroundColor: 'var(--surface2)',
+                borderColor: hasDimensions ? 'var(--border)' : 'var(--status-amber)',
+              }}
             >
               {/* Card header: number, name, type, delete */}
               <div className="flex items-start gap-[10px] mb-[12px]">
@@ -248,8 +338,28 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
                 </button>
               </div>
 
-              {/* Dimension fields — adapt based on type */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-[10px] ml-[30px]">
+              {/* Missing dimensions warning */}
+              {!hasDimensions && (
+                <div className="ml-[30px] mb-[8px] flex items-center gap-[6px]">
+                  <span className="text-[11px] font-[500]" style={{ color: 'var(--status-amber)' }}>
+                    Needs measurements — enter dimensions below for accurate material quantities
+                  </span>
+                </div>
+              )}
+
+              {/* Dimensions + Live Visual */}
+              <div className="flex gap-[12px] ml-[30px]">
+              {/* Visual preview */}
+              <div className="shrink-0 flex items-start pt-[20px]">
+                <ElementVisual element={{
+                  id: el.tempId, orgId: '', projectId: '', name: el.name,
+                  elementType: el.elementType, lengthFt: el.lengthFt, widthFt: el.widthFt,
+                  areaSqft: el.areaSqft, linearFt: el.linearFt, heightFt: el.heightFt,
+                  depthIn: el.depthIn, computedAreaSqft: area ?? 0,
+                  notes: el.notes, sequence: 0, createdAt: '', materials: [],
+                } as ProjectElement} size={110} />
+              </div>
+              <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-[10px]">
                 {showLengthWidth && (
                   <>
                     <div>
@@ -341,29 +451,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
                   </div>
                 )}
 
-                {/* Computed area display */}
-                {area != null && area > 0 && (
-                  <div className="flex items-end pb-[10px]">
-                    <span
-                      className="text-[16px] font-[700] tabular-nums"
-                      style={{ color: 'var(--status-green)' }}
-                    >
-                      {area.toLocaleString()} sqft
-                    </span>
-                  </div>
-                )}
-
-                {/* Linear ft display for edging-type */}
-                {!area && el.linearFt && el.linearFt > 0 && !showLengthWidth && (
-                  <div className="flex items-end pb-[10px]">
-                    <span
-                      className="text-[16px] font-[700] tabular-nums"
-                      style={{ color: 'var(--status-green)' }}
-                    >
-                      {el.linearFt.toLocaleString()} LF
-                    </span>
-                  </div>
-                )}
+              </div>
               </div>
 
               {/* Notes */}
@@ -375,6 +463,46 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
                   onChange={(e) => updateElement(el.tempId, { notes: e.target.value })}
                 />
               </div>
+
+              {/* Material quantity estimate preview */}
+              {area != null && area > 0 && (
+                <div className="ml-[30px] mt-[8px] rounded-[6px] px-[10px] py-[6px]" style={{ backgroundColor: 'rgba(45,106,79,0.05)' }}>
+                  <span className="text-[10px] font-[600] text-[var(--text-4)] uppercase">Material estimates</span>
+                  <div className="flex flex-wrap gap-x-[16px] gap-y-[2px] mt-[2px]">
+                    {/* Base gravel (6" min) */}
+                    {['patio', 'walkway', 'driveway', 'pool_deck', 'fire_pit'].includes(el.elementType) && (
+                      <span className="text-[11px] text-[var(--text-3)]">
+                        Base gravel: <strong className="text-[var(--text)]">{((area / 324) * 6).toFixed(1)} cuyd</strong>
+                      </span>
+                    )}
+                    {/* Polymeric sand */}
+                    {['patio', 'walkway', 'driveway', 'pool_deck'].includes(el.elementType) && (
+                      <span className="text-[11px] text-[var(--text-3)]">
+                        Polymeric sand: <strong className="text-[var(--text)]">{Math.ceil(area / 65)} bags</strong>
+                      </span>
+                    )}
+                    {/* Topsoil for garden beds */}
+                    {el.elementType === 'garden_bed' && (
+                      <span className="text-[11px] text-[var(--text-3)]">
+                        Topsoil (3"): <strong className="text-[var(--text)]">{((area / 324) * 3).toFixed(1)} cuyd</strong>
+                      </span>
+                    )}
+                    {/* Mulch for garden beds */}
+                    {el.elementType === 'garden_bed' && (
+                      <span className="text-[11px] text-[var(--text-3)]">
+                        Mulch (2"): <strong className="text-[var(--text)]">{((area / 324) * 2).toFixed(1)} cuyd</strong>
+                      </span>
+                    )}
+                    {/* Sod */}
+                    {el.elementType === 'sod_area' && (
+                      <span className="text-[11px] text-[var(--text-3)]">
+                        Sod: <strong className="text-[var(--text)]">{area.toLocaleString()} sqft</strong>
+                      </span>
+                    )}
+                    <span className="text-[10px] text-[var(--text-4)] italic">estimates only</span>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -392,6 +520,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
         </svg>
         <span className="text-[13px] font-[500]">Add Element</span>
       </button>
+      <div ref={bottomRef} />
 
       {/* Summary */}
       {elements.length > 0 && totalArea > 0 && (

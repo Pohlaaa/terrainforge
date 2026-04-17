@@ -11,21 +11,17 @@ import { Badge } from '@/components/shared/Badge';
 import { MapWidget } from '@/components/dashboard/widgets/MapWidget';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import type { ProjectListItem } from '@/types';
+import { getProjectStatusBadge } from '@/lib/constants';
+import { computeProjectProgress } from '@/lib/projectProgress';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getChecklistPct(project: ProjectListItem): number {
-  if (!project.checklist) return 0;
-  const checks = Object.values(project.checklist);
-  if (checks.length === 0) return 0;
-  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  return computeProjectProgress(project).percentage;
 }
 
-function getStatusBadge(project: ProjectListItem): { label: string; variant: 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal' } {
-  const pct = getChecklistPct(project);
-  if (pct >= 100) return { label: 'Completed', variant: 'green' };
-  if (pct > 0) return { label: 'In Progress', variant: 'blue' };
-  return { label: 'Planning', variant: 'amber' };
+function getStatusBadge(project: ProjectListItem) {
+  return getProjectStatusBadge(project.status);
 }
 
 function formatBudget(value: number | undefined | null): string {
@@ -35,9 +31,13 @@ function formatBudget(value: number | undefined | null): string {
 }
 
 const STATUS_FILTER_OPTIONS = [
-  { value: 'active', label: 'Active' },
+  { value: 'estimate', label: 'Estimate' },
+  { value: 'quoted', label: 'Quoted' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'in_progress', label: 'In Progress' },
   { value: 'completed', label: 'Completed' },
-  { value: 'planning', label: 'Planning' },
+  { value: 'on_hold', label: 'On Hold' },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -71,13 +71,11 @@ const Dashboard: React.FC = () => {
   // ── KPI computations ────────────────────────────────────────────────────
 
   const activeProjects = useMemo(() => {
-    return projects.filter(p => getChecklistPct(p) < 100);
+    return projects.filter(p => (p.status ?? 'estimate') !== 'completed');
   }, [projects]);
 
   const completedThisMonth = useMemo(() => {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    return projects.filter(p => getChecklistPct(p) >= 100).length; // simplified — no completedAt field
+    return projects.filter(p => p.status === 'completed').length;
   }, [projects]);
 
   const pipelineValue = useMemo(() => {
@@ -115,13 +113,7 @@ const Dashboard: React.FC = () => {
     }
 
     if (statusFilter) {
-      result = result.filter(p => {
-        const pct = getChecklistPct(p);
-        if (statusFilter === 'completed') return pct >= 100;
-        if (statusFilter === 'active') return pct > 0 && pct < 100;
-        if (statusFilter === 'planning') return pct === 0;
-        return true;
-      });
+      result = result.filter(p => (p.status ?? 'estimate') === statusFilter);
     }
 
     result.sort((a, b) => {

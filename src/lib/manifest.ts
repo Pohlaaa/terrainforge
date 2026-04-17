@@ -14,6 +14,8 @@ import type { Material, Zone, Project, ManifestItem, SupplierPrice, ProjectEleme
 import type { MaterialCategory } from '@/types';
 import { RESERVE } from './constants';
 import { normalizeCategory } from './categories';
+import { computeElementMaterial } from '@/materials-engine/engine';
+import { applyWaste, roundToPurchaseUnit } from '@/materials-engine/unit-conversions';
 
 // ── Industry-Standard Depth Minimums (inches) ──────────────────────────────
 // Base materials require minimum 6″ depth per industry standard.
@@ -301,12 +303,22 @@ function generateFromElementMaterials(
 
     for (const elMat of element.materials) {
       const libMat = libraryMaterials.find(m => m.id === elMat.materialId);
-      const matAdapter = buildMaterialAdapter(elMat, libMat, element.depthIn);
 
-      const qty = computeQty(matAdapter, syntheticZone);
-      const reservePct = getReservePct(matAdapter);
-      const reserveQty = qty * reservePct;
-      const totalOrder = Math.ceil(qty + reserveQty);
+      // Use new engine when computation model is available, else fallback
+      let qty: number;
+      let reservePct: number;
+      if (libMat?.computationModel || elMat.computationModel) {
+        qty = computeElementMaterial(element, elMat, libMat);
+        reservePct = elMat.wasteFactorOverride ?? libMat?.defaultWasteFactor ?? 0.05;
+      } else {
+        const matAdapter = buildMaterialAdapter(elMat, libMat, element.depthIn);
+        qty = computeQty(matAdapter, syntheticZone);
+        reservePct = getReservePct(matAdapter);
+      }
+      const adjustedQty = applyWaste(qty, reservePct);
+      const purchaseUnit = libMat?.purchaseUnit ?? elMat.unit;
+      const totalOrder = roundToPurchaseUnit(adjustedQty, purchaseUnit);
+      const reserveQty = adjustedQty - qty;
 
       // Resolve unit cost: preferred supplier → element material cost → library cost
       const preferredPrice = supplierPrices?.find(

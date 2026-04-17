@@ -2,9 +2,28 @@
  * TerrainForge Constants
  */
 
-import type { MaterialCategory } from '../types';
+import type { MaterialCategory, ProjectStatus } from '../types';
 // Re-export from canonical categories module for backward compat
 export { CATEGORY_RESERVES as RESERVE, CATEGORY_LABELS as CAT_LABELS, CATEGORY_BADGES as CAT_BADGE, MATERIAL_CATEGORIES } from './categories';
+
+// ── Project Status Badge Map (shared across Dashboard + ProjectDashboard) ────
+
+export type BadgeVariant = 'green' | 'amber' | 'blue' | 'red' | 'purple' | 'teal';
+
+export const PROJECT_STATUS_BADGE: Record<ProjectStatus, { label: string; variant: BadgeVariant }> = {
+  estimate: { label: 'Estimate', variant: 'purple' },
+  quoted: { label: 'Quoted', variant: 'amber' },
+  approved: { label: 'Approved', variant: 'blue' },
+  scheduled: { label: 'Scheduled', variant: 'blue' },
+  in_progress: { label: 'In Progress', variant: 'teal' },
+  completed: { label: 'Completed', variant: 'green' },
+  on_hold: { label: 'On Hold', variant: 'red' },
+};
+
+export function getProjectStatusBadge(status: string | undefined): { label: string; variant: BadgeVariant } {
+  const key = (status ?? 'estimate') as ProjectStatus;
+  return PROJECT_STATUS_BADGE[key] ?? PROJECT_STATUS_BADGE.estimate;
+}
 
 export const UNIT_TYPES = [
   { id: 'sqft', label: 'Square Feet' },

@@ -169,7 +169,7 @@ export const AddEquipmentStep: React.FC<AddEquipmentStepProps> = ({
           Add equipment
         </h2>
         <p className="text-[14px] text-[var(--text-secondary)]">
-          Start typing a make/model (e.g., "Bobcat", "STIHL", "CAT 305") to see suggestions. You can add more from the Crew & Equipment tab.
+          Just the basics — model, type, and rate. You'll be prompted to add details like maintenance, insurance, and hours after setup.
         </p>
       </div>
 

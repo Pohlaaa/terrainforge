@@ -38,7 +38,11 @@ export interface ProjectCrewAssignment {
 
 export type ElementType =
   | 'patio' | 'wall' | 'garden_bed' | 'sod_area' | 'edging' | 'walkway'
-  | 'driveway' | 'retaining_wall' | 'fire_pit' | 'pool_deck' | 'other';
+  | 'driveway' | 'retaining_wall' | 'fire_pit' | 'pool_deck'
+  | 'parking_lot' | 'steps_stairs' | 'fence' | 'pergola' | 'outdoor_kitchen'
+  | 'drainage' | 'tree_planting' | 'shrub_planting' | 'irrigation_zone'
+  | 'mulch_area' | 'gravel_area' | 'concrete_slab' | 'curbing'
+  | 'other';
 
 export interface ProjectElement {
   id: string;
@@ -61,6 +65,7 @@ export interface ProjectElement {
 
 export interface ProjectElementMaterial {
   id: string;
+  orgId: string;
   elementId: string;
   materialId: string;
   name: string;
@@ -68,6 +73,16 @@ export interface ProjectElementMaterial {
   quantity: number;
   unit: string;
   unitCost: number;
+  depthIn: number | null;
+  notes: string;
+  createdAt: string;
+  // ── Override fields (new) ─────────────────────────────────────────────
+  spacingOverrideInches?: number | null;
+  wasteFactorOverride?: number | null;
+  manualCount?: number | null;
+  wallLengthFt?: number | null;
+  wallHeightFt?: number | null;
+  computationModel?: string;
 }
 
 // Material category union type
@@ -162,9 +177,11 @@ export interface Project {
   wizardStep?: number;
   wizardCompletedAt?: string | null;
 
-  // Project closeout
-  status?: 'active' | 'completed' | 'on_hold';
+  // Project lifecycle
+  status?: ProjectStatus;
   completedAt?: string | null;
+  approvedAt?: string | null;
+  startedAt?: string | null;
 }
 
 export interface Zone {
@@ -203,21 +220,44 @@ export interface ZoneEquipment {
   name: string;
 }
 
+export type ComputationModel = 'AREA_COVERAGE' | 'UNIT_COVERAGE' | 'LINEAR' | 'POINT_SPACING' | 'LINEAR_DEPTH' | 'SUBSTRATE';
+
+export interface ComputeParams {
+  depth_inches?: number;
+  coverage_sqft_per_unit?: number;
+  length_per_unit_ft?: number;
+  spacing_inches?: number;
+  face_area_sqft_per_unit?: number;
+  overlap_factor?: number;
+}
+
 export interface Material {
   id: string;
   name: string;
   category: string;
-  unit: string;
-  cost: number;                   // default/catalog cost (used when no supplier price exists)
-  reserveOverride: number | null;
-  coverage: number | null;
-  depthIn: number | null;
+  unit: string;                    // legacy — use purchaseUnit for new code
+  cost: number;                    // legacy — use costPerPurchaseUnit for new code
+  reserveOverride: number | null;  // legacy — use defaultWasteFactor for new code
+  coverage: number | null;         // legacy — use computeParams for new code
+  depthIn: number | null;          // legacy — use computeParams for new code
   notes: string;
   // Inventory tracking
   qtyOnHand: number;
   minStockLevel: number;
   storageLocation: string;
   lastRestocked: string;
+  // ── Engine fields (new) ─────────────────────────────────────────────────
+  computationModel?: ComputationModel;
+  computeParams?: ComputeParams;
+  subcategory?: string;
+  purchaseUnit?: string;           // each | bag | pallet | cubic_yard | ton | roll | bundle | flat
+  qtyPerPurchaseUnit?: number;
+  costPerPurchaseUnit?: number;
+  defaultWasteFactor?: number;     // 0.05 = 5%
+  supplierSku?: string;
+  dependentMaterialIds?: string[];
+  metadata?: Record<string, unknown>;
+  isActive?: boolean;
 }
 
 /** Project-level material entry stored in projects.materials JSONB */
@@ -235,7 +275,7 @@ export interface ProjectMaterial {
 export interface CrewMember {
   id: string;
   name: string;
-  role: 'foreman' | 'lead' | 'installer' | 'laborer' | 'specialist' | 'apprentice';
+  role: 'owner' | 'foreman' | 'lead' | 'installer' | 'laborer' | 'specialist' | 'apprentice';
   phone: string | null;
   skills: string[];
   availability: { mon: boolean; tue: boolean; wed: boolean; thu: boolean; fri: boolean; sat: boolean; sun: boolean };
@@ -730,6 +770,9 @@ export type PropertyType =
 export type SunExposure = 'full_sun' | 'partial_shade' | 'full_shade' | 'mixed';
 
 export type PermitStatus = 'not_started' | 'applied' | 'approved' | 'denied' | 'not_required';
+
+/** Project lifecycle pipeline: estimate → quoted → approved → scheduled → in_progress → completed (+ on_hold) */
+export type ProjectStatus = 'estimate' | 'quoted' | 'approved' | 'scheduled' | 'in_progress' | 'completed' | 'on_hold';
 
 export type TaskPhase =
   | 'demo_prep' | 'rough_grade' | 'hardscape' | 'softscape'

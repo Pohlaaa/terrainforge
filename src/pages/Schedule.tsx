@@ -162,7 +162,7 @@ const AssignModal: React.FC<AssignModalProps> = ({ crewMemberId, date, existingE
               }}
             >
               <option value="">— Select a project —</option>
-              {projects.map(p => (
+              {projects.filter(p => p.status && p.status !== 'estimate' && p.status !== 'quoted' && p.status !== 'completed').map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>

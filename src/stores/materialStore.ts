@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Material } from '@/types'
+import type { Material, PriceHistoryEntry } from '@/types'
 import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
 
@@ -17,6 +17,7 @@ interface MaterialStore {
   searchMaterials: (query: string) => Material[]
   fetchMaterials: () => Promise<void>
   setMaterials: (materials: Material[]) => void
+  fetchPriceHistory: (materialId: string, supplierId?: string, limit?: number) => Promise<PriceHistoryEntry[]>
 }
 
 export const useMaterialStore = create<MaterialStore>()(
@@ -115,6 +116,11 @@ export const useMaterialStore = create<MaterialStore>()(
         m.category.toLowerCase().includes(lowerQuery) ||
         m.notes.toLowerCase().includes(lowerQuery)
       )
+    },
+    fetchPriceHistory: async (materialId, supplierId, limit = 50) => {
+      const orgId = useOrgStore.getState().org?.id
+      if (!orgId) return []
+      return db.fetchPriceHistory(orgId, materialId, supplierId, limit)
     },
   })
 )

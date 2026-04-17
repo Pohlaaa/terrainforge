@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ScheduleEntry, CrewMember } from '@/types';
+import React, { useState, useMemo } from 'react';
+import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ScheduleEntry, CrewMember, Equipment, ProjectElement, ProjectSiteCondition } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
-import { formatPhoneNumber } from '@/utils/validation';
-import { Modal } from '@/components/shared/Modal';
-import { ProjectInfoCard } from './overview/ProjectInfoCard';
-import { ProjectTimelineCard } from './overview/ProjectTimelineCard';
-import { ProjectNotesSection } from './overview/ProjectNotesSection';
+import { useOrgStore } from '@/stores/orgStore';
+import { TaskTimeline } from '@/components/shared/TaskTimeline';
+import { TaskTable } from './tasks/TaskTable';
+import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
+import { computeProjectProgress } from '@/lib/projectProgress';
+import { ElementVisual } from '@/components/shared/ElementVisual';
+import { MaterialPicker } from '@/components/shared/MaterialPicker';
 
 interface Props {
   project: Project;
@@ -14,15 +16,19 @@ interface Props {
   permits: ProjectPermit[];
   scheduleEntries: ScheduleEntry[];
   crew: CrewMember[];
+  projectEquipment?: Equipment[];
+  elements?: ProjectElement[];
+  siteConditions?: ProjectSiteCondition[];
   onProjectUpdated?: (updates: Partial<Project>) => void;
+  onStatusChange?: (taskId: string, newStatus: string) => void;
+  onTaskCreate?: (phase: string) => void;
+  onTaskUpdate?: (taskId: string, updates: Partial<ProjectTask>) => void;
+  onTaskDelete?: (taskId: string) => void;
+  onTabChange?: (tab: string) => void;
 }
 
 const cardClass = 'rounded-[10px] border p-[16px]';
 const cardHead = 'text-[12px] font-[700] uppercase text-[var(--text-3)] mb-[12px]';
-const inputClass =
-  'bg-transparent border rounded-[6px] px-[8px] py-[6px] text-[13px] text-[var(--text)] w-full focus:outline-none focus:border-[var(--green)]';
-const formLabelClass = 'block text-[11px] font-[600] text-[var(--text-3)] mb-[4px]';
-
 function fmt(n: number | null | undefined): string {
   if (n == null) return '$0';
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -39,62 +45,6 @@ const PHASE_LABELS: Record<string, string> = {
   custom: 'Custom',
 };
 
-const PROJECT_TYPES = [
-  { value: 'full_install', label: 'Full Install' },
-  { value: 'renovation', label: 'Renovation' },
-  { value: 'hardscape', label: 'Hardscape' },
-  { value: 'softscape', label: 'Softscape' },
-  { value: 'drainage', label: 'Drainage' },
-  { value: 'irrigation', label: 'Irrigation' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'mixed', label: 'Mixed' },
-];
-
-const PROPERTY_TYPES = [
-  { value: 'residential', label: 'Residential' },
-  { value: 'commercial', label: 'Commercial' },
-  { value: 'hoa', label: 'HOA' },
-  { value: 'municipal', label: 'Municipal' },
-  { value: 'multi_family', label: 'Multi-Family' },
-  { value: 'other', label: 'Other' },
-];
-
-const SCOPE_SIZES = [
-  { value: 'small', label: 'Small' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'large', label: 'Large' },
-  { value: 'commercial', label: 'Commercial' },
-];
-
-const SUN_EXPOSURES = [
-  { value: 'full_sun', label: 'Full Sun' },
-  { value: 'partial_shade', label: 'Partial Shade' },
-  { value: 'full_shade', label: 'Full Shade' },
-  { value: 'mixed', label: 'Mixed' },
-];
-
-interface EditFormState {
-  name: string;
-  description: string;
-  projectType: string;
-  propertyType: string;
-  scopeSize: string;
-  clientName: string;
-  clientPhone: string;
-  clientEmail: string;
-  address: string;
-  startDate: string;
-  targetDate: string;
-  estimatedHours: string;
-  slopeGrade: string;
-  soilType: string;
-  sunExposure: string;
-  drainagePattern: string;
-  existingVegetation: string;
-  climateZone: string;
-  utilityLocations: string;
-}
-
 export const ProjectDashboardOverview: React.FC<Props> = ({
   project,
   tasks,
@@ -102,64 +52,27 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   permits,
   scheduleEntries,
   crew,
+  projectEquipment = [],
+  elements = [],
+  siteConditions = [],
   onProjectUpdated,
+  onStatusChange,
+  onTaskCreate,
+  onTaskUpdate,
+  onTaskDelete,
+  onTabChange,
 }) => {
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<EditFormState>({
-    name: '', description: '', projectType: '', propertyType: '', scopeSize: '',
-    clientName: '', clientPhone: '', clientEmail: '', address: '',
-    startDate: '', targetDate: '', estimatedHours: '',
-    slopeGrade: '', soilType: '', sunExposure: '', drainagePattern: '',
-    existingVegetation: '', climateZone: '', utilityLocations: '',
-  });
-
-  const openEdit = () => {
-    setForm({
-      name: project.name || '', description: project.description || '',
-      projectType: project.projectType || '', propertyType: project.propertyType || '',
-      scopeSize: project.scopeSize || '', clientName: project.clientName || '',
-      clientPhone: project.clientPhone || '', clientEmail: project.clientEmail || '',
-      address: project.address || '', startDate: project.startDate || '',
-      targetDate: project.targetDate || '', estimatedHours: project.estimatedHours?.toString() || '',
-      slopeGrade: project.slopeGrade || '', soilType: project.soilType || '',
-      sunExposure: project.sunExposure || '', drainagePattern: project.drainagePattern || '',
-      existingVegetation: project.existingVegetation || '', climateZone: project.climateZone || '',
-      utilityLocations: project.utilityLocations || '',
-    });
-    setShowEditModal(true);
-  };
-
-  const handleSave = async () => {
-    if (!form.name.trim()) return;
-    setSaving(true);
-    const updates: Partial<Project> = {
-      name: form.name.trim(), description: form.description.trim() || null,
-      projectType: (form.projectType || null) as Project['projectType'],
-      propertyType: (form.propertyType || null) as Project['propertyType'],
-      scopeSize: (form.scopeSize || null) as Project['scopeSize'],
-      clientName: form.clientName.trim() || null, clientPhone: form.clientPhone.trim() || null,
-      clientEmail: form.clientEmail.trim() || null, address: form.address.trim(),
-      startDate: form.startDate || '', targetDate: form.targetDate || '',
-      estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : null,
-      slopeGrade: form.slopeGrade.trim() || null, soilType: form.soilType.trim() || null,
-      sunExposure: (form.sunExposure || null) as Project['sunExposure'],
-      drainagePattern: form.drainagePattern.trim() || null,
-      existingVegetation: form.existingVegetation.trim() || null,
-      climateZone: form.climateZone.trim() || null, utilityLocations: form.utilityLocations.trim() || null,
-    };
-    await useProjectStore.getState().updateProject(project.id, updates);
-    setSaving(false);
-    onProjectUpdated?.(updates);
-    setShowEditModal(false);
-  };
-
-  const setField = (field: keyof EditFormState, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingElements, setEditingElements] = useState(false);
+  const [pickerElementId, setPickerElementId] = useState<string | null>(null);
+  const pickerElement = elements.find(el => el.id === pickerElementId) ?? null;
+  const projectStoreRef = useProjectStore();
 
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
-  const totalHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
+  const totalManHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
+  const crewSize = project.crewSize ?? 1;
+  const clockHours = crewSize > 0 ? totalManHours / crewSize : totalManHours;
 
   const labor = project.laborBudget ?? 0;
   const materials = project.materialsBudget ?? 0;
@@ -174,21 +87,56 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
 
   const phasesInProgress = [...new Set(tasks.filter((t) => t.status === 'in_progress').map((t) => t.phase))];
 
+  // Compute next step from stage-gate progress
+  const progress = computeProjectProgress(project, tasks, elements);
+  const nextStep = (() => {
+    const incompleteGate = progress.gates.find(g => g.completion < 1);
+    if (!incompleteGate) return { action: 'Project complete', detail: 'All gates passed' };
+    switch (incompleteGate.label) {
+      case 'Setup': {
+        if (elements.length === 0) return { action: 'Add measurements', detail: 'Define project elements with dimensions' };
+        if (!project.description) return { action: 'Add description', detail: 'Describe the scope of work' };
+        return { action: 'Add address', detail: 'Set the job site location' };
+      }
+      case 'Planning': {
+        if (tasks.length === 0) return { action: 'Create tasks', detail: 'Break the work into phases' };
+        if ((project.crewSize ?? 0) === 0) return { action: 'Assign crew', detail: 'Add crew to this project' };
+        return { action: 'Add materials', detail: 'Select materials for this project' };
+      }
+      case 'Scheduling': {
+        if (project.status === 'estimate') return { action: 'Send quote to client', detail: 'Finalize the estimate and send it' };
+        if (project.status === 'quoted') return { action: 'Awaiting client approval', detail: 'Quote sent — waiting for green light' };
+        if (!project.startDate || !project.targetDate) return { action: 'Set dates', detail: 'Pick start and target dates' };
+        return { action: 'Schedule project', detail: 'Confirm the project schedule' };
+      }
+      case 'Execution': {
+        const nextTask = tasks.find(t => t.status === 'pending' || t.status === 'in_progress');
+        if (nextTask) return { action: nextTask.status === 'in_progress' ? `Finish: ${nextTask.name}` : `Start: ${nextTask.name}`, detail: `${completedTasks}/${tasks.length} tasks done` };
+        return { action: 'Complete tasks', detail: `${completedTasks}/${tasks.length} done` };
+      }
+      case 'Closeout':
+        return { action: 'Record usage', detail: 'Log actual material quantities and close out' };
+      default:
+        return { action: progress.currentStage, detail: '' };
+    }
+  })();
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[16px] items-start">
-      {/* Left column */}
-      <div className="space-y-[16px]">
+    <div className="space-y-[16px]">
         {/* KPI Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-[10px]">
           {[
-            { label: 'Tasks', value: `${completedTasks}/${tasks.length}`, sub: tasks.length > 0 ? `${Math.round((completedTasks / tasks.length) * 100)}% done` : 'No tasks' },
-            { label: 'Est. Hours', value: `${totalHours}h`, sub: project.estimatedHours ? `of ${project.estimatedHours}h` : '' },
+            { label: 'Next Step', value: nextStep.action, sub: nextStep.detail, highlight: true },
+            { label: 'Man Hours', value: `${totalManHours}h`, sub: `~${clockHours.toFixed(1)} clock hrs (${crewSize} crew)` },
             { label: 'Budget', value: fmt(totalCost), sub: quote > 0 ? `Quote: ${fmt(quote)}` : '' },
             { label: 'Margin', value: quote > 0 ? `${marginPct.toFixed(0)}%` : '\u2014', sub: profit > 0 ? fmt(profit) : profit < 0 ? `(${fmt(Math.abs(profit))})` : '' },
           ].map((kpi) => (
-            <div key={kpi.label} className="rounded-[8px] border p-[12px]" style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+            <div key={kpi.label} className="rounded-[8px] border p-[12px]" style={{
+              backgroundColor: (kpi as { highlight?: boolean }).highlight ? 'rgba(45,106,79,0.08)' : 'var(--surface2)',
+              borderColor: (kpi as { highlight?: boolean }).highlight ? 'var(--green)' : 'var(--border)',
+            }}>
               <div className="text-[10px] font-[600] uppercase text-[var(--text-4)] mb-[4px]">{kpi.label}</div>
-              <div className="text-[18px] font-[700] text-[var(--text)]">{kpi.value}</div>
+              <div className="text-[14px] font-[700]" style={{ color: (kpi as { highlight?: boolean }).highlight ? 'var(--green-l)' : 'var(--text)' }}>{kpi.value}</div>
               {kpi.sub && <div className="text-[11px] text-[var(--text-4)] mt-[2px]">{kpi.sub}</div>}
             </div>
           ))}
@@ -208,84 +156,156 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Description */}
-        {project.description && (
-          <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-            <div className={cardHead}>Description</div>
-            <p className="text-[13px] text-[var(--text-2)] leading-[1.5]">{project.description}</p>
+        {/* Elements Summary (editable + per-element materials) */}
+        <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between mb-[12px]">
+            <div className={cardHead} style={{ marginBottom: 0 }}>Project Elements ({elements.length})</div>
+            <button type="button" onClick={() => setEditingElements(!editingElements)}
+              className="text-[11px] font-[500] bg-transparent border-none cursor-pointer" style={{ color: editingElements ? 'var(--green-l)' : 'var(--text-3)' }}>
+              {editingElements ? 'Done' : 'Edit'}
+            </button>
           </div>
-        )}
+          {elements.length === 0 && !editingElements && (
+            <p className="text-[12px] text-[var(--text-4)]">No elements yet. Click Edit to add measurements.</p>
+          )}
+          <div className="space-y-[6px]">
+            {elements.map((el) => {
+              const area = el.computedAreaSqft || (el.lengthFt && el.widthFt ? el.lengthFt * el.widthFt : el.areaSqft) || 0;
+              const elMaterials = el.materials || [];
+              if (editingElements) {
+                return (
+                  <div key={el.id} className="rounded-[6px] border px-[8px] py-[6px]" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex items-center gap-[6px] text-[12px]">
+                      <input className="bg-transparent border border-[var(--border)] rounded-[4px] px-[6px] py-[3px] text-[12px] text-[var(--text)] w-[120px] focus:outline-none focus:border-[var(--green)]"
+                        defaultValue={el.name} placeholder="Name" onBlur={(e) => projectStoreRef.updateElement(el.id, { name: e.target.value })} />
+                      <span className="text-[10px] text-[var(--text-4)] shrink-0">{ELEMENT_TYPE_LABELS[el.elementType]}</span>
+                      <input className="bg-transparent border border-[var(--border)] rounded-[4px] px-[4px] py-[3px] text-[11px] text-[var(--text)] w-[50px] text-right focus:outline-none focus:border-[var(--green)]"
+                        type="number" min="0" defaultValue={el.lengthFt ?? ''} placeholder="L"
+                        onBlur={(e) => { const v = parseFloat(e.target.value) || null; projectStoreRef.updateElement(el.id, { lengthFt: v, computedAreaSqft: v && el.widthFt ? v * el.widthFt : el.computedAreaSqft }); }} />
+                      <span className="text-[var(--text-4)]">×</span>
+                      <input className="bg-transparent border border-[var(--border)] rounded-[4px] px-[4px] py-[3px] text-[11px] text-[var(--text)] w-[50px] text-right focus:outline-none focus:border-[var(--green)]"
+                        type="number" min="0" defaultValue={el.widthFt ?? ''} placeholder="W"
+                        onBlur={(e) => { const v = parseFloat(e.target.value) || null; projectStoreRef.updateElement(el.id, { widthFt: v, computedAreaSqft: el.lengthFt && v ? el.lengthFt * v : el.computedAreaSqft }); }} />
+                      <span className="text-[var(--text-4)] text-[10px]">ft</span>
+                      <span className="text-[var(--text-4)] ml-auto tabular-nums text-[11px]">{area > 0 ? `${area} sqft` : ''}</span>
+                      <button type="button" onClick={() => projectStoreRef.deleteElement(el.id)}
+                        className="text-[var(--text-4)] hover:text-[var(--status-red)] bg-transparent border-none cursor-pointer text-[11px]">✕</button>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={el.id} className="rounded-[8px] border px-[12px] py-[10px] flex gap-[12px]" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
+                  <div className="shrink-0">
+                    <ElementVisual element={el} size={100} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-[6px] text-[12px]">
+                      <span className="px-[6px] py-[1px] rounded-[4px] text-[10px] font-[500] shrink-0" style={{ backgroundColor: 'rgba(45,106,79,0.1)', color: 'var(--green-l)' }}>
+                        {ELEMENT_TYPE_LABELS[el.elementType] || el.elementType}
+                      </span>
+                      <span className="text-[var(--text)] font-[500]">{el.name}</span>
+                      <span className="text-[var(--text-4)] ml-auto tabular-nums text-[11px]">
+                        {el.lengthFt && el.widthFt ? `${el.lengthFt} × ${el.widthFt} ft` : ''}
+                        {area > 0 ? ` = ${area.toLocaleString()} sqft` : el.linearFt ? `${el.linearFt} LF` : ''}
+                      </span>
+                    </div>
+                    <div className="mt-[4px] flex flex-wrap gap-[4px] items-center">
+                      {elMaterials.map((m, mi) => (
+                        <span key={mi} className="text-[10px] px-[5px] py-[1px] rounded-[3px]" style={{ backgroundColor: 'rgba(45,106,79,0.08)', color: 'var(--text-3)' }}>
+                          {m.name} · {m.quantity} {m.unit}
+                        </span>
+                      ))}
+                      <button type="button" onClick={() => setPickerElementId(el.id)}
+                        className="text-[10px] px-[5px] py-[1px] rounded-[3px] cursor-pointer bg-transparent border border-dashed transition-colors"
+                        style={{ borderColor: 'var(--border)', color: 'var(--green-l)' }}>
+                        {elMaterials.length > 0 ? '+ edit' : '+ add materials'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {editingElements && (
+            <button type="button" onClick={async () => {
+              const orgId = useOrgStore.getState().org?.id;
+              if (!orgId) return;
+              await projectStoreRef.addElement({ orgId, projectId: project.id, name: 'New Element', elementType: 'other', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, computedAreaSqft: 0, notes: '', sequence: elements.length, createdAt: new Date().toISOString() }, orgId);
+            }}
+              className="mt-[8px] w-full rounded-[6px] border-2 border-dashed py-[8px] text-[12px] font-[500] cursor-pointer bg-transparent transition-colors"
+              style={{ borderColor: 'var(--border)', color: 'var(--green-l)' }}>
+              + Add Element
+            </button>
+          )}
+        </div>
 
-        {/* Recent Tasks */}
+        {/* Task Timeline (Gantt chart + crew schedule) */}
         {tasks.length > 0 && (
           <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
-            <div className={cardHead}>Tasks Overview</div>
-            <div className="space-y-[6px]">
-              {tasks.slice(0, 8).map((task) => (
-                <div key={task.id} className="flex items-center gap-[8px] text-[12px]">
-                  <span className="w-[8px] h-[8px] rounded-full shrink-0" style={{ backgroundColor: task.status === 'completed' ? 'var(--status-green)' : task.status === 'in_progress' ? 'var(--status-amber)' : 'var(--border)' }} />
-                  <span className="text-[var(--text)] flex-1">{task.name}</span>
-                  <span className="text-[var(--text-4)] text-[11px]">{PHASE_LABELS[task.phase] || task.phase}</span>
-                  {task.estimatedHours != null && <span className="text-[var(--text-4)] text-[11px]">{task.estimatedHours}h</span>}
-                </div>
-              ))}
-              {tasks.length > 8 && <div className="text-[11px] text-[var(--text-4)] pt-[4px]">+{tasks.length - 8} more tasks</div>}
-            </div>
+            <div className={cardHead}>Task Timeline</div>
+            <TaskTimeline
+              tasks={tasks}
+              startDate={project.startDate || null}
+              targetDate={project.targetDate || null}
+              crewSize={project.crewSize ?? 1}
+              projectMaterials={project.materials ?? []}
+              projectEquipment={projectEquipment}
+              crewEntries={scheduleEntries
+                .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
+                .map(entry => ({
+                  id: entry.id,
+                  crewName: crew.find(c => c.id === entry.crewMemberId)?.name ?? 'Unassigned',
+                  date: entry.scheduledDate,
+                  status: entry.status,
+                }))}
+              crewMembers={crew.map(c => ({ id: c.id, name: c.name }))}
+              onTaskUpdate={onTaskUpdate}
+            />
           </div>
         )}
-      </div>
 
-      {/* Right column */}
-      <div className="space-y-[12px]">
-        <ProjectInfoCard project={project} onEdit={openEdit} />
-        <ProjectNotesSection project={project} />
-        <ProjectTimelineCard project={project} scheduleEntries={scheduleEntries} crew={crew} permits={permits} />
-      </div>
-
-      {/* Edit Project Details Modal */}
-      <Modal isOpen={showEditModal} title="Edit Project Details" onClose={() => setShowEditModal(false)} onConfirm={handleSave} confirmText={saving ? 'Saving...' : 'Save'} maxWidth="640px">
-        <div className="space-y-[20px]">
-          <div>
-            <div className="text-[13px] font-[600] text-[var(--text)] mb-[12px]">Project & Client Info</div>
-            <div className="space-y-[10px]">
-              <div>
-                <label className={formLabelClass}>Project Name *</label>
-                <input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Project name" />
-              </div>
-              <div>
-                <label className={formLabelClass}>Description</label>
-                <textarea className={inputClass} style={{ borderColor: 'var(--border)', minHeight: '60px', resize: 'vertical' }} value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="Project description" />
-              </div>
-              <div className="grid grid-cols-2 gap-[10px]">
-                <div><label className={formLabelClass}>Project Type</label><select className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.projectType} onChange={(e) => setField('projectType', e.target.value)}><option value="">—</option>{PROJECT_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}</select></div>
-                <div><label className={formLabelClass}>Property Type</label><select className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.propertyType} onChange={(e) => setField('propertyType', e.target.value)}><option value="">—</option>{PROPERTY_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}</select></div>
-                <div><label className={formLabelClass}>Scope Size</label><select className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.scopeSize} onChange={(e) => setField('scopeSize', e.target.value)}><option value="">—</option>{SCOPE_SIZES.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}</select></div>
-                <div><label className={formLabelClass}>Client Name</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.clientName} onChange={(e) => setField('clientName', e.target.value)} placeholder="Client name" /></div>
-                <div><label className={formLabelClass}>Client Phone</label><input type="tel" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.clientPhone} onChange={(e) => setField('clientPhone', formatPhoneNumber(e.target.value))} placeholder="xxx-xxx-xxxx" maxLength={12} /></div>
-                <div><label className={formLabelClass}>Client Email</label><input type="email" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.clientEmail} onChange={(e) => setField('clientEmail', e.target.value)} placeholder="Email" /></div>
-              </div>
-              <div><label className={formLabelClass}>Address</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.address} onChange={(e) => setField('address', e.target.value)} placeholder="Project address" /></div>
-              <div className="grid grid-cols-3 gap-[10px]">
-                <div><label className={formLabelClass}>Start Date</label><input type="date" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.startDate} onChange={(e) => setField('startDate', e.target.value)} /></div>
-                <div><label className={formLabelClass}>Target Date</label><input type="date" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.targetDate} onChange={(e) => setField('targetDate', e.target.value)} /></div>
-                <div><label className={formLabelClass}>Est. Hours</label><input type="number" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.estimatedHours} onChange={(e) => setField('estimatedHours', e.target.value)} placeholder="0" min={0} /></div>
+        {/* Inline Task List (absorbed from Tasks tab) */}
+        {tasks.length > 0 && onStatusChange && (
+          <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between mb-[12px]">
+              <div className={cardHead} style={{ marginBottom: 0 }}>Tasks ({tasks.filter(t => t.status === 'completed').length}/{tasks.length})</div>
+              <div className="flex-1 h-[4px] rounded-[2px] ml-[12px]" style={{ backgroundColor: 'var(--surface3)', maxWidth: 120 }}>
+                <div className="h-full rounded-[2px]" style={{ width: `${tasks.length > 0 ? (tasks.filter(t => t.status === 'completed').length / tasks.length) * 100 : 0}%`, backgroundColor: 'var(--green)' }} />
               </div>
             </div>
+            {(() => {
+              const phases = [...new Set(tasks.map(t => t.phase))];
+              return phases.map(phase => {
+                const phaseTasks = tasks.filter(t => t.phase === phase).sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+                return (
+                  <div key={phase} className="mb-[8px]">
+                    <div className="text-[11px] font-[600] text-[var(--text-3)] uppercase mb-[4px]">{PHASE_LABELS[phase] || phase}</div>
+                    <TaskTable
+                      tasks={phaseTasks}
+                      editingTaskId={editingTaskId}
+                      confirmDeleteId={confirmDeleteId}
+                      onEditTask={setEditingTaskId}
+                      onConfirmDelete={setConfirmDeleteId}
+                      onStatusChange={onStatusChange}
+                      onTaskSave={(id, updates) => { onTaskUpdate?.(id, updates); setEditingTaskId(null); }}
+                      onTaskDelete={(id) => { onTaskDelete?.(id); setConfirmDeleteId(null); }}
+                    />
+                  </div>
+                );
+              });
+            })()}
           </div>
-          <div>
-            <div className="text-[13px] font-[600] text-[var(--text)] mb-[12px]">Site Conditions</div>
-            <div className="grid grid-cols-2 gap-[10px]">
-              <div><label className={formLabelClass}>Slope Grade</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.slopeGrade} onChange={(e) => setField('slopeGrade', e.target.value)} placeholder="e.g., 5% grade" /></div>
-              <div><label className={formLabelClass}>Soil Type</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.soilType} onChange={(e) => setField('soilType', e.target.value)} placeholder="e.g., clay, sandy" /></div>
-              <div><label className={formLabelClass}>Sun Exposure</label><select className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.sunExposure} onChange={(e) => setField('sunExposure', e.target.value)}><option value="">—</option>{SUN_EXPOSURES.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}</select></div>
-              <div><label className={formLabelClass}>Drainage Pattern</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.drainagePattern} onChange={(e) => setField('drainagePattern', e.target.value)} placeholder="e.g., slopes to east" /></div>
-              <div><label className={formLabelClass}>Existing Vegetation</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.existingVegetation} onChange={(e) => setField('existingVegetation', e.target.value)} placeholder="e.g., mature oaks, lawn" /></div>
-              <div><label className={formLabelClass}>Climate Zone</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.climateZone} onChange={(e) => setField('climateZone', e.target.value)} placeholder="e.g., USDA 8b" /></div>
-              <div className="col-span-2"><label className={formLabelClass}>Utility Locations</label><input type="text" className={inputClass} style={{ borderColor: 'var(--border)' }} value={form.utilityLocations} onChange={(e) => setField('utilityLocations', e.target.value)} placeholder="e.g., gas line NE corner, power runs along fence" /></div>
-            </div>
-          </div>
-        </div>
-      </Modal>
+        )}
+
+      {/* Material Picker Modal */}
+      {pickerElement && (
+        <MaterialPicker
+          element={pickerElement}
+          isOpen={!!pickerElementId}
+          onClose={() => setPickerElementId(null)}
+        />
+      )}
     </div>
   );
 };

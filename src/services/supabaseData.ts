@@ -49,4 +49,6 @@ export {
 
 export {
   fetchProjectElements, createProjectElement, updateProjectElement, deleteProjectElement,
+  fetchElementMaterials, createElementMaterial, updateElementMaterial, deleteElementMaterial,
+  deleteElementMaterialsByElement,
 } from './supabaseElements'

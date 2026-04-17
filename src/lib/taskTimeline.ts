@@ -4,7 +4,9 @@ export interface ScheduledTask {
   name: string;
   phase: string;
   startDay: number;
+  /** Clock days = manHours / (8 * crewSize), rounded up */
   durationDays: number;
+  /** Man hours — the base unit of labor estimation */
   estimatedHours: number;
 }
 

@@ -56,7 +56,7 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
   editValues,
   onFieldChange,
 }) => {
-  const totalHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
+  const totalManHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
 
   return (
     <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
@@ -79,9 +79,9 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
               <span className="text-[var(--text)] font-[600]">{fmt(financials.labor)}</span>
             )}
           </div>
-          {totalHours > 0 && (
+          {totalManHours > 0 && (
             <div className="text-[11px] text-[var(--text-4)]">
-              {totalHours}h estimated across {tasks.length} tasks
+              {totalManHours} man hrs across {tasks.length} tasks
             </div>
           )}
         </div>

@@ -32,17 +32,17 @@ function useSetupSteps(): SetupStep[] {
     {
       label: 'Add a crew member',
       complete: realCrew.length > 0,
-      path: '/crew-manager',
+      path: '/crew-hub',
     },
     {
       label: 'Add equipment',
       complete: realEquipment.length > 0,
-      path: '/equipment',
+      path: '/crew-hub',
     },
     {
       label: 'View your schedule',
       complete: localStorage.getItem('tf-visited-schedule') === 'true',
-      path: '/schedule',
+      path: '/crew-hub',
     },
   ];
 }

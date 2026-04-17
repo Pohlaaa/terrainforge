@@ -7,13 +7,15 @@ interface EquipmentTableProps {
   equipment: Equipment[];
   readOnly: boolean;
   onAddEquipment: () => void;
+  onEditEquipment?: (id: string) => void;
+  projects?: { id: string; name: string }[];
 }
 
 const STATUS_BADGE: Record<string, 'green' | 'amber' | 'blue' | 'red'> = {
   'available': 'green', 'in-use': 'blue', 'maintenance': 'amber', 'out-of-service': 'red',
 };
 
-export const EquipmentTable: React.FC<EquipmentTableProps> = ({ equipment, readOnly, onAddEquipment }) => (
+export const EquipmentTable: React.FC<EquipmentTableProps> = ({ equipment, readOnly, onAddEquipment, onEditEquipment, projects = [] }) => (
   <div
     className="rounded-xl"
     style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
@@ -55,10 +57,11 @@ export const EquipmentTable: React.FC<EquipmentTableProps> = ({ equipment, readO
               return (
                 <tr
                   key={equip.id}
-                  className="border-t transition-colors"
+                  className="border-t transition-colors cursor-pointer"
                   style={{ borderColor: 'var(--border-default)' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  onClick={() => onEditEquipment?.(equip.id)}
                 >
                   <td className="px-3 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>{equip.name}</td>
                   <td className="px-3 py-3" style={{ color: 'var(--text-secondary)' }}>{typeLabel}</td>
@@ -70,7 +73,7 @@ export const EquipmentTable: React.FC<EquipmentTableProps> = ({ equipment, readO
                     {equip.nextService ? new Date(equip.nextService).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-3 py-3 hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
-                    {equip.assignedProject || '—'}
+                    {equip.assignedProject ? (projects.find(p => p.id === equip.assignedProject)?.name || '—') : '—'}
                   </td>
                 </tr>
               );

@@ -3,7 +3,8 @@ import { SuggestionPanel } from '@/components/shared/SuggestionPanel';
 import type { SuggestionItem } from '@/components/shared/SuggestionPanel';
 import type { WizardData, WizardMaterial } from '@/pages/ProjectWizard';
 import type { AIRecommendationSet } from '@/types';
-import { getCategoryLabel } from '@/lib/categories';
+import { getCategoryLabel, normalizeCategory } from '@/lib/categories';
+import { getElementTypesForCategory, ELEMENT_TYPE_LABELS } from '@/lib/elements';
 
 interface Props {
   data: WizardData;
@@ -136,6 +137,24 @@ export const WizardStepMaterials: React.FC<Props> = ({
 
   const notInLibraryCount = materialSelections.filter((m) => !m.inLibrary).length;
 
+  // Compute element assignments for each material (preview of auto-assignment)
+  const getElementAssignments = (mat: WizardMaterial) => {
+    const category = normalizeCategory(mat.category);
+    const targetTypes = getElementTypesForCategory(category);
+    if (!data.elements || data.elements.length === 0 || targetTypes.length === 0) return [];
+    const matching = data.elements.filter(el => targetTypes.includes(el.elementType));
+    if (matching.length === 0) return [];
+    return matching.map(el => {
+      const area = (el.lengthFt && el.widthFt) ? el.lengthFt * el.widthFt : (el.areaSqft ?? 0);
+      return {
+        name: el.name || ELEMENT_TYPE_LABELS[el.elementType] || el.elementType,
+        area,
+        linearFt: el.linearFt,
+        elementType: el.elementType,
+      };
+    });
+  };
+
   return (
     <div className="space-y-[24px]">
       <div>
@@ -148,7 +167,7 @@ export const WizardStepMaterials: React.FC<Props> = ({
         </p>
       </div>
 
-      {/* AI Suggestions */}
+      {/* AI Suggestions — accepted items render inline with editable fields */}
       <SuggestionPanel
         title="AI Material Recommendations"
         items={materialSuggestions}
@@ -160,74 +179,53 @@ export const WizardStepMaterials: React.FC<Props> = ({
         dismissedIds={dismissedIds}
         isLoading={aiLoading}
         emptyMessage="No material recommendations — add project details in earlier steps for AI suggestions."
-      />
-
-      {/* Accepted materials — editable quantities */}
-      {materialSelections.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-[10px]">
-            <h4 className="text-[13px] font-[600] text-[var(--text)]">
-              Accepted Materials ({materialSelections.length})
-            </h4>
-            {notInLibraryCount > 0 && (
-              <span className="text-[11px] text-[var(--status-amber)]">
-                {notInLibraryCount} will be added to your library
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-[6px]">
-            {materialSelections.map((mat) => (
-              <div
-                key={mat.tempId}
-                className="rounded-[8px] border p-[12px] flex items-center gap-[10px]"
-                style={{
-                  backgroundColor: 'var(--surface2)',
-                  borderColor: mat.inLibrary ? 'var(--border)' : 'var(--status-amber)',
-                }}
-              >
-                {/* Category badge */}
+        renderAccepted={(item) => {
+          // Find the corresponding WizardMaterial by matching the suggestion title
+          const idx = parseInt(item.id.replace('mat-', ''));
+          const rec = recommendations?.materials[idx];
+          const mat = materialSelections.find(
+            (m) => m.materialName === rec?.materialName || m.materialName === item.title
+          );
+          if (!mat) {
+            return (
+              <div className="rounded-[8px] border px-[12px] py-[8px] flex items-center gap-[8px]" style={{ backgroundColor: 'rgba(45,106,79,0.08)', borderColor: 'var(--green)' }}>
+                <span className="text-[var(--green-l)] text-[14px]">&#10003;</span>
+                <span className="text-[12px] text-[var(--text-2)] flex-1">{item.title}</span>
+              </div>
+            );
+          }
+          const assignments = getElementAssignments(mat);
+          return (
+            <div
+              className="rounded-[8px] border p-[12px]"
+              style={{ backgroundColor: 'rgba(45,106,79,0.08)', borderColor: 'var(--green)' }}
+            >
+              {/* Top row: name + editable fields */}
+              <div className="flex items-center gap-[10px] flex-wrap">
+                <span className="text-[var(--green-l)] text-[14px] shrink-0">&#10003;</span>
                 <span
                   className="px-[6px] py-[2px] rounded-[4px] text-[10px] font-[500] shrink-0"
-                  style={{ backgroundColor: 'rgba(45,106,79,0.1)', color: 'var(--green-l)' }}
+                  style={{ backgroundColor: 'rgba(45,106,79,0.15)', color: 'var(--green-l)' }}
                 >
                   {getCategoryLabel(mat.category)}
                 </span>
-
-                {/* Name */}
-                <span className="flex-1 text-[13px] font-[500] text-[var(--text)] min-w-0 truncate">
+                <span className="text-[13px] font-[500] text-[var(--text)] min-w-0 truncate flex-1">
                   {mat.materialName}
                   {!mat.inLibrary && (
                     <span className="text-[10px] text-[var(--status-amber)] ml-[6px]">+ new</span>
                   )}
                 </span>
-
-                {/* Quantity input */}
                 <input
                   className="w-[70px] bg-[var(--surface)] border border-[var(--border)] rounded-[6px] px-[8px] py-[4px] text-[12px] text-[var(--text)] text-right focus:outline-none focus:border-[var(--green)]"
                   type="number"
                   min="0"
                   step="1"
                   value={mat.quantity}
-                  onChange={(e) =>
-                    updateQuantity(mat.tempId, parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => updateQuantity(mat.tempId, parseFloat(e.target.value) || 0)}
                 />
-
-                {/* Unit */}
                 <span className="text-[11px] text-[var(--text-3)] w-[40px]">{mat.unit}</span>
-
-                {/* Unit cost */}
-                <span className="text-[12px] text-[var(--text-3)] w-[60px] text-right">
-                  @ {fmt(mat.unitCost)}
-                </span>
-
-                {/* Subtotal */}
-                <span className="text-[13px] font-[600] text-[var(--text)] w-[80px] text-right tabular-nums">
-                  {fmt(mat.quantity * mat.unitCost)}
-                </span>
-
-                {/* Remove */}
+                <span className="text-[12px] text-[var(--text-3)] w-[60px] text-right">@ {fmt(mat.unitCost)}</span>
+                <span className="text-[13px] font-[600] text-[var(--text)] w-[80px] text-right tabular-nums">{fmt(mat.quantity * mat.unitCost)}</span>
                 <button
                   type="button"
                   onClick={() => removeMaterial(mat.tempId)}
@@ -236,21 +234,40 @@ export const WizardStepMaterials: React.FC<Props> = ({
                   ✕
                 </button>
               </div>
-            ))}
-          </div>
+              {/* Element assignment line */}
+              {assignments.length > 0 && (
+                <div className="mt-[6px] ml-[24px] pl-[6px] border-l-2" style={{ borderColor: 'var(--green)' }}>
+                  <span className="text-[10px] text-[var(--text-4)]">Applies to: </span>
+                  {assignments.map((a, i) => (
+                    <span key={i} className="text-[10px] text-[var(--text-3)]">
+                      {a.name} ({a.area > 0 ? `${a.area} sqft` : `${a.linearFt ?? 0} lnft`})
+                      {i < assignments.length - 1 ? ', ' : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }}
+      />
 
-          {/* Total */}
-          <div
-            className="flex items-center justify-between mt-[12px] pt-[12px] border-t"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <span className="text-[13px] font-[600] text-[var(--text)]">
-              Estimated Material Cost
-            </span>
-            <span className="text-[16px] font-[700] text-[var(--green-l)] tabular-nums">
-              {fmt(totalMaterialsCost)}
-            </span>
-          </div>
+      {/* Total (outside panel) */}
+      {materialSelections.length > 0 && (
+        <div
+          className="flex items-center justify-between pt-[12px] border-t"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          <span className="text-[13px] font-[600] text-[var(--text)]">
+            Estimated Material Cost ({materialSelections.length} material{materialSelections.length !== 1 ? 's' : ''})
+            {notInLibraryCount > 0 && (
+              <span className="text-[11px] text-[var(--status-amber)] ml-[8px] font-[400]">
+                {notInLibraryCount} will be added to your library
+              </span>
+            )}
+          </span>
+          <span className="text-[16px] font-[700] text-[var(--green-l)] tabular-nums">
+            {fmt(totalMaterialsCost)}
+          </span>
         </div>
       )}
     </div>

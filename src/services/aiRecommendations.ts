@@ -80,6 +80,14 @@ function buildPrompt(ctx: RecommendationContext): string {
 
   return `You are an experienced landscaping project estimator and crew scheduler.
 
+INDUSTRY MATERIAL RULES (non-negotiable — follow these exactly):
+- Base material (gravel, crushed stone, sand for base) MINIMUM depth is 6 inches. Never suggest less than 6".
+- Polymeric sand is priced per 50lb BAG, not per pound. Coverage: 65 sqft per bag. Unit must be "bag".
+- Topsoil minimum depth: 3 inches for garden beds.
+- Mulch minimum depth: 2 inches for weed suppression.
+- Concrete slab minimum depth: 4 inches.
+- All bulk material quantities use the formula: sqft / 324 × depth_inches = cubic yards.
+
 Given a project description and the contractor's actual org data (crew, equipment, materials, rates), generate a comprehensive project recommendation.
 
 ## Project Details

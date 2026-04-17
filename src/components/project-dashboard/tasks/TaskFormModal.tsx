@@ -79,7 +79,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, onSave, onCa
           value={hours}
           onChange={(e) => setHours(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Hours"
+          placeholder="Man hrs"
           min={0}
           step={0.5}
         />

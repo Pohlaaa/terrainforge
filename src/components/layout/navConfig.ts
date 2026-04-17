@@ -16,7 +16,7 @@ export const primaryTabs: NavTab[] = [
   { path: '/dashboard', label: 'Projects', shortLabel: 'Projects', icon: 'folder' },
   { path: '/budget', label: 'Budget & Finance', shortLabel: 'Budget', icon: 'credit-card' },
   { path: '/materials', label: 'Materials', shortLabel: 'Materials', icon: 'package' },
-  { path: '/crew-hub', label: 'Crew & Equipment', shortLabel: 'Crew', icon: 'users' },
+  { path: '/crew-hub', label: 'Crew + Equipment', shortLabel: 'Crew + Equip', icon: 'users' },
 ];
 
 /** Secondary pages — shown in "More" dropdown */

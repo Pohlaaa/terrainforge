@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { Project, ProjectMaterial } from '@/types';
+import type { Project, ProjectMaterial, ProjectPermit } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
 import { Button } from '@/components/ui/Button';
 import { toast } from '@/hooks/useToast';
@@ -7,10 +7,13 @@ import { getCategoryLabel, getCategoryBadge } from '@/lib/categories';
 
 interface Props {
   project: Project;
+  permits?: ProjectPermit[];
+  onPermitCreate?: () => void;
+  onPermitUpdate?: (permitId: string, updates: Partial<ProjectPermit>) => void;
   onProjectUpdated: () => void;
 }
 
-export const CloseoutTab: React.FC<Props> = ({ project, onProjectUpdated }) => {
+export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCreate, onPermitUpdate, onProjectUpdated }) => {
   const { updateProject } = useProjectStore();
   const [actualUsages, setActualUsages] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
@@ -140,6 +143,40 @@ export const CloseoutTab: React.FC<Props> = ({ project, onProjectUpdated }) => {
           Record actual material usage to refine reserve percentages for future projects.
         </p>
       </div>
+
+      {/* Compliance & Permits */}
+      {permits.length > 0 && (
+        <div className="rounded-[10px] border p-[16px]" style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+          <div className="text-[12px] font-[700] uppercase text-[var(--text-3)] mb-[12px]">Permits & Compliance</div>
+          <div className="space-y-[4px]">
+            {permits.map(p => (
+              <div key={p.id} className="flex items-center gap-[8px] text-[12px]">
+                <span className="px-[6px] py-[1px] rounded-[4px] text-[10px] font-[500]" style={{
+                  backgroundColor: p.status === 'approved' ? 'rgba(22,163,74,0.12)' : p.status === 'needed' ? 'rgba(212,164,76,0.12)' : 'var(--surface3)',
+                  color: p.status === 'approved' ? 'var(--status-green)' : p.status === 'needed' ? 'var(--status-amber)' : 'var(--text-4)',
+                }}>{p.status}</span>
+                <span className="text-[var(--text)] font-[500] flex-1">{p.permitType.replace(/_/g, ' ')}</span>
+                {p.fee != null && <span className="text-[var(--text-4)]">${p.fee}</span>}
+                {p.jurisdiction && <span className="text-[var(--text-4)]">{p.jurisdiction}</span>}
+                {onPermitUpdate && (
+                  <select
+                    className="bg-transparent border border-[var(--border)] rounded-[4px] px-[4px] py-[2px] text-[11px] cursor-pointer"
+                    style={{ color: 'var(--text-3)' }}
+                    value={p.status}
+                    onChange={(e) => onPermitUpdate(p.id, { status: e.target.value as ProjectPermit['status'] })}
+                  >
+                    <option value="needed">Needed</option>
+                    <option value="applied">Applied</option>
+                    <option value="approved">Approved</option>
+                    <option value="denied">Denied</option>
+                    <option value="not_required">Not Required</option>
+                  </select>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Materials Table */}
       <div className="overflow-x-auto border rounded-[8px]" style={{ borderColor: 'var(--border)' }}>

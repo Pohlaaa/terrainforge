@@ -15,11 +15,9 @@ export const KPI_LIBRARY: KPIDefinition[] = [
     category: 'projects',
     icon: '📋',
     compute: ({ projects }) => {
-      const active = projects.filter(p => {
-        const checks = Object.values(p.checklist);
-        const completed = checks.filter(Boolean).length;
-        return completed < checks.length; // not 100% complete
-      });
+      const active = projects.filter(p =>
+        p.status === 'in_progress' || p.status === 'scheduled'
+      );
       return { value: active.length, subtitle: `of ${projects.length} total` };
     },
     colorVar: '--color-primary',
@@ -32,7 +30,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
     category: 'projects',
     icon: '📐',
     compute: ({ projects }) => ({
-      value: projects.filter(p => !p.zones || p.zones.length === 0).length,
+      value: projects.filter(p => p.status === 'estimate').length,
     }),
     colorVar: '--color-primary',
     navigateTo: '/projects',
@@ -83,7 +81,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       return { value: available.length, subtitle: `of ${crew.length} total` };
     },
     colorVar: '--status-info',
-    navigateTo: '/crew-manager',
+    navigateTo: '/crew-hub',
   },
   {
     id: 'crew_utilization',
@@ -101,7 +99,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
     },
     colorVar: '--status-info',
     suffix: '%',
-    navigateTo: '/crew-manager',
+    navigateTo: '/crew-hub',
   },
   {
     id: 'fleet_available',
@@ -112,7 +110,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       value: equipment.filter(e => e.status === 'available').length,
     }),
     colorVar: '--status-warning',
-    navigateTo: '/equipment',
+    navigateTo: '/crew-hub',
   },
   {
     id: 'fleet_in_service',
@@ -123,7 +121,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       value: equipment.filter(e => e.status === 'maintenance').length,
     }),
     colorVar: '--status-warning',
-    navigateTo: '/equipment',
+    navigateTo: '/crew-hub',
   },
   {
     id: 'low_stock_alerts',
@@ -154,8 +152,7 @@ export const KPI_LIBRARY: KPIDefinition[] = [
       const today = new Date().toISOString().split('T')[0];
       const overdue = projects.filter(p => {
         if (!p.targetDate || p.targetDate >= today) return false;
-        const checks = Object.values(p.checklist);
-        return checks.filter(Boolean).length < checks.length;
+        return p.status !== 'completed' && p.status !== 'estimate' && p.status !== 'quoted';
       });
       return { value: overdue.length };
     },

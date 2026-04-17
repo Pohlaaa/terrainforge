@@ -2,19 +2,11 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import type { Map as MapboxMap, Marker } from 'mapbox-gl';
 import type { Project } from '@/types';
+import { computeProjectProgress, getProgressPinColor } from '@/lib/projectProgress';
 
 function statusPinColor(project: Project): string {
-  const checks = Object.values(project.checklist);
-  const completed = checks.filter(Boolean).length;
-  const pct = checks.length > 0 ? completed / checks.length : 0;
-  const today = new Date().toISOString().split('T')[0];
-  const isOverdue = project.targetDate && project.targetDate < today && pct < 1;
-
-  if (isOverdue) return '#F59E0B';
-  if (pct === 1) return '#16A34A';
-  if (pct === 0) return '#9CA3AF';
-  if (pct >= 0.5) return '#2563EB';
-  return '#F59E0B';
+  const progress = computeProjectProgress(project);
+  return getProgressPinColor(progress);
 }
 
 interface UseMapboxOptions {
@@ -149,9 +141,8 @@ export function useMapbox({
 
       projectsWithCoords.forEach((project) => {
         const pinColor = statusPinColor(project);
-        const checks = Object.values(project.checklist);
-        const completedCount = checks.filter(Boolean).length;
-        const pct = checks.length > 0 ? Math.round((completedCount / checks.length) * 100) : 0;
+        const progress = computeProjectProgress(project);
+        const pct = progress.percentage;
 
         const el = document.createElement('div');
         el.style.cssText = [
@@ -198,7 +189,7 @@ export function useMapbox({
             ${project.address ? `<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">${project.address}</div>` : ''}
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
               <span style="font-size:12px;color:#374151;font-weight:600">${budgetStr}</span>
-              <span style="font-size:11px;color:#6B7280">${pct}% complete</span>
+              <span style="font-size:11px;color:#6B7280">${pct}% · ${progress.currentStage}</span>
             </div>
             <div style="height:4px;background:#E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:8px">
               <div style="height:100%;width:${pct}%;background:${pinColor};border-radius:4px"></div>

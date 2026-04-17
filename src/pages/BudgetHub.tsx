@@ -10,6 +10,7 @@ import { useOrgStore } from '@/stores/orgStore';
 import { KPICard } from '@/components/shared/KPICard';
 import { HubHeader } from '@/components/shared/HubHeader';
 import { Badge } from '@/components/shared/Badge';
+import { computeProjectProgress } from '@/lib/projectProgress';
 import { toast } from '@/hooks/useToast';
 import type { Project, ProjectListItem } from '@/types';
 
@@ -31,11 +32,7 @@ function getProjectExpenses(p: Project): number {
 }
 
 function getChecklistCompletion(p: Project): number {
-  const c = p.checklist;
-  if (!c) return 0;
-  const keys = Object.keys(c) as (keyof typeof c)[];
-  const done = keys.filter((k) => c[k]).length;
-  return keys.length > 0 ? Math.round((done / keys.length) * 100) : 0;
+  return computeProjectProgress(p).percentage;
 }
 
 function getProjectStatus(p: Project): { label: string; variant: 'green' | 'blue' | 'red' | 'purple' | 'amber' } {

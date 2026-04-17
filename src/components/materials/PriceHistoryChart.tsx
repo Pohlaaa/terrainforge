@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import * as db from '@/services/supabaseData'
-import { useOrgStore } from '@/stores/orgStore'
+import { useMaterialStore } from '@/stores/materialStore'
 import type { PriceHistoryEntry } from '@/types'
 
 interface Props {
@@ -11,17 +10,17 @@ interface Props {
 export const PriceHistoryChart: React.FC<Props> = ({ materialId, supplierId }) => {
   const [history, setHistory] = useState<PriceHistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const orgId = useOrgStore((s) => s.org?.id)
+  const fetchPriceHistory = useMaterialStore((s) => s.fetchPriceHistory)
 
   useEffect(() => {
-    if (!orgId || !materialId) return
+    if (!materialId) return
 
     setIsLoading(true)
-    db.fetchPriceHistory(orgId, materialId, supplierId, 50).then((data) => {
+    fetchPriceHistory(materialId, supplierId, 50).then((data) => {
       setHistory(data)
       setIsLoading(false)
     })
-  }, [orgId, materialId, supplierId])
+  }, [materialId, supplierId, fetchPriceHistory])
 
   // Return null if no history
   if (!isLoading && history.length === 0) {

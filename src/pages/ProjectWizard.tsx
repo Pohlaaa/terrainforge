@@ -2,15 +2,12 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { WizardStepper } from '@/components/wizard/WizardStepper';
-import { WizardStep1 } from '@/components/wizard/WizardStep1';
-import { WizardStep2 } from '@/components/wizard/WizardStep2';
-import { WizardStep3 } from '@/components/wizard/WizardStep3';
-import { WizardStep4 } from '@/components/wizard/WizardStep4';
-import { WizardStep5 } from '@/components/wizard/WizardStep5';
-import { WizardStep6 } from '@/components/wizard/WizardStep6';
-import { WizardStep7 } from '@/components/wizard/WizardStep7';
-import { WizardStepMaterials } from '@/components/wizard/WizardStepMaterials';
+import { WizardStepJob } from '@/components/wizard/WizardStepJob';
 import WizardStepMeasurements from '@/components/wizard/WizardStepMeasurements';
+import { WizardStepPlan } from '@/components/wizard/WizardStepPlan';
+import { WizardStepMaterials } from '@/components/wizard/WizardStepMaterials';
+import { WizardStepNumbers } from '@/components/wizard/WizardStepNumbers';
+import { WizardStepSummary } from '@/components/wizard/WizardStepSummary';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { useCrewStore } from '@/stores/crewStore';
@@ -18,9 +15,11 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { generateProjectRecommendations } from '@/services/aiRecommendations';
-import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType } from '@/types';
+import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, Material, Zone, SiteConditionType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
 import { normalizeCategory } from '@/lib/categories';
+import { getElementTypesForCategory } from '@/lib/elements';
+import { computeQty } from '@/lib/manifest';
 
 // ── Wizard data shape (local state until project is created) ────────────────
 
@@ -202,15 +201,12 @@ const INITIAL_DATA: WizardData = {
 };
 
 const WIZARD_STEPS = [
-  { label: 'Job Description', shortLabel: 'Job' },           // 0
-  { label: 'Site Intelligence', shortLabel: 'Site' },         // 1
-  { label: 'Project Measurements', shortLabel: 'Measurements' }, // 2 — NEW
-  { label: 'Scope & Tasks', shortLabel: 'Tasks' },            // 3
-  { label: 'Resources', shortLabel: 'Resources' },            // 4
-  { label: 'Materials', shortLabel: 'Materials' },             // 5
-  { label: 'Compliance', shortLabel: 'Permits' },             // 6
-  { label: 'Budget & Cost Breakdown', shortLabel: 'Budget' }, // 7
-  { label: 'Review & Create', shortLabel: 'Review' },         // 8
+  { label: 'The Job', shortLabel: 'Job' },              // 0 — What + Where + Who
+  { label: 'Measurements', shortLabel: 'Measurements' }, // 1 — Dimensions
+  { label: 'The Plan', shortLabel: 'Plan' },             // 2 — AI: tasks, crew, equipment
+  { label: 'Materials', shortLabel: 'Materials' },       // 3 — Materials + pricing + RFQ
+  { label: 'The Numbers', shortLabel: 'Numbers' },       // 4 — Budget + permits
+  { label: 'Review & Create', shortLabel: 'Review' },    // 5
 ];
 
 export default function ProjectWizard() {
@@ -323,7 +319,8 @@ export default function ProjectWizard() {
 
   const handleNext = () => {
     if (currentStep < WIZARD_STEPS.length - 1) {
-      if (currentStep === 1) triggerAIIfNeeded();
+      // Trigger AI after Step 0 (The Job) — has description + address + site conditions
+      if (currentStep === 0) triggerAIIfNeeded();
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
       setHighestVisitedStep(prev => Math.max(prev, nextStep));
@@ -351,8 +348,8 @@ export default function ProjectWizard() {
 
   const handleStepClick = (stepIndex: number) => {
     if (stepIndex <= highestVisitedStep) {
-      // If jumping forward past step 1, trigger AI
-      if (stepIndex > 1 && currentStep <= 1) {
+      // If jumping forward past step 0, trigger AI
+      if (stepIndex > 0 && currentStep === 0) {
         triggerAIIfNeeded();
       }
       setCurrentStep(stepIndex);
@@ -524,6 +521,8 @@ export default function ProjectWizard() {
         permitStatus: data.permitStatus as Project['permitStatus'],
         wizardStep: 7,
         wizardCompletedAt: new Date().toISOString(),
+        // Lifecycle: wizard creates projects as estimates
+        status: 'estimate',
       };
 
       // Create the project via store (handles Supabase persistence + ID generation)
@@ -585,6 +584,49 @@ export default function ProjectWizard() {
             },
             orgId
           );
+        }
+      }
+
+      // Create permit records from wizard checklist
+      if ((data.permitChecklist || []).length > 0 && !data.noPermitsRequired) {
+        setCreateStatus('Creating permits...');
+        for (const key of data.permitChecklist) {
+          try {
+            await projectStore.createProjectPermit({
+              orgId, projectId, permitType: key, jurisdiction: data.permitZone || null,
+              permitNumber: null, status: 'needed',
+              appliedDate: null, approvedDate: null, expiryDate: null,
+              inspectionDate: null, inspectionResult: null, inspectionNotes: null,
+              fee: data.permitFees[key] ?? null, aiSuggested: false, notes: null,
+            }, orgId);
+          } catch (err) {
+            console.warn('Permit creation failed (non-blocking):', err);
+          }
+        }
+      }
+
+      // Create site condition records from wizard data
+      const allSiteFields = [
+        { conditionType: 'soil' as SiteConditionType, label: 'Soil Type', value: data.soilType },
+        { conditionType: 'slope' as SiteConditionType, label: 'Slope Grade', value: data.slopeGrade },
+        { conditionType: 'sun_exposure' as SiteConditionType, label: 'Sun Exposure', value: data.sunExposure },
+        { conditionType: 'drainage' as SiteConditionType, label: 'Drainage Pattern', value: data.drainagePattern },
+        { conditionType: 'vegetation' as SiteConditionType, label: 'Existing Vegetation', value: data.existingVegetation },
+        { conditionType: 'utilities' as SiteConditionType, label: 'Utility Locations', value: data.utilityLocations },
+      ];
+      const siteFields = allSiteFields.filter(f => f.value);
+      if (siteFields.length > 0) {
+        setCreateStatus('Saving site conditions...');
+        for (const field of siteFields) {
+          try {
+            await projectStore.createProjectSiteCondition({
+              orgId, projectId,
+              conditionType: field.conditionType, label: field.label, value: field.value!,
+              aiInferred: false, notes: null,
+            }, orgId);
+          } catch (err) {
+            console.warn('Site condition creation failed (non-blocking):', err);
+          }
         }
       }
 
@@ -707,12 +749,7 @@ export default function ProjectWizard() {
         // Save project materials to JSONB — this is the critical path
         if (projectMaterials.length > 0) {
           try {
-            const { updateProjectMaterials } = await import('@/services/supabaseData');
-            const saved = await updateProjectMaterials(projectId, projectMaterials);
-            if (!saved) {
-              console.error('Failed to save project materials JSONB');
-              downstreamErrors = true;
-            }
+            await projectStore.updateProjectMaterials(projectId, projectMaterials);
           } catch (err) {
             console.error('Failed to save project materials:', err);
             downstreamErrors = true;
@@ -721,18 +758,21 @@ export default function ProjectWizard() {
       }
 
       // Save project elements (measurement-driven architecture)
+      // Track saved elements for auto-assignment below
+      const savedElements: { id: string; elementType: ElementType; lengthFt: number | null; widthFt: number | null; areaSqft: number | null; linearFt: number | null; depthIn: number | null; computedAreaSqft: number; name: string }[] = [];
       if (data.elements.length > 0) {
         setCreateStatus('Saving measurements...');
-        for (const el of data.elements) {
+        for (let i = 0; i < data.elements.length; i++) {
+          const el = data.elements[i];
           try {
             const computedArea = (el.lengthFt && el.widthFt)
               ? el.lengthFt * el.widthFt
               : el.areaSqft ?? 0;
 
-            await projectStore.addElement({
+            const saved = await projectStore.addElement({
               orgId,
               projectId,
-              name: el.name.trim() || `${el.elementType} ${data.elements.indexOf(el) + 1}`,
+              name: el.name.trim() || `${el.elementType} ${i + 1}`,
               elementType: el.elementType,
               lengthFt: el.lengthFt,
               widthFt: el.widthFt,
@@ -742,12 +782,94 @@ export default function ProjectWizard() {
               depthIn: el.depthIn,
               computedAreaSqft: computedArea,
               notes: el.notes || '',
-              sequence: data.elements.indexOf(el),
+              sequence: i,
               createdAt: new Date().toISOString(),
             }, orgId);
+            if (saved) {
+              savedElements.push({
+                id: saved.id,
+                elementType: el.elementType,
+                lengthFt: el.lengthFt,
+                widthFt: el.widthFt,
+                areaSqft: el.areaSqft,
+                linearFt: el.linearFt,
+                depthIn: el.depthIn,
+                computedAreaSqft: computedArea,
+                name: saved.name,
+              });
+            }
           } catch (err) {
             console.error('Element save failed:', err);
             downstreamErrors = true;
+          }
+        }
+      }
+
+      // Auto-assign materials to elements by category mapping.
+      // Creates element-material junction rows that activate the measurement-driven
+      // manifest path (manifest.ts → generateFromElementMaterials).
+      if (savedElements.length > 0 && data.materialSelections.length > 0) {
+        setCreateStatus('Linking materials to measurements...');
+        const libraryMaterials = useMaterialStore.getState().materials;
+
+        for (const mat of data.materialSelections) {
+          const category = normalizeCategory(mat.category);
+          const targetElementTypes = getElementTypesForCategory(category);
+
+          // Find which saved elements this material should attach to
+          // Only assign to elements whose types match this material's category
+          if (targetElementTypes.length === 0) continue;
+          const matchingElements = savedElements.filter(el => targetElementTypes.includes(el.elementType));
+
+          if (matchingElements.length === 0) continue;
+
+          for (const el of matchingElements) {
+            try {
+              // Compute quantity from element dimensions using industry formulas
+              const area = el.computedAreaSqft || 0;
+              const perimeter = el.linearFt || 0;
+              const syntheticZone: Zone = {
+                id: el.id, name: el.name, area, perimeter,
+                sequence: 0, crew: '', dependencies: [], notes: '',
+                materials: [], equipment: [], createdAt: '',
+              };
+
+              // Build a Material adapter for computeQty
+              const libMat = libraryMaterials.find(m => m.id === mat.materialId);
+              const matAdapter: Material = {
+                id: mat.materialId ?? '',
+                name: mat.materialName,
+                category,
+                unit: mat.unit,
+                cost: mat.unitCost,
+                reserveOverride: libMat?.reserveOverride ?? null,
+                coverage: libMat?.coverage ?? null,
+                depthIn: el.depthIn ?? libMat?.depthIn ?? null,
+                notes: '',
+                qtyOnHand: 0,
+                minStockLevel: 0,
+                storageLocation: '',
+                lastRestocked: '',
+              };
+
+              const quantity = computeQty(matAdapter, syntheticZone);
+              if (quantity <= 0) continue;
+
+              await projectStore.addElementMaterial(el.id, {
+                orgId,
+                elementId: el.id,
+                materialId: mat.materialId ?? '',
+                name: mat.materialName,
+                category,
+                quantity,
+                unit: mat.unit,
+                unitCost: mat.unitCost,
+                depthIn: el.depthIn,
+                notes: '',
+              }, orgId);
+            } catch (err) {
+              console.warn('Element-material link failed (non-blocking):', err);
+            }
           }
         }
       }
@@ -801,52 +923,29 @@ export default function ProjectWizard() {
           borderColor: 'var(--border)',
         }}
       >
-        {currentStep === 0 && <WizardStep1 data={data} onChange={handleChange} />}
-        {currentStep === 1 && <WizardStep2 data={data} onChange={handleChange} />}
+        {currentStep === 0 && <WizardStepJob data={data} onChange={handleChange} />}
+        {currentStep === 1 && <WizardStepMeasurements data={data} onChange={handleChange} />}
         {currentStep === 2 && (
-          <WizardStepMeasurements
+          <WizardStepPlan
             data={data}
             onChange={handleChange}
+            recommendations={recommendations}
+            aiLoading={aiLoading}
+            orgCrew={crewStore.crew}
+            orgEquipment={equipmentStore.equipment}
+            taskAccepted={acceptedItems.tasks}
+            taskDismissed={dismissedItems.tasks}
+            crewAccepted={acceptedItems.crew}
+            crewDismissed={dismissedItems.crew}
+            equipAccepted={acceptedItems.equipment}
+            equipDismissed={dismissedItems.equipment}
+            onAccept={(domain: string, id: string) => handleAccept(domain, id)}
+            onDismiss={(domain: string, id: string) => handleDismiss(domain, id)}
+            onAcceptAll={(domain: string, ids: string[]) => handleAcceptAll(domain, ids)}
+            onDismissAll={(domain: string, ids: string[]) => handleDismissAll(domain, ids)}
           />
         )}
         {currentStep === 3 && (
-          <WizardStep3
-            data={data}
-            onChange={handleChange}
-            recommendations={recommendations}
-            aiLoading={aiLoading}
-            acceptedIds={acceptedItems.tasks}
-            dismissedIds={dismissedItems.tasks}
-            onAccept={(id) => handleAccept('tasks', id)}
-            onDismiss={(id) => handleDismiss('tasks', id)}
-            onAcceptAll={(ids) => handleAcceptAll('tasks', ids)}
-            onDismissAll={(ids) => handleDismissAll('tasks', ids)}
-            onReset={() => handleResetCategory('tasks')}
-          />
-        )}
-        {currentStep === 4 && (
-          <WizardStep4
-            data={data}
-            onChange={handleChange}
-            recommendations={recommendations}
-            aiLoading={aiLoading}
-            acceptedCrewIds={acceptedItems.crew}
-            dismissedCrewIds={dismissedItems.crew}
-            acceptedEquipIds={acceptedItems.equipment}
-            dismissedEquipIds={dismissedItems.equipment}
-            onAcceptCrew={(id) => handleAccept('crew', id)}
-            onDismissCrew={(id) => handleDismiss('crew', id)}
-            onAcceptAllCrew={(ids) => handleAcceptAll('crew', ids)}
-            onDismissAllCrew={(ids) => handleDismissAll('crew', ids)}
-            onAcceptEquip={(id) => handleAccept('equipment', id)}
-            onDismissEquip={(id) => handleDismiss('equipment', id)}
-            onAcceptAllEquip={(ids) => handleAcceptAll('equipment', ids)}
-            onDismissAllEquip={(ids) => handleDismissAll('equipment', ids)}
-            onResetCrew={() => handleResetCategory('crew')}
-            onResetEquipment={() => handleResetCategory('equipment')}
-          />
-        )}
-        {currentStep === 5 && (
           <WizardStepMaterials
             data={data}
             onChange={handleChange}
@@ -854,36 +953,21 @@ export default function ProjectWizard() {
             aiLoading={aiLoading}
             acceptedIds={acceptedItems.materials}
             dismissedIds={dismissedItems.materials}
-            onAccept={(id) => handleAccept('materials', id)}
-            onDismiss={(id) => handleDismiss('materials', id)}
-            onAcceptAll={(ids) => handleAcceptAll('materials', ids)}
-            onDismissAll={(ids) => handleDismissAll('materials', ids)}
+            onAccept={(id: string) => handleAccept('materials', id)}
+            onDismiss={(id: string) => handleDismiss('materials', id)}
+            onAcceptAll={(ids: string[]) => handleAcceptAll('materials', ids)}
+            onDismissAll={(ids: string[]) => handleDismissAll('materials', ids)}
             onReset={() => handleResetCategory('materials')}
           />
         )}
-        {currentStep === 6 && (
-          <WizardStep6
-            data={data}
-            onChange={handleChange}
-            recommendations={recommendations}
-            aiLoading={aiLoading}
-            acceptedIds={acceptedItems.permits}
-            dismissedIds={dismissedItems.permits}
-            onAccept={(id) => handleAccept('permits', id)}
-            onDismiss={(id) => handleDismiss('permits', id)}
-            onAcceptAll={(ids) => handleAcceptAll('permits', ids)}
-            onDismissAll={(ids) => handleDismissAll('permits', ids)}
-            onReset={() => handleResetCategory('permits')}
-          />
-        )}
-        {currentStep === 7 && (
-          <WizardStep5
+        {currentStep === 4 && (
+          <WizardStepNumbers
             data={data}
             onChange={handleChange}
             recommendations={recommendations}
           />
         )}
-        {currentStep === 8 && <WizardStep7 data={data} />}
+        {currentStep === 5 && <WizardStepSummary data={data} />}
       </div>
 
       {/* Navigation buttons */}

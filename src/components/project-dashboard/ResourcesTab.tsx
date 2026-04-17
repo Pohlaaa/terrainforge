@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import type { Project, ProjectSubcontractor, ScheduleEntry, CrewMember, SubcontractorStatus } from '@/types';
+import type { Project, ProjectSubcontractor, ScheduleEntry, CrewMember, Equipment, SubcontractorStatus } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
 import { CrewAssignmentPanel } from './resources/CrewAssignmentPanel';
-import { EquipmentAssignmentPanel } from './resources/EquipmentAssignmentPanel';
 
 interface Props {
   project: Project;
   subcontractors: ProjectSubcontractor[];
   crew: CrewMember[];
   scheduleEntries: ScheduleEntry[];
+  projectEquipment?: Equipment[];
   onSubCreate: () => void;
   onSubUpdate: (subId: string, updates: Partial<ProjectSubcontractor>) => void;
   onSubDelete: (subId: string) => void;
@@ -103,7 +103,7 @@ const SubEditForm: React.FC<{
 };
 
 export const ProjectDashboardResources: React.FC<Props> = ({
-  project, subcontractors, crew, scheduleEntries, onSubCreate, onSubUpdate, onSubDelete,
+  project, subcontractors, crew, scheduleEntries, projectEquipment = [], onSubCreate, onSubUpdate, onSubDelete,
 }) => {
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
   const updateProject = useProjectStore((s) => s.updateProject);
@@ -179,11 +179,34 @@ export const ProjectDashboardResources: React.FC<Props> = ({
         )}
       </div>
 
-      <EquipmentAssignmentPanel
-        project={project}
-        scheduleEntries={scheduleEntries}
-        onEquipmentNotesSave={handleEquipmentNotesSave}
-      />
+      {/* Equipment Assigned to Project */}
+      <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+        <div className={cardHead}>Equipment ({projectEquipment.length})</div>
+        {projectEquipment.length === 0 ? (
+          <p className="text-[12px] text-[var(--text-4)]">No equipment assigned to this project.</p>
+        ) : (
+          <div className="space-y-[6px]">
+            {projectEquipment.map((e) => (
+              <div key={e.id} className="flex items-center justify-between text-[12px] rounded-[6px] border px-[10px] py-[6px]" style={{ borderColor: 'var(--border)' }}>
+                <div>
+                  <div className="text-[var(--text)] font-[500]">{e.name}</div>
+                  <div className="text-[var(--text-4)] text-[11px]">{e.type}</div>
+                </div>
+                <div className="text-right">
+                  {e.hourlyCost != null && <div className="text-[var(--text-3)]">${e.hourlyCost}/hr</div>}
+                  {e.dailyRate > 0 && <div className="text-[var(--text-4)] text-[11px]">${e.dailyRate}/day</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {project.equipmentNotes && (
+          <div className="mt-[8px] pt-[8px] border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-[11px] text-[var(--text-4)]">Notes</div>
+            <p className="text-[12px] text-[var(--text-3)]">{project.equipmentNotes}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
