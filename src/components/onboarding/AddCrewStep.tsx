@@ -19,7 +19,8 @@ interface AddCrewStepProps {
   isSaving?: boolean
 }
 
-const ROLE_OPTIONS: CrewMember['role'][] = ['foreman', 'lead', 'installer', 'laborer', 'specialist', 'apprentice']
+// F-047 fix: 'owner' is the first option so self-signups can add themselves as owner/operator.
+const ROLE_OPTIONS: CrewMember['role'][] = ['owner', 'foreman', 'lead', 'installer', 'laborer', 'specialist', 'apprentice']
 
 export const AddCrewStep: React.FC<AddCrewStepProps> = ({
   crew,

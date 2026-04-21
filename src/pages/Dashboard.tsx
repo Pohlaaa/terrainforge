@@ -285,27 +285,55 @@ const Dashboard: React.FC = () => {
 
       {/* ── Projects Table ─────────────────────────────────────────────────── */}
       <div className="rounded-xl bg-[var(--surface-card)] border border-[var(--border-default)] shadow-[var(--shadow-card)]">
-        {/* Search & filter bar */}
-        <div className="flex items-center justify-between gap-3 p-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search projects..."
-              className="px-3 py-2 text-sm rounded-md outline-none min-w-[200px] bg-[var(--surface-bg)] border border-[var(--border-default)] text-[var(--text-primary)]"
-            />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm rounded-md cursor-pointer outline-none bg-[var(--surface-bg)] border border-[var(--border-default)] text-[var(--text-primary)]"
-            >
-              <option value="">All Status</option>
-              {STATUS_FILTER_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
+        {/* F-042: Pipeline status pills — lifecycle order + per-status counts.
+            Clicking "All" clears the filter; clicking a status toggles it. */}
+        <div className="flex items-center gap-1.5 p-3 flex-wrap" role="tablist" aria-label="Filter projects by status">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={statusFilter === ''}
+            onClick={() => setStatusFilter('')}
+            className="px-3 py-1.5 text-xs font-medium rounded-full border transition-colors cursor-pointer"
+            style={{
+              background: statusFilter === '' ? 'var(--brand-primary-bg)' : 'transparent',
+              color: statusFilter === '' ? 'var(--brand-primary)' : 'var(--text-secondary)',
+              borderColor: statusFilter === '' ? 'var(--brand-primary)' : 'var(--border-default)',
+            }}
+          >
+            All <span className="opacity-70 ml-1">{projects.length}</span>
+          </button>
+          {STATUS_FILTER_OPTIONS.map((opt) => {
+            const count = projects.filter((p) => (p.status ?? 'estimate') === opt.value).length;
+            const selected = statusFilter === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setStatusFilter(selected ? '' : opt.value)}
+                className="px-3 py-1.5 text-xs font-medium rounded-full border transition-colors cursor-pointer"
+                style={{
+                  background: selected ? 'var(--brand-primary-bg)' : 'transparent',
+                  color: selected ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                  borderColor: selected ? 'var(--brand-primary)' : 'var(--border-default)',
+                }}
+              >
+                {opt.label} <span className="opacity-70 ml-1">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search bar */}
+        <div className="flex items-center justify-between gap-3 px-3 pb-3 flex-wrap">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search projects..."
+            className="px-3 py-2 text-sm rounded-md outline-none min-w-[200px] bg-[var(--surface-bg)] border border-[var(--border-default)] text-[var(--text-primary)]"
+          />
           <div className="text-xs text-[var(--text-tertiary)]">
             {filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''}
           </div>

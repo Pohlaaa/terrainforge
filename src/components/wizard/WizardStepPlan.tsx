@@ -276,10 +276,16 @@ export const WizardStepPlan: React.FC<Props> = ({
                 <div className="flex gap-[6px]">
                   <button type="button" onClick={async () => {
                     if (!newCrewName.trim()) return;
-                    await crewStoreRef.addCrewMember({ name: newCrewName.trim(), role: newCrewRole as CrewMember['role'], skills: [], availability: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false }, maxProjects: 5, notes: '', bookedDates: [], certs: [], phone: newCrewPhone.trim() });
-                    const created = crewStoreRef.crew.find(c => c.name === newCrewName.trim());
-                    if (created) addCrewMember(created.id);
-                    setNewCrewName(''); setNewCrewPhone(''); setShowNewCrew(false);
+                    // F-044 fix: capture the returned member directly instead of
+                    // rescanning the stale closure's crew list (which would always
+                    // return undefined immediately after the await).
+                    const created = await crewStoreRef.addCrewMember({ name: newCrewName.trim(), role: newCrewRole as CrewMember['role'], skills: [], availability: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false }, maxProjects: 5, notes: '', bookedDates: [], certs: [], phone: newCrewPhone.trim() });
+                    if (created) {
+                      addCrewMember(created.id);
+                      setNewCrewName(''); setNewCrewPhone(''); setShowNewCrew(false);
+                    }
+                    // If created is null the store already surfaced a toast;
+                    // keep the form open so the user can retry or cancel.
                   }} className="px-[10px] py-[5px] rounded-[6px] text-[11px] font-[500] cursor-pointer border-none" style={{ backgroundColor: 'var(--green)', color: '#fff' }}>Save & Add</button>
                   <button type="button" onClick={() => setShowNewCrew(false)} className="px-[10px] py-[5px] rounded-[6px] text-[11px] cursor-pointer bg-transparent border-none" style={{ color: 'var(--text-3)' }}>Cancel</button>
                 </div>

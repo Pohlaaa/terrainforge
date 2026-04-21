@@ -175,8 +175,37 @@ function validateAndEnrich(
       };
     });
 
-  // Validate materials — match against org library
+  // Validate materials — match against org library + coerce known-unit traps.
+  // F-048 guard: polymeric sand (and similar bagged joint sands) must be
+  // priced per bag, not per pound. AI has been instructed in the prompt but
+  // sometimes ignores it; this is the belt-and-suspenders correction.
+  const BAGGED_UNIT_COERCIONS: Array<{ keywords: string[]; unit: string; defaultCoverage: number }> = [
+    { keywords: ['polymeric sand', 'poly sand'], unit: 'bag', defaultCoverage: 65 },
+  ];
+
   const materials: AIMaterialRecommendation[] = (raw.materials || []).map((m) => {
+    // Coerce unit for bagged-only materials if AI returned something else.
+    const nameLc = (m.materialName || '').toLowerCase();
+    let coercedUnit = m.unit;
+    let coercedQuantity = m.estimatedQuantity;
+    for (const rule of BAGGED_UNIT_COERCIONS) {
+      if (rule.keywords.some((k) => nameLc.includes(k))) {
+        if (coercedUnit !== rule.unit) {
+          // If AI returned pounds, convert using 50 lb/bag assumption.
+          // If AI returned sqft, use coverage_sqft_per_unit to compute bags.
+          // Otherwise pass through as a single bag.
+          if (coercedUnit === 'lb' || coercedUnit === 'lbs' || coercedUnit === 'pound') {
+            coercedQuantity = Math.max(1, Math.ceil(coercedQuantity / 50));
+          } else if (coercedUnit === 'sqft') {
+            coercedQuantity = Math.max(1, Math.ceil(coercedQuantity / rule.defaultCoverage));
+          }
+          coercedUnit = rule.unit;
+          console.warn(`[AI guard] Coerced "${m.materialName}" from unit="${m.unit}" → "${rule.unit}"`);
+        }
+        break;
+      }
+    }
+
     // Try to find by ID first, then by name
     const byId = m.materialId ? materialMap.get(m.materialId) : undefined;
     const byName = !byId ? materialNameMap.get(m.materialName.toLowerCase()) : undefined;
@@ -186,11 +215,14 @@ function validateAndEnrich(
       return {
         ...m,
         materialId: match.id,
+        // Prefer the library entry's unit + cost over AI's guess.
+        unit: match.unit || coercedUnit,
         unitCost: match.cost,
+        estimatedQuantity: coercedQuantity,
         inLibrary: true,
       };
     }
-    return { ...m, materialId: null, inLibrary: false };
+    return { ...m, materialId: null, unit: coercedUnit, estimatedQuantity: coercedQuantity, inLibrary: false };
   });
 
   // Validate tasks

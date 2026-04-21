@@ -2,13 +2,14 @@ import { create } from 'zustand'
 import type { CrewMember } from '@/types'
 import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
+import { toast } from '@/hooks/useToast'
 
 interface CrewStore {
   crew: CrewMember[]
   isLoading: boolean
   error: string | null
   reset: () => void
-  addCrewMember: (member: Omit<CrewMember, 'id'>) => Promise<void>
+  addCrewMember: (member: Omit<CrewMember, 'id'>) => Promise<CrewMember | null>
   updateCrewMember: (id: string, updates: Partial<CrewMember>) => Promise<void>
   deleteCrewMember: (id: string) => Promise<void>
   getAvailableToday: () => CrewMember[]
@@ -37,17 +38,38 @@ export const useCrewStore = create<CrewStore>()(
     },
     addCrewMember: async (memberData) => {
       const orgId = useOrgStore.getState().org?.id
-      if (!orgId) return
+      if (!orgId) return null
       const newMember: CrewMember = {
         ...memberData,
         id: crypto.randomUUID(),
       }
+      // Optimistic add
       set((state) => ({ crew: [...state.crew, newMember] }))
       try {
         const result = await db.createCrewMember(memberData, newMember.id, orgId)
-        if (!result) console.error('addCrewMember: createCrewMember returned null — Supabase write failed')
+        if (!result) {
+          // Rollback — Supabase write silently failed (RLS, validation, etc.)
+          set((state) => ({
+            crew: state.crew.filter((m) => m.id !== newMember.id),
+            error: 'Failed to save crew member. Please try again.',
+          }))
+          toast.error('Failed to save crew member. Please try again.')
+          return null
+        }
+        // Reconcile with server (in case Supabase normalized fields)
+        await get().fetchCrew()
+        // Return the up-to-date copy from the refreshed list, falling back to
+        // the optimistic copy if for some reason it isn't in the refreshed set.
+        return get().crew.find((m) => m.id === newMember.id) ?? newMember
       } catch (err: unknown) {
-        set({ error: err instanceof Error ? err.message : 'Unknown error' })
+        // Rollback on throw
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        set((state) => ({
+          crew: state.crew.filter((m) => m.id !== newMember.id),
+          error: msg,
+        }))
+        toast.error(`Failed to save crew member: ${msg}`)
+        return null
       }
     },
     updateCrewMember: async (id, updates) => {

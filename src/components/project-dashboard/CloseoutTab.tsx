@@ -106,19 +106,11 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
     }
   };
 
-  // If no materials, show prompt
-  if (materials.length === 0) {
-    return (
-      <div className="py-[40px] text-center">
-        <p className="text-[13px] text-[var(--text-3)] mb-[12px]">
-          No materials to close out yet.
-        </p>
-        <p className="text-[12px] text-[var(--text-4)]">
-          Add materials to the project first to record usage data.
-        </p>
-      </div>
-    );
-  }
+  // F-043 fix: removed the early return that hid the Complete button when no
+  // materials were present. Contractor should be able to mark a small/materials-
+  // free project complete. Material-usage table is still gated (below) to only
+  // render when materials exist.
+  const hasMaterials = materials.length > 0;
 
   const badgeClass = (category: string) => {
     const badge = getCategoryBadge(category);
@@ -178,7 +170,19 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
         </div>
       )}
 
-      {/* Materials Table */}
+      {/* Materials Table — only if materials exist */}
+      {!hasMaterials && (
+        <div className="rounded-[10px] border-2 border-dashed p-[24px] text-center" style={{ borderColor: 'var(--border)' }}>
+          <p className="text-[13px] text-[var(--text-3)] mb-[4px]">
+            No materials on this project.
+          </p>
+          <p className="text-[11px] text-[var(--text-4)]">
+            You can still mark the project complete below. Add materials later for usage tracking on future jobs.
+          </p>
+        </div>
+      )}
+      {hasMaterials && (
+      <>
       <div className="overflow-x-auto border rounded-[8px]" style={{ borderColor: 'var(--border)' }}>
         <table className="w-full text-[12px]">
           <thead>
@@ -317,8 +321,10 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
           </div>
         </div>
       </div>
+      </>
+      )}
 
-      {/* Completion Button */}
+      {/* Completion Button — always rendered regardless of material count */}
       <div className="flex justify-end gap-[12px] pt-[12px]">
         <Button
           variant="primary"
