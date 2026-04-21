@@ -2,8 +2,19 @@
 
 > **Purpose**: The north star for all development. Every code session reads this file. Every decision about where data lives, how it flows, and how pages consume it is answered here.
 > **Created**: 2026-04-03 (data layer refactor)
-> **Updated**: 2026-04-03 (UI hub rebuild — 4-tab layout)
+> **Updated**: 2026-04-21 (materials engine, 6-step wizard, migration 027)
 > **Owner**: Charlie + Cowork
+
+---
+
+## TL;DR of post-Apr-21 state
+
+- **Wizard**: 6 steps (Job → Measurements → Plan → Materials → Numbers → Summary). AI fires after Step 0 (the Job) and feeds Plan/Materials/Numbers. Old 9-step Step1-7 flow is gone.
+- **Measurements are king**: `project_elements` (24 types, dimensions) + `project_element_materials` (junction with computation overrides) is the measurement-driven core.
+- **Manifest engine**: `src/materials-engine/` dispatches 6 computation models (AREA_COVERAGE | UNIT_COVERAGE | LINEAR | POINT_SPACING | LINEAR_DEPTH | SUBSTRATE). `src/lib/manifest.ts` wraps it with a legacy zone fallback.
+- **Lifecycle**: 7-state status enum `estimate → quoted → approved → scheduled → in_progress → completed (+ on_hold)`. Progress gated via `src/lib/projectProgress.ts`.
+- **RLS**: as of migration 027 every `auth.*()` call wraps in `(select auth.*())`. New policies MUST follow this pattern. See `.claude/CONTEXT.md` triggers.
+- **Pages to NOT touch**: Schedule, CrewManager, EquipmentManager no longer exist — their UI lives in CrewEquipmentHub + project-dashboard tabs.
 
 ---
 
@@ -250,39 +261,56 @@ Every clickable item in a widget navigates to the appropriate detail view:
 
 ---
 
-## 5. Wizard Architecture
+## 5. Wizard Architecture (6-step flow as of Apr 2026)
 
-### Intended Workflow
+### Step order + responsibility
 
-Contractors populate their org first (crew profiles, equipment, material library, default rates). When they create a project, AI uses the description + org context to recommend everything. The contractor reviews, edits, and confirms before the wizard writes to all downstream systems.
+```
+Step 0 — The Job           name, project/property type, scope size, client info, address
+Step 1 — Measurements      project_elements: add areas of work with dimensions
+  ↓ AI fires here
+Step 2 — The Plan          AI-suggested tasks / crew / equipment (accept/dismiss)
+Step 3 — Materials         material picks with engine-computed quantities
+Step 4 — The Numbers       budget breakdown, permits, quote
+Step 5 — Review & Create   summary, status=estimate, write to DB
+```
+
+The AI recommendation set fires at the transition Step 0 → Step 1 (right after the
+job description is captured and before the contractor starts measuring). That way
+recommendations for tasks/crew/equipment/materials are present from Step 2 onward.
 
 ### AI Recommendation Flow
 
 ```
-Step 1 (Project basics) → Step 2 (Site/address)
-                              ↓
-                    AI fires after Step 2 completes
-                    Input: description, projectType, scopeSize, propertyType,
-                           address, siteConditions, org crew[], equipment[],
-                           materials[], defaultRates, existing scheduleEntries[]
-                              ↓
-                    Returns: AIRecommendationSet {
-                      tasks, crewPicks (with availability notes),
-                      equipmentPicks (with availability notes),
-                      materialPicks (from org library),
-                      budgetEstimate, permitSuggestions
-                    }
-                              ↓
-Steps 3-6: Each step shows AI suggestions in a review panel.
-           Contractor accepts/rejects/edits each recommendation.
-           Accepted items populate the form fields.
-                              ↓
-Step 7: Review & submit
+Step 0 complete (description + projectType + scopeSize + address)
+                  ↓
+       AI call in `src/services/aiRecommendations.ts`
+       Input: description, projectType, scopeSize, propertyType, address,
+              siteConditions, org crew[], equipment[], materials[],
+              defaultRates, existing scheduleEntries[], projects[]
+                  ↓
+       Returns: AIRecommendationSet {
+         tasks, crewPicks, equipmentPicks, materialPicks,
+         budgetEstimate, permitSuggestions
+       }
+                  ↓
+Steps 2-4: Each step renders SuggestionPanel alongside the form.
+           Accept/Dismiss per item. Accepted populates form fields; form
+           remains fully editable.
+                  ↓
+Step 5: Review + submit. Project created with status='estimate'. Elements
+        saved. Materials auto-linked to matching elements via
+        project_element_materials (category → element-type heuristics).
 ```
 
 ### Suggest-then-Accept UX Pattern
 
-Each wizard step (3–6) renders a `SuggestionPanel` alongside the form. The panel shows AI recommendations as cards the contractor can accept (populates form), dismiss, or edit. Items not accepted by the contractor are not included. The form fields remain fully editable after acceptance.
+Steps 2-4 render a `SuggestionPanel` alongside the step's form. The panel shows AI
+recommendations as cards the contractor can accept (populates form), dismiss, or
+edit. Items not accepted are not included. Form fields remain fully editable after
+acceptance. Measurements (Step 1) also shows AI-suggested presets per project type
+(e.g. "Full Install" → Patio + Walkway + Garden Beds + Sod + Edging), contractor
+accepts and then enters real dimensions.
 
 ### Data Flow (on submit)
 
