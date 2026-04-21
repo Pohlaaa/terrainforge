@@ -3,8 +3,6 @@ export { default as Dashboard } from './pages/Dashboard';
 export { default as MaterialLibrary } from './pages/MaterialLibrary';
 export { default as WorkOrders } from './pages/WorkOrders';
 export { default as PriceResearch } from './pages/PriceResearch';
-export { default as CrewManager } from './pages/CrewManager';
-export { default as EquipmentManager } from './pages/EquipmentManager';
 
 // Export layout components
 export { default as AppLayout } from './components/layout/AppLayout';

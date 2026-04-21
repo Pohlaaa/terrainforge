@@ -3,15 +3,17 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-05) — Contractor Feedback Complete, Lifecycle & Man Hours Live
+## Current Status (2026-04-17) — Stabilization: git sync + perf/security hardening
 
-**Active work**: Architecture cleanup, UI polish, account management. All contractor feedback items implemented.
+**Active work**: Platform stabilization before pivoting to the 3D client-facing design app (the real killer feature). Status as of Apr 17: production code caught up with git (commits a668c96 → 1fb3efc recovered the Apr 1-11 build sprint that was drag-deployed to Netlify but never committed); Supabase advisors dropped from 113 perf warnings + 14 security warnings to ~25 perf (multiple-permissive consolidation deferred) + 1 security (HaveIBeenPwned toggle, dashboard-only); 3 unrouted pages deleted (Schedule/CrewManager/EquipmentManager — 2,127 LOC of dead code); orphan WizardStep3.tsx removed.
 
-**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment (PR #114), AI wizard with suggest-then-accept UX (PR #115), 3 rounds of wizard refinements (PRs #116-#118). AI wizard is feature-complete. Local supplier search rebuilt (Nominatim v5). Landing page updated with green brand identity and full feature coverage. Contractor feedback: measurement-input architecture (ProjectElement system), material formula corrections (polymeric sand, base depth minimums), project lifecycle (estimate→approved→scheduled→in_progress→completed with status gates and transition buttons), man hours as base unit with clock hours derived, equipment maintenance bugfix, session persistence fix, soil type UX.
+**Known partner-test blockers (V3 feedback, pending next session)**: CSV material import fails after 50 rows, Materials page AI suggests 4″ base depth contradicting engine's 6″ enforcement, Owner crew role in DB but not exposed in onboarding, supplier search returns schools, equipment auto-assignment shows GUIDs not project names, polymeric sand priced per pound in wizard, task-timeline man-hour distribution visually wrong.
 
-**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. AI wizard complete. Contractor feedback phases 1-4 complete. Currently in M3 "First Revenue".
+**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment, AI wizard with suggest-then-accept UX. Local supplier search rebuilt (Nominatim v5). Landing page updated with green brand identity. Contractor feedback round 1 complete: measurement-input architecture (ProjectElement system), material formula corrections (polymeric sand, base depth minimums), project lifecycle (estimate → quoted → approved → scheduled → in_progress → completed/on_hold with status gates and transition buttons), man hours as base unit with clock hours derived, equipment maintenance bugfix, session persistence fix, soil type UX. Materials engine (`src/materials-engine/`) with 6 computation models (AREA_COVERAGE, UNIT_COVERAGE, LINEAR, POINT_SPACING, LINEAR_DEPTH, SUBSTRATE), purchase units, waste factors, dependent-material suggestions, STARTER_CATALOG. Wizard rebuilt as 6-step flow (Job → Measurements → Plan → Materials → Numbers → Summary). Unified project progress model (`src/lib/projectProgress.ts`) with 5 weighted gates.
 
-**Database**: 17+ tables, 80+ RLS policies, 20 migrations applied (020_project_lifecycle_manhours — status column with lifecycle CHECK, completed_at/approved_at/started_at timestamps).
+**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. AI wizard complete. Contractor feedback phases 1-4 complete. Currently in M3 "First Revenue" stabilization preceding pivot to 3D design app.
+
+**Database**: 34 tables, 130 RLS policies (all `auth.*()` calls wrapped in subselects as of mig 027), 117 indexes, 27 migrations applied. Production project: `axasujjoywqadzuisvaj` "Terrain Forge" (us-east-1, Postgres 17). Test fixture data: 22 orgs, 17 projects, 15 elements, 68 materials (all with computation_model), 555 schedule entries — all disposable partner-test data, no real clients yet.
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand 7 stores (Supabase-primary, localStorage for UI only) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)
@@ -117,6 +119,7 @@ ProjectDashboard (6 tabs) and ProjectWizard unchanged.
 - `024_add_quoted_status.sql` — "quoted" project status
 - `025_add_owner_crew_role.sql` — owner crew role
 - `026_materials_engine_upgrade.sql` — Engine columns on materials + element_materials, manifests table, RLS
+- `027_perf_and_security_hardening.sql` — Wrap auth.*() in subselects across all 88 RLS policies; add 12 missing FK indexes; drop 28 unused indexes; pin search_path on 10 functions; tighten audit_log INSERT
 
 ## Business Logic (src/lib/)
 - **manifest.ts:** `computeQty()`, `generateManifest()`, `computeProjectCostRaw()` — material quantities, cost rollup

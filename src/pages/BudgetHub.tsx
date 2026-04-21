@@ -414,8 +414,9 @@ const BudgetHub: React.FC = () => {
                 />
                 <Legend
                   verticalAlign="bottom"
-                  formatter={(value: string, entry: any) => {
-                    const item = donutData.find((d) => d.name === value);
+                  formatter={(value) => {
+                    const name = String(value);
+                    const item = donutData.find((d) => d.name === name);
                     const pct = item && totalDonutExpenses > 0
                       ? ((item.value / totalDonutExpenses) * 100).toFixed(1)
                       : '0';
