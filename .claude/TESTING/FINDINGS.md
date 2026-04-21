@@ -163,3 +163,139 @@ Running log of bugs, friction points, and observations found during testing. Eac
 ### Phase 1 MVP Build Gate
 `npm run build` — PASSED ✅ (2026-03-29, 1713 modules, no TypeScript errors)
 | F-035 | P2 | **ProtectedRoute.tsx truncation risk** — File appeared as 39 lines in Cowork mount but 67 lines on local filesystem. Mount sync issue, not a real truncation, but indicates Cowork file reads may not always reflect latest git state. | Noted — not a code bug, operational awareness |
+
+---
+
+## 2026-04-21 — Claude Preview walkthrough + static V4/V5 audit
+
+Attempted live walkthrough via Claude Preview (`npm run dev` on port 3000) to reproduce V4/V5 partner-test blockers. Preview's headless browser rendered an empty React root on every attempt — no console errors, Vite connected cleanly, all 130+ module requests returned 200, but `document.getElementById('root').children.length === 0` consistently. Tried: cache clear (`rm -rf node_modules/.vite`), server restart, hard reload. Same result. This appears to be a Preview-environment issue (likely headless-Chrome / localStorage / CSP interaction), not an app-level bug — Charlie's own browser runs the app normally.
+
+**Pivoted to static code audit** against the V4/V5 items in `.claude/ROADMAP.md` P0. All citations are the current worktree state (synced to parent `main` at commit `840a71d`).
+
+### F-040 — V4/V5: Zero doesn't clear on numeric inputs (P0)
+
+**Status**: confirmed, partially present.
+
+Two patterns in the codebase:
+
+1. **Good pattern** — `value={state.foo || ''}` or `value={state.foo ?? ''}` — shows empty when 0, no issue. Used in `BudgetBreakdownTable.tsx` (all 7 inputs), `BudgetTab.tsx`, `WizardStepNumbers.tsx` (lines 184, 188, 192, 196, 200, 204, 212, 224 — all nullable fields).
+
+2. **Bad pattern** — `value={rawNumber}` — shows "0" and can't be cleared without manual delete. Present in:
+   - `CloseoutTab.tsx:224` — `value={d.actual}` for material-quantity-used inputs. **Exact match for V4's complaint.** `d.actual` is a number (0 default), so box literally displays "0".
+   - `WizardStepNumbers.tsx:172` — `value={laborRate}` defaults to `org.defaultLaborRate ?? 35` (non-zero, but still pre-populated).
+   - `WizardStepNumbers.tsx:176` — `value={equipRate}` defaults to `org.defaultEquipmentRate ?? 0`. **If org has no default equipment rate, shows "0" and can't clear.**
+   - `WizardStepNumbers.tsx:216` — `value={desiredMargin}` defaults to 20. Shows "20" — user has to manually delete to change.
+
+Also, no inputs use `onFocus={(e) => e.target.select()}`. Even in the "good pattern" case with `|| ''`, clicking a box with a non-zero existing value (e.g., $500 labor budget you want to change to $600) requires manual clear first.
+
+**Fix**: Global pattern. Either:
+- Switch all `type="number"` inputs to `value={state.foo || ''}` pattern (handles zero), AND
+- Add `onFocus={(e) => e.target.select()}` to all wizard/edit numeric inputs (handles pre-populated values).
+
+Component count to audit and fix: ~30 `type="number"` inputs across `MaterialFormModal`, `MaterialQuickAddBar`, `SupplierPriceSection`, `AddEquipmentStep`, `CompanySetupStep`, `BudgetBreakdownTable`, `BudgetTab`, `CloseoutTab` (critical — V4 exact), `PermitFormModal`, `OverviewTab`, `CrewAssignmentPanel`, `ResourcesTab`, `WizardStepNumbers` (critical — V5 exact), `WizardStepMeasurements`. ROI: fix pattern once as a `NumberInput` wrapper component and replace all sites.
+
+### F-041 — V3/V4/V5: Arrow keys broken on custom dropdowns (P0)
+
+**Status**: confirmed. Complaint recurs in 3 feedback rounds because the fix keeps missing custom autocompletes.
+
+Native `<select>` elements work (browser-provided arrow keys). But every **custom** dropdown/autocomplete in the app has **zero keyboard handling**:
+
+- `src/components/shared/AddressInput.tsx` — Nominatim address autocomplete. No `onKeyDown`. User can only click suggestions.
+- `src/components/shared/SuggestionPanel.tsx` — AI suggestion cards in wizard. No keyboard focus/nav.
+- `src/components/shared/MaterialPicker.tsx` — element-material assignment modal. No keyboard.
+- `src/components/onboarding/AddSuppliersStep.tsx:141` — `handleLocationKeyDown` is Enter only, no Arrow keys.
+- `src/components/onboarding/DashboardPreviewStep.tsx:101` — Enter only.
+- `src/components/materials/MaterialQuickAddBar.tsx:50` — Enter only.
+
+**Fix**: ship a reusable `<Combobox>` primitive implementing roving-tabindex + ArrowDown/Up/Enter/Escape/Home/End per the WAI-ARIA 1.2 combobox pattern. Retrofit the 6 sites above. Use `role="listbox"` + `role="option"` so the accessibility tree picks up the hierarchy too. Fastest permanent kill for the V3 through V5 recurring item.
+
+### F-042 — V4: Quoted tab IS in Dashboard filter (NOT a bug — likely UX confusion)
+
+**Status**: already working. V4 said "Do we have a Quoted Tab?"
+
+`src/pages/Dashboard.tsx` STATUS_FILTER_OPTIONS explicitly includes `'quoted'` (line 35). `PROJECT_STATUS_BADGE` in `src/lib/constants.ts:15` maps `quoted` to amber badge. Filter dropdown on Dashboard will show a "Quoted" option; selecting it filters projects to that status.
+
+**Likely confusion source**: the filter is a `<select>` dropdown, not tab-style buttons. Charlie's partner may have expected top-level tabs like "Estimates | Quoted | Active | Completed." Consider replacing the status `<select>` with pipeline tab buttons matching the enum order. Zero logic change — pure presentation.
+
+### F-043 — V4: Completion doesn't transition status (P0 — root cause found)
+
+**Status**: code path exists (CloseoutTab.handleCompleteProject at line 81 sets `status: 'completed'`), but **conditional render hides the button**.
+
+`CloseoutTab.tsx:136-148` early-returns the "No materials to close out yet" prompt when `materials.length === 0`. The "Complete Project" button is in the main render path after that return. **If a project has no materials attached, the contractor cannot mark it complete from this tab.**
+
+V4 said: "I brought a Project to full Completion. The status remained scheduled. Maybe because I have it set for next week." — the "next week" detail is a red herring. Real cause: the test project likely had no materials (or no elements with materials), so Charlie saw the "No materials to close out yet" prompt, tried to "complete" via some other UI path (or thought clicking around = completion), and status never changed.
+
+**Fix**: two parts.
+1. **Always render the Complete Project button** regardless of material count — just gate the material-usage table behind the no-materials check. A project with zero materials should still be completable.
+2. **Add a status transition button somewhere more visible.** The only path to `completed` is via CloseoutTab. Most V4 users will expect "Mark Complete" on the project overview or a status dropdown on the project header. Consider a `StatusStepper` on `ProjectDashboard` header that's visible on every tab. The valid transitions are already defined in `ProjectDashboard.tsx:29-52` (`STATUS_TRANSITIONS`) — they just need a UI.
+
+### F-044 — V4: Crew added in wizard doesn't save to Crew Tab (P0 — TWO bugs)
+
+**Status**: two defects compound.
+
+`src/components/wizard/WizardStepPlan.tsx:278-283` — handler for "Save & Add" inline crew:
+```
+await crewStoreRef.addCrewMember({ name, role, ... });
+const created = crewStoreRef.crew.find(c => c.name === newCrewName.trim());
+if (created) addCrewMember(created.id);
+```
+
+**Bug A — Stale closure (wizard doesn't assign new crew to project).** `crewStoreRef` is the hook snapshot from the render that attached this handler. After `await addCrewMember`, the Zustand store has the new member, but `crewStoreRef.crew` in this closure is still the pre-add snapshot. `.find()` returns undefined. `addCrewMember(created.id)` never runs. Net effect: crew member IS saved to the org roster (good), but IS NOT added to this project's `crewSelections` (bad). Charlie notices the crew "didn't save" because they don't see the crew on the project — but they don't realize the person may be in the global Crew Tab.
+
+**Fix A**: `crewStore.addCrewMember` signature returns `Promise<void>` — change it to `Promise<CrewMember | null>` and return the newly-created `newMember` on success. Then the call site becomes `const created = await crewStoreRef.addCrewMember(...); if (created) addCrewMember(created.id);`. Identical pattern to the `materialStore.addMaterial` race fixed in a prior session.
+
+**Bug B — Silent Supabase failure (crew doesn't actually persist).** `crewStore.addCrewMember` (`src/stores/crewStore.ts:38-52`) optimistically adds to state but **does not rollback on Supabase failure** (unlike `materialStore.addMaterial` which does rollback). If Supabase returns null or throws, the crew appears in local state for the rest of the session but isn't in the database. When the user navigates to the Crew Tab and it refetches, the crew is gone. Also no toast on failure — just a `console.error`. This is the likely explanation for V4's "didn't save to Crew Tab" observation.
+
+**Fix B**: mirror the materialStore pattern — rollback optimistic update on failure, set error state, show toast. Also add `await get().fetchCrew()` after successful insert to reconcile IDs.
+
+### F-045 — CSV material import 50-row cap (V3, P0 — not yet investigated)
+
+Not audited this session. Still open. Investigation target: `src/pages/MaterialLibrary.tsx` CSV handler + `src/components/materials/CSVImportModal.tsx` + `src/services/supabaseMaterials.ts` `createMaterial` loop. Hypothesis: sequential `await createMaterial()` in a tight loop trips Supabase's write rate limit.
+
+### F-046 — AI 4" base depth vs engine's 6" (V3, P0)
+
+**Status**: audited. AI prompt in `src/services/aiRecommendations.ts:83-90` explicitly states:
+> "Base material (gravel, crushed stone, sand for base) MINIMUM depth is 6 inches. Never suggest less than 6"."
+
+So the prompt is correct. But V3 says AI still suggests 4". Possible causes:
+- The AI isn't strict enough with this instruction. Add a post-hoc validator: any bulk material suggestion that comes back with <6" depth gets clamped to 6".
+- OR the material catalog has 4" baked into the `depthIn` field for some entries; the AI reads the library and surfaces whatever's there.
+- OR the Materials page displays the catalog's stored depth (not engine's enforced minimum). `src/pages/MaterialLibrary.tsx` shows raw `material.depthIn`, not `max(depthIn, CATEGORY_DEPTH_MINIMUMS[category])`.
+
+**Fix**: (a) add post-validation in `validateAndEnrich()` to clamp depth; (b) display engine-enforced depth on Materials page, not catalog raw value.
+
+### F-047 — Owner role not exposed in onboarding UI (V3, P0 — not audited)
+
+Migration 025 added `'owner'` to the `crew_members.role` CHECK. Not audited whether `src/components/onboarding/AddCrewStep.tsx` dropdown offers it. Tag for next session.
+
+### F-048 — Polymeric sand priced per pound in wizard (V3, P0 — not audited)
+
+Engine uses 50lb bag / 65 sqft (correct). V3 says wizard material-add UI shows per-pound. Not audited. Likely `src/components/wizard/WizardStepMaterials.tsx` or `src/pages/MaterialLibrary.tsx` material add form defaulting to pound unit.
+
+### F-049 — Claude Preview blocker (operational, P2)
+
+Preview's headless browser cannot hydrate React for this app. Reproducible:
+1. `mcp__Claude_Preview__preview_start name=terrainforge-dev`
+2. `preview_eval` → `document.getElementById('root').children.length === 0` always
+3. Console shows Vite connected + React DevTools message, no errors
+4. 130+ module requests all return 200
+
+Workaround: static code audit (this session). Longer-term: use Claude in Chrome MCP instead, which drives a real Chrome session.
+
+---
+
+### Summary — P0 items ready to fix next session
+
+| Finding | Fix shape | ETA |
+|---|---|---|
+| F-040 Zero on numeric inputs | `NumberInput` wrapper + `onFocus` select-all + `\|\| ''` value pattern | 1-2 hrs |
+| F-041 Arrow keys on dropdowns | `Combobox` primitive + retrofit 6 call sites | 3-4 hrs |
+| F-043 Completion hidden when no materials | Gate only the material-usage table; always render Complete button; add StatusStepper to ProjectDashboard header | 1-2 hrs |
+| F-044 Crew wizard save (stale closure + no rollback) | `addCrewMember` returns `Promise<CrewMember \| null>` + materialStore-style rollback | 30 min |
+| F-045 CSV 50-row cap | Batch `upsert` chunks of 100 + retry on 429 | 1-2 hrs |
+| F-046 AI 4" base depth | Clamp depths in `validateAndEnrich()` + display engine-enforced depth on Materials page | 1 hr |
+| F-047 Owner role in onboarding | Add `'owner'` option to AddCrewStep role select | 5 min |
+| F-048 Polymeric sand unit | Fix default unit in wizard material add + catalog entries | 30 min |
+| F-042 Quoted tab "missing" | Convert Dashboard status filter from `<select>` to tab buttons | 30 min |
+
+Total P0 remediation: roughly one focused session.
