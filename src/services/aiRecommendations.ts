@@ -183,6 +183,35 @@ function validateAndEnrich(
     { keywords: ['polymeric sand', 'poly sand'], unit: 'bag', defaultCoverage: 65 },
   ];
 
+  // F-046 guard: if AI mentions a sub-minimum depth for a base category in
+  // the reason text, rewrite to the minimum. Engine will enforce at compute
+  // time regardless, but the displayed reason matters — partners have
+  // flagged "AI said 4 inch base" as a trust issue multiple times (V3, V4).
+  const BASE_DEPTH_MINIMUMS: Record<string, number> = {
+    gravel: 6,
+    sand: 6,
+    soil: 3,
+    mulch: 2,
+    concrete: 4,
+  };
+  const scrubReasonDepth = (reason: string | undefined, category: string): string => {
+    if (!reason) return reason ?? '';
+    const cat = category.toLowerCase();
+    const min = BASE_DEPTH_MINIMUMS[cat];
+    if (!min) return reason;
+    // Match "<n>"" or "<n>-inch" or "<n> inch" / "<n>in" patterns where n < min.
+    // Uses a replacer so we can compute the corrected number per-match.
+    return reason.replace(
+      /(\d+(?:\.\d+)?)(?:"|\s?(?:-)?\s?(?:in(?:ch(?:es)?)?))/gi,
+      (whole, numStr) => {
+        const n = parseFloat(numStr);
+        if (!Number.isFinite(n) || n >= min) return whole;
+        const unitLiteral = whole.slice(numStr.length);
+        return `${min}${unitLiteral}`;
+      },
+    );
+  };
+
   const materials: AIMaterialRecommendation[] = (raw.materials || []).map((m) => {
     // Coerce unit for bagged-only materials if AI returned something else.
     const nameLc = (m.materialName || '').toLowerCase();
@@ -206,6 +235,9 @@ function validateAndEnrich(
       }
     }
 
+    // F-046: rewrite sub-minimum depth mentions in the reason text.
+    const scrubbedReason = scrubReasonDepth(m.reason, m.category);
+
     // Try to find by ID first, then by name
     const byId = m.materialId ? materialMap.get(m.materialId) : undefined;
     const byName = !byId ? materialNameMap.get(m.materialName.toLowerCase()) : undefined;
@@ -219,10 +251,11 @@ function validateAndEnrich(
         unit: match.unit || coercedUnit,
         unitCost: match.cost,
         estimatedQuantity: coercedQuantity,
+        reason: scrubbedReason,
         inLibrary: true,
       };
     }
-    return { ...m, materialId: null, unit: coercedUnit, estimatedQuantity: coercedQuantity, inLibrary: false };
+    return { ...m, materialId: null, unit: coercedUnit, estimatedQuantity: coercedQuantity, reason: scrubbedReason, inLibrary: false };
   });
 
   // Validate tasks

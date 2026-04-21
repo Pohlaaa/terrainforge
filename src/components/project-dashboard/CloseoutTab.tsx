@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { Project, ProjectMaterial, ProjectPermit } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 import { toast } from '@/hooks/useToast';
 import { getCategoryLabel, getCategoryBadge } from '@/lib/categories';
 
@@ -221,15 +222,15 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
                     {d.estimated.toFixed(2)} {d.material.unit}
                   </td>
                   <td className="px-[12px] py-[10px] text-right">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={d.actual}
-                      onChange={(e) => handleActualChange(d.material.id, e.target.value)}
+                    <NumberInput
+                      min={0}
+                      step={0.1}
+                      value={d.actual === 0 ? null : d.actual}
+                      onChange={(v) => handleActualChange(d.material.id, v === null ? '' : String(v))}
                       className="w-[80px] bg-transparent border rounded-[4px] px-[6px] py-[4px] text-[var(--text)] text-right focus:outline-none focus:border-[var(--green)]"
                       style={{ borderColor: 'var(--border)' }}
                       disabled={completing}
+                      placeholder="0"
                     />
                     <span className="text-[var(--text-3)] ml-[4px]">{d.material.unit}</span>
                   </td>

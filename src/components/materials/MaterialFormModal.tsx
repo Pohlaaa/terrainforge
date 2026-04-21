@@ -120,9 +120,11 @@ export const MaterialFormModal: React.FC<MaterialFormModalProps> = ({
                 type="number"
                 min="0"
                 step="0.5"
+                onFocus={(e) => e.currentTarget.select()}
                 value={form.depthIn}
                 onChange={e => setField('depthIn', e.target.value)}
-                placeholder="3"
+                placeholder={form.category === 'gravel' || form.category === 'sand' ? '6 (min)' : form.category === 'concrete' ? '4 (min)' : form.category === 'soil' ? '3 (min)' : '3'}
+                hint={form.category === 'gravel' || form.category === 'sand' ? 'Base materials enforce 6″ minimum at compute time' : form.category === 'concrete' ? 'Concrete slab enforces 4″ minimum' : form.category === 'soil' ? 'Topsoil enforces 3″ minimum' : undefined}
               />
               <Input
                 label="Reserve Override (%)"

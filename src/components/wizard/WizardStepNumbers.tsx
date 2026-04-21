@@ -6,6 +6,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { WizardData } from '@/pages/ProjectWizard';
 import { useOrgStore } from '@/stores/orgStore';
 import type { AIRecommendationSet } from '@/types';
+import { NumberInput } from '@/components/ui/NumberInput';
 
 interface Props {
   data: WizardData;
@@ -169,11 +170,11 @@ export const WizardStepNumbers: React.FC<Props> = ({ data, onChange, recommendat
         <div className="grid grid-cols-1 md:grid-cols-2 gap-[12px]">
           <div>
             <label className={labelClass}>Labor Rate ($/hr)</label>
-            <input className={inputClass} type="number" min="0" step="0.5" value={laborRate} onChange={(e) => { const r = parseFloat(e.target.value) || 0; setLaborRate(r); if (!laborEdited.current) onChange({ laborBudget: (data.estimatedHours ?? taskHoursSum) * r }); }} />
+            <NumberInput className={inputClass} min={0} step={0.5} value={laborRate === 0 ? null : laborRate} onChange={(v) => { const r = v ?? 0; setLaborRate(r); if (!laborEdited.current) onChange({ laborBudget: (data.estimatedHours ?? taskHoursSum) * r }); }} />
           </div>
           <div>
             <label className={labelClass}>Equipment Rate ($/hr)</label>
-            <input className={inputClass} type="number" min="0" step="0.5" value={equipRate} onChange={(e) => setEquipRate(parseFloat(e.target.value) || 0)} />
+            <NumberInput className={inputClass} min={0} step={0.5} value={equipRate === 0 ? null : equipRate} onChange={(v) => setEquipRate(v ?? 0)} />
           </div>
         </div>
 
@@ -181,27 +182,27 @@ export const WizardStepNumbers: React.FC<Props> = ({ data, onChange, recommendat
         <div className="grid grid-cols-1 md:grid-cols-2 gap-[12px]">
           <div>
             <label className={labelClass}>Man Hours ({taskHoursSum}h from tasks)</label>
-            <input className={inputClass} type="number" min="0" value={data.estimatedHours ?? ''} onChange={(e) => onChange({ estimatedHours: e.target.value ? parseFloat(e.target.value) : null })} />
+            <NumberInput className={inputClass} min={0} value={data.estimatedHours} onChange={(v) => onChange({ estimatedHours: v })} />
           </div>
           <div>
             <label className={labelClass}>Labor Cost ({data.estimatedHours ?? taskHoursSum}h × ${laborRate}/hr)</label>
-            <input className={inputClass} type="number" min="0" value={data.laborBudget ?? ''} onChange={(e) => { laborEdited.current = true; onChange({ laborBudget: e.target.value ? parseFloat(e.target.value) : null }); }} />
+            <NumberInput className={inputClass} min={0} value={data.laborBudget} onChange={(v) => { laborEdited.current = true; onChange({ laborBudget: v }); }} />
           </div>
           <div>
             <label className={labelClass}>Materials Cost</label>
-            <input className={inputClass} type="number" min="0" value={data.materialsBudget ?? ''} onChange={(e) => onChange({ materialsBudget: e.target.value ? parseFloat(e.target.value) : null })} placeholder={matCostSum > 0 ? `${matCostSum} from selections` : ''} />
+            <NumberInput className={inputClass} min={0} value={data.materialsBudget} onChange={(v) => onChange({ materialsBudget: v })} placeholder={matCostSum > 0 ? `${matCostSum} from selections` : ''} />
           </div>
           <div>
             <label className={labelClass}>Equipment Cost</label>
-            <input className={inputClass} type="number" min="0" value={data.equipmentCost ?? ''} onChange={(e) => { equipCostEdited.current = true; onChange({ equipmentCost: e.target.value ? parseFloat(e.target.value) : null }); }} />
+            <NumberInput className={inputClass} min={0} value={data.equipmentCost} onChange={(v) => { equipCostEdited.current = true; onChange({ equipmentCost: v }); }} />
           </div>
           <div>
             <label className={labelClass}>Subcontractor Costs</label>
-            <input className={inputClass} type="number" min="0" value={data.subcontractorBudget ?? ''} onChange={(e) => onChange({ subcontractorBudget: e.target.value ? parseFloat(e.target.value) : null })} placeholder={subsCostSum > 0 ? `${subsCostSum} from subs` : ''} />
+            <NumberInput className={inputClass} min={0} value={data.subcontractorBudget} onChange={(v) => onChange({ subcontractorBudget: v })} placeholder={subsCostSum > 0 ? `${subsCostSum} from subs` : ''} />
           </div>
           <div>
             <label className={labelClass}>Disposal Cost</label>
-            <input className={inputClass} type="number" min="0" value={data.disposalCost ?? ''} onChange={(e) => onChange({ disposalCost: e.target.value ? parseFloat(e.target.value) : null })} placeholder="0" />
+            <NumberInput className={inputClass} min={0} value={data.disposalCost} onChange={(v) => onChange({ disposalCost: v })} placeholder="0" />
           </div>
         </div>
 
@@ -209,19 +210,15 @@ export const WizardStepNumbers: React.FC<Props> = ({ data, onChange, recommendat
         <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px] pt-[12px] border-t" style={{ borderColor: 'var(--border)' }}>
           <div>
             <label className={labelClass}>Overhead %</label>
-            <input className={inputClass} type="number" min="0" max="100" value={data.overheadPct ?? ''} onChange={(e) => onChange({ overheadPct: e.target.value ? parseFloat(e.target.value) : null })} />
+            <NumberInput className={inputClass} min={0} max={100} value={data.overheadPct} onChange={(v) => onChange({ overheadPct: v })} />
           </div>
           <div>
             <label className={labelClass}>Desired Profit %</label>
-            <input className={inputClass} type="number" min="0" max="100" step="1" value={desiredMargin} onChange={(e) => {
-              const pct = parseFloat(e.target.value) || 0;
-              setDesiredMargin(pct);
-              quoteEdited.current = false;
-            }} />
+            <NumberInput className={inputClass} min={0} max={100} step={1} value={desiredMargin === 0 ? null : desiredMargin} onChange={(v) => { setDesiredMargin(v ?? 0); quoteEdited.current = false; }} />
           </div>
           <div>
             <label className={labelClass}>Client Quote (override)</label>
-            <input className={inputClass} type="number" min="0" value={data.clientQuote ?? ''} onChange={(e) => { quoteEdited.current = true; onChange({ clientQuote: e.target.value ? parseFloat(e.target.value) : null }); }} />
+            <NumberInput className={inputClass} min={0} value={data.clientQuote} onChange={(v) => { quoteEdited.current = true; onChange({ clientQuote: v }); }} />
           </div>
         </div>
       </div>

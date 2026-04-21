@@ -26,6 +26,9 @@ export const AddressInput: React.FC<AddressInputProps> = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [verifiedCoords, setVerifiedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  // F-041: track which suggestion is highlighted for keyboard nav.
+  // -1 means "no highlight" — ArrowDown will move to index 0.
+  const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const miniMapRef = useRef<HTMLDivElement>(null);
   const miniMapInstanceRef = useRef<MapboxMap | null>(null);
@@ -40,6 +43,7 @@ export const AddressInput: React.FC<AddressInputProps> = ({
     setVerifiedCoords(null);
     onChange(e.target.value);
     setShowDropdown(true);
+    setActiveIndex(-1); // reset highlight when the query changes
   }, [onChange]);
 
   const handleSelect = useCallback((suggestion: AddressSuggestion) => {
@@ -47,8 +51,33 @@ export const AddressInput: React.FC<AddressInputProps> = ({
     onSelect(suggestion);
     setIsVerified(true);
     setShowDropdown(false);
+    setActiveIndex(-1);
     setVerifiedCoords({ lat: suggestion.lat, lng: suggestion.lng });
   }, [onChange, onSelect]);
+
+  // F-041: keyboard navigation over the suggestions list.
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      handleSelect(suggestions[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setShowDropdown(false);
+      setActiveIndex(-1);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setActiveIndex(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setActiveIndex(suggestions.length - 1);
+    }
+  }, [showDropdown, suggestions, activeIndex, handleSelect]);
 
   // Mini-map: initialize when verified coords are available
   useEffect(() => {
@@ -128,9 +157,15 @@ export const AddressInput: React.FC<AddressInputProps> = ({
           type="text"
           value={value}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
           onFocus={() => { setIsFocused(true); setShowDropdown(true); }}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
+          role="combobox"
+          aria-expanded={showDropdown && suggestions.length > 0}
+          aria-autocomplete="list"
+          aria-controls="address-suggestion-listbox"
+          aria-activedescendant={activeIndex >= 0 ? `address-suggestion-${activeIndex}` : undefined}
           style={{
             width: '100%',
             height: '44px',
@@ -208,6 +243,8 @@ export const AddressInput: React.FC<AddressInputProps> = ({
       {/* Autocomplete dropdown */}
       {showSuggestions && (
         <div
+          id="address-suggestion-listbox"
+          role="listbox"
           style={{
             position: 'absolute',
             top: 'calc(100% + 4px)',
@@ -221,39 +258,40 @@ export const AddressInput: React.FC<AddressInputProps> = ({
             overflow: 'hidden',
           }}
         >
-          {suggestions.map((s) => (
-            <button
-              key={s.placeId}
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); handleSelect(s); }}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '10px 14px',
-                minHeight: '44px',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'background 0.1s ease',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-hover)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-              }}
-            >
-              <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>
-                {s.address}
-              </div>
-              {(s.city || s.state) && (
-                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                  {[s.city, s.state].filter(Boolean).join(', ')}
+          {suggestions.map((s, idx) => {
+            const active = idx === activeIndex;
+            return (
+              <button
+                key={s.placeId}
+                id={`address-suggestion-${idx}`}
+                role="option"
+                aria-selected={active}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(s); }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '10px 14px',
+                  minHeight: '44px',
+                  background: active ? 'var(--surface-hover)' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 0.1s ease',
+                }}
+              >
+                <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                  {s.address}
                 </div>
-              )}
-            </button>
-          ))}
+                {(s.city || s.state) && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                    {[s.city, s.state].filter(Boolean).join(', ')}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

@@ -69,6 +69,7 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
             {editing ? (
               <input
                 type="number"
+                onFocus={(e) => e.currentTarget.select()}
                 className={inputClass}
                 style={{ borderColor: 'var(--border)', width: '120px' }}
                 value={editValues.laborBudget || ''}
@@ -93,6 +94,7 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
             {editing ? (
               <input
                 type="number"
+                onFocus={(e) => e.currentTarget.select()}
                 className={inputClass}
                 style={{ borderColor: 'var(--border)', width: '120px' }}
                 value={editValues.materialsBudget || ''}
@@ -116,6 +118,7 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
           {editing ? (
             <input
               type="number"
+              onFocus={(e) => e.currentTarget.select()}
               className={inputClass}
               style={{ borderColor: 'var(--border)', width: '120px' }}
               value={editValues.equipmentBudget || ''}
@@ -133,6 +136,7 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
           {editing ? (
             <input
               type="number"
+              onFocus={(e) => e.currentTarget.select()}
               className={inputClass}
               style={{ borderColor: 'var(--border)', width: '120px' }}
               value={editValues.equipmentCost || ''}
@@ -150,6 +154,7 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
           {editing ? (
             <input
               type="number"
+              onFocus={(e) => e.currentTarget.select()}
               className={inputClass}
               style={{ borderColor: 'var(--border)', width: '120px' }}
               value={editValues.disposalCost || ''}
@@ -168,6 +173,7 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
             {editing ? (
               <input
                 type="number"
+                onFocus={(e) => e.currentTarget.select()}
                 className={inputClass}
                 style={{ borderColor: 'var(--border)', width: '120px' }}
                 value={editValues.subcontractorBudget || ''}
@@ -211,6 +217,7 @@ export const BudgetBreakdownTable: React.FC<BudgetBreakdownTableProps> = ({
                 (
                 <input
                   type="number"
+                  onFocus={(e) => e.currentTarget.select()}
                   className={inputClass}
                   style={{ borderColor: 'var(--border)', width: '50px', display: 'inline' }}
                   value={editValues.overheadPct || ''}
