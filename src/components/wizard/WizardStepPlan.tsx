@@ -281,7 +281,14 @@ export const WizardStepPlan: React.FC<Props> = ({
                     // return undefined immediately after the await).
                     const created = await crewStoreRef.addCrewMember({ name: newCrewName.trim(), role: newCrewRole as CrewMember['role'], skills: [], availability: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false }, maxProjects: 5, notes: '', bookedDates: [], certs: [], phone: newCrewPhone.trim() });
                     if (created) {
-                      addCrewMember(created.id);
+                      // Can't call addCrewMember(created.id) — that helper
+                      // reads the stale `orgCrew` closure which hasn't
+                      // re-rendered yet after the Zustand update. Assign
+                      // from the returned member directly instead.
+                      onChange({
+                        crewSelections: [...data.crewSelections, { crewMemberId: created.id, name: created.name, role: created.role }],
+                        crewSize: (data.crewSelections.length + 1),
+                      });
                       setNewCrewName(''); setNewCrewPhone(''); setShowNewCrew(false);
                     }
                     // If created is null the store already surfaced a toast;
