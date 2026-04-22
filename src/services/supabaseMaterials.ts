@@ -55,6 +55,43 @@ export async function createMaterial(material: Omit<Material, 'id'>, id: string,
   }
 }
 
+/**
+ * Bulk-insert an array of materials in a single round-trip.
+ * Used by the CSV importer which was previously doing N sequential inserts
+ * (F-045: failed past ~50 rows on slow/rate-limited connections).
+ *
+ * IDs are pre-assigned client-side so we don't have to round-trip to
+ * discover them. Throws on any error — caller is responsible for chunking
+ * and retry logic.
+ */
+export async function createMaterialsBulk(
+  materials: Array<{ material: Omit<Material, 'id'>; id: string }>,
+  orgId: string,
+): Promise<Material[]> {
+  if (materials.length === 0) return []
+
+  const MATERIAL_TIMESTAMP_FIELDS = ['last_restocked', 'created_at', 'updated_at']
+
+  const rows = materials.map(({ material, id }) => {
+    const snakeData = toSnakeCase(material as unknown as Record<string, unknown>) as Record<string, unknown>
+    snakeData.id = id
+    snakeData.org_id = orgId
+    if ('reserve_override' in snakeData) {
+      snakeData.reserve_override_pct = snakeData.reserve_override
+      delete snakeData.reserve_override
+    }
+    return sanitizeTimestamps(snakeData, MATERIAL_TIMESTAMP_FIELDS)
+  })
+
+  const { data, error } = await supabase
+    .from('materials')
+    .insert(rows)
+    .select()
+
+  if (error) throw error
+  return (data || []).map((r) => toCamelCase(r) as unknown as Material)
+}
+
 export async function updateMaterial(id: string, updates: Partial<Material>): Promise<Material | null> {
   try {
     const snakeData = toSnakeCase(updates as unknown as Record<string, unknown>) as Record<string, unknown>

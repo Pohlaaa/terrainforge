@@ -139,7 +139,7 @@ const UNIT_OPTIONS = UNIT_TYPES.map(u => ({ value: u.id, label: u.label }));
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const MaterialLibrary: React.FC = () => {
-  const { materials, addMaterial, updateMaterial, deleteMaterial, adjustStock, isLoading, error } = useMaterialStore();
+  const { materials, addMaterial, bulkImportMaterials, updateMaterial, deleteMaterial, adjustStock, isLoading, error } = useMaterialStore();
   const {
     suppliers, fetchSuppliers, addSupplier, updateSupplier, deleteSupplier,
     isLoading: suppliersLoading,
@@ -269,33 +269,45 @@ export const MaterialLibrary: React.FC = () => {
   }
 
   async function handleImportConfirm() {
-    let count = 0;
-    let errors = 0;
-    for (const row of csvPreview) {
-      try {
-        const inferred = inferModel(row.name);
-        await addMaterial({
-          name: row.name,
-          category: row.category || inferred.category,
-          unit: row.unit || inferred.purchaseUnit,
-          cost: parseFloat(row.cost) || 0,
-          reserveOverride: null, coverage: null, depthIn: null,
-          notes: '', qtyOnHand: 0, minStockLevel: 0,
-          storageLocation: '', lastRestocked: '',
-          computationModel: inferred.model,
-          purchaseUnit: row.unit || inferred.purchaseUnit,
-          costPerPurchaseUnit: parseFloat(row.cost) || 0,
-          defaultWasteFactor: 0.05,
-          subcategory: inferred.subcategory,
-          isActive: true,
-        });
-        count++;
-      } catch {
-        errors++;
-      }
+    // F-045: batched bulk import via store action. Replaces the old
+    // sequential for-await loop which silently failed past ~50 rows
+    // on slow / rate-limited connections.
+    if (csvPreview.length === 0) return;
+
+    setCsvError('');
+    setImportSuccess(`Importing 0 / ${csvPreview.length}…`);
+
+    const payloads: Array<Omit<Material, 'id'>> = csvPreview.map((row) => {
+      const inferred = inferModel(row.name);
+      const cost = parseFloat(row.cost) || 0;
+      return {
+        name: row.name,
+        category: row.category || inferred.category,
+        unit: row.unit || inferred.purchaseUnit,
+        cost,
+        reserveOverride: null, coverage: null, depthIn: null,
+        notes: '', qtyOnHand: 0, minStockLevel: 0,
+        storageLocation: '', lastRestocked: '',
+        computationModel: inferred.model,
+        purchaseUnit: row.unit || inferred.purchaseUnit,
+        costPerPurchaseUnit: cost,
+        defaultWasteFactor: 0.05,
+        subcategory: inferred.subcategory,
+        isActive: true,
+      } as Omit<Material, 'id'>;
+    });
+
+    const result = await bulkImportMaterials(payloads, (p) => {
+      setImportSuccess(`Importing ${p.imported} / ${p.total}…`);
+    });
+
+    const { imported, failed } = result;
+    setImportSuccess(
+      `Imported ${imported} material${imported !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}`,
+    );
+    if (failed > 0) {
+      setCsvError(`${failed} row${failed !== 1 ? 's' : ''} failed to import`);
     }
-    setImportSuccess(`Imported ${count} material${count !== 1 ? 's' : ''}${errors > 0 ? ` (${errors} failed)` : ''}`);
-    if (errors > 0) setCsvError(`${errors} row${errors !== 1 ? 's' : ''} failed to import`);
     setCsvPreview([]);
     if (csvInputRef.current) csvInputRef.current.value = '';
   }

@@ -8,7 +8,7 @@ export { fetchProjects, fetchProjectFull, createProject, updateProject, deletePr
 
 export { createZone, updateZone, deleteZone, setZoneMaterials, setZoneEquipment, fetchZoneMaterialDetails } from './supabaseZones'
 
-export { fetchMaterials, createMaterial, updateMaterial, deleteMaterial } from './supabaseMaterials'
+export { fetchMaterials, createMaterial, createMaterialsBulk, updateMaterial, deleteMaterial } from './supabaseMaterials'
 
 export { fetchCrew, createCrewMember, updateCrewMember, deleteCrewMember } from './supabaseCrew'
 
