@@ -28,10 +28,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing session on mount
+    // Check for existing session on mount.
+    // In dev, if no session exists AND VITE_DEV_AUTO_SIGNIN_* are set,
+    // auto-sign-in so Claude (or the developer) can skip the login screen.
+    // This branch is stripped from prod builds because import.meta.env.DEV
+    // is statically false and the whole block dead-code-eliminates.
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
+
+        if (!session && import.meta.env.DEV) {
+          const devEmail = import.meta.env.VITE_DEV_AUTO_SIGNIN_EMAIL
+          const devPassword = import.meta.env.VITE_DEV_AUTO_SIGNIN_PASSWORD
+          if (devEmail && devPassword) {
+            // eslint-disable-next-line no-console
+            console.info('[dev] auto-sign-in:', devEmail)
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+              email: devEmail,
+              password: devPassword,
+            })
+            if (signInError) {
+              console.error('[dev] auto-sign-in failed:', signInError.message)
+            }
+            // onAuthStateChange handles the rest (setSession/setUser/store fetches).
+            return
+          }
+        }
+
         setSession(session)
         setUser(session?.user || null)
       } catch (error) {
