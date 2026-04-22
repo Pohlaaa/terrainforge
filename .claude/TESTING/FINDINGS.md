@@ -298,4 +298,61 @@ Workaround: static code audit (this session). Longer-term: use Claude in Chrome 
 | F-048 Polymeric sand unit | Fix default unit in wizard material add + catalog entries | 30 min |
 | F-042 Quoted tab "missing" | Convert Dashboard status filter from `<select>` to tab buttons | 30 min |
 
+---
+
+## 2026-04-21 — P0 Remediation Shipped (all 9 items)
+
+All nine blockers above are fixed, typecheck clean, prod build green, pushed to `origin/main`. Three commits:
+
+| Commit | Items | Files of note |
+|---|---|---|
+| `59a4299` | F-040, F-041, F-042, F-043 | `NumberInput.tsx` (new), `WizardStepNumbers.tsx`, `BudgetBreakdownTable.tsx`, `MaterialFormModal.tsx`, `AddressInput.tsx`, `Dashboard.tsx`, `CloseoutTab.tsx` |
+| `df84bd4` | F-044, F-046, F-047, F-048 | `crewStore.ts`, `WizardStepPlan.tsx`, `AddCrewStep.tsx`, `aiRecommendations.ts` |
+| `40c7f6b` | F-045 | `supabaseMaterials.ts` (`createMaterialsBulk`), `materialStore.ts` (`bulkImportMaterials`), `MaterialLibrary.tsx` |
+
+### F-040 — Zero-on-focus (shipped)
+`NumberInput` component renders `0`/`null`/`NaN` as empty string, selects full value on focus via `requestAnimationFrame`. Retrofitted into 11 wizard Numbers inputs, 7 BudgetBreakdownTable inputs, MaterialFormModal depth input.
+
+### F-041 — Dropdown keyboard nav (shipped)
+`AddressInput` now implements WAI-ARIA 1.2 combobox: `role="combobox"`/`listbox`/`option`, `aria-activedescendant`, ArrowUp/Down/Home/End/Enter/Escape handlers, hover-keyboard sync. (Other dropdown call sites still use native `<select>` which has built-in keyboard nav — no retrofit needed.)
+
+### F-042 — Quoted tab visibility (shipped)
+Dashboard status filter converted from `<select>` to a 7-pill row (All + 6 lifecycle states). Each pill shows live count; `role="tablist"` + `aria-selected` for accessibility.
+
+### F-043 — Completion gate (shipped)
+`CloseoutTab` early-return removed. `hasMaterials` now gates *only* the material-usage table + summary. Complete Project button always renders. Also added a `NumberInput` for per-material quantity entry.
+
+### F-044 — Crew save (shipped)
+`crewStore.addCrewMember` signature changed: `Promise<void>` → `Promise<CrewMember | null>`. Rollback on Supabase failure + toast.error. `await get().fetchCrew()` reconciliation at end. `WizardStepPlan` "Save & Add" now uses the returned member id directly — no more stale closure over the pre-mutation store list.
+
+### F-045 — CSV import 50-row cap (shipped)
+New `createMaterialsBulk(materials, orgId)` in `supabaseMaterials.ts`: single-round-trip INSERT for the whole array. New `bulkImportMaterials` store action: 100-row chunks, up to 2 exponential-backoff retries per chunk (400ms × 2^attempt), per-row index tracking for failure reporting, single reconciling `fetchMaterials()` at end. `MaterialLibrary.handleImportConfirm` now calls the action and shows live progress ("Importing X / Y…").
+
+### F-046 — AI 4″ base depth (shipped)
+`scrubReasonDepth()` in `validateAndEnrich()` clamps AI-suggested depth values to engine minimums for `base`, `gravel`, `sand`, `soil`, `mulch`, `concrete`. Engine-aware hint + placeholder added to `MaterialFormModal` depth input.
+
+### F-047 — Owner role (shipped)
+`AddCrewStep.ROLE_OPTIONS` now has `'owner'` as first option. Migration 025 added the DB CHECK value back in prior work.
+
+### F-048 — Polymeric sand unit (shipped)
+`BAGGED_UNIT_COERCIONS` guard in `validateAndEnrich()` forces polymeric-sand materials to `bag` purchase-unit and 50lb/65sqft computation. Overrides any `pound`/`lb`/`oz` unit the AI tries to use.
+
+### F-049 — Render blocker root cause (SHIPPED — fixed in infrastructure)
+**Not a Claude Preview bug.** Root cause: when `preview_start` launches Vite from the worktree at `.claude/worktrees/<name>/`, there's no `.env.local` there (it's gitignored and only exists in the parent repo). Supabase client throws `supabaseUrl is required` at module load, bricking React hydration. Console message:
+```
+[EXCEPTION] Error: supabaseUrl is required.
+  at new SupabaseClient
+  at http://localhost:3000/src/services/supabase.ts:4:25
+```
+**Fix applied this session:** copied `.env.local` into the worktree. **Long-term:** document the copy step in `CODE_GUIDE.md` worktree section, or add a worktree-init hook that symlinks `.env.local`.
+
+### Live walkthrough — deferred to user
+Chrome-driven interactive walkthrough blocked at login (won't enter passwords for the user per safety policy). All 9 fixes are code-verified:
+- `npx tsc --noEmit` → clean
+- `npm run build` → green, 9.84s
+- `npm run dev` → boots, React hydrates, landing page renders
+
+Charlie: log in yourself at http://localhost:3000, then walk through each finding against the verification points above.
+
+
 Total P0 remediation: roughly one focused session.
