@@ -5,6 +5,10 @@ import type { ElementType } from '@/types';
 import { normalizeCategory } from '@/lib/categories';
 import { ElementVisual } from '@/components/shared/ElementVisual';
 import type { ProjectElement } from '@/types';
+// F-050: swap raw number inputs for NumberInput so the same zero-on-focus
+// + select-all UX applies on the Measurements step. Matches F-040's treatment
+// of the Numbers step, BudgetBreakdownTable, and MaterialFormModal.
+import { NumberInput } from '@/components/ui/NumberInput';
 
 interface Props {
   data: WizardData;
@@ -364,26 +368,24 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
                   <>
                     <div>
                       <label className={labelClass}>Length (ft)</label>
-                      <input
+                      <NumberInput
                         className={inputClass}
-                        type="number"
-                        min="0"
-                        step="0.5"
+                        min={0}
+                        step={0.5}
                         placeholder="0"
-                        value={el.lengthFt ?? ''}
-                        onChange={(e) => updateElement(el.tempId, { lengthFt: e.target.value ? parseFloat(e.target.value) : null })}
+                        value={el.lengthFt}
+                        onChange={(value) => updateElement(el.tempId, { lengthFt: value })}
                       />
                     </div>
                     <div>
                       <label className={labelClass}>Width (ft)</label>
-                      <input
+                      <NumberInput
                         className={inputClass}
-                        type="number"
-                        min="0"
-                        step="0.5"
+                        min={0}
+                        step={0.5}
                         placeholder="0"
-                        value={el.widthFt ?? ''}
-                        onChange={(e) => updateElement(el.tempId, { widthFt: e.target.value ? parseFloat(e.target.value) : null })}
+                        value={el.widthFt}
+                        onChange={(value) => updateElement(el.tempId, { widthFt: value })}
                       />
                     </div>
                   </>
@@ -392,14 +394,13 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
                 {showLinearFt && (
                   <div>
                     <label className={labelClass}>Linear Ft</label>
-                    <input
+                    <NumberInput
                       className={inputClass}
-                      type="number"
-                      min="0"
-                      step="0.5"
+                      min={0}
+                      step={0.5}
                       placeholder="0"
-                      value={el.linearFt ?? ''}
-                      onChange={(e) => updateElement(el.tempId, { linearFt: e.target.value ? parseFloat(e.target.value) : null })}
+                      value={el.linearFt}
+                      onChange={(value) => updateElement(el.tempId, { linearFt: value })}
                     />
                   </div>
                 )}
@@ -407,14 +408,13 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
                 {showHeight && (
                   <div>
                     <label className={labelClass}>Height (ft)</label>
-                    <input
+                    <NumberInput
                       className={inputClass}
-                      type="number"
-                      min="0"
-                      step="0.25"
+                      min={0}
+                      step={0.25}
                       placeholder="0"
-                      value={el.heightFt ?? ''}
-                      onChange={(e) => updateElement(el.tempId, { heightFt: e.target.value ? parseFloat(e.target.value) : null })}
+                      value={el.heightFt}
+                      onChange={(value) => updateElement(el.tempId, { heightFt: value })}
                     />
                   </div>
                 )}
@@ -422,14 +422,13 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
                 {showDepth && (
                   <div>
                     <label className={labelClass}>Depth (in)</label>
-                    <input
+                    <NumberInput
                       className={inputClass}
-                      type="number"
-                      min="0"
-                      step="0.5"
+                      min={0}
+                      step={0.5}
                       placeholder="0"
-                      value={el.depthIn ?? ''}
-                      onChange={(e) => updateElement(el.tempId, { depthIn: e.target.value ? parseFloat(e.target.value) : null })}
+                      value={el.depthIn}
+                      onChange={(value) => updateElement(el.tempId, { depthIn: value })}
                     />
                   </div>
                 )}
@@ -439,14 +438,13 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
                     <label className={labelClass}>
                       Area (sqft){el.lengthFt && el.widthFt ? ' override' : ''}
                     </label>
-                    <input
+                    <NumberInput
                       className={inputClass}
-                      type="number"
-                      min="0"
-                      step="1"
+                      min={0}
+                      step={1}
                       placeholder={el.lengthFt && el.widthFt ? String(Math.round(el.lengthFt * el.widthFt)) : '0'}
-                      value={el.areaSqft ?? ''}
-                      onChange={(e) => updateElement(el.tempId, { areaSqft: e.target.value ? parseFloat(e.target.value) : null })}
+                      value={el.areaSqft}
+                      onChange={(value) => updateElement(el.tempId, { areaSqft: value })}
                     />
                   </div>
                 )}
