@@ -1,6 +1,6 @@
-import React, { useRef, Suspense } from 'react'
+import React, { useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Grid, Environment } from '@react-three/drei'
+import { OrbitControls, Grid } from '@react-three/drei'
 import type { Mesh } from 'three'
 
 // ===== DesignSandbox =====
@@ -83,10 +83,7 @@ const DesignSandbox: React.FC = () => {
           shadow-mapSize-height={1024}
         />
 
-        <Suspense fallback={null}>
-          <Environment preset="sunset" />
-          <RotatingCube />
-        </Suspense>
+        <RotatingCube />
 
         {/* Ground plane that receives shadows */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>

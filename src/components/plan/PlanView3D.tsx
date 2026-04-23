@@ -1,6 +1,6 @@
-import React, { useMemo, Suspense } from 'react'
+import React, { useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid, Environment, Html } from '@react-three/drei'
+import { OrbitControls, Grid, Html } from '@react-three/drei'
 import type { ProjectElement } from '@/types'
 import { autoLayout, computeBoundingBox, elementColor, elementHeightFt } from '@/lib/planLayout'
 
@@ -100,7 +100,8 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560 }) => {
         style={{ width: '100%', height: '100%' }}
       >
         <color attach="background" args={['#0F1510']} />
-        <ambientLight intensity={0.45} />
+        <hemisphereLight args={['#bfd4ff', '#443322', 0.9]} />
+        <ambientLight intensity={0.25} />
         <directionalLight
           position={[cameraDist, cameraDist * 1.3, cameraDist]}
           intensity={1.1}
@@ -112,10 +113,6 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560 }) => {
           shadow-camera-top={cameraDist}
           shadow-camera-bottom={-cameraDist}
         />
-
-        <Suspense fallback={null}>
-          <Environment preset="sunset" />
-        </Suspense>
 
         {/* Ground plane — large enough to always contain shadows */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, 0, -centerPlanY]} receiveShadow>

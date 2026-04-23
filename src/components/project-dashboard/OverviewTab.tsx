@@ -9,7 +9,11 @@ import { computeProjectProgress } from '@/lib/projectProgress';
 import { ElementVisual } from '@/components/shared/ElementVisual';
 import { MaterialPicker } from '@/components/shared/MaterialPicker';
 import PlanView2D from '@/components/plan/PlanView2D';
-import PlanView3D from '@/components/plan/PlanView3D';
+// PlanView3D exists but the live toggle is deferred to Sprint 5 — r3f render
+// needs more investigation (Canvas mounts but scene doesn't attach to DOM
+// canvas reliably with this fiber/drei/three combo). Schema (mig 030) +
+// scaffolding stay shipped; UI toggle removed for now.
+// import PlanView3D from '@/components/plan/PlanView3D';
 import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl } from '@/services/supabaseShareTokens';
 import { toast } from '@/hooks/useToast';
 
@@ -130,8 +134,6 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
 
   // ── Layout editor (Sprint 3a/c/d — move + resize + rotate) ─────────────
   const [editingLayout, setEditingLayout] = useState(false);
-  // ── 2D / 3D view toggle (Sprint 4) ─────────────────────────────────────
-  const [planViewMode, setPlanViewMode] = useState<'2d' | '3d'>('2d');
 
   async function handleElementGeometryChange(elementId: string, geometry: import('@/types').ElementGeometry) {
     const result = await projectStoreRef.updateElement(elementId, { geometry });
@@ -239,43 +241,17 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               </div>
             </div>
             <div className="flex gap-[6px] items-start">
-              {/* 2D / 3D view mode */}
-              <div
-                role="tablist"
-                aria-label="Plan view mode"
-                className="flex rounded-[6px] overflow-hidden border"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                {(['2d', '3d'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    role="tab"
-                    aria-selected={planViewMode === mode}
-                    onClick={() => setPlanViewMode(mode)}
-                    className="px-[10px] py-[6px] text-[11px] font-[600] uppercase border-none cursor-pointer"
-                    style={{
-                      backgroundColor: planViewMode === mode ? 'var(--green)' : 'transparent',
-                      color: planViewMode === mode ? '#fff' : 'var(--text-3)',
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    {mode}
-                  </button>
-                ))}
-              </div>
               <button
                 type="button"
                 onClick={() => setEditingLayout((v) => !v)}
-                disabled={elements.length === 0 || planViewMode === '3d'}
-                title={planViewMode === '3d' ? 'Switch to 2D to edit layout' : undefined}
+                disabled={elements.length === 0}
                 className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] cursor-pointer"
                 style={{
                   backgroundColor: editingLayout ? 'var(--green)' : 'transparent',
                   color: editingLayout ? '#fff' : 'var(--text-3)',
                   border: `1px solid ${editingLayout ? 'var(--green)' : 'var(--border)'}`,
-                  opacity: elements.length === 0 || planViewMode === '3d' ? 0.4 : 1,
-                  cursor: elements.length === 0 || planViewMode === '3d' ? 'not-allowed' : 'pointer',
+                  opacity: elements.length === 0 ? 0.4 : 1,
+                  cursor: elements.length === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
                 {editingLayout ? 'Done editing' : 'Edit layout'}
@@ -372,22 +348,18 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               )}
             </>
           )}
-          {planViewMode === '2d' ? (
-            <PlanView2D
-              elements={elements}
-              height={360}
-              labelMode="full"
-              backdrop={
-                project.lat != null && project.lng != null
-                  ? { lat: project.lat, lng: project.lng }
-                  : null
-              }
-              editable={editingLayout}
-              onElementGeometryChange={handleElementGeometryChange}
-            />
-          ) : (
-            <PlanView3D elements={elements} height={360} />
-          )}
+          <PlanView2D
+            elements={elements}
+            height={360}
+            labelMode="full"
+            backdrop={
+              project.lat != null && project.lng != null
+                ? { lat: project.lat, lng: project.lng }
+                : null
+            }
+            editable={editingLayout}
+            onElementGeometryChange={handleElementGeometryChange}
+          />
         </div>
 
         {/* Elements Summary (editable + per-element materials) */}
