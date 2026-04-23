@@ -229,6 +229,14 @@ export const PlanView2D: React.FC<Props> = ({
   const beginMove = useCallback(
     (e: React.PointerEvent, element: ProjectElement, geometry: ElementGeometry) => {
       if (!editable) return
+      // Bail if the pointer landed on a handle. Handles set their own drag
+      // mode via beginResize / beginRotate; stopPropagation should block
+      // us, but React's root delegation makes that unreliable across
+      // browsers, so a data-attribute check is the belt + suspenders.
+      const target = e.target as Element | null
+      if (target && typeof target.getAttribute === 'function' && target.getAttribute('data-handle')) {
+        return
+      }
       const cursorFt = clientToFeet(e.clientX, e.clientY)
       if (!cursorFt) return
       dragRef.current = {
@@ -583,6 +591,7 @@ export const PlanView2D: React.FC<Props> = ({
                         stroke={color}
                         strokeWidth={ftPerPx * 1}
                         style={{ cursor }}
+                        data-handle="corner"
                         onPointerDown={(ev) => beginResize(ev, element, geometry, k)}
                       />
                     ))}
@@ -605,6 +614,7 @@ export const PlanView2D: React.FC<Props> = ({
                       stroke="#ffffff"
                       strokeWidth={ftPerPx * 0.75}
                       style={{ cursor: 'grab' }}
+                      data-handle="rotate"
                       onPointerDown={(ev) => beginRotate(ev, element, geometry)}
                     />
                   </>
