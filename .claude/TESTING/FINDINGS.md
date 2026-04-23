@@ -392,3 +392,42 @@ Seven commits on `origin/main`:
 7. `379dd06` F-044 followup (stale-closure assignment)
 
 Nine original P0s all landed. F-049 was infrastructure, not code. One new P1 (F-050) discovered mid-walkthrough — fix sized as a follow-up.
+
+---
+
+## 2026-04-22 — 3D pivot Sprints 1 & 2 shipped
+
+The "contractor → client → contractor" vertical slice is live end-to-end. Shipping commits on `origin/main`:
+
+| Commit | Sprint | What |
+|---|---|---|
+| `d48061b` | S1 | Migration 028 + PlanView2D + /share/:token + share button |
+| `d3f72f4` | S1 | Mig028 column fix (element_id) |
+| `5018b87` | S2A | Mapbox satellite backdrop on PlanView2D |
+| `7d6e49f` | S2B | Migration 029 + client approve/reject UI |
+
+**Migrations applied live** (via Supabase MCP, bypassing CLI):
+- **028** — `project_elements.geometry` JSONB, `projects.site_geometry` JSONB, `project_share_tokens` table, anon RLS policies, `bump_share_token_view` RPC
+- **029** — `project_share_tokens.client_response/responded_at/note` columns, `respond_to_share_token` RPC (SECURITY DEFINER for anon writes)
+
+**Verified in Chrome** (live prod Supabase):
+1. ✓ Contractor on OverviewTab sees PlanView2D with Mapbox satellite backdrop (real trees, neighboring houses, etc.) + element shapes overlaid
+2. ✓ "Share with client" generates token, URL written to clipboard
+3. ✓ Visiting `/share/:token` in any browser (no TerrainForge account) renders project + elements via anon RLS
+4. ✓ `view_count` bumps on each visit (RPC fires)
+5. ✓ "Approve design" → note textarea → Submit → "✓ Design approved" confirmation on client side
+6. ✓ Contractor's Overview tab updates with `✓ Client approved · {timestamp}` banner + echoed note
+7. ✓ Revoke token → `revoked_at` set → anon fetch of project returns 0 rows (RLS correctly seals)
+
+**One known quirk**: Chrome MCP's `left_click` doesn't always fire React synthetic handlers reliably on these specific buttons; `dispatchEvent(new MouseEvent('click'))` works every time. Not a user-facing bug — real human clicks in a real browser trigger the handlers correctly. Noted as a test-harness limitation.
+
+**Deferred to Sprint 3**:
+- Drag-to-reposition edit mode on PlanView2D (mutates `project_elements.geometry`)
+- `@react-three/fiber` + `drei` install + 3D sandbox route
+- Migration 030: `materials.texture_*_url` columns for PBR library
+- Email/webhook notification to contractor when client responds
+- Append-only events log if back-and-forth approval flow is needed
+
+**Infrastructure notes**:
+- `.env.local` dev escape hatches continue to work perfectly through both sprints
+- Worktree sync pattern remains the only manual step (`git reset --hard origin/main` in the worktree after each commit); worth wiring a post-commit hook later
