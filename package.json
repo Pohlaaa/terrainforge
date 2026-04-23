@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.2",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
     "@rollup/rollup-linux-x64-gnu": "^4.60.1",
     "@stripe/stripe-js": "^2.1.0",
     "@supabase/supabase-js": "^2.38.0",
@@ -21,12 +23,14 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
     "recharts": "^3.8.1",
+    "three": "^0.184.0",
     "zustand": "^4.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+    "@types/three": "^0.184.0",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",

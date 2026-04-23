@@ -19,6 +19,9 @@ import Settings from '@/pages/Settings'
 const Debug = import.meta.env.DEV
   ? React.lazy(() => import('@/pages/Debug'))
   : () => null;
+const DesignSandbox = import.meta.env.DEV
+  ? React.lazy(() => import('@/pages/DesignSandbox'))
+  : () => null;
 import Onboarding from '@/pages/Onboarding'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
@@ -101,6 +104,16 @@ function App() {
               <SharedProjectView />
             </React.Suspense>
           } />
+
+          {/* DEV-only 3D sandbox (Sprint 3b) — r3f/drei proof-of-life.
+              import.meta.env.DEV gate means this route just 404s in prod. */}
+          {import.meta.env.DEV && (
+            <Route path="/design/sandbox" element={
+              <React.Suspense fallback={<div style={{ background: '#0A0A0A', minHeight: '100vh' }} />}>
+                <DesignSandbox />
+              </React.Suspense>
+            } />
+          )}
 
           {/* Onboarding — requires auth but no layout */}
           <Route path="/onboarding" element={
