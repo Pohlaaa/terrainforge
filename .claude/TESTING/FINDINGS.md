@@ -474,3 +474,45 @@ The layout editor is feature-complete for rectangles: move, resize, rotate. Plus
 - True Mapbox geo-alignment (element feet ↔ tile pixels via `site_geometry.center`)
 - Migration 030 — `materials.texture_*_url` for PBR library (required before 3D camera can render convincing surfaces)
 - Email notification when client responds (currently surfaced only in-app on OverviewTab)
+
+---
+
+## 2026-04-22 — Sprint 4 (partial ship: schema + scaffolding, 3D toggle deferred)
+
+| Commit | What |
+|---|---|
+| `91594ef` | Sprint 4 — migration 030 + PlanView3D + 2D/3D toggle |
+| `c4d881a` | Sprint 4 revert — pull 2D/3D toggle, keep schema + scaffolding |
+
+**Shipped (stays in prod)**:
+- **Migration 030** applied live to prod Supabase. Three new nullable columns on `materials`: `texture_albedo_url`, `texture_normal_url`, `texture_roughness_url`. Future-proof for contractor-attached PBR maps.
+- `Material` type extended with corresponding optional TypeScript fields.
+- `src/lib/planLayout.ts` gained `elementHeightFt()` helper mapping element types to sensible 3D extrusion heights (walls 4ft, fences 6ft, patios 0.1ft, etc).
+- `src/components/plan/PlanView3D.tsx` component written — maps rectangle elements to extruded boxes in r3f with orbit controls. Code-ready for when Canvas attach is resolved.
+
+**Pulled back**:
+- The live 2D/3D toggle on OverviewTab + SharedProjectView was reverted. Both surfaces render only 2D Mapbox + SVG (unchanged from Sprint 3d).
+
+**Why**:
+The r3f Canvas component MOUNTS in our app — React tree shows `FiberProvider → Canvas → div → canvas` — but `canvas.__r3f` never attaches and scene primitives never render to the WebGL context. Tried:
+- Upgrading/downgrading r3f 9.6 → 8.18 (React 18 compat)
+- Downgrading drei 10.7 → 9.122 (matched to fiber v8)
+- Downgrading three 0.184 → 0.162 (pre-Clock-deprecation)
+- Removing drei `<Environment>` in case HDRI Suspense was stuck
+- Clearing Vite dep cache (`node_modules/.vite`)
+- Full Vite restart
+
+The standalone `/design/sandbox` route worked in one isolated test (one cube visible, Sprint 3b commit `1d0d2a0`), then stopped rendering after the combined Sprint 4 install. No meaningful console error — scene just doesn't paint.
+
+Likely culprits (for Sprint 5):
+1. Vite dep-optimizer mangling three's module shape — confirm with `optimizeDeps: { include: ['three'] }` or direct non-bundled import
+2. A fiber v8 + React 18 edge case that doesn't trigger in the minimal sandbox but does in the wrapped `<App>` context
+3. Our three version is still too new — pin exactly to a version known-good with fiber@8.18 (try 0.157)
+
+**What stays in the repo for Sprint 5 start**:
+- Pinned: `@react-three/fiber@^8.18.0`, `@react-three/drei@^9.122.0`, `three@^0.162.0`
+- `src/pages/DesignSandbox.tsx` — commented imports indicate the Environment swap
+- `src/components/plan/PlanView3D.tsx` — full component, ready to wire once Canvas attaches
+- `src/lib/planLayout.ts` — `elementHeightFt()` helper
+
+**Production impact**: zero. User-facing surfaces (contractor Overview, /share/:token) are identical to Sprint 3d.
