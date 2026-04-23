@@ -127,7 +127,16 @@ const SharedProjectView: React.FC = () => {
         {state.status === 'ready' && (
           <>
             <section style={{ marginBottom: 24 }}>
-              <PlanView2D elements={state.elements} height={560} labelMode="full" />
+              <PlanView2D
+                elements={state.elements}
+                height={560}
+                labelMode="full"
+                backdrop={
+                  state.project.lat != null && state.project.lng != null
+                    ? { lat: state.project.lat, lng: state.project.lng }
+                    : null
+                }
+              />
             </section>
 
             <section>

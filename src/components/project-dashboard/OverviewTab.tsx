@@ -272,7 +272,16 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               )}
             </div>
           )}
-          <PlanView2D elements={elements} height={360} labelMode="full" />
+          <PlanView2D
+            elements={elements}
+            height={360}
+            labelMode="full"
+            backdrop={
+              project.lat != null && project.lng != null
+                ? { lat: project.lat, lng: project.lng }
+                : null
+            }
+          />
         </div>
 
         {/* Elements Summary (editable + per-element materials) */}

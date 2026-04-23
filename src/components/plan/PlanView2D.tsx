@@ -26,6 +26,26 @@ interface Props {
   labelMode?: 'full' | 'compact' | 'none'
   /** Called when a user clicks an element. Viewer-side, omit; editor will wire this. */
   onElementClick?: (element: ProjectElement) => void
+  /**
+   * Optional property coordinates. When present AND VITE_MAPBOX_TOKEN is set,
+   * renders a Mapbox satellite backdrop behind the plan. Element positions
+   * are NOT yet geolocated against the tile — the satellite is a visual
+   * context layer only. True geoalignment (element.position_lat/lng matching
+   * the tile's pixel space) is a Sprint 3 job once we have a site_geometry
+   * boundary to anchor to.
+   */
+  backdrop?: { lat: number; lng: number } | null
+}
+
+/** Zoom level for the satellite backdrop. 19 ≈ residential-lot close view. */
+const BACKDROP_ZOOM = 19
+
+function buildMapboxStaticUrl(lat: number, lng: number): string | null {
+  const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
+  if (!token) return null
+  // Mapbox Static Images API — satellite tile centered on lng/lat
+  // @2x gets a retina image; the `auto` attribution flag is fine for embeds.
+  return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${BACKDROP_ZOOM},0/1200x800@2x?access_token=${token}&attribution=false&logo=false`
 }
 
 export const PlanView2D: React.FC<Props> = ({
@@ -33,9 +53,14 @@ export const PlanView2D: React.FC<Props> = ({
   height = 480,
   labelMode = 'full',
   onElementClick,
+  backdrop,
 }) => {
   const laid = useMemo(() => autoLayout(elements), [elements])
   const bbox = useMemo(() => computeBoundingBox(laid), [laid])
+  const backdropUrl = useMemo(
+    () => (backdrop ? buildMapboxStaticUrl(backdrop.lat, backdrop.lng) : null),
+    [backdrop],
+  )
 
   const viewMinX = bbox.minX - PADDING_FT
   const viewMinY = bbox.minY - PADDING_FT
@@ -62,6 +87,29 @@ export const PlanView2D: React.FC<Props> = ({
         overflow: 'hidden',
       }}
     >
+      {/* Mapbox satellite backdrop (Phase A) — positioned under the SVG.
+          Not geoaligned to element coordinates yet; purely visual context. */}
+      {backdropUrl && !isEmpty && (
+        <img
+          src={backdropUrl}
+          alt=""
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            // A subtle darkening keeps element labels readable on top.
+            filter: 'brightness(0.7) saturate(0.85)',
+            pointerEvents: 'none',
+          }}
+          onError={(e) => {
+            // Gracefully hide the image if Mapbox 401s or the URL fails.
+            ;(e.target as HTMLImageElement).style.display = 'none'
+          }}
+        />
+      )}
       {isEmpty ? (
         <div
           style={{
@@ -84,35 +132,40 @@ export const PlanView2D: React.FC<Props> = ({
           height="100%"
           viewBox={`${viewMinX} ${viewMinY} ${viewWidth} ${viewHeight}`}
           preserveAspectRatio="xMidYMid meet"
-          style={{ display: 'block' }}
+          style={{ display: 'block', position: 'relative', zIndex: 1 }}
         >
-          {/* Grid background — 5-ft minor, 25-ft major */}
-          <defs>
-            <pattern
-              id="plan-grid-minor"
-              width="5"
-              height="5"
-              patternUnits="userSpaceOnUse"
-            >
-              <path d="M 5 0 L 0 0 0 5" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={ftPerPx * 0.5} />
-            </pattern>
-            <pattern
-              id="plan-grid-major"
-              width="25"
-              height="25"
-              patternUnits="userSpaceOnUse"
-            >
-              <rect width="25" height="25" fill="url(#plan-grid-minor)" />
-              <path d="M 25 0 L 0 0 0 25" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={ftPerPx * 0.75} />
-            </pattern>
-          </defs>
-          <rect
-            x={viewMinX}
-            y={viewMinY}
-            width={viewWidth}
-            height={viewHeight}
-            fill="url(#plan-grid-major)"
-          />
+          {/* Grid background — 5-ft minor, 25-ft major. When the satellite
+              backdrop is showing, skip the grid (it competes visually). */}
+          {!backdropUrl && (
+            <>
+              <defs>
+                <pattern
+                  id="plan-grid-minor"
+                  width="5"
+                  height="5"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path d="M 5 0 L 0 0 0 5" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={ftPerPx * 0.5} />
+                </pattern>
+                <pattern
+                  id="plan-grid-major"
+                  width="25"
+                  height="25"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <rect width="25" height="25" fill="url(#plan-grid-minor)" />
+                  <path d="M 25 0 L 0 0 0 25" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={ftPerPx * 0.75} />
+                </pattern>
+              </defs>
+              <rect
+                x={viewMinX}
+                y={viewMinY}
+                width={viewWidth}
+                height={viewHeight}
+                fill="url(#plan-grid-major)"
+              />
+            </>
+          )}
 
           {/* Elements */}
           {laid.map(({ element, geometry }, idx) => {
