@@ -149,13 +149,15 @@ CREATE POLICY project_elements_anon_via_share_token
     )
   );
 
--- project_element_materials: anon SELECT scoped through elements
+-- project_element_materials: anon SELECT scoped through elements.
+-- NOTE the junction column is `element_id` (not `project_element_id`) —
+-- see migration 021 where the table was originally created.
 CREATE POLICY project_element_materials_anon_via_share_token
   ON project_element_materials
   FOR SELECT
   TO anon
   USING (
-    project_element_id IN (
+    element_id IN (
       SELECT pe.id FROM project_elements pe
       WHERE pe.project_id IN (
         SELECT project_id FROM project_share_tokens
@@ -175,7 +177,7 @@ CREATE POLICY materials_anon_via_share_token
   USING (
     id IN (
       SELECT pem.material_id FROM project_element_materials pem
-      WHERE pem.project_element_id IN (
+      WHERE pem.element_id IN (
         SELECT pe.id FROM project_elements pe
         WHERE pe.project_id IN (
           SELECT project_id FROM project_share_tokens

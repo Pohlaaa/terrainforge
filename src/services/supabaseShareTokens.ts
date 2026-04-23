@@ -133,12 +133,13 @@ export async function fetchSharedProjectByToken(token: string): Promise<{
 
   const elementIds = (elementRows || []).map((e: { id: string }) => e.id)
 
+  // Junction column is `element_id` per migration 021.
   let elementMaterialRows: Array<Record<string, unknown>> = []
   if (elementIds.length > 0) {
     const { data: emData, error: emErr } = await supabase
       .from('project_element_materials')
       .select('*')
-      .in('project_element_id', elementIds)
+      .in('element_id', elementIds)
     if (emErr) {
       console.error('fetchSharedProjectByToken element_materials error:', emErr)
     } else {
@@ -149,7 +150,7 @@ export async function fetchSharedProjectByToken(token: string): Promise<{
   const elements: ProjectElement[] = (elementRows || []).map((row) => {
     const el = toCamelCase(row as Record<string, unknown>) as unknown as ProjectElement
     const materials = elementMaterialRows
-      .filter((m) => (m as { project_element_id?: string }).project_element_id === el.id)
+      .filter((m) => (m as { element_id?: string }).element_id === el.id)
       .map((m) => toCamelCase(m as Record<string, unknown>) as unknown as ProjectElementMaterial)
     return { ...el, materials }
   })
