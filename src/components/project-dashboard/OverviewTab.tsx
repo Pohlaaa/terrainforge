@@ -127,6 +127,32 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
     toast.success('Link revoked.');
   }
 
+  // ── Layout editor (Sprint 3a — drag to reposition) ────────────────────
+  const [editingLayout, setEditingLayout] = useState(false);
+
+  async function handleElementMove(elementId: string, position: { x: number; y: number }) {
+    const element = elements.find((e) => e.id === elementId);
+    if (!element) return;
+    // Preserve the existing shape/rotation when present; otherwise fall back
+    // to a rectangle sized by the element's measured dimensions so the drop
+    // survives a reload even for elements the contractor has never dragged.
+    const existing = element.geometry;
+    const width = existing?.shape && existing.shape.kind === 'rectangle' ? existing.shape.width
+      : (element.lengthFt ?? 4);
+    const height = existing?.shape && existing.shape.kind === 'rectangle' ? existing.shape.height
+      : (element.widthFt ?? 4);
+    const rotation = existing?.rotation ?? 0;
+    const newGeometry = {
+      position,
+      rotation,
+      shape: existing?.shape ?? { kind: 'rectangle' as const, width, height },
+    };
+    const result = await projectStoreRef.updateElement(elementId, { geometry: newGeometry });
+    if (!result) {
+      toast.error('Could not save new position.');
+    }
+  }
+
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
   const totalManHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
   const crewSize = project.crewSize ?? 1;
@@ -220,9 +246,27 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
             <div>
               <div className={cardHead} style={{ marginBottom: 2 }}>Client Preview</div>
               <div className="text-[11px] text-[var(--text-4)]">
-                Top-down plan from your project elements. Share the link to let a client view it in their browser.
+                {editingLayout
+                  ? 'Drag elements to reposition them. Positions snap to a 1-ft grid and save automatically.'
+                  : 'Top-down plan from your project elements. Share the link to let a client view it in their browser.'}
               </div>
             </div>
+            <div className="flex gap-[6px] items-start">
+              <button
+                type="button"
+                onClick={() => setEditingLayout((v) => !v)}
+                disabled={elements.length === 0}
+                className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] cursor-pointer"
+                style={{
+                  backgroundColor: editingLayout ? 'var(--green)' : 'transparent',
+                  color: editingLayout ? '#fff' : 'var(--text-3)',
+                  border: `1px solid ${editingLayout ? 'var(--green)' : 'var(--border)'}`,
+                  opacity: elements.length === 0 ? 0.4 : 1,
+                  cursor: elements.length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {editingLayout ? 'Done editing' : 'Edit layout'}
+              </button>
             {activeToken ? (
               <div className="flex gap-[6px]">
                 <button
@@ -258,6 +302,7 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                 {creatingShare ? 'Creating…' : 'Share with client'}
               </button>
             )}
+            </div>
           </div>
           {activeToken && (
             <>
@@ -323,6 +368,8 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                 ? { lat: project.lat, lng: project.lng }
                 : null
             }
+            editable={editingLayout}
+            onElementMove={handleElementMove}
           />
         </div>
 

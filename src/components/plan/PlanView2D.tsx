@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react'
-import type { ProjectElement } from '@/types'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
+import type { ProjectElement, ElementGeometry } from '@/types'
 import { autoLayout, computeBoundingBox, elementColor } from '@/lib/planLayout'
 import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
 
@@ -35,6 +35,23 @@ interface Props {
    * boundary to anchor to.
    */
   backdrop?: { lat: number; lng: number } | null
+  /**
+   * Sprint 3a: enables drag-to-reposition. Elements become grabbable;
+   * dropping them calls onElementMove with the new feet-space position.
+   * Client viewer omits this (defaults to false) so the link stays read-only.
+   */
+  editable?: boolean
+  /**
+   * Fires once per drag when the user releases an element. Parent is
+   * responsible for persisting the new geometry (typically via
+   * projectStore.updateElement(id, { geometry: {...} })).
+   */
+  onElementMove?: (elementId: string, position: { x: number; y: number }) => void
+}
+
+/** Snap feet to the nearest integer — keeps dragged elements on 1-ft grid. */
+function snapFt(v: number): number {
+  return Math.round(v)
 }
 
 /** Zoom level for the satellite backdrop. 19 ≈ residential-lot close view. */
@@ -54,8 +71,39 @@ export const PlanView2D: React.FC<Props> = ({
   labelMode = 'full',
   onElementClick,
   backdrop,
+  editable = false,
+  onElementMove,
 }) => {
-  const laid = useMemo(() => autoLayout(elements), [elements])
+  const svgRef = useRef<SVGSVGElement | null>(null)
+
+  // Local position overrides during a drag. We use a ref so we don't
+  // re-render on every pointer tick for state we only use visually on one
+  // element. A companion `dragTick` state forces re-render at animation rate.
+  const dragRef = useRef<{
+    elementId: string
+    offsetFt: { x: number; y: number } // cursor offset from element origin at drag start
+    currentFt: { x: number; y: number } // current element origin in feet (snapped)
+  } | null>(null)
+  const [, setDragTick] = useState(0)
+
+  const baseLaid = useMemo(() => autoLayout(elements), [elements])
+
+  // Overlay the live-drag position (if any) on top of the base layout.
+  const laid = useMemo(() => {
+    const d = dragRef.current
+    if (!d) return baseLaid
+    return baseLaid.map((item) => {
+      if (item.element.id !== d.elementId) return item
+      return {
+        ...item,
+        geometry: {
+          ...item.geometry,
+          position: { x: d.currentFt.x, y: d.currentFt.y },
+        } as ElementGeometry,
+      }
+    })
+  }, [baseLaid])
+
   const bbox = useMemo(() => computeBoundingBox(laid), [laid])
   const backdropUrl = useMemo(
     () => (backdrop ? buildMapboxStaticUrl(backdrop.lat, backdrop.lng) : null),
@@ -66,6 +114,77 @@ export const PlanView2D: React.FC<Props> = ({
   const viewMinY = bbox.minY - PADDING_FT
   const viewWidth = bbox.maxX - bbox.minX + PADDING_FT * 2
   const viewHeight = bbox.maxY - bbox.minY + PADDING_FT * 2
+
+  // Convert a clientX/clientY from a pointer event to feet in the SVG's
+  // user coordinate system. Accounts for preserveAspectRatio="xMidYMid meet"
+  // letterboxing (uniform scale + centered offset).
+  const clientToFeet = useCallback(
+    (clientX: number, clientY: number): { x: number; y: number } | null => {
+      const svg = svgRef.current
+      if (!svg) return null
+      const rect = svg.getBoundingClientRect()
+      const scale = Math.min(rect.width / viewWidth, rect.height / viewHeight)
+      if (scale <= 0 || !isFinite(scale)) return null
+      const offsetX = (rect.width - viewWidth * scale) / 2
+      const offsetY = (rect.height - viewHeight * scale) / 2
+      const x = viewMinX + (clientX - rect.left - offsetX) / scale
+      const y = viewMinY + (clientY - rect.top - offsetY) / scale
+      return { x, y }
+    },
+    [viewMinX, viewMinY, viewWidth, viewHeight],
+  )
+
+  const beginDrag = useCallback(
+    (e: React.PointerEvent<SVGGElement>, element: ProjectElement, originFt: { x: number; y: number }) => {
+      if (!editable) return
+      const cursorFt = clientToFeet(e.clientX, e.clientY)
+      if (!cursorFt) return
+      dragRef.current = {
+        elementId: element.id,
+        offsetFt: { x: cursorFt.x - originFt.x, y: cursorFt.y - originFt.y },
+        currentFt: { x: originFt.x, y: originFt.y },
+      }
+      // Capture the pointer so pointermove/up fire on this element even
+      // if the cursor leaves it.
+      ;(e.target as Element).setPointerCapture(e.pointerId)
+      setDragTick((t) => t + 1)
+    },
+    [editable, clientToFeet],
+  )
+
+  const continueDrag = useCallback(
+    (e: React.PointerEvent<SVGGElement>) => {
+      const d = dragRef.current
+      if (!d) return
+      const cursorFt = clientToFeet(e.clientX, e.clientY)
+      if (!cursorFt) return
+      const nextX = snapFt(cursorFt.x - d.offsetFt.x)
+      const nextY = snapFt(cursorFt.y - d.offsetFt.y)
+      if (nextX === d.currentFt.x && nextY === d.currentFt.y) return
+      d.currentFt = { x: nextX, y: nextY }
+      setDragTick((t) => t + 1)
+    },
+    [clientToFeet],
+  )
+
+  const endDrag = useCallback(
+    (e: React.PointerEvent<SVGGElement>) => {
+      const d = dragRef.current
+      if (!d) return
+      try {
+        ;(e.target as Element).releasePointerCapture(e.pointerId)
+      } catch {
+        /* pointer already released */
+      }
+      const final = { x: d.currentFt.x, y: d.currentFt.y }
+      const id = d.elementId
+      dragRef.current = null
+      setDragTick((t) => t + 1)
+      // Fire the move callback once the user releases. Parent persists.
+      onElementMove?.(id, final)
+    },
+    [onElementMove],
+  )
 
   // Pixel-feet scale for the label font size. viewBox uses feet; we want
   // labels to render at ~11-13px regardless of how the SVG stretches.
@@ -128,11 +247,18 @@ export const PlanView2D: React.FC<Props> = ({
         </div>
       ) : (
         <svg
+          ref={svgRef}
           width="100%"
           height="100%"
           viewBox={`${viewMinX} ${viewMinY} ${viewWidth} ${viewHeight}`}
           preserveAspectRatio="xMidYMid meet"
-          style={{ display: 'block', position: 'relative', zIndex: 1 }}
+          style={{
+            display: 'block',
+            position: 'relative',
+            zIndex: 1,
+            // Prevent the browser's touch/pan behavior while dragging.
+            touchAction: editable ? 'none' : 'auto',
+          }}
         >
           {/* Grid background — 5-ft minor, 25-ft major. When the satellite
               backdrop is showing, skip the grid (it competes visually). */}
@@ -244,13 +370,27 @@ export const PlanView2D: React.FC<Props> = ({
               centerY = position.y + (Math.min(...ys) + Math.max(...ys)) / 2
             }
 
+            const isBeingDragged = dragRef.current?.elementId === element.id
             return (
               <g
                 key={element.id}
                 transform={`translate(${position.x} ${position.y}) rotate(${rotation})`}
-                style={{ cursor: clickable ? 'pointer' : 'default' }}
-                onClick={clickable ? () => onElementClick?.(element) : undefined}
-                role={clickable ? 'button' : undefined}
+                style={{
+                  cursor: editable
+                    ? isBeingDragged
+                      ? 'grabbing'
+                      : 'grab'
+                    : clickable
+                      ? 'pointer'
+                      : 'default',
+                  opacity: isBeingDragged ? 0.75 : 1,
+                }}
+                onClick={clickable && !editable ? () => onElementClick?.(element) : undefined}
+                onPointerDown={editable ? (e) => beginDrag(e, element, position) : undefined}
+                onPointerMove={editable ? continueDrag : undefined}
+                onPointerUp={editable ? endDrag : undefined}
+                onPointerCancel={editable ? endDrag : undefined}
+                role={clickable || editable ? 'button' : undefined}
                 aria-label={element.name}
               >
                 {shapeEl}
