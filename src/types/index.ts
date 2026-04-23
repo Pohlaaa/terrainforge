@@ -316,6 +316,10 @@ export interface Material {
   dependentMaterialIds?: string[];
   metadata?: Record<string, unknown>;
   isActive?: boolean;
+  // ── PBR textures (migration 030) ────────────────────────────────────────
+  textureAlbedoUrl?: string | null;
+  textureNormalUrl?: string | null;
+  textureRoughnessUrl?: string | null;
 }
 
 /** Project-level material entry stored in projects.materials JSONB */

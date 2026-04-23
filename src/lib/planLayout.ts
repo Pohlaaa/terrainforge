@@ -181,3 +181,61 @@ const ELEMENT_COLORS: Record<ElementType, string> = {
 export function elementColor(type: ElementType): string {
   return ELEMENT_COLORS[type] ?? ELEMENT_COLORS.other
 }
+
+// ===== 3D EXTRUSION HEIGHTS (Sprint 4) =====
+//
+// PlanView3D extrudes each rectangle into a box. The height is a
+// reasonable default per element type, overridden by the element's
+// own heightFt or depthIn when the contractor has supplied one. Values
+// in feet. Flat hardscape is ~0.1 ft so the outline is visible but it
+// still reads as a surface. Walls and fences get real human-scale
+// heights.
+
+const ELEMENT_HEIGHTS_FT: Record<ElementType, number> = {
+  patio: 0.1,
+  walkway: 0.1,
+  driveway: 0.1,
+  pool_deck: 0.15,
+  parking_lot: 0.1,
+  steps_stairs: 0.8,
+  concrete_slab: 0.1,
+  curbing: 0.3,
+
+  wall: 4,
+  retaining_wall: 3,
+  fence: 6,
+  pergola: 8,
+
+  garden_bed: 0.8,
+  mulch_area: 0.3,
+  gravel_area: 0.3,
+  sod_area: 0.1,
+
+  edging: 0.2,
+
+  tree_planting: 15,
+  shrub_planting: 4,
+
+  fire_pit: 1.8,
+  outdoor_kitchen: 3,
+
+  drainage: 0.2,
+  irrigation_zone: 0.1,
+
+  other: 0.5,
+}
+
+/**
+ * Height in feet for a given element, rendered as the Y-extrusion of its
+ * rectangle in 3D. Prefers the element's own heightFt, then depthIn / 12,
+ * then the type default, then 0.5.
+ */
+export function elementHeightFt(element: {
+  elementType: ElementType
+  heightFt: number | null
+  depthIn: number | null
+}): number {
+  if (element.heightFt && element.heightFt > 0) return element.heightFt
+  if (element.depthIn && element.depthIn > 0) return element.depthIn / 12
+  return ELEMENT_HEIGHTS_FT[element.elementType] ?? 0.5
+}
