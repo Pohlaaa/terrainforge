@@ -260,17 +260,59 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
             )}
           </div>
           {activeToken && (
-            <div
-              className="mb-[12px] px-[10px] py-[8px] rounded-[6px] text-[11px] font-mono break-all"
-              style={{ backgroundColor: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--border)' }}
-            >
-              {buildShareUrl(activeToken.token)}
-              {activeToken.viewCount > 0 && (
-                <span className="ml-[8px]" style={{ color: 'var(--green-l)' }}>
-                  · viewed {activeToken.viewCount}×
-                </span>
+            <>
+              <div
+                className="mb-[8px] px-[10px] py-[8px] rounded-[6px] text-[11px] font-mono break-all"
+                style={{ backgroundColor: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--border)' }}
+              >
+                {buildShareUrl(activeToken.token)}
+                {activeToken.viewCount > 0 && (
+                  <span className="ml-[8px]" style={{ color: 'var(--green-l)' }}>
+                    · viewed {activeToken.viewCount}×
+                  </span>
+                )}
+              </div>
+              {activeToken.clientResponse && (
+                <div
+                  className="mb-[12px] px-[12px] py-[10px] rounded-[8px] text-[12px]"
+                  style={{
+                    backgroundColor:
+                      activeToken.clientResponse === 'approved'
+                        ? 'rgba(16,185,129,0.08)'
+                        : 'rgba(245,158,11,0.08)',
+                    border: `1px solid ${activeToken.clientResponse === 'approved' ? '#10B981' : '#F59E0B'}`,
+                    color:
+                      activeToken.clientResponse === 'approved'
+                        ? '#10B981'
+                        : '#F59E0B',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: activeToken.clientNote ? 4 : 0 }}>
+                    {activeToken.clientResponse === 'approved'
+                      ? '✓ Client approved'
+                      : '✎ Client requested changes'}
+                    {activeToken.clientRespondedAt && (
+                      <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.75 }}>
+                        · {new Date(activeToken.clientRespondedAt).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  {activeToken.clientNote && (
+                    <div style={{ color: 'var(--text-secondary)', marginTop: 4 }}>
+                      "{activeToken.clientNote}"
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
+              {!activeToken.clientResponse && activeToken.viewCount > 0 && (
+                <div
+                  className="mb-[12px] text-[11px]"
+                  style={{ color: 'var(--text-4)' }}
+                >
+                  Client has viewed the link but not responded yet.
+                </div>
+              )}
+            </>
           )}
           <PlanView2D
             elements={elements}

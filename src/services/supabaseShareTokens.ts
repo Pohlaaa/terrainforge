@@ -168,3 +168,27 @@ export function buildShareUrl(token: string): string {
   if (typeof window === 'undefined') return `/share/${token}`
   return `${window.location.origin}/share/${token}`
 }
+
+// ===== CLIENT RESPONSE (migration 029) =====
+
+/**
+ * Writes a client approve/request-changes response back to the share token.
+ * Calls the respond_to_share_token RPC (SECURITY DEFINER) so an anon
+ * session doesn't need a broad UPDATE policy.
+ */
+export async function respondToShareToken(
+  token: string,
+  response: 'approved' | 'changes_requested',
+  note?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.rpc('respond_to_share_token', {
+    p_token: token,
+    p_response: response,
+    p_note: note ?? null,
+  })
+  if (error) {
+    console.error('respondToShareToken error:', error)
+    return { ok: false, error: error.message }
+  }
+  return { ok: true }
+}

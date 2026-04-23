@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { fetchSharedProjectByToken } from '@/services/supabaseShareTokens'
-import type { Project, ProjectElement } from '@/types'
+import { fetchSharedProjectByToken, respondToShareToken } from '@/services/supabaseShareTokens'
+import type { Project, ProjectElement, ShareToken } from '@/types'
 import PlanView2D from '@/components/plan/PlanView2D'
 import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
 
@@ -12,15 +12,18 @@ import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
 // the token row. If the token is invalid, revoked, or expired, we show a
 // "Link not available" screen instead of the project.
 //
-// First slice: read-only plan + summary. Later: client-approve workflow.
+// Sprint 2 Phase B adds client approve / request-changes.
 
 const SharedProjectView: React.FC = () => {
   const { token } = useParams<{ token: string }>()
   const [state, setState] = useState<
     | { status: 'loading' }
     | { status: 'error'; message: string }
-    | { status: 'ready'; project: Project; elements: ProjectElement[] }
+    | { status: 'ready'; project: Project; elements: ProjectElement[]; tokenRow: ShareToken }
   >({ status: 'loading' })
+  const [responding, setResponding] = useState<'approved' | 'changes_requested' | null>(null)
+  const [note, setNote] = useState('')
+  const [noteFormFor, setNoteFormFor] = useState<'approved' | 'changes_requested' | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -36,9 +39,38 @@ const SharedProjectView: React.FC = () => {
         })
         return
       }
-      setState({ status: 'ready', project: result.project, elements: result.elements })
+      setState({
+        status: 'ready',
+        project: result.project,
+        elements: result.elements,
+        tokenRow: result.token,
+      })
     })
   }, [token])
+
+  async function handleSubmitResponse(response: 'approved' | 'changes_requested') {
+    if (!token || state.status !== 'ready') return
+    setResponding(response)
+    const trimmed = note.trim()
+    const result = await respondToShareToken(token, response, trimmed || undefined)
+    setResponding(null)
+    if (!result.ok) {
+      // Keep the form open so the client can retry
+      return
+    }
+    // Stamp local state with the response so the UI flips immediately
+    setState({
+      ...state,
+      tokenRow: {
+        ...state.tokenRow,
+        clientResponse: response,
+        clientRespondedAt: new Date().toISOString(),
+        clientNote: trimmed || null,
+      },
+    })
+    setNoteFormFor(null)
+    setNote('')
+  }
 
   return (
     <div
@@ -203,6 +235,183 @@ const SharedProjectView: React.FC = () => {
               )}
             </section>
 
+            {/* Approve / Request changes (Phase B — migration 029). */}
+            <section style={{ marginTop: 32 }}>
+              {state.tokenRow.clientResponse ? (
+                <div
+                  style={{
+                    padding: 20,
+                    borderRadius: 12,
+                    border: `1px solid ${state.tokenRow.clientResponse === 'approved' ? '#10B981' : '#F59E0B'}`,
+                    background:
+                      state.tokenRow.clientResponse === 'approved'
+                        ? 'rgba(16,185,129,0.08)'
+                        : 'rgba(245,158,11,0.08)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: state.tokenRow.clientResponse === 'approved' ? '#10B981' : '#F59E0B',
+                      marginBottom: 6,
+                    }}
+                  >
+                    {state.tokenRow.clientResponse === 'approved'
+                      ? '✓ Design approved'
+                      : '✎ Changes requested'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary, #9CA3AF)' }}>
+                    Your contractor has been notified. You can close this page.
+                  </div>
+                  {state.tokenRow.clientNote && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 10,
+                        borderRadius: 6,
+                        background: 'rgba(255,255,255,0.04)',
+                        fontSize: 13,
+                        color: 'var(--text-secondary, #D1D5DB)',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary, #9CA3AF)', marginBottom: 4 }}>
+                        Your note
+                      </div>
+                      {state.tokenRow.clientNote}
+                    </div>
+                  )}
+                </div>
+              ) : noteFormFor ? (
+                <div
+                  style={{
+                    padding: 20,
+                    borderRadius: 12,
+                    border: '1px solid var(--border-default, #374151)',
+                    background: 'var(--surface-card, #111827)',
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
+                    {noteFormFor === 'approved'
+                      ? 'Anything to tell your contractor?'
+                      : 'What needs to change?'}
+                  </div>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    maxLength={2000}
+                    rows={4}
+                    placeholder={noteFormFor === 'approved' ? 'Optional — e.g. "Looks great, go for it."' : 'Be specific — "The patio is too small" or "Can we add a path to the shed?"'}
+                    style={{
+                      width: '100%',
+                      padding: 10,
+                      borderRadius: 6,
+                      border: '1px solid var(--border-default, #374151)',
+                      background: 'var(--surface-bg, #0A0A0A)',
+                      color: 'var(--text-primary, #F9FAFB)',
+                      fontSize: 13,
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                      marginBottom: 12,
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setNoteFormFor(null); setNote('') }}
+                      disabled={responding !== null}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border-default, #374151)',
+                        background: 'transparent',
+                        color: 'var(--text-secondary, #D1D5DB)',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        cursor: responding !== null ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSubmitResponse(noteFormFor)}
+                      disabled={responding !== null}
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: noteFormFor === 'approved' ? '#10B981' : '#F59E0B',
+                        color: '#fff',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: responding !== null ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {responding
+                        ? 'Sending…'
+                        : noteFormFor === 'approved'
+                          ? 'Submit approval'
+                          : 'Submit request'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    padding: 20,
+                    borderRadius: 12,
+                    border: '1px solid var(--border-default, #374151)',
+                    background: 'var(--surface-card, #111827)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
+                    What do you think?
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary, #9CA3AF)', marginBottom: 16 }}>
+                    Let your contractor know if the design looks good, or request changes.
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setNoteFormFor('approved')}
+                      style={{
+                        padding: '12px 24px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: '#10B981',
+                        color: '#fff',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✓ Approve design
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNoteFormFor('changes_requested')}
+                      style={{
+                        padding: '12px 24px',
+                        borderRadius: 8,
+                        border: '1px solid #F59E0B',
+                        background: 'transparent',
+                        color: '#F59E0B',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✎ Request changes
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+
             <footer
               style={{
                 marginTop: 40,
@@ -213,7 +422,7 @@ const SharedProjectView: React.FC = () => {
                 textAlign: 'center',
               }}
             >
-              Preview-only. Contact your contractor with questions or to approve the design.
+              Preview-only. Contact your contractor with questions.
             </footer>
           </>
         )}

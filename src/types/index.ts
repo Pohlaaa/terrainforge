@@ -97,6 +97,7 @@ export interface SiteGeometry {
 /**
  * Shareable client-facing link for a project. Token goes in the URL,
  * anon RLS policies scope reads through this row. See migration 028.
+ * Client response columns from migration 029.
  */
 export interface ShareToken {
   id: string;
@@ -109,6 +110,9 @@ export interface ShareToken {
   revokedAt: string | null;
   lastViewedAt: string | null;
   viewCount: number;
+  clientResponse?: 'approved' | 'changes_requested' | null;
+  clientRespondedAt?: string | null;
+  clientNote?: string | null;
 }
 
 export interface ProjectElementMaterial {
