@@ -431,3 +431,46 @@ The "contractor → client → contractor" vertical slice is live end-to-end. Sh
 **Infrastructure notes**:
 - `.env.local` dev escape hatches continue to work perfectly through both sprints
 - Worktree sync pattern remains the only manual step (`git reset --hard origin/main` in the worktree after each commit); worth wiring a post-commit hook later
+
+---
+
+## 2026-04-22 — 3D pivot Sprint 3 shipped
+
+The layout editor is feature-complete for rectangles: move, resize, rotate. Plus r3f/drei sandbox bootstrapped for future 3D work.
+
+| Commit | What |
+|---|---|
+| `a050fbb` | Sprint 3a — drag-to-reposition edit mode |
+| `1d0d2a0` | Sprint 3b — install r3f + drei + three + DesignSandbox page |
+| `b3d14bd` | 3b fix — pin r3f to v8 for React 18 compat |
+| `c636289` | Sprint 3c/d — resize corners + rotation handle |
+| `ace2d29` | 3c/d fix — handle/move bubbling race (data-handle bail) |
+
+**Verified live in Chrome against prod Supabase**:
+- ✓ `/design/sandbox` (DEV-only) renders r3f cube on ground plane with shadows + orbit controls
+- ✓ Edit layout toggle on OverviewTab
+- ✓ Drag element body → move (snaps to 1-ft grid). Patio moved from (0,0) → (8,4) → (14,8)
+- ✓ Drag SE corner → resize. Patio grew 7×9.5 → 15×15. Position anchor at NW corner held correctly
+- ✓ Drag rotation handle → rotate. Patio rotation 0° → 90° (snapped from cursor angle to nearest 15°)
+- ✓ `project_elements.geometry` JSONB row updated on every commit: `{position, rotation, shape:{kind:'rectangle', width, height}}`
+- ✓ Client `/share/:token` view: zero handles, cursor default, role null, **displays the contractor's exact layout** (move + resize + rotate all reflected on the client side via Supabase round-trip)
+
+**Architecture highlights**:
+- Drag state is a tagged union (`move | resize | rotate`), each mode carries the relevant anchor/start state
+- Resize math works in the element's local frame via inverse-rotate, so resize feels natural at any rotation. Opposite corner stays world-fixed; new center = midpoint of anchor + cursor
+- Rotation transform now happens around the visual center (was top-left) via `elementTransform()` helper composing `rotate(θ, cx, cy) · translate(pos)`
+- Min rectangle size 2 ft × 2 ft enforced during resize
+- Rotation snaps to 15° increments
+- `data-handle` attribute on handle circles + bail in move handler prevents React's root delegation from leaking pointerdown to the element body
+
+**r3f version note**: `@react-three/fiber@9` requires React 19 (throws `TypeError: Cannot read properties of undefined (reading 'S')` at `createReconciler` on React 18). Pinned to `^8.18` + drei `^9.122` for React 18 compat. Revisit if TerrainForge ever upgrades to React 19.
+
+**Deferred to Sprint 4+**:
+- Resize on non-rectangle shapes (line, polygon, circle)
+- Multi-select + bulk move
+- Undo/redo stack
+- Snap-to-adjacent-element-edge (not just grid)
+- Keyboard arrow nudge when an element is focused
+- True Mapbox geo-alignment (element feet ↔ tile pixels via `site_geometry.center`)
+- Migration 030 — `materials.texture_*_url` for PBR library (required before 3D camera can render convincing surfaces)
+- Email notification when client responds (currently surfaced only in-app on OverviewTab)
