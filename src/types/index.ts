@@ -61,6 +61,54 @@ export interface ProjectElement {
   sequence: number;
   createdAt: string;
   materials: ProjectElementMaterial[];
+  /**
+   * Design-app geometry (migration 028). Nullable — the PlanView2D auto-layouts
+   * when absent. Position is in property-plane feet (origin = top-left),
+   * rotation in degrees clockwise from due-north.
+   */
+  geometry?: ElementGeometry | null;
+}
+
+/**
+ * Geometry for a ProjectElement in the design app. Shape discriminator
+ * lets us extend to circles / polygons / L-shapes without schema churn.
+ */
+export interface ElementGeometry {
+  position: { x: number; y: number };
+  rotation: number; // degrees
+  shape:
+    | { kind: 'rectangle'; width: number; height: number }
+    | { kind: 'circle'; radius: number }
+    | { kind: 'polygon'; points: Array<{ x: number; y: number }> }
+    | { kind: 'line'; length: number };
+}
+
+/**
+ * Site-level geometry: property boundary + Mapbox anchor. Powers the
+ * eventual satellite backdrop + reference frame for element positions.
+ */
+export interface SiteGeometry {
+  boundary?: Array<{ x: number; y: number }>;
+  center?: { lat: number; lng: number };
+  zoom?: number;
+  elevationSamples?: Array<{ x: number; y: number; z: number }>;
+}
+
+/**
+ * Shareable client-facing link for a project. Token goes in the URL,
+ * anon RLS policies scope reads through this row. See migration 028.
+ */
+export interface ShareToken {
+  id: string;
+  projectId: string;
+  orgId: string;
+  token: string;
+  role: 'client_view' | 'client_approve';
+  createdAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  lastViewedAt: string | null;
+  viewCount: number;
 }
 
 export interface ProjectElementMaterial {
@@ -121,6 +169,12 @@ export interface Project {
 
   /** Project-level materials (JSONB). Primary source of truth for what materials this project needs. */
   materials: ProjectMaterial[];
+
+  /**
+   * Site-level geometry for the design app (migration 028). Nullable —
+   * when absent, viewer shows a neutral canvas.
+   */
+  siteGeometry?: SiteGeometry | null;
 
   // ── M1.5 Project Intelligence fields (all nullable) ──────────────────────
 

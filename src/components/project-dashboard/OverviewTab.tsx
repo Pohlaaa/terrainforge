@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ScheduleEntry, CrewMember, Equipment, ProjectElement, ProjectSiteCondition } from '@/types';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ScheduleEntry, CrewMember, Equipment, ProjectElement, ProjectSiteCondition, ShareToken } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { TaskTimeline } from '@/components/shared/TaskTimeline';
@@ -8,6 +8,9 @@ import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
 import { computeProjectProgress } from '@/lib/projectProgress';
 import { ElementVisual } from '@/components/shared/ElementVisual';
 import { MaterialPicker } from '@/components/shared/MaterialPicker';
+import PlanView2D from '@/components/plan/PlanView2D';
+import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl } from '@/services/supabaseShareTokens';
+import { toast } from '@/hooks/useToast';
 
 interface Props {
   project: Project;
@@ -68,6 +71,61 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   const [pickerElementId, setPickerElementId] = useState<string | null>(null);
   const pickerElement = elements.find(el => el.id === pickerElementId) ?? null;
   const projectStoreRef = useProjectStore();
+
+  // ── Client share link (migration 028) ─────────────────────────────────
+  const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
+  const [creatingShare, setCreatingShare] = useState(false);
+  const activeToken = shareTokens.find(
+    (t) => !t.revokedAt && (!t.expiresAt || new Date(t.expiresAt) > new Date()),
+  ) ?? null;
+
+  useEffect(() => {
+    fetchShareTokensForProject(project.id).then(setShareTokens);
+  }, [project.id]);
+
+  async function handleCreateShareLink() {
+    const orgId = useOrgStore.getState().org?.id;
+    if (!orgId) {
+      toast.error('No organization context; cannot create share link.');
+      return;
+    }
+    setCreatingShare(true);
+    const created = await createShareToken(project.id, orgId);
+    setCreatingShare(false);
+    if (!created) {
+      toast.error('Could not create share link. Check that migration 028 is applied.');
+      return;
+    }
+    setShareTokens((prev) => [created, ...prev]);
+    try {
+      await navigator.clipboard.writeText(buildShareUrl(created.token));
+      toast.success('Share link copied to clipboard.');
+    } catch {
+      toast.success('Share link created.');
+    }
+  }
+
+  async function handleCopyShareLink() {
+    if (!activeToken) return;
+    try {
+      await navigator.clipboard.writeText(buildShareUrl(activeToken.token));
+      toast.success('Copied.');
+    } catch {
+      toast.error('Could not copy.');
+    }
+  }
+
+  async function handleRevokeShareLink() {
+    if (!activeToken) return;
+    const ok = await revokeShareToken(activeToken.id);
+    if (!ok) {
+      toast.error('Could not revoke link.');
+      return;
+    }
+    const refreshed = await fetchShareTokensForProject(project.id);
+    setShareTokens(refreshed);
+    toast.success('Link revoked.');
+  }
 
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
   const totalManHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
@@ -155,6 +213,67 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
             </div>
           </div>
         )}
+
+        {/* Client Preview & Share (migration 028 — first slice of the 3D app) */}
+        <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between mb-[12px]">
+            <div>
+              <div className={cardHead} style={{ marginBottom: 2 }}>Client Preview</div>
+              <div className="text-[11px] text-[var(--text-4)]">
+                Top-down plan from your project elements. Share the link to let a client view it in their browser.
+              </div>
+            </div>
+            {activeToken ? (
+              <div className="flex gap-[6px]">
+                <button
+                  type="button"
+                  onClick={handleCopyShareLink}
+                  className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] cursor-pointer border-none"
+                  style={{ backgroundColor: 'var(--green)', color: '#fff' }}
+                >
+                  Copy link
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRevokeShareLink}
+                  className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] cursor-pointer bg-transparent border"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
+                >
+                  Revoke
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCreateShareLink}
+                disabled={creatingShare || elements.length === 0}
+                className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] border-none"
+                style={{
+                  backgroundColor: elements.length === 0 ? 'var(--surface)' : 'var(--green)',
+                  color: elements.length === 0 ? 'var(--text-4)' : '#fff',
+                  cursor: creatingShare || elements.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: creatingShare ? 0.6 : 1,
+                }}
+              >
+                {creatingShare ? 'Creating…' : 'Share with client'}
+              </button>
+            )}
+          </div>
+          {activeToken && (
+            <div
+              className="mb-[12px] px-[10px] py-[8px] rounded-[6px] text-[11px] font-mono break-all"
+              style={{ backgroundColor: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--border)' }}
+            >
+              {buildShareUrl(activeToken.token)}
+              {activeToken.viewCount > 0 && (
+                <span className="ml-[8px]" style={{ color: 'var(--green-l)' }}>
+                  · viewed {activeToken.viewCount}×
+                </span>
+              )}
+            </div>
+          )}
+          <PlanView2D elements={elements} height={360} labelMode="full" />
+        </div>
 
         {/* Elements Summary (editable + per-element materials) */}
         <div className={cardClass} style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>

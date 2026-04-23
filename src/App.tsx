@@ -26,6 +26,7 @@ import ForgotPassword from '@/pages/ForgotPassword'
 import AuthCallback from '@/pages/AuthCallback'
 import ResetPassword from '@/pages/ResetPassword'
 const Landing = React.lazy(() => import('@/pages/Landing'))
+const SharedProjectView = React.lazy(() => import('@/pages/SharedProjectView'))
 
 // Lazy-load new hub pages
 const BudgetHub = React.lazy(() => import('@/pages/BudgetHub'))
@@ -93,6 +94,13 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Public client-facing share link (migration 028) — no auth, no layout */}
+          <Route path="/share/:token" element={
+            <React.Suspense fallback={<div style={{ background: '#0A0A0A', minHeight: '100vh' }} />}>
+              <SharedProjectView />
+            </React.Suspense>
+          } />
 
           {/* Onboarding — requires auth but no layout */}
           <Route path="/onboarding" element={
