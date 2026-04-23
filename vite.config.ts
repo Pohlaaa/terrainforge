@@ -15,7 +15,16 @@ export default defineConfig({
     open: true,
   },
   optimizeDeps: {
-    include: ['@react-pdf/renderer'],
+    include: [
+      '@react-pdf/renderer',
+      // Sprint 5 fix: @react-three/fiber imports THREE at the module top
+      // but doesn't declare it in a way Vite's dep-optimizer sees. Without
+      // this include, fiber's bundle has `new THREE.WebGLRenderer(...)`
+      // referring to nothing and the Canvas silently fails to paint.
+      'three',
+      '@react-three/fiber',
+      '@react-three/drei',
+    ],
   },
   build: {
     outDir: 'dist',

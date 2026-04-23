@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom'
 import { fetchSharedProjectByToken, respondToShareToken } from '@/services/supabaseShareTokens'
 import type { Project, ProjectElement, ShareToken } from '@/types'
 import PlanView2D from '@/components/plan/PlanView2D'
-// PlanView3D exists but the live toggle is deferred — see note below.
-// import PlanView3D from '@/components/plan/PlanView3D'
+import PlanView3D from '@/components/plan/PlanView3D'
 import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
 
 // ===== SharedProjectView =====
@@ -26,6 +25,7 @@ const SharedProjectView: React.FC = () => {
   const [responding, setResponding] = useState<'approved' | 'changes_requested' | null>(null)
   const [note, setNote] = useState('')
   const [noteFormFor, setNoteFormFor] = useState<'approved' | 'changes_requested' | null>(null)
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
 
   useEffect(() => {
     if (!token) {
@@ -161,16 +161,54 @@ const SharedProjectView: React.FC = () => {
         {state.status === 'ready' && (
           <>
             <section style={{ marginBottom: 24 }}>
-              <PlanView2D
-                elements={state.elements}
-                height={560}
-                labelMode="full"
-                backdrop={
-                  state.project.lat != null && state.project.lng != null
-                    ? { lat: state.project.lat, lng: state.project.lng }
-                    : null
-                }
-              />
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 6,
+                  justifyContent: 'flex-end',
+                  marginBottom: 12,
+                }}
+                role="tablist"
+                aria-label="View mode"
+              >
+                {(['2d', '3d'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="tab"
+                    aria-selected={viewMode === mode}
+                    onClick={() => setViewMode(mode)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-default, #374151)',
+                      background: viewMode === mode ? '#10B981' : 'transparent',
+                      color: viewMode === mode ? '#fff' : 'var(--text-secondary, #D1D5DB)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+              {viewMode === '2d' ? (
+                <PlanView2D
+                  elements={state.elements}
+                  height={560}
+                  labelMode="full"
+                  backdrop={
+                    state.project.lat != null && state.project.lng != null
+                      ? { lat: state.project.lat, lng: state.project.lng }
+                      : null
+                  }
+                />
+              ) : (
+                <PlanView3D elements={state.elements} height={560} />
+              )}
             </section>
 
             <section>
