@@ -127,29 +127,13 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
     toast.success('Link revoked.');
   }
 
-  // ── Layout editor (Sprint 3a — drag to reposition) ────────────────────
+  // ── Layout editor (Sprint 3a/c/d — move + resize + rotate) ─────────────
   const [editingLayout, setEditingLayout] = useState(false);
 
-  async function handleElementMove(elementId: string, position: { x: number; y: number }) {
-    const element = elements.find((e) => e.id === elementId);
-    if (!element) return;
-    // Preserve the existing shape/rotation when present; otherwise fall back
-    // to a rectangle sized by the element's measured dimensions so the drop
-    // survives a reload even for elements the contractor has never dragged.
-    const existing = element.geometry;
-    const width = existing?.shape && existing.shape.kind === 'rectangle' ? existing.shape.width
-      : (element.lengthFt ?? 4);
-    const height = existing?.shape && existing.shape.kind === 'rectangle' ? existing.shape.height
-      : (element.widthFt ?? 4);
-    const rotation = existing?.rotation ?? 0;
-    const newGeometry = {
-      position,
-      rotation,
-      shape: existing?.shape ?? { kind: 'rectangle' as const, width, height },
-    };
-    const result = await projectStoreRef.updateElement(elementId, { geometry: newGeometry });
+  async function handleElementGeometryChange(elementId: string, geometry: import('@/types').ElementGeometry) {
+    const result = await projectStoreRef.updateElement(elementId, { geometry });
     if (!result) {
-      toast.error('Could not save new position.');
+      toast.error('Could not save layout change.');
     }
   }
 
@@ -369,7 +353,7 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                 : null
             }
             editable={editingLayout}
-            onElementMove={handleElementMove}
+            onElementGeometryChange={handleElementGeometryChange}
           />
         </div>
 

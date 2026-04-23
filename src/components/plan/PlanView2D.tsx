@@ -5,11 +5,12 @@ import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
 
 // ===== PlanView2D =====
 //
-// Pure-SVG top-down plan viewer for a project's elements. Scales the
-// bounding box of all geometries into the given viewport with padding.
-//
-// - Reads real geometry when present (future design editor).
-// - Falls back to tiled auto-layout when geometry is null (day-one state).
+// Pure-SVG top-down plan viewer for a project's elements.
+// - Reads real geometry when present (design editor).
+// - Falls back to tiled auto-layout when geometry is null.
+// - Edit mode (Sprint 3a/c/d): drag to move, corner handles to resize,
+//   top handle to rotate. Rotation is applied around the element's visual
+//   center so resize feels natural in any orientation.
 // - No three.js, no heavy deps. Responsive via viewBox + preserveAspectRatio.
 //
 // Used on both the contractor-side ProjectDashboard and the public
@@ -17,6 +18,8 @@ import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
 
 const PADDING_FT = 6 // feet of breathing room around the bbox
 const SCALE_BAR_FT = 10 // draw a "10 ft" scale bar in the corner
+const ROT_HANDLE_OFFSET_FT = 3 // rotation handle sits this many feet above top edge
+const MIN_SIZE_FT = 2 // don't let resize shrink below this
 
 interface Props {
   elements: ProjectElement[]
@@ -28,30 +31,30 @@ interface Props {
   onElementClick?: (element: ProjectElement) => void
   /**
    * Optional property coordinates. When present AND VITE_MAPBOX_TOKEN is set,
-   * renders a Mapbox satellite backdrop behind the plan. Element positions
-   * are NOT yet geolocated against the tile — the satellite is a visual
-   * context layer only. True geoalignment (element.position_lat/lng matching
-   * the tile's pixel space) is a Sprint 3 job once we have a site_geometry
-   * boundary to anchor to.
+   * renders a Mapbox satellite backdrop behind the plan.
    */
   backdrop?: { lat: number; lng: number } | null
   /**
-   * Sprint 3a: enables drag-to-reposition. Elements become grabbable;
-   * dropping them calls onElementMove with the new feet-space position.
-   * Client viewer omits this (defaults to false) so the link stays read-only.
+   * Sprint 3: enables drag-to-move + resize corners + rotate handle.
+   * Client viewer omits this (defaults to false) so /share/:token stays read-only.
    */
   editable?: boolean
   /**
-   * Fires once per drag when the user releases an element. Parent is
-   * responsible for persisting the new geometry (typically via
-   * projectStore.updateElement(id, { geometry: {...} })).
+   * Fires once per drag when the user releases. Parent is responsible for
+   * persisting the new geometry (typically via
+   * projectStore.updateElement(id, { geometry: newGeometry })).
    */
-  onElementMove?: (elementId: string, position: { x: number; y: number }) => void
+  onElementGeometryChange?: (elementId: string, geometry: ElementGeometry) => void
 }
 
 /** Snap feet to the nearest integer — keeps dragged elements on 1-ft grid. */
 function snapFt(v: number): number {
   return Math.round(v)
+}
+
+/** Snap rotation to 15-degree increments. */
+function snapDeg(v: number): number {
+  return Math.round(v / 15) * 15
 }
 
 /** Zoom level for the satellite backdrop. 19 ≈ residential-lot close view. */
@@ -60,10 +63,82 @@ const BACKDROP_ZOOM = 19
 function buildMapboxStaticUrl(lat: number, lng: number): string | null {
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
   if (!token) return null
-  // Mapbox Static Images API — satellite tile centered on lng/lat
-  // @2x gets a retina image; the `auto` attribution flag is fine for embeds.
   return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${BACKDROP_ZOOM},0/1200x800@2x?access_token=${token}&attribution=false&logo=false`
 }
+
+/** Rotate (dx, dy) by `deg` around origin. Math convention: +y down. */
+function rotate2d(dx: number, dy: number, deg: number): { x: number; y: number } {
+  const rad = (deg * Math.PI) / 180
+  const c = Math.cos(rad)
+  const s = Math.sin(rad)
+  return { x: dx * c - dy * s, y: dx * s + dy * c }
+}
+
+/**
+ * Visual center of an element in world-space feet. For rectangles the center
+ * is (position + size/2) regardless of rotation because rotation pivots there.
+ */
+function elementCenter(geometry: ElementGeometry): { x: number; y: number } {
+  const { position, shape } = geometry
+  if (shape.kind === 'rectangle') {
+    return { x: position.x + shape.width / 2, y: position.y + shape.height / 2 }
+  }
+  if (shape.kind === 'circle') {
+    return { x: position.x + shape.radius, y: position.y + shape.radius }
+  }
+  if (shape.kind === 'line') {
+    return { x: position.x + shape.length / 2, y: position.y + 0.5 }
+  }
+  // polygon fallback: bbox center
+  const xs = shape.points.map((p) => p.x)
+  const ys = shape.points.map((p) => p.y)
+  return {
+    x: position.x + (Math.min(...xs) + Math.max(...xs)) / 2,
+    y: position.y + (Math.min(...ys) + Math.max(...ys)) / 2,
+  }
+}
+
+/**
+ * Transform string for an element's <g>. Applies rotation around the
+ * element's visual center, then translates to position. Equivalent to:
+ *   (translate to center) · (rotate) · (translate back to top-left of unrotated box)
+ */
+function elementTransform(geometry: ElementGeometry): string {
+  const { position, rotation } = geometry
+  const c = elementCenter(geometry)
+  return `rotate(${rotation} ${c.x} ${c.y}) translate(${position.x} ${position.y})`
+}
+
+type Corner = 'nw' | 'ne' | 'se' | 'sw'
+
+type DragState =
+  | {
+      mode: 'move'
+      elementId: string
+      // Cursor offset from element top-left at drag start (in feet, local = world here for axis-aligned delta)
+      offsetFt: { x: number; y: number }
+      // Live element origin during drag
+      currentPosition: { x: number; y: number }
+      baseGeometry: ElementGeometry
+    }
+  | {
+      mode: 'resize'
+      elementId: string
+      corner: Corner
+      // World position of the anchor (opposite) corner at drag start — stays fixed
+      anchorWorld: { x: number; y: number }
+      rotation: number
+      live: ElementGeometry
+    }
+  | {
+      mode: 'rotate'
+      elementId: string
+      centerWorld: { x: number; y: number }
+      startCursorAngleDeg: number
+      startRotationDeg: number
+      baseGeometry: ElementGeometry
+      live: ElementGeometry
+    }
 
 export const PlanView2D: React.FC<Props> = ({
   elements,
@@ -72,35 +147,30 @@ export const PlanView2D: React.FC<Props> = ({
   onElementClick,
   backdrop,
   editable = false,
-  onElementMove,
+  onElementGeometryChange,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
-
-  // Local position overrides during a drag. We use a ref so we don't
-  // re-render on every pointer tick for state we only use visually on one
-  // element. A companion `dragTick` state forces re-render at animation rate.
-  const dragRef = useRef<{
-    elementId: string
-    offsetFt: { x: number; y: number } // cursor offset from element origin at drag start
-    currentFt: { x: number; y: number } // current element origin in feet (snapped)
-  } | null>(null)
+  const dragRef = useRef<DragState | null>(null)
   const [, setDragTick] = useState(0)
 
   const baseLaid = useMemo(() => autoLayout(elements), [elements])
 
-  // Overlay the live-drag position (if any) on top of the base layout.
+  // Overlay the live-drag geometry (if any) on top of the base layout.
   const laid = useMemo(() => {
     const d = dragRef.current
     if (!d) return baseLaid
     return baseLaid.map((item) => {
       if (item.element.id !== d.elementId) return item
-      return {
-        ...item,
-        geometry: {
-          ...item.geometry,
-          position: { x: d.currentFt.x, y: d.currentFt.y },
-        } as ElementGeometry,
+      if (d.mode === 'move') {
+        return {
+          ...item,
+          geometry: {
+            ...item.geometry,
+            position: { x: d.currentPosition.x, y: d.currentPosition.y },
+          } as ElementGeometry,
+        }
       }
+      return { ...item, geometry: d.live }
     })
   }, [baseLaid])
 
@@ -114,6 +184,12 @@ export const PlanView2D: React.FC<Props> = ({
   const viewMinY = bbox.minY - PADDING_FT
   const viewWidth = bbox.maxX - bbox.minX + PADDING_FT * 2
   const viewHeight = bbox.maxY - bbox.minY + PADDING_FT * 2
+
+  const ftPerPx = viewWidth / 700
+  const labelFontSizeFt = Math.max(ftPerPx * 11, 0.8)
+  const handleRadiusFt = Math.max(ftPerPx * 6, 0.5)
+
+  const isEmpty = elements.length === 0
 
   // Convert a clientX/clientY from a pointer event to feet in the SVG's
   // user coordinate system. Accounts for preserveAspectRatio="xMidYMid meet"
@@ -134,65 +210,183 @@ export const PlanView2D: React.FC<Props> = ({
     [viewMinX, viewMinY, viewWidth, viewHeight],
   )
 
-  const beginDrag = useCallback(
-    (e: React.PointerEvent<SVGGElement>, element: ProjectElement, originFt: { x: number; y: number }) => {
+  const commit = useCallback(() => {
+    const d = dragRef.current
+    if (!d) return
+    const id = d.elementId
+    let geom: ElementGeometry
+    if (d.mode === 'move') {
+      geom = { ...d.baseGeometry, position: d.currentPosition }
+    } else {
+      geom = d.live
+    }
+    dragRef.current = null
+    setDragTick((t) => t + 1)
+    onElementGeometryChange?.(id, geom)
+  }, [onElementGeometryChange])
+
+  // ── Move handlers ────────────────────────────────────────────────────
+  const beginMove = useCallback(
+    (e: React.PointerEvent, element: ProjectElement, geometry: ElementGeometry) => {
       if (!editable) return
       const cursorFt = clientToFeet(e.clientX, e.clientY)
       if (!cursorFt) return
       dragRef.current = {
+        mode: 'move',
         elementId: element.id,
-        offsetFt: { x: cursorFt.x - originFt.x, y: cursorFt.y - originFt.y },
-        currentFt: { x: originFt.x, y: originFt.y },
+        offsetFt: { x: cursorFt.x - geometry.position.x, y: cursorFt.y - geometry.position.y },
+        currentPosition: { x: geometry.position.x, y: geometry.position.y },
+        baseGeometry: geometry,
       }
-      // Capture the pointer so pointermove/up fire on this element even
-      // if the cursor leaves it.
       ;(e.target as Element).setPointerCapture(e.pointerId)
       setDragTick((t) => t + 1)
     },
     [editable, clientToFeet],
   )
 
-  const continueDrag = useCallback(
-    (e: React.PointerEvent<SVGGElement>) => {
+  // ── Resize handlers ──────────────────────────────────────────────────
+  const beginResize = useCallback(
+    (e: React.PointerEvent, element: ProjectElement, geometry: ElementGeometry, corner: Corner) => {
+      if (!editable) return
+      if (geometry.shape.kind !== 'rectangle') return
+      const cursorFt = clientToFeet(e.clientX, e.clientY)
+      if (!cursorFt) return
+      const { width, height } = geometry.shape
+      const center = elementCenter(geometry)
+      // Opposite corner is the anchor — stays world-fixed during drag.
+      const oppLocal: Record<Corner, { x: number; y: number }> = {
+        nw: { x: width / 2, y: height / 2 },   // SE corner is anchor
+        ne: { x: -width / 2, y: height / 2 },  // SW anchor
+        se: { x: -width / 2, y: -height / 2 }, // NW anchor
+        sw: { x: width / 2, y: -height / 2 },  // NE anchor
+      }
+      const anchorLocal = oppLocal[corner]
+      const rotated = rotate2d(anchorLocal.x, anchorLocal.y, geometry.rotation)
+      const anchorWorld = { x: center.x + rotated.x, y: center.y + rotated.y }
+      dragRef.current = {
+        mode: 'resize',
+        elementId: element.id,
+        corner,
+        anchorWorld,
+        rotation: geometry.rotation,
+        live: geometry,
+      }
+      ;(e.target as Element).setPointerCapture(e.pointerId)
+      e.stopPropagation()
+      setDragTick((t) => t + 1)
+    },
+    [editable, clientToFeet],
+  )
+
+  // ── Rotate handlers ──────────────────────────────────────────────────
+  const beginRotate = useCallback(
+    (e: React.PointerEvent, element: ProjectElement, geometry: ElementGeometry) => {
+      if (!editable) return
+      const cursorFt = clientToFeet(e.clientX, e.clientY)
+      if (!cursorFt) return
+      const center = elementCenter(geometry)
+      const dx = cursorFt.x - center.x
+      const dy = cursorFt.y - center.y
+      const cursorAngleDeg = (Math.atan2(dy, dx) * 180) / Math.PI
+      dragRef.current = {
+        mode: 'rotate',
+        elementId: element.id,
+        centerWorld: center,
+        startCursorAngleDeg: cursorAngleDeg,
+        startRotationDeg: geometry.rotation,
+        baseGeometry: geometry,
+        live: geometry,
+      }
+      ;(e.target as Element).setPointerCapture(e.pointerId)
+      e.stopPropagation()
+      setDragTick((t) => t + 1)
+    },
+    [editable, clientToFeet],
+  )
+
+  // ── Common pointer move / up dispatch ────────────────────────────────
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
       const d = dragRef.current
       if (!d) return
       const cursorFt = clientToFeet(e.clientX, e.clientY)
       if (!cursorFt) return
-      const nextX = snapFt(cursorFt.x - d.offsetFt.x)
-      const nextY = snapFt(cursorFt.y - d.offsetFt.y)
-      if (nextX === d.currentFt.x && nextY === d.currentFt.y) return
-      d.currentFt = { x: nextX, y: nextY }
-      setDragTick((t) => t + 1)
+
+      if (d.mode === 'move') {
+        const nextX = snapFt(cursorFt.x - d.offsetFt.x)
+        const nextY = snapFt(cursorFt.y - d.offsetFt.y)
+        if (nextX === d.currentPosition.x && nextY === d.currentPosition.y) return
+        d.currentPosition = { x: nextX, y: nextY }
+        setDragTick((t) => t + 1)
+        return
+      }
+
+      if (d.mode === 'resize' && d.live.shape.kind === 'rectangle') {
+        // New center is midpoint of anchorWorld and cursor
+        const newCenter = {
+          x: (d.anchorWorld.x + cursorFt.x) / 2,
+          y: (d.anchorWorld.y + cursorFt.y) / 2,
+        }
+        // Cursor relative to new center, inverse-rotated → local-frame offset
+        const localDelta = rotate2d(
+          cursorFt.x - newCenter.x,
+          cursorFt.y - newCenter.y,
+          -d.rotation,
+        )
+        // Half-dimensions in local frame
+        const halfW = Math.abs(localDelta.x)
+        const halfH = Math.abs(localDelta.y)
+        let newWidth = snapFt(halfW * 2)
+        let newHeight = snapFt(halfH * 2)
+        if (newWidth < MIN_SIZE_FT) newWidth = MIN_SIZE_FT
+        if (newHeight < MIN_SIZE_FT) newHeight = MIN_SIZE_FT
+        // New position = newCenter - (newW/2, newH/2) in local, but since
+        // position is stored in world coords as the top-left of the unrotated
+        // box, it's simply newCenter - half-sizes axis-aligned.
+        const newPosition = {
+          x: newCenter.x - newWidth / 2,
+          y: newCenter.y - newHeight / 2,
+        }
+        d.live = {
+          ...d.live,
+          position: newPosition,
+          shape: { kind: 'rectangle', width: newWidth, height: newHeight },
+        }
+        setDragTick((t) => t + 1)
+        return
+      }
+
+      if (d.mode === 'rotate') {
+        const dx = cursorFt.x - d.centerWorld.x
+        const dy = cursorFt.y - d.centerWorld.y
+        const cursorAngleDeg = (Math.atan2(dy, dx) * 180) / Math.PI
+        const deltaAngle = cursorAngleDeg - d.startCursorAngleDeg
+        let next = d.startRotationDeg + deltaAngle
+        next = snapDeg(next)
+        // Normalize to [-180, 180] for compactness
+        while (next > 180) next -= 360
+        while (next < -180) next += 360
+        if (next === d.live.rotation) return
+        d.live = { ...d.live, rotation: next }
+        setDragTick((t) => t + 1)
+        return
+      }
     },
     [clientToFeet],
   )
 
-  const endDrag = useCallback(
-    (e: React.PointerEvent<SVGGElement>) => {
-      const d = dragRef.current
-      if (!d) return
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragRef.current) return
       try {
         ;(e.target as Element).releasePointerCapture(e.pointerId)
       } catch {
-        /* pointer already released */
+        /* already released */
       }
-      const final = { x: d.currentFt.x, y: d.currentFt.y }
-      const id = d.elementId
-      dragRef.current = null
-      setDragTick((t) => t + 1)
-      // Fire the move callback once the user releases. Parent persists.
-      onElementMove?.(id, final)
+      commit()
     },
-    [onElementMove],
+    [commit],
   )
-
-  // Pixel-feet scale for the label font size. viewBox uses feet; we want
-  // labels to render at ~11-13px regardless of how the SVG stretches.
-  // Assuming ~700px CSS width, feet-per-pixel = viewWidth / 700.
-  const ftPerPx = viewWidth / 700
-  const labelFontSizeFt = Math.max(ftPerPx * 11, 0.8)
-
-  const isEmpty = elements.length === 0
 
   return (
     <div
@@ -206,8 +400,7 @@ export const PlanView2D: React.FC<Props> = ({
         overflow: 'hidden',
       }}
     >
-      {/* Mapbox satellite backdrop (Phase A) — positioned under the SVG.
-          Not geoaligned to element coordinates yet; purely visual context. */}
+      {/* Mapbox satellite backdrop */}
       {backdropUrl && !isEmpty && (
         <img
           src={backdropUrl}
@@ -219,12 +412,10 @@ export const PlanView2D: React.FC<Props> = ({
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            // A subtle darkening keeps element labels readable on top.
             filter: 'brightness(0.7) saturate(0.85)',
             pointerEvents: 'none',
           }}
           onError={(e) => {
-            // Gracefully hide the image if Mapbox 401s or the URL fails.
             ;(e.target as HTMLImageElement).style.display = 'none'
           }}
         />
@@ -256,12 +447,9 @@ export const PlanView2D: React.FC<Props> = ({
             display: 'block',
             position: 'relative',
             zIndex: 1,
-            // Prevent the browser's touch/pan behavior while dragging.
             touchAction: editable ? 'none' : 'auto',
           }}
         >
-          {/* Grid background — 5-ft minor, 25-ft major. When the satellite
-              backdrop is showing, skip the grid (it competes visually). */}
           {!backdropUrl && (
             <>
               <defs>
@@ -294,21 +482,14 @@ export const PlanView2D: React.FC<Props> = ({
           )}
 
           {/* Elements */}
-          {laid.map(({ element, geometry }, idx) => {
-            const { position, rotation, shape } = geometry
+          {laid.map(({ element, geometry }) => {
+            const { shape } = geometry
             const color = elementColor(element.elementType)
             const clickable = Boolean(onElementClick)
-            const label =
-              labelMode === 'none'
-                ? null
-                : labelMode === 'compact'
-                  ? String(idx + 1)
-                  : element.name || ELEMENT_TYPE_LABELS[element.elementType]
+            const isBeingDragged = dragRef.current?.elementId === element.id
+            const transform = elementTransform(geometry)
 
             let shapeEl: React.ReactNode = null
-            let centerX = position.x
-            let centerY = position.y
-
             if (shape.kind === 'rectangle') {
               shapeEl = (
                 <rect
@@ -323,8 +504,6 @@ export const PlanView2D: React.FC<Props> = ({
                   rx={0.5}
                 />
               )
-              centerX = position.x + shape.width / 2
-              centerY = position.y + shape.height / 2
             } else if (shape.kind === 'circle') {
               shapeEl = (
                 <circle
@@ -337,8 +516,6 @@ export const PlanView2D: React.FC<Props> = ({
                   strokeWidth={ftPerPx * 1.5}
                 />
               )
-              centerX = position.x + shape.radius
-              centerY = position.y + shape.radius
             } else if (shape.kind === 'line') {
               shapeEl = (
                 <rect
@@ -351,8 +528,6 @@ export const PlanView2D: React.FC<Props> = ({
                   strokeWidth={ftPerPx * 1.5}
                 />
               )
-              centerX = position.x + shape.length / 2
-              centerY = position.y + 0.5
             } else if (shape.kind === 'polygon') {
               const pts = shape.points.map((p) => `${p.x},${p.y}`).join(' ')
               shapeEl = (
@@ -364,20 +539,15 @@ export const PlanView2D: React.FC<Props> = ({
                   strokeWidth={ftPerPx * 1.5}
                 />
               )
-              const xs = shape.points.map((p) => p.x)
-              const ys = shape.points.map((p) => p.y)
-              centerX = position.x + (Math.min(...xs) + Math.max(...xs)) / 2
-              centerY = position.y + (Math.min(...ys) + Math.max(...ys)) / 2
             }
 
-            const isBeingDragged = dragRef.current?.elementId === element.id
             return (
               <g
                 key={element.id}
-                transform={`translate(${position.x} ${position.y}) rotate(${rotation})`}
+                transform={transform}
                 style={{
                   cursor: editable
-                    ? isBeingDragged
+                    ? isBeingDragged && dragRef.current?.mode === 'move'
                       ? 'grabbing'
                       : 'grab'
                     : clickable
@@ -386,35 +556,68 @@ export const PlanView2D: React.FC<Props> = ({
                   opacity: isBeingDragged ? 0.75 : 1,
                 }}
                 onClick={clickable && !editable ? () => onElementClick?.(element) : undefined}
-                onPointerDown={editable ? (e) => beginDrag(e, element, position) : undefined}
-                onPointerMove={editable ? continueDrag : undefined}
-                onPointerUp={editable ? endDrag : undefined}
-                onPointerCancel={editable ? endDrag : undefined}
+                onPointerDown={editable ? (e) => beginMove(e, element, geometry) : undefined}
+                onPointerMove={editable ? onPointerMove : undefined}
+                onPointerUp={editable ? onPointerUp : undefined}
+                onPointerCancel={editable ? onPointerUp : undefined}
                 role={clickable || editable ? 'button' : undefined}
                 aria-label={element.name}
               >
                 {shapeEl}
+
+                {/* Resize corner handles (rectangles only, edit mode only). */}
+                {editable && shape.kind === 'rectangle' && (
+                  <>
+                    {([
+                      { k: 'nw' as const, cx: 0, cy: 0, cursor: 'nwse-resize' },
+                      { k: 'ne' as const, cx: shape.width, cy: 0, cursor: 'nesw-resize' },
+                      { k: 'se' as const, cx: shape.width, cy: shape.height, cursor: 'nwse-resize' },
+                      { k: 'sw' as const, cx: 0, cy: shape.height, cursor: 'nesw-resize' },
+                    ]).map(({ k, cx, cy, cursor }) => (
+                      <circle
+                        key={k}
+                        cx={cx}
+                        cy={cy}
+                        r={handleRadiusFt}
+                        fill="#ffffff"
+                        stroke={color}
+                        strokeWidth={ftPerPx * 1}
+                        style={{ cursor }}
+                        onPointerDown={(ev) => beginResize(ev, element, geometry, k)}
+                      />
+                    ))}
+                    {/* Rotation handle — above top-center, connected by a line */}
+                    <line
+                      x1={shape.width / 2}
+                      y1={0}
+                      x2={shape.width / 2}
+                      y2={-ROT_HANDLE_OFFSET_FT}
+                      stroke={color}
+                      strokeWidth={ftPerPx * 1}
+                      opacity={0.7}
+                      style={{ pointerEvents: 'none' }}
+                    />
+                    <circle
+                      cx={shape.width / 2}
+                      cy={-ROT_HANDLE_OFFSET_FT}
+                      r={handleRadiusFt * 1.1}
+                      fill="#F59E0B"
+                      stroke="#ffffff"
+                      strokeWidth={ftPerPx * 0.75}
+                      style={{ cursor: 'grab' }}
+                      onPointerDown={(ev) => beginRotate(ev, element, geometry)}
+                    />
+                  </>
+                )}
               </g>
             )
           })}
 
-          {/* Labels drawn in a second pass so they always sit above shapes */}
+          {/* Labels drawn in a second pass so they always sit above shapes.
+              Labels are positioned at the ROTATED visual center. */}
           {labelMode !== 'none' &&
             laid.map(({ element, geometry }, idx) => {
-              const { position, shape } = geometry
-              let cx = position.x
-              let cy = position.y
-              if (shape.kind === 'rectangle') {
-                cx = position.x + shape.width / 2
-                cy = position.y + shape.height / 2
-              } else if (shape.kind === 'circle') {
-                cx = position.x + shape.radius
-                cy = position.y + shape.radius
-              } else if (shape.kind === 'line') {
-                cx = position.x + shape.length / 2
-                cy = position.y + 0.5
-              }
-
+              const c = elementCenter(geometry)
               const text =
                 labelMode === 'compact'
                   ? String(idx + 1)
@@ -423,8 +626,8 @@ export const PlanView2D: React.FC<Props> = ({
               return (
                 <text
                   key={`lbl-${element.id}`}
-                  x={cx}
-                  y={cy}
+                  x={c.x}
+                  y={c.y}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="rgba(255,255,255,0.95)"
