@@ -239,3 +239,58 @@ export function elementHeightFt(element: {
   if (element.depthIn && element.depthIn > 0) return element.depthIn / 12
   return ELEMENT_HEIGHTS_FT[element.elementType] ?? 0.5
 }
+
+// ===== 3D MATERIAL PROPS (Sprint 6d-lite) =====
+//
+// Per-type PBR-ish material settings for the 3D view. Real texture maps
+// (migration 030 columns) are Sprint 7 — this just varies roughness /
+// metalness / emissive so stone reads differently from sod. Flat colors
+// with category-tuned surface response.
+
+export interface ElementMaterialProps {
+  roughness: number
+  metalness: number
+  // Slight tint brightness adjustment — 1 = as-is, >1 = brighter
+  intensity?: number
+}
+
+const ELEMENT_MATERIALS: Record<ElementType, ElementMaterialProps> = {
+  // Hardscape — matte-ish stone, low metalness
+  patio: { roughness: 0.85, metalness: 0.02 },
+  walkway: { roughness: 0.82, metalness: 0.02 },
+  driveway: { roughness: 0.9, metalness: 0.01 },
+  pool_deck: { roughness: 0.6, metalness: 0.03 },
+  parking_lot: { roughness: 0.95, metalness: 0 },
+  steps_stairs: { roughness: 0.85, metalness: 0.02 },
+  concrete_slab: { roughness: 0.88, metalness: 0.02 },
+  curbing: { roughness: 0.85, metalness: 0.03 },
+
+  // Structural — slight sheen on treated wood / finished stone
+  wall: { roughness: 0.75, metalness: 0.05 },
+  retaining_wall: { roughness: 0.9, metalness: 0.02 },
+  fence: { roughness: 0.7, metalness: 0.05 },
+  pergola: { roughness: 0.7, metalness: 0.05 },
+
+  // Organic — very matte, no metalness
+  garden_bed: { roughness: 1, metalness: 0 },
+  mulch_area: { roughness: 1, metalness: 0 },
+  gravel_area: { roughness: 0.95, metalness: 0 },
+  sod_area: { roughness: 0.98, metalness: 0 },
+
+  edging: { roughness: 0.75, metalness: 0.15 },
+
+  tree_planting: { roughness: 0.9, metalness: 0 },
+  shrub_planting: { roughness: 0.95, metalness: 0 },
+
+  fire_pit: { roughness: 0.6, metalness: 0.4, intensity: 1.2 },
+  outdoor_kitchen: { roughness: 0.4, metalness: 0.6 },
+
+  drainage: { roughness: 0.3, metalness: 0.1 },
+  irrigation_zone: { roughness: 0.4, metalness: 0.05 },
+
+  other: { roughness: 0.75, metalness: 0.05 },
+}
+
+export function elementMaterial(type: ElementType): ElementMaterialProps {
+  return ELEMENT_MATERIALS[type] ?? ELEMENT_MATERIALS.other
+}

@@ -386,7 +386,15 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               onElementGeometryChange={handleElementGeometryChange}
             />
           ) : (
-            <PlanView3D elements={elements} height={360} />
+            <PlanView3D
+              elements={elements}
+              height={360}
+              backdrop={
+                project.lat != null && project.lng != null
+                  ? { lat: project.lat, lng: project.lng }
+                  : null
+              }
+            />
           )}
         </div>
 

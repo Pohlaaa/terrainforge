@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react'
-import { Canvas } from '@react-three/fiber'
+import React, { useMemo, Suspense } from 'react'
+import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls, Grid, Html } from '@react-three/drei'
+import { TextureLoader, SRGBColorSpace } from 'three'
+import type { Texture } from 'three'
 import type { ProjectElement } from '@/types'
-import { autoLayout, computeBoundingBox, elementColor, elementHeightFt } from '@/lib/planLayout'
+import { autoLayout, computeBoundingBox, elementColor, elementHeightFt, elementMaterial } from '@/lib/planLayout'
 
 // ===== PlanView3D (Sprint 4) =====
 //
@@ -29,6 +31,44 @@ import { autoLayout, computeBoundingBox, elementColor, elementHeightFt } from '@
 interface Props {
   elements: ProjectElement[]
   height?: number
+  /**
+   * Property coordinates. When present + VITE_MAPBOX_TOKEN set, the
+   * 3D ground plane gets a satellite texture. Otherwise a solid color.
+   * Same shape as PlanView2D's backdrop prop.
+   */
+  backdrop?: { lat: number; lng: number } | null
+}
+
+const BACKDROP_ZOOM = 19
+
+function buildMapboxStaticUrl(lat: number, lng: number): string | null {
+  const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
+  if (!token) return null
+  return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${BACKDROP_ZOOM},0/1200x1200@2x?access_token=${token}&attribution=false&logo=false`
+}
+
+// Inner component so useLoader's Suspense can fallback cleanly.
+function SatelliteGround({
+  url,
+  centerX,
+  centerZ,
+  size,
+}: {
+  url: string
+  centerX: number
+  centerZ: number
+  size: number
+}) {
+  const texture = useLoader(TextureLoader, url) as Texture
+  // SRGBColorSpace keeps the satellite image from looking washed-out under
+  // PBR lighting. Vanilla three defaults to linear which darkens color maps.
+  texture.colorSpace = SRGBColorSpace
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, 0, centerZ]} receiveShadow>
+      <planeGeometry args={[size, size]} />
+      <meshStandardMaterial map={texture} roughness={0.95} metalness={0} />
+    </mesh>
+  )
 }
 
 interface ExtrudedBox {
@@ -41,9 +81,15 @@ interface ExtrudedBox {
   width: number // feet
   depth: number // feet (plan height)
   height: number // feet (3D extrusion)
+  roughness: number
+  metalness: number
 }
 
-export const PlanView3D: React.FC<Props> = ({ elements, height = 560 }) => {
+export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }) => {
+  const backdropUrl = useMemo(
+    () => (backdrop ? buildMapboxStaticUrl(backdrop.lat, backdrop.lng) : null),
+    [backdrop],
+  )
   const boxes = useMemo<ExtrudedBox[]>(() => {
     return autoLayout(elements).flatMap(({ element, geometry }) => {
       if (geometry.shape.kind !== 'rectangle') return []
@@ -51,6 +97,7 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560 }) => {
       const cx = position.x + shape.width / 2
       const cy = position.y + shape.height / 2
       const h = elementHeightFt(element)
+      const mat = elementMaterial(element.elementType)
       return [
         {
           key: element.id,
@@ -62,6 +109,8 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560 }) => {
           width: shape.width,
           depth: shape.height,
           height: h,
+          roughness: mat.roughness,
+          metalness: mat.metalness,
         },
       ]
     })
@@ -114,24 +163,47 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560 }) => {
           shadow-camera-bottom={-cameraDist}
         />
 
-        {/* Ground plane — large enough to always contain shadows */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, 0, -centerPlanY]} receiveShadow>
-          <planeGeometry args={[spanX * 4, spanZ * 4]} />
-          <meshStandardMaterial color="#1b241c" roughness={0.95} />
-        </mesh>
+        {/* Ground plane. With a satellite backdrop, Suspense-wrap a
+            textured plane; otherwise a dark solid plane.
+            Satellite-ground sizing is approximate; true geo-alignment
+            to element coordinates is Sprint 6c. */}
+        {backdropUrl ? (
+          <Suspense
+            fallback={
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, -0.01, -centerPlanY]} receiveShadow>
+                <planeGeometry args={[spanX * 4, spanZ * 4]} />
+                <meshStandardMaterial color="#1b241c" roughness={0.95} />
+              </mesh>
+            }
+          >
+            <SatelliteGround
+              url={backdropUrl}
+              centerX={centerX}
+              centerZ={-centerPlanY}
+              size={Math.max(spanX, spanZ) * 4}
+            />
+          </Suspense>
+        ) : (
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, 0, -centerPlanY]} receiveShadow>
+            <planeGeometry args={[spanX * 4, spanZ * 4]} />
+            <meshStandardMaterial color="#1b241c" roughness={0.95} />
+          </mesh>
+        )}
 
-        {/* 1-ft grid, fades with distance, positioned over the ground */}
-        <Grid
-          args={[Math.max(spanX, spanZ) * 3, Math.max(spanX, spanZ) * 3]}
-          cellSize={1}
-          cellColor="#374151"
-          sectionSize={10}
-          sectionColor="#4B5563"
-          fadeDistance={Math.max(spanX, spanZ) * 2}
-          fadeStrength={1}
-          infiniteGrid={false}
-          position={[centerX, 0.005, -centerPlanY]}
-        />
+        {/* Grid — only when there's no satellite (it competes visually) */}
+        {!backdropUrl && (
+          <Grid
+            args={[Math.max(spanX, spanZ) * 3, Math.max(spanX, spanZ) * 3]}
+            cellSize={1}
+            cellColor="#374151"
+            sectionSize={10}
+            sectionColor="#4B5563"
+            fadeDistance={Math.max(spanX, spanZ) * 2}
+            fadeStrength={1}
+            infiniteGrid={false}
+            position={[centerX, 0.005, -centerPlanY]}
+          />
+        )}
 
         {/* Extruded elements */}
         {boxes.map((b) => (
@@ -142,7 +214,7 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560 }) => {
           >
             <mesh position={[0, b.height / 2, 0]} castShadow receiveShadow>
               <boxGeometry args={[b.width, b.height, b.depth]} />
-              <meshStandardMaterial color={b.color} roughness={0.7} metalness={0.05} />
+              <meshStandardMaterial color={b.color} roughness={b.roughness} metalness={b.metalness} />
             </mesh>
             {/* Floating label above each element */}
             <Html

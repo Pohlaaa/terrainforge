@@ -207,7 +207,15 @@ const SharedProjectView: React.FC = () => {
                   }
                 />
               ) : (
-                <PlanView3D elements={state.elements} height={560} />
+                <PlanView3D
+                  elements={state.elements}
+                  height={560}
+                  backdrop={
+                    state.project.lat != null && state.project.lng != null
+                      ? { lat: state.project.lat, lng: state.project.lng }
+                      : null
+                  }
+                />
               )}
             </section>
 
