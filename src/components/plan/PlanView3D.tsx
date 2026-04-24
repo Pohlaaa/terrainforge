@@ -157,13 +157,11 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
     return backdropFootprintFt(backdrop.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX)
   }, [backdrop])
 
-  // Camera framing: include both the element bbox AND the satellite
-  // footprint (if present) so the client sees the property with context.
-  const frameSpan = Math.max(
-    spanX,
-    spanZ,
-    backdropFootprint ? backdropFootprint * 0.4 : 0, // a fraction of footprint so camera doesn't zoom way out
-  )
+  // Camera framing: snap tight to the element bbox so the design is the
+  // focal point, not the neighborhood. The satellite sits behind at
+  // whatever real-world footprint it has — users orbit/zoom outward if
+  // they want more context. Minimum 30 ft so solo elements still frame well.
+  const frameSpan = Math.max(spanX, spanZ, 30)
   const cameraDist = frameSpan * 1.6
   const cameraY = frameSpan * 1.2
 
@@ -291,7 +289,9 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
           enableRotate
           target={[centerX, 0, -centerPlanY]}
           minDistance={frameSpan * 0.4}
-          maxDistance={frameSpan * 5}
+          // Zoom-out cap: wider of (5x frame) OR (the satellite footprint)
+          // so the client can pan out to see the whole property context.
+          maxDistance={Math.max(frameSpan * 5, backdropFootprint ?? 0)}
           maxPolarAngle={Math.PI / 2.05}
         />
       </Canvas>
