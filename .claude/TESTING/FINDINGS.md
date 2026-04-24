@@ -550,3 +550,32 @@ Likely culprits (for Sprint 5):
 - 6d: PBR textures — use migration 030 columns + load albedo/normal maps per-material
 - 6e: email notification on client response (Resend + Supabase webhook)
 - 6f: Extruded trees/shrubs/fire pits using proper shape primitives (cylinders, cones)
+
+---
+
+## 2026-04-23 — Sprint 6 + 7b shipped: textured 3D view on real property
+
+| Commit | What |
+|---|---|
+| `c807d5f` | S6 — satellite 3D ground (approx-sized) + per-category PBR-ish material props |
+| `61021aa` | S7b — geo-aligned tile footprint (Web Mercator math, lat-aware) + world-origin plane |
+| `feb773c` | S7b fix — camera back to element-focused framing (prior pass was too zoomed out) |
+
+**What's live** (both contractor OverviewTab and client `/share/:token`):
+- 3D view renders elements extruded as boxes at their geometry positions
+- Ground plane loads the Mapbox satellite tile centered on project lat/lng
+- Plane is sized to the **real-world extent** of the tile at zoom 19 for the project's latitude (Web Mercator: `cos(lat) × earth_circ / 2^z / 256 × px` converted to feet)
+- World origin (0, 0, 0) represents the project's lat/lng; elements stored in plan feet read as geographic offsets
+- Per-element-type material properties: hardscape matte (roughness 0.85), sod ultra-matte (0.98), fire pit with 40% metalness, outdoor kitchen 60% metal
+- Labels float above each element
+- Camera zoom clamped between `frameSpan × 0.4` and `max(frameSpan × 5, backdropFootprint)` — client can zoom tight on design or all the way out to see the whole property
+
+**Precision note**: elements and the house outline don't line up exactly yet. The plane is sized correctly and centered on the project's lat/lng, but elements default-layout from (0,0) in plan feet — meaning untouched projects start near the property center but not on the actual footprint. Once the contractor drags elements in 2D edit mode, they're positioned relative to that center. Full drag-over-satellite in 2D is already live; 3D editing is Sprint 7a.
+
+**Deferred**:
+- **7a**: 3D editing (drag + resize + rotate elements with camera-space math)
+- **7c**: real PBR texture maps (migration 030 columns + texture files — needs a hosting decision: Supabase Storage vs external CDN — not rushed this session)
+- **7d**: Resend email notifications
+- **7e**: Shape primitives (cylinders for trees/fire pits, not boxes)
+- **Elevation**: plane is flat; terrain-rgb for real topography would be Sprint 8+
+- **Bearing**: tile is always north-up; future knob if contractors want to rotate the 2D plan to match house orientation
