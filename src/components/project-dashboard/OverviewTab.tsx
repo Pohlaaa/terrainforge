@@ -275,15 +275,15 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => setEditingLayout((v) => !v)}
-                disabled={elements.length === 0 || planViewMode === '3d'}
-                title={planViewMode === '3d' ? 'Switch to 2D to edit layout' : undefined}
+                disabled={elements.length === 0}
+                title={planViewMode === '3d' ? 'Drag elements in 3D to reposition them. Resize/rotate still only in 2D.' : undefined}
                 className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] cursor-pointer"
                 style={{
                   backgroundColor: editingLayout ? 'var(--green)' : 'transparent',
                   color: editingLayout ? '#fff' : 'var(--text-3)',
                   border: `1px solid ${editingLayout ? 'var(--green)' : 'var(--border)'}`,
-                  opacity: elements.length === 0 || planViewMode === '3d' ? 0.4 : 1,
-                  cursor: elements.length === 0 || planViewMode === '3d' ? 'not-allowed' : 'pointer',
+                  opacity: elements.length === 0 ? 0.4 : 1,
+                  cursor: elements.length === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
                 {editingLayout ? 'Done editing' : 'Edit layout'}
@@ -403,6 +403,8 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   : null
               }
               materialsById={materialsById}
+              editable={editingLayout}
+              onElementGeometryChange={handleElementGeometryChange}
             />
           )}
         </div>

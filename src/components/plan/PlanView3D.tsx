@@ -1,9 +1,9 @@
-import React, { useMemo, Suspense } from 'react'
+import React, { useMemo, Suspense, useRef, useState, useEffect } from 'react'
 import { Canvas, useLoader } from '@react-three/fiber'
-import { OrbitControls, Grid, Html } from '@react-three/drei'
+import { OrbitControls, Grid, Html, TransformControls } from '@react-three/drei'
 import { TextureLoader, SRGBColorSpace, RepeatWrapping } from 'three'
-import type { Texture } from 'three'
-import type { ProjectElement, Material } from '@/types'
+import type { Texture, Group } from 'three'
+import type { ProjectElement, Material, ElementGeometry } from '@/types'
 import { autoLayout, computeBoundingBox, elementColor, elementHeightFt, elementMaterial } from '@/lib/planLayout'
 
 // ===== PlanView3D (Sprint 4) =====
@@ -45,6 +45,18 @@ interface Props {
    * SharedProjectView gets it from `fetchSharedProjectByToken`.
    */
   materialsById?: Record<string, Material>
+  /**
+   * Sprint 7a-translate: enables click-to-select + drag translate via drei's
+   * TransformControls. When true, clicking an element adds a 3-axis gizmo
+   * that the contractor drags to reposition. OrbitControls auto-disables
+   * while a gizmo is being dragged.
+   * Client viewer omits this (defaults false) → /share/:token stays read-only.
+   */
+  editable?: boolean
+  /**
+   * Fires when a drag ends. Parent persists via projectStore.updateElement.
+   */
+  onElementGeometryChange?: (elementId: string, geometry: ElementGeometry) => void
 }
 
 const BACKDROP_ZOOM = 19
@@ -280,7 +292,154 @@ interface ExtrudedBox {
   textureAlbedoUrl: string | null
 }
 
-export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop, materialsById }) => {
+// ===== Sprint 7a-translate: editable 3D element layer =====
+//
+// Renders every element as a draggable <group>. Clicking an element in
+// edit mode selects it; the selected element gets a drei TransformControls
+// gizmo (translate mode) attached. On dragEnd, the group's new world
+// position is converted back to plan-feet coords and committed.
+//
+// Only translate is implemented here; 7a-resize (drag corners in 3D) and
+// 7a-rotate (drag rotation ring in 3D) are separate backlog items. In the
+// meantime contractors can still resize + rotate in 2D edit mode.
+
+function ElementsLayer({
+  boxes,
+  editable,
+  selectedId,
+  setSelectedId,
+  draggingGizmo,
+  setDraggingGizmo,
+  onElementGeometryChange,
+  elements,
+  bboxSpanMax,
+}: {
+  boxes: ExtrudedBox[]
+  editable: boolean
+  selectedId: string | null
+  setSelectedId: (id: string | null) => void
+  draggingGizmo: boolean
+  setDraggingGizmo: (v: boolean) => void
+  onElementGeometryChange?: (id: string, geometry: ElementGeometry) => void
+  elements: ProjectElement[]
+  bboxSpanMax: number
+}) {
+  // A ref-per-element so TransformControls can target the selected one.
+  const groupRefs = useRef(new Map<string, Group>())
+
+  const selectedBox = selectedId ? boxes.find((b) => b.key === selectedId) ?? null : null
+  const selectedGroup = selectedId ? groupRefs.current.get(selectedId) ?? null : null
+
+  // Commit position changes on drag end. TransformControls mutates the live
+  // three.js object directly, so we just read the final position and convert
+  // world (x, y, z) → plan feet (x, y).
+  const handleTransformEnd = () => {
+    setDraggingGizmo(false)
+    if (!selectedBox || !selectedGroup) return
+    const el = elements.find((e) => e.id === selectedBox.key)
+    if (!el) return
+    const { position } = selectedGroup
+    // World (x, y, z) → plan feet. Plan position is the TOP-LEFT of the
+    // unrotated box; world (x, z) is the CENTER (because our render wraps
+    // the primitive in a group whose origin is the element center).
+    const planX = position.x - selectedBox.width / 2
+    const planY = -(position.z) - selectedBox.depth / 2
+    const snap = (v: number) => Math.round(v)
+    const existing = el.geometry
+    const newGeometry: ElementGeometry = {
+      position: { x: snap(planX), y: snap(planY) },
+      rotation: existing?.rotation ?? (-selectedBox.rot * 180) / Math.PI,
+      shape: existing?.shape ?? {
+        kind: 'rectangle',
+        width: selectedBox.width,
+        height: selectedBox.depth,
+      },
+    }
+    onElementGeometryChange?.(selectedBox.key, newGeometry)
+  }
+
+  // Clean up refs for unmounted elements (prevents the map from growing).
+  useEffect(() => {
+    const liveIds = new Set(boxes.map((b) => b.key))
+    for (const id of groupRefs.current.keys()) {
+      if (!liveIds.has(id)) groupRefs.current.delete(id)
+    }
+  }, [boxes])
+
+  return (
+    <>
+      {boxes.map((b) => {
+        const isSelected = editable && selectedId === b.key
+        return (
+          <group
+            key={b.key}
+            position={[b.x, 0, b.z]}
+            rotation={[0, b.rot, 0]}
+            ref={(ref) => {
+              if (ref) groupRefs.current.set(b.key, ref as unknown as Group)
+            }}
+            onClick={
+              editable
+                ? (e) => {
+                    e.stopPropagation()
+                    setSelectedId(b.key)
+                  }
+                : undefined
+            }
+          >
+            <ElementPrimitive b={b} />
+            <Html
+              position={[0, labelHeightFt(b) + 1, 0]}
+              center
+              distanceFactor={bboxSpanMax * 0.5}
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              <div
+                style={{
+                  padding: '3px 8px',
+                  background: isSelected ? 'rgba(16,185,129,0.9)' : 'rgba(0,0,0,0.65)',
+                  color: '#fff',
+                  borderRadius: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  border: `1px solid ${isSelected ? 'rgba(16,185,129,1)' : 'rgba(255,255,255,0.15)'}`,
+                }}
+              >
+                {b.name}
+              </div>
+            </Html>
+          </group>
+        )
+      })}
+      {/* Drag gizmo on the selected element. TransformControls auto-handles
+          the pointer capture + raycast math. We only care about commit. */}
+      {editable && selectedGroup && (
+        <TransformControls
+          object={selectedGroup}
+          mode="translate"
+          showY={false}
+          size={0.8}
+          onMouseDown={() => setDraggingGizmo(true)}
+          onMouseUp={handleTransformEnd}
+        />
+      )}
+    </>
+  )
+}
+
+export const PlanView3D: React.FC<Props> = ({
+  elements,
+  height = 560,
+  backdrop,
+  materialsById,
+  editable = false,
+  onElementGeometryChange,
+}) => {
+  // Sprint 7a-translate: currently-selected element id (click to select).
+  // Only used when editable; null means no selection, no gizmo.
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [draggingGizmo, setDraggingGizmo] = useState(false)
   const backdropUrl = useMemo(
     () => (backdrop ? buildMapboxStaticUrl(backdrop.lat, backdrop.lng) : null),
     [backdrop],
@@ -438,39 +597,17 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop, 
         )}
 
         {/* Extruded elements */}
-        {boxes.map((b) => (
-          <group
-            key={b.key}
-            position={[b.x, 0, b.z]}
-            rotation={[0, b.rot, 0]}
-          >
-            <ElementPrimitive b={b} />
-            {/* Floating label above each element — positioned above the top of
-                whichever primitive this element renders as (tree canopy,
-                shrub dome, fire pit, or default box). */}
-            <Html
-              position={[0, labelHeightFt(b) + 1, 0]}
-              center
-              distanceFactor={Math.max(spanX, spanZ) * 0.5}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >
-              <div
-                style={{
-                  padding: '3px 8px',
-                  background: 'rgba(0,0,0,0.65)',
-                  color: '#fff',
-                  borderRadius: 4,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                }}
-              >
-                {b.name}
-              </div>
-            </Html>
-          </group>
-        ))}
+        <ElementsLayer
+          boxes={boxes}
+          editable={editable}
+          selectedId={selectedId}
+          setSelectedId={setSelectedId}
+          draggingGizmo={draggingGizmo}
+          setDraggingGizmo={setDraggingGizmo}
+          onElementGeometryChange={onElementGeometryChange}
+          elements={elements}
+          bboxSpanMax={Math.max(spanX, spanZ)}
+        />
 
         <OrbitControls
           enablePan
@@ -482,6 +619,9 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop, 
           // so the client can pan out to see the whole property context.
           maxDistance={Math.max(frameSpan * 5, backdropFootprint ?? 0)}
           maxPolarAngle={Math.PI / 2.05}
+          // Sprint 7a-translate: lock orbit while the drag gizmo is active
+          // so rotating-the-camera doesn't fight dragging-the-element.
+          enabled={!draggingGizmo}
         />
       </Canvas>
     </div>

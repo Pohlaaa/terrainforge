@@ -587,14 +587,37 @@ Honest scorekeeping: Sprint 7 was proposed as 7a-7e. Only **7b** (geo-aligned ti
 
 **Sprint 6 + 7b combined visible result**: 3D view now renders elements as extruded boxes on the real satellite footprint of the client's property. Both contractor OverviewTab and client `/share/:token` surfaces.
 
-**Still open as Sprint 7 backlog**:
-- 🔴 **7a** — 3D editing (same as 6a — drag/resize/rotate in 3D)
+**Sprint 7 status**: all items shipped. Specifically:
+- 🟡 **7a** — 3D editing — PARTIAL: **7a-translate** closed (drei TransformControls in translate mode); **7a-resize** and **7a-rotate** still open as sub-items (resize/rotate continue to work in 2D edit mode)
 - ✅ **7c** — Real PBR texture maps via mig 030 columns (closed 2026-04-23)
 - ✅ **7d** — Resend email (scaffold closed 2026-04-23; activates when Edge Function deployed + env var set)
 - ✅ **7e** — Shape primitives (closed 2026-04-23)
 - ✅ **7f** — Per-material texture URL editor in MaterialFormModal (closed 2026-04-23)
 
 **Precision note**: element origin still starts at (0, 0) in plan feet, which is the property lat/lng center, but elements default-auto-layout from (0, 0) outward — so an untouched project's elements sit NEAR the house but not ON its outline. Contractor must drag elements in 2D edit mode to position them precisely. **Precise element placement is not yet a sprint item** — it's a UX flow that already works, just not automatic.
+
+---
+
+## 2026-04-23 — Sprint 7a-translate closed: 3D element drag-to-reposition
+
+**Commit**: (next git add/commit) — TransformControls-based translate
+
+Contractor in Edit layout mode + 3D view: clicks an element → it gets a selection highlight (green label) + drei's TransformControls gizmo. Dragging the horizontal arrows translates the element on the ground plane. On drag end, the world position is converted back to plan feet (snapped to 1-ft grid) and committed via `projectStore.updateElement`.
+
+Implementation:
+- New `ElementsLayer` sub-component in `PlanView3D.tsx` holds a `Map<elementId, Group>` of three.js refs so `TransformControls` can target the selected one
+- `selectedId` state tracks click selection; click on an element (editable mode only) sets it
+- `draggingGizmo` state disables `OrbitControls` while dragging so camera-rotation doesn't fight element-drag
+- `TransformControls` configured with `showY={false}` so only X/Z axes are draggable (Y is up; 2D plan elements don't need vertical translation)
+- Converts group world position → plan feet: `planX = worldX - width/2`, `planY = -worldZ - depth/2`. Rotation + shape preserved from existing geometry when present, else derived from the ExtrudedBox.
+
+**Partial ship — explicit about what's NOT in 7a yet**:
+- 🔴 **7a-resize** — drag element faces/corners in 3D to change width/height. Still 2D-only.
+- 🔴 **7a-rotate** — ring-handle rotation around Y axis in 3D. Still 2D-only.
+
+Both are separate backlog items under the same 7a letter (per the bookkeeping principle). Resize/rotate continue to work in 2D edit mode for any element the contractor positions in 3D.
+
+Client `/share/:token` view continues to be read-only: `editable` defaults to false, so no selection, no gizmo, no orbit-fight.
 
 ---
 
