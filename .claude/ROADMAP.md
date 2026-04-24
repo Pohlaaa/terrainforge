@@ -248,9 +248,12 @@ sized to element footprint. Fire pits as a short stone-rim cylinder with a
 glowing ember top (emissive material). Labels position above the primitive's
 actual top height. Other element types keep their box extrusions.
 
-### 🔴 Resend email on client response (Sprint 6e / 7d backlog)
-Client's approve/reject currently only surfaces in-app on OverviewTab. Wiring
-a Supabase webhook → Resend email to the contractor is a small sprint.
+### 🟡 Resend email on client response (Sprint 7d — scaffold closed 2026-04-23)
+Edge Function `notify-client-response` shipped at `supabase/functions/`.
+`respondToShareToken` fires a best-effort POST after the RPC succeeds. Dormant
+until Charlie (1) deploys the function, (2) sets `RESEND_API_KEY` +
+`NOTIFY_FROM_EMAIL` as function env, (3) sets `VITE_RESPONSE_NOTIFY_URL` in
+`.env.local`. In-app banner on OverviewTab continues to work regardless.
 
 ### 🟡 Precise element-on-property placement (Sprint 6c — residual closed 2026-04-23)
 S7b delivered the geo-aligned satellite plane. S6c-residual (Apr 23) fixed the
@@ -292,6 +295,7 @@ elements visible on the lawn area until the contractor positions them.
 - ✅ **Sprint 7** PARTIAL — 7b geo-aligned Web Mercator tile footprint + element-focused camera (Apr 23). 7a/7c/7d/7f pending.
 - ✅ **Sprint 7e** — Shape primitives (trunk+canopy trees, dome shrubs, fire pits with emissive embers) (Apr 23)
 - ✅ **Sprint 6c-residual** — `autoLayout` default origin offset (0, 25) so un-positioned elements sit on lawn not house (Apr 23)
+- ✅ **Sprint 7d (scaffold)** — `notify-client-response` Edge Function + fire-and-forget client call; dormant until Charlie deploys + sets env (Apr 23)
 - ✅ Dev-only escape hatches: `VITE_DEV_AUTO_SIGNIN_*` + `VITE_DEV_BYPASS_BILLING` (Apr 22)
 
 ---

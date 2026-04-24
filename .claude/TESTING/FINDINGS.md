@@ -590,11 +590,34 @@ Honest scorekeeping: Sprint 7 was proposed as 7a-7e. Only **7b** (geo-aligned ti
 **Still open as Sprint 7 backlog**:
 - 🔴 **7a** — 3D editing (same as 6a — drag/resize/rotate in 3D)
 - 🔴 **7c** — real PBR texture maps via migration 030 columns (needs texture hosting decision: Supabase Storage vs external CDN)
-- 🔴 **7d** — Resend email on client response (same as 6e)
+- ✅ **7d** — Resend email (scaffold closed 2026-04-23; activates when Edge Function deployed + env var set)
 - ✅ **7e** — Shape primitives (closed 2026-04-23)
 - 🔴 **7f** — Per-material texture URL editor (gated on 7c)
 
 **Precision note**: element origin still starts at (0, 0) in plan feet, which is the property lat/lng center, but elements default-auto-layout from (0, 0) outward — so an untouched project's elements sit NEAR the house but not ON its outline. Contractor must drag elements in 2D edit mode to position them precisely. **Precise element placement is not yet a sprint item** — it's a UX flow that already works, just not automatic.
+
+---
+
+## 2026-04-23 — Sprint 7d closed: Resend email scaffold (dormant until deployed)
+
+**Commit**: (next git add/commit) — Edge Function + fire-and-forget client call
+
+Shipped the full notification pipeline, dormant by default:
+
+1. **`supabase/functions/notify-client-response/index.ts`** — new Edge Function. Accepts POST `{ token, response, note }`, looks up the project + contractor via service-role, sends an HTML email via Resend API. If `RESEND_API_KEY` / `NOTIFY_FROM_EMAIL` aren't set (or contractor email can't be resolved), returns `{ ok: true, emailed: false, reason }` so the caller isn't blocked.
+
+2. **`respondToShareToken`** gets a fire-and-forget fetch to `VITE_RESPONSE_NOTIFY_URL` after the RPC succeeds. If the env var is unset, the fetch is skipped entirely — the primary "client submits response" flow never waits on or depends on email delivery.
+
+3. **`.env.example`** documents `VITE_RESPONSE_NOTIFY_URL` with deploy instructions.
+
+**Activation steps (Charlie, when ready)**:
+1. Create a Resend account, get API key
+2. Deploy the Edge Function via Supabase MCP `deploy_edge_function`
+3. Set function env vars: `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL` (e.g. `TerrainForge <notifications@domain.com>`)
+4. Set `VITE_RESPONSE_NOTIFY_URL=https://{project-ref}.supabase.co/functions/v1/notify-client-response` in `.env.local`
+5. Restart dev server; emails start flowing on next client response
+
+Until those steps land, the client-side call is a no-op (the `VITE_RESPONSE_NOTIFY_URL` env var is unset) and nothing changes user-facing. The existing in-app banner on OverviewTab continues to surface the response as before.
 
 ---
 

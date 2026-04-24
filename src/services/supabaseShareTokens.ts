@@ -175,6 +175,12 @@ export function buildShareUrl(token: string): string {
  * Writes a client approve/request-changes response back to the share token.
  * Calls the respond_to_share_token RPC (SECURITY DEFINER) so an anon
  * session doesn't need a broad UPDATE policy.
+ *
+ * Sprint 7d: after a successful response write, fire a best-effort HTTP
+ * POST to the notify-client-response Edge Function if configured. The
+ * function emails the contractor via Resend. Failures are silent — a
+ * missing env var or Edge Function downtime never blocks the primary
+ * client flow of "leave response, see confirmation."
  */
 export async function respondToShareToken(
   token: string,
@@ -190,5 +196,25 @@ export async function respondToShareToken(
     console.error('respondToShareToken error:', error)
     return { ok: false, error: error.message }
   }
+
+  // Fire-and-forget contractor notification. Activates once the Edge
+  // Function is deployed and VITE_RESPONSE_NOTIFY_URL is set in .env.
+  const notifyUrl = import.meta.env.VITE_RESPONSE_NOTIFY_URL as string | undefined
+  if (notifyUrl) {
+    fetch(notifyUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, response, note: note ?? null }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          console.warn('notify-client-response non-2xx', res.status, await res.text())
+        }
+      })
+      .catch((err) => {
+        console.warn('notify-client-response failed', err)
+      })
+  }
+
   return { ok: true }
 }
