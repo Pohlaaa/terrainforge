@@ -241,14 +241,16 @@ migration 030 columns. Empty strings persist as `null` in the DB.
 File-upload-to-Supabase-Storage is deferred polish; URL paste covers the
 MVP path and can be swapped in the same form field later.
 
-### 🟡 3D editing — PARTIAL (Sprint 7a — translate closed 2026-04-23)
+### ✅ 3D editing — all three modes closed (Sprint 7a, 2026-04-23)
 - ✅ **7a-translate**: click-to-select + drei TransformControls on the ground
   plane. OrbitControls locks while dragging. Position snaps to 1-ft grid.
-  Client viewer stays read-only.
-- 🔴 **7a-resize**: drag corners in 3D. Still 2D-only.
-- 🔴 **7a-rotate**: ring gizmo around Y. Still 2D-only.
-
-Resize + rotate continue to work in 2D edit mode in the meantime.
+- ✅ **7a-rotate**: Y-axis yaw ring, snap to 15°, `space="local"`.
+- ✅ **7a-resize**: local X/Z scale handles, multiplies width/height,
+  snap to 1-ft, min 2×2 ft. Scale resets to 1 on commit so chained
+  resizes don't stack multiplicatively.
+- Mode switcher toolbar (Move / Rotate / Resize / Deselect) appears as an
+  HTML overlay only when editable + a selection is active.
+- Client viewer stays read-only (`editable` defaults false).
 
 ### ✅ Shape primitives (Sprint 6f / 7e — closed 2026-04-23)
 Trees render as trunk (cylinder) + canopy (sphere). Shrubs as a spherical dome
@@ -306,7 +308,8 @@ elements visible on the lawn area until the contractor positions them.
 - ✅ **Sprint 7d (scaffold)** — `notify-client-response` Edge Function + fire-and-forget client call; dormant until Charlie deploys + sets env (Apr 23)
 - ✅ **Sprint 7c** — PlanView3D loads `materials.texture_albedo_url` via TextureLoader; RepeatWrapping, SRGB (Apr 23)
 - ✅ **Sprint 7f** — MaterialFormModal URL input fields (Albedo / Normal / Roughness) persist to mig 030 columns (Apr 23)
-- ✅ **Sprint 7a-translate** — drei TransformControls on selected element in 3D, snap-to-1ft, OrbitControls lock on drag; resize/rotate deferred as 7a-resize + 7a-rotate (Apr 23)
+- ✅ **Sprint 7a-translate** — drei TransformControls on selected element in 3D, snap-to-1ft, OrbitControls lock on drag (Apr 23)
+- ✅ **Sprint 7a-resize + 7a-rotate** — mode switcher toolbar (Move / Rotate / Resize), local-space handles, snap-to-grid, min-size enforcement (Apr 23)
 - ✅ Dev-only escape hatches: `VITE_DEV_AUTO_SIGNIN_*` + `VITE_DEV_BYPASS_BILLING` (Apr 22)
 
 ---

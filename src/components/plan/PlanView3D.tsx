@@ -292,16 +292,19 @@ interface ExtrudedBox {
   textureAlbedoUrl: string | null
 }
 
-// ===== Sprint 7a-translate: editable 3D element layer =====
+// ===== Sprint 7a-translate / 7a-rotate / 7a-resize: editable 3D element layer =====
 //
 // Renders every element as a draggable <group>. Clicking an element in
 // edit mode selects it; the selected element gets a drei TransformControls
-// gizmo (translate mode) attached. On dragEnd, the group's new world
-// position is converted back to plan-feet coords and committed.
+// gizmo. The mode (translate / rotate / scale) is toggleable via a
+// floating toolbar — the commit path converts each mode's live object
+// state back to plan-feet geometry.
 //
-// Only translate is implemented here; 7a-resize (drag corners in 3D) and
-// 7a-rotate (drag rotation ring in 3D) are separate backlog items. In the
-// meantime contractors can still resize + rotate in 2D edit mode.
+// - translate: new group.position → new geometry.position
+// - rotate: new group.rotation.y (space=local) → new geometry.rotation
+// - scale: new group.scale.x/z → new shape.width/height; reset scale to 1
+
+export type TransformMode = 'translate' | 'rotate' | 'scale'
 
 function ElementsLayer({
   boxes,
@@ -313,6 +316,7 @@ function ElementsLayer({
   onElementGeometryChange,
   elements,
   bboxSpanMax,
+  transformMode,
 }: {
   boxes: ExtrudedBox[]
   editable: boolean
@@ -323,6 +327,7 @@ function ElementsLayer({
   onElementGeometryChange?: (id: string, geometry: ElementGeometry) => void
   elements: ProjectElement[]
   bboxSpanMax: number
+  transformMode: TransformMode
 }) {
   // A ref-per-element so TransformControls can target the selected one.
   const groupRefs = useRef(new Map<string, Group>())
@@ -330,29 +335,70 @@ function ElementsLayer({
   const selectedBox = selectedId ? boxes.find((b) => b.key === selectedId) ?? null : null
   const selectedGroup = selectedId ? groupRefs.current.get(selectedId) ?? null : null
 
-  // Commit position changes on drag end. TransformControls mutates the live
-  // three.js object directly, so we just read the final position and convert
-  // world (x, y, z) → plan feet (x, y).
+  // Commit on drag end. TransformControls mutates the live three.js object
+  // directly, so we read the group's live transform state and convert back
+  // to plan-feet geometry based on which mode was active.
   const handleTransformEnd = () => {
     setDraggingGizmo(false)
     if (!selectedBox || !selectedGroup) return
     const el = elements.find((e) => e.id === selectedBox.key)
     if (!el) return
-    const { position } = selectedGroup
-    // World (x, y, z) → plan feet. Plan position is the TOP-LEFT of the
-    // unrotated box; world (x, z) is the CENTER (because our render wraps
-    // the primitive in a group whose origin is the element center).
-    const planX = position.x - selectedBox.width / 2
-    const planY = -(position.z) - selectedBox.depth / 2
     const snap = (v: number) => Math.round(v)
+    const snapDeg = (v: number) => Math.round(v / 15) * 15
+
+    // Existing shape determines width/height unless we're scaling (below).
     const existing = el.geometry
+    let newWidth = (existing?.shape && existing.shape.kind === 'rectangle')
+      ? existing.shape.width
+      : selectedBox.width
+    let newHeight = (existing?.shape && existing.shape.kind === 'rectangle')
+      ? existing.shape.height
+      : selectedBox.depth
+
+    // Rotation in degrees CCW (we invert later because plan rotation is CW).
+    // Group's rotation.y is current live state — in translate/scale modes this
+    // stays at the start value (same as selectedBox.rot); in rotate mode it's
+    // the new value.
+    const liveRotY = selectedGroup.rotation.y
+    let newRotationDeg = -(liveRotY * 180) / Math.PI
+
+    // Position (world center) → plan top-left (in the unrotated frame)
+    // regardless of mode — rotate/scale don't change the group's translate.
+    let planCenterX = selectedGroup.position.x
+    let planCenterZ = selectedGroup.position.z
+
+    if (transformMode === 'scale') {
+      // Local-space scale → element width/height multipliers.
+      // After commit we reset scale to 1 so subsequent operations start fresh.
+      const sx = selectedGroup.scale.x
+      const sz = selectedGroup.scale.z
+      newWidth = Math.max(2, snap(newWidth * sx))
+      newHeight = Math.max(2, snap(newHeight * sz))
+      selectedGroup.scale.set(1, 1, 1)
+    }
+
+    if (transformMode === 'rotate') {
+      newRotationDeg = snapDeg(newRotationDeg)
+      // Normalize to [-180, 180]
+      while (newRotationDeg > 180) newRotationDeg -= 360
+      while (newRotationDeg < -180) newRotationDeg += 360
+    }
+
+    // World (x, z) is the CENTER of the box (our render groups position at
+    // element center). Plan position is the TOP-LEFT pre-rotation.
+    const planX = planCenterX - newWidth / 2
+    const planY = -planCenterZ - newHeight / 2
+
     const newGeometry: ElementGeometry = {
-      position: { x: snap(planX), y: snap(planY) },
-      rotation: existing?.rotation ?? (-selectedBox.rot * 180) / Math.PI,
-      shape: existing?.shape ?? {
+      position:
+        transformMode === 'translate'
+          ? { x: snap(planX), y: snap(planY) }
+          : { x: snap(planX), y: snap(planY) },
+      rotation: newRotationDeg,
+      shape: {
         kind: 'rectangle',
-        width: selectedBox.width,
-        height: selectedBox.depth,
+        width: newWidth,
+        height: newHeight,
       },
     }
     onElementGeometryChange?.(selectedBox.key, newGeometry)
@@ -417,8 +463,14 @@ function ElementsLayer({
       {editable && selectedGroup && (
         <TransformControls
           object={selectedGroup}
-          mode="translate"
-          showY={false}
+          mode={transformMode}
+          // translate: X + Z (ground plane); no Y (elements don't move up).
+          // rotate: only Y (yaw); no X/Z (no pitch/roll for 2D plan elements).
+          // scale: X + Z (in-plane dimensions); no Y.
+          showX={transformMode !== 'rotate'}
+          showY={transformMode === 'rotate'}
+          showZ={transformMode !== 'rotate'}
+          space={transformMode === 'translate' ? 'world' : 'local'}
           size={0.8}
           onMouseDown={() => setDraggingGizmo(true)}
           onMouseUp={handleTransformEnd}
@@ -436,10 +488,11 @@ export const PlanView3D: React.FC<Props> = ({
   editable = false,
   onElementGeometryChange,
 }) => {
-  // Sprint 7a-translate: currently-selected element id (click to select).
-  // Only used when editable; null means no selection, no gizmo.
+  // Sprint 7a: edit state. Selected element id + current gizmo mode.
+  // Only used when editable; null/false means no selection/no gizmo.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draggingGizmo, setDraggingGizmo] = useState(false)
+  const [transformMode, setTransformMode] = useState<TransformMode>('translate')
   const backdropUrl = useMemo(
     () => (backdrop ? buildMapboxStaticUrl(backdrop.lat, backdrop.lng) : null),
     [backdrop],
@@ -526,6 +579,68 @@ export const PlanView3D: React.FC<Props> = ({
         position: 'relative',
       }}
     >
+      {/* Sprint 7a toolbar — mode switcher. Appears only when editable + an
+          element is selected so clients never see it. */}
+      {editable && selectedId && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: 12,
+            zIndex: 5,
+            display: 'flex',
+            gap: 4,
+            padding: 4,
+            borderRadius: 8,
+            background: 'rgba(0,0,0,0.65)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            backdropFilter: 'blur(6px)',
+          }}
+          role="toolbar"
+          aria-label="Transform mode"
+        >
+          {(['translate', 'rotate', 'scale'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setTransformMode(m)}
+              aria-pressed={transformMode === m}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: 'none',
+                background: transformMode === m ? '#10B981' : 'transparent',
+                color: transformMode === m ? '#fff' : 'rgba(255,255,255,0.85)',
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                cursor: 'pointer',
+              }}
+            >
+              {m === 'translate' ? 'Move' : m === 'rotate' ? 'Rotate' : 'Resize'}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setSelectedId(null)}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: '1px solid rgba(255,255,255,0.15)',
+              background: 'transparent',
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: 11,
+              fontWeight: 500,
+              cursor: 'pointer',
+              marginLeft: 4,
+            }}
+            aria-label="Deselect"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <Canvas
         shadows
         camera={{
@@ -607,6 +722,7 @@ export const PlanView3D: React.FC<Props> = ({
           onElementGeometryChange={onElementGeometryChange}
           elements={elements}
           bboxSpanMax={Math.max(spanX, spanZ)}
+          transformMode={transformMode}
         />
 
         <OrbitControls

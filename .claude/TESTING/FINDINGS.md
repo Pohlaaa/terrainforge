@@ -587,14 +587,36 @@ Honest scorekeeping: Sprint 7 was proposed as 7a-7e. Only **7b** (geo-aligned ti
 
 **Sprint 6 + 7b combined visible result**: 3D view now renders elements as extruded boxes on the real satellite footprint of the client's property. Both contractor OverviewTab and client `/share/:token` surfaces.
 
-**Sprint 7 status**: all items shipped. Specifically:
-- 🟡 **7a** — 3D editing — PARTIAL: **7a-translate** closed (drei TransformControls in translate mode); **7a-resize** and **7a-rotate** still open as sub-items (resize/rotate continue to work in 2D edit mode)
+**Sprint 7 status**: ALL items closed.
+- ✅ **7a** — 3D editing (translate + rotate + scale/resize via drei TransformControls with mode switcher toolbar)
 - ✅ **7c** — Real PBR texture maps via mig 030 columns (closed 2026-04-23)
 - ✅ **7d** — Resend email (scaffold closed 2026-04-23; activates when Edge Function deployed + env var set)
 - ✅ **7e** — Shape primitives (closed 2026-04-23)
 - ✅ **7f** — Per-material texture URL editor in MaterialFormModal (closed 2026-04-23)
 
 **Precision note**: element origin still starts at (0, 0) in plan feet, which is the property lat/lng center, but elements default-auto-layout from (0, 0) outward — so an untouched project's elements sit NEAR the house but not ON its outline. Contractor must drag elements in 2D edit mode to position them precisely. **Precise element placement is not yet a sprint item** — it's a UX flow that already works, just not automatic.
+
+---
+
+## 2026-04-23 — Sprint 7a-resize + 7a-rotate closed: 3D editor complete
+
+Extends the translate-only 7a-translate with full mode-switcher. When editable + an element is selected, a floating toolbar over the canvas offers three modes:
+- **Move** (translate) — drag X/Z arrows on the ground plane, snap to 1-ft grid
+- **Rotate** — drag Y-axis ring (yaw), snap to 15°
+- **Resize** (scale) — drag local X/Z handles, element width/height multiply by `scale.x/z`, snap to 1-ft grid, min 2×2 ft
+
+Implementation:
+- `TransformMode` type + internal state in `PlanView3D`
+- `TransformControls` mode/space props vary per mode: translate uses `space="world"`, rotate/scale use `space="local"` so orientation-aware resize works (resize a rotated patio along its own axes)
+- `showX/showY/showZ` masks restrict axes per mode
+- `handleTransformEnd` dispatches on mode:
+  - translate: `position = world − size/2`
+  - rotate: `rotation = -group.rotation.y` (convert CCW→CW)
+  - scale: `newWidth = oldWidth × scale.x`, reset scale to 1 so next operation starts fresh
+- Toolbar UI as a regular HTML overlay (absolute-positioned on the outer div, not inside the Canvas) — React buttons, not 3D objects
+- Deselect (✕) button closes the gizmo
+
+Sprint 7 is fully closed. Sub-items under the 7a letter (translate/rotate/resize) all shipped.
 
 ---
 
