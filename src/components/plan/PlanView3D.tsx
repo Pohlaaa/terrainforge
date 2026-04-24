@@ -40,11 +40,32 @@ interface Props {
 }
 
 const BACKDROP_ZOOM = 19
+const BACKDROP_IMAGE_PX = 1200 // geographic coverage; @2x only doubles resolution
+
+/**
+ * Earth's equatorial circumference in meters. Used by the Web Mercator
+ * projection that Mapbox (and every slippy-map provider) derives from.
+ */
+const EARTH_CIRCUMFERENCE_M = 40075016.686
+const METERS_PER_FOOT = 0.3048
 
 function buildMapboxStaticUrl(lat: number, lng: number): string | null {
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
   if (!token) return null
-  return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${BACKDROP_ZOOM},0/1200x1200@2x?access_token=${token}&attribution=false&logo=false`
+  return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${BACKDROP_ZOOM},0/${BACKDROP_IMAGE_PX}x${BACKDROP_IMAGE_PX}@2x?access_token=${token}&attribution=false&logo=false`
+}
+
+/**
+ * Width (= height) in FEET of the satellite backdrop at the given latitude,
+ * Mapbox zoom level, and image pixel dimension. Web Mercator: a single
+ * 256-pixel tile at zoom z covers `EARTH_CIRCUMFERENCE / 2^z` meters at
+ * the equator; actual horizontal coverage scales with cos(latitude).
+ */
+function backdropFootprintFt(lat: number, zoom: number, pxWide: number): number {
+  const metersPerPixelAtEquator = EARTH_CIRCUMFERENCE_M / Math.pow(2, zoom) / 256
+  const metersPerPixelAtLat = metersPerPixelAtEquator * Math.cos((lat * Math.PI) / 180)
+  const totalMeters = metersPerPixelAtLat * pxWide
+  return totalMeters / METERS_PER_FOOT
 }
 
 // Inner component so useLoader's Suspense can fallback cleanly.
@@ -125,8 +146,26 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
   const centerPlanY = (bbox.minY + bbox.maxY) / 2
   const spanX = Math.max(bbox.maxX - bbox.minX, 10)
   const spanZ = Math.max(bbox.maxY - bbox.minY, 10)
-  const cameraDist = Math.max(spanX, spanZ) * 1.6
-  const cameraY = Math.max(spanX, spanZ) * 1.2
+
+  // Geo-aligned satellite footprint (Sprint 7b): when a backdrop is set,
+  // compute the real-world width of the Mapbox static image in feet so
+  // the ground plane matches the actual property scale. The image is
+  // centered on the project's lat/lng, which we treat as world-origin
+  // (0, 0, 0). Elements stored in plan feet read directly as world coords.
+  const backdropFootprint = useMemo(() => {
+    if (!backdrop) return null
+    return backdropFootprintFt(backdrop.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX)
+  }, [backdrop])
+
+  // Camera framing: include both the element bbox AND the satellite
+  // footprint (if present) so the client sees the property with context.
+  const frameSpan = Math.max(
+    spanX,
+    spanZ,
+    backdropFootprint ? backdropFootprint * 0.4 : 0, // a fraction of footprint so camera doesn't zoom way out
+  )
+  const cameraDist = frameSpan * 1.6
+  const cameraY = frameSpan * 1.2
 
   return (
     <div
@@ -163,24 +202,29 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
           shadow-camera-bottom={-cameraDist}
         />
 
-        {/* Ground plane. With a satellite backdrop, Suspense-wrap a
-            textured plane; otherwise a dark solid plane.
-            Satellite-ground sizing is approximate; true geo-alignment
-            to element coordinates is Sprint 6c. */}
-        {backdropUrl ? (
+        {/* Ground plane.
+            - With a satellite backdrop: the plane is centered at world
+              origin (0, 0, 0) and sized to the REAL-WORLD footprint of
+              the Mapbox tile at this lat/zoom. Project lat/lng is the
+              origin of plan-feet coords, so elements at (x, y) feet from
+              origin appear exactly at their geographic offset from the
+              property center — the house outline visible in the
+              satellite lines up with element placement.
+            - No backdrop: a dark plane centered on the element bbox. */}
+        {backdropUrl && backdropFootprint ? (
           <Suspense
             fallback={
-              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, -0.01, -centerPlanY]} receiveShadow>
-                <planeGeometry args={[spanX * 4, spanZ * 4]} />
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+                <planeGeometry args={[backdropFootprint, backdropFootprint]} />
                 <meshStandardMaterial color="#1b241c" roughness={0.95} />
               </mesh>
             }
           >
             <SatelliteGround
               url={backdropUrl}
-              centerX={centerX}
-              centerZ={-centerPlanY}
-              size={Math.max(spanX, spanZ) * 4}
+              centerX={0}
+              centerZ={0}
+              size={backdropFootprint}
             />
           </Suspense>
         ) : (
@@ -246,8 +290,8 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
           enableZoom
           enableRotate
           target={[centerX, 0, -centerPlanY]}
-          minDistance={Math.max(spanX, spanZ) * 0.5}
-          maxDistance={Math.max(spanX, spanZ) * 5}
+          minDistance={frameSpan * 0.4}
+          maxDistance={frameSpan * 5}
           maxPolarAngle={Math.PI / 2.05}
         />
       </Canvas>
