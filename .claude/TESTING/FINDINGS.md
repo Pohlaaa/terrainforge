@@ -591,9 +591,24 @@ Honest scorekeeping: Sprint 7 was proposed as 7a-7e. Only **7b** (geo-aligned ti
 - 🔴 **7a** — 3D editing (same as 6a — drag/resize/rotate in 3D)
 - 🔴 **7c** — real PBR texture maps via migration 030 columns (needs texture hosting decision: Supabase Storage vs external CDN)
 - 🔴 **7d** — Resend email on client response (same as 6e)
-- 🔴 **7e** — Shape primitives (same as 6f — cylinders for trees, cones for roofs)
+- ✅ **7e** — Shape primitives (closed 2026-04-23)
+- 🔴 **7f** — Per-material texture URL editor (gated on 7c)
 
 **Precision note**: element origin still starts at (0, 0) in plan feet, which is the property lat/lng center, but elements default-auto-layout from (0, 0) outward — so an untouched project's elements sit NEAR the house but not ON its outline. Contractor must drag elements in 2D edit mode to position them precisely. **Precise element placement is not yet a sprint item** — it's a UX flow that already works, just not automatic.
+
+---
+
+## 2026-04-23 — Sprint 7e closed: shape primitives
+
+**Commit**: (next git add/commit) — shape primitives in PlanView3D
+
+Trees render as a trunk (cylinder) + canopy (sphere). Shrubs as a sphere sized to their measured footprint. Fire pits as a stone-rim cylinder with a glowing ember top (emissive material). All other element types still render as box extrusions.
+
+Label position helper `labelHeightFt(b)` adjusts floating labels to sit above each primitive's actual height (canopy top for trees, dome top for shrubs, rim top for fire pits, box top for default).
+
+No schema change. No API change. Pure `PlanView3D.tsx` refactor: added `ElementPrimitive` sub-component that switches on `elementType`, and threaded `elementType` into the `ExtrudedBox` shape so the renderer can access it.
+
+Verified: typecheck clean. Chrome walkthrough pending.
 
 ---
 

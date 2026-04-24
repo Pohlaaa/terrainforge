@@ -68,6 +68,90 @@ function backdropFootprintFt(lat: number, zoom: number, pxWide: number): number 
   return totalMeters / METERS_PER_FOOT
 }
 
+// ===== Primitive renderers (Sprint 7e) =====
+//
+// For organic/decorative element types, swap the default box extrusion for a
+// better-suited primitive (trunk+canopy for trees, sphere for shrubs, disk
+// for fire pits). The parent <group> handles position + rotation; primitives
+// are rendered in local space relative to the ground.
+
+/** Height in feet of the top of the rendered primitive, used for label placement. */
+function labelHeightFt(b: {
+  elementType: import('@/types').ElementType
+  height: number
+}): number {
+  switch (b.elementType) {
+    case 'tree_planting':
+      return 15 // trunk 6 + canopy 6 above
+    case 'shrub_planting':
+      return 4.5
+    case 'fire_pit':
+      return 2
+    default:
+      return b.height
+  }
+}
+
+function ElementPrimitive({ b }: { b: ExtrudedBox }) {
+  const { elementType, width, depth, height, color, roughness, metalness } = b
+
+  if (elementType === 'tree_planting') {
+    // Radius based on element footprint (smaller of width/depth), minimum 1.5
+    const canopyR = Math.max(Math.min(width, depth) / 2, 1.5)
+    const trunkH = 6
+    return (
+      <>
+        {/* Trunk */}
+        <mesh position={[0, trunkH / 2, 0]} castShadow>
+          <cylinderGeometry args={[0.35, 0.5, trunkH, 8]} />
+          <meshStandardMaterial color="#6b3a15" roughness={0.95} />
+        </mesh>
+        {/* Canopy */}
+        <mesh position={[0, trunkH + canopyR * 0.6, 0]} castShadow>
+          <sphereGeometry args={[canopyR, 16, 12]} />
+          <meshStandardMaterial color="#166534" roughness={0.95} />
+        </mesh>
+      </>
+    )
+  }
+
+  if (elementType === 'shrub_planting') {
+    const r = Math.max(Math.min(width, depth) / 2, 1.5)
+    return (
+      <mesh position={[0, r * 0.8, 0]} castShadow>
+        <sphereGeometry args={[r, 16, 10]} />
+        <meshStandardMaterial color="#15803d" roughness={0.98} />
+      </mesh>
+    )
+  }
+
+  if (elementType === 'fire_pit') {
+    const r = Math.max(Math.min(width, depth) / 2, 1.5)
+    return (
+      <>
+        {/* Stone rim */}
+        <mesh position={[0, 0.75, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[r, r, 1.5, 24]} />
+          <meshStandardMaterial color="#57534e" roughness={0.9} metalness={0.05} />
+        </mesh>
+        {/* Glowing ember top */}
+        <mesh position={[0, 1.55, 0]}>
+          <cylinderGeometry args={[r * 0.8, r * 0.8, 0.1, 24]} />
+          <meshStandardMaterial color="#f97316" emissive="#dc2626" emissiveIntensity={0.6} />
+        </mesh>
+      </>
+    )
+  }
+
+  // Default: box extrusion
+  return (
+    <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
+      <boxGeometry args={[width, height, depth]} />
+      <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+    </mesh>
+  )
+}
+
 // Inner component so useLoader's Suspense can fallback cleanly.
 function SatelliteGround({
   url,
@@ -104,6 +188,8 @@ interface ExtrudedBox {
   height: number // feet (3D extrusion)
   roughness: number
   metalness: number
+  /** Sprint 7e: element type drives primitive choice (tree/shrub/fire_pit get special shapes). */
+  elementType: import('@/types').ElementType
 }
 
 export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }) => {
@@ -132,6 +218,7 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
           height: h,
           roughness: mat.roughness,
           metalness: mat.metalness,
+          elementType: element.elementType,
         },
       ]
     })
@@ -254,13 +341,12 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
             position={[b.x, 0, b.z]}
             rotation={[0, b.rot, 0]}
           >
-            <mesh position={[0, b.height / 2, 0]} castShadow receiveShadow>
-              <boxGeometry args={[b.width, b.height, b.depth]} />
-              <meshStandardMaterial color={b.color} roughness={b.roughness} metalness={b.metalness} />
-            </mesh>
-            {/* Floating label above each element */}
+            <ElementPrimitive b={b} />
+            {/* Floating label above each element — positioned above the top of
+                whichever primitive this element renders as (tree canopy,
+                shrub dome, fire pit, or default box). */}
             <Html
-              position={[0, b.height + 1, 0]}
+              position={[0, labelHeightFt(b) + 1, 0]}
               center
               distanceFactor={Math.max(spanX, spanZ) * 0.5}
               style={{ pointerEvents: 'none', userSelect: 'none' }}

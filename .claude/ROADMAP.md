@@ -242,9 +242,11 @@ missed in the original audit; added here.
 View-only in 3D today. Camera-space drag math + depth disambiguation is a proper
 session's worth of work. Contractor edits in 2D mode; 3D is the preview layer.
 
-### 🔴 Shape primitives (Sprint 6f / 7e backlog)
-Everything renders as box extrusions. Cylinders for trees/fire pits, cones for
-roofs, etc. would improve realism. Parked until after 7c.
+### ✅ Shape primitives (Sprint 6f / 7e — closed 2026-04-23)
+Trees render as trunk (cylinder) + canopy (sphere). Shrubs as a spherical dome
+sized to element footprint. Fire pits as a short stone-rim cylinder with a
+glowing ember top (emissive material). Labels position above the primitive's
+actual top height. Other element types keep their box extrusions.
 
 ### 🔴 Resend email on client response (Sprint 6e / 7d backlog)
 Client's approve/reject currently only surfaces in-app on OverviewTab. Wiring
@@ -287,7 +289,8 @@ UX decision.
 - ✅ **Sprint 4** PARTIAL — migration 030 PBR columns + PlanView3D scaffolding shipped; 2D/3D toggle reverted pending S5 (Apr 22)
 - ✅ **Sprint 5** — Vite `optimizeDeps` fix restored 3D toggle end-to-end (Apr 23)
 - ✅ **Sprint 6** PARTIAL — 6b satellite 3D ground + 6d per-category material props (Apr 23). 6a/6c/6e/6f pending.
-- ✅ **Sprint 7** PARTIAL — 7b geo-aligned Web Mercator tile footprint + element-focused camera (Apr 23). 7a/7c/7d/7e pending.
+- ✅ **Sprint 7** PARTIAL — 7b geo-aligned Web Mercator tile footprint + element-focused camera (Apr 23). 7a/7c/7d/7f pending.
+- ✅ **Sprint 7e** — Shape primitives (trunk+canopy trees, dome shrubs, fire pits with emissive embers) (Apr 23)
 - ✅ Dev-only escape hatches: `VITE_DEV_AUTO_SIGNIN_*` + `VITE_DEV_BYPASS_BILLING` (Apr 22)
 
 ---
