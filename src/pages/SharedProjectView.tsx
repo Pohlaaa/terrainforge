@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { fetchSharedProjectByToken, respondToShareToken } from '@/services/supabaseShareTokens'
-import type { Project, ProjectElement, ShareToken } from '@/types'
+import type { Project, ProjectElement, ShareToken, Material } from '@/types'
 import PlanView2D from '@/components/plan/PlanView2D'
 import PlanView3D from '@/components/plan/PlanView3D'
 import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
@@ -20,7 +20,13 @@ const SharedProjectView: React.FC = () => {
   const [state, setState] = useState<
     | { status: 'loading' }
     | { status: 'error'; message: string }
-    | { status: 'ready'; project: Project; elements: ProjectElement[]; tokenRow: ShareToken }
+    | {
+        status: 'ready'
+        project: Project
+        elements: ProjectElement[]
+        tokenRow: ShareToken
+        materialsById: Record<string, Material>
+      }
   >({ status: 'loading' })
   const [responding, setResponding] = useState<'approved' | 'changes_requested' | null>(null)
   const [note, setNote] = useState('')
@@ -46,6 +52,7 @@ const SharedProjectView: React.FC = () => {
         project: result.project,
         elements: result.elements,
         tokenRow: result.token,
+        materialsById: result.materialsById,
       })
     })
   }, [token])
@@ -215,6 +222,7 @@ const SharedProjectView: React.FC = () => {
                       ? { lat: state.project.lat, lng: state.project.lng }
                       : null
                   }
+                  materialsById={state.materialsById}
                 />
               )}
             </section>

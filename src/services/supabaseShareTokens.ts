@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { toCamelCase } from './supabaseCore'
-import type { ShareToken, Project, ProjectElement, ProjectElementMaterial } from '@/types'
+import type { ShareToken, Project, ProjectElement, ProjectElementMaterial, Material } from '@/types'
 
 // ===== SHARE TOKENS (migration 028) =====
 //
@@ -89,6 +89,8 @@ export async function fetchSharedProjectByToken(token: string): Promise<{
   token: ShareToken
   project: Project
   elements: ProjectElement[]
+  /** Sprint 7c: map of materialId → Material for texture URL lookup in PlanView3D. */
+  materialsById: Record<string, Material>
 } | null> {
   // 1. Token validity check
   const { data: tokenRow, error: tokenErr } = await supabase
@@ -155,12 +157,38 @@ export async function fetchSharedProjectByToken(token: string): Promise<{
     return { ...el, materials }
   })
 
-  // 4. Fire-and-forget view bump (RPC; doesn't block render).
+  // 4. Fetch Material catalog rows for texture lookup (Sprint 7c).
+  //    Anon RLS via migration 028 restricts SELECT to materials referenced
+  //    by elements in a shared project, so this is safe to call without auth.
+  const materialIds = Array.from(
+    new Set(
+      elementMaterialRows
+        .map((m) => (m as { material_id?: string | null }).material_id)
+        .filter((id): id is string => typeof id === 'string'),
+    ),
+  )
+  const materialsById: Record<string, Material> = {}
+  if (materialIds.length > 0) {
+    const { data: matRows, error: matErr } = await supabase
+      .from('materials')
+      .select('*')
+      .in('id', materialIds)
+    if (matErr) {
+      console.error('fetchSharedProjectByToken materials error:', matErr)
+    } else {
+      for (const row of matRows || []) {
+        const m = toCamelCase(row as Record<string, unknown>) as unknown as Material
+        materialsById[m.id] = m
+      }
+    }
+  }
+
+  // 5. Fire-and-forget view bump (RPC; doesn't block render).
   supabase.rpc('bump_share_token_view', { p_token: token }).then(({ error }) => {
     if (error) console.warn('bump_share_token_view:', error.message)
   })
 
-  return { token: shareToken, project, elements }
+  return { token: shareToken, project, elements, materialsById }
 }
 
 /** Builds the absolute URL a contractor copies to share. */

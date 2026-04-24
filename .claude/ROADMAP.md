@@ -224,19 +224,22 @@ shadow-casting directional light, hemisphere fill. Extrudes rectangle elements t
 boxes sized by measured dimensions. Ground plane is the Mapbox satellite of the
 real property (geo-aligned to actual extent via Web Mercator math).
 
-### 🔴 PBR texture library (Sprint 6d misshipped / 7c backlog)
-Migration 030 columns live but no textures loaded yet — `PlanView3D` still uses
-per-category roughness/metalness on solid-color materials. Real albedo/normal/
-roughness maps pending, gated on a texture-hosting decision (Supabase Storage vs
-external CDN). **Note**: Sprint 6d shipped a roughness/metalness "lite" variant
-that was conflated with this item in the original wrap-up. Real texture-map
-loading is genuinely still pending.
+### ✅ PBR texture library (Sprint 7c — closed 2026-04-23)
+PlanView3D loads `materials.texture_albedo_url` via three's TextureLoader,
+applies as `map` on meshStandardMaterial with SRGB + RepeatWrapping (one tile
+per 3ft of element surface). First material per element with a URL wins. Anon
+share-link viewer gets the URLs too — `fetchSharedProjectByToken` now returns
+`materialsById` via the mig 028 anon RLS policy that scopes materials-SELECT
+through an active share token. No seed catalogue yet (contractors paste URLs
+per-material via 7f).
 
-### 🔴 Per-material texture URL editor (Sprint 7f backlog)
-UI on MaterialFormModal to upload a texture file to Supabase Storage and save the
-resulting URL into `materials.texture_albedo_url`. Gated on 7c — contractors
-can't meaningfully set textures until the 3D renderer consumes them. Scope
-missed in the original audit; added here.
+### ✅ Per-material texture URL editor (Sprint 7f — closed 2026-04-23)
+MaterialFormModal has Albedo / Normal / Roughness URL input fields in a new
+"3D Textures (optional)" section. `MaterialLibrary.MaterialForm` types
+extended; `materialToForm` / `formToMaterial` convert to/from the
+migration 030 columns. Empty strings persist as `null` in the DB.
+File-upload-to-Supabase-Storage is deferred polish; URL paste covers the
+MVP path and can be swapped in the same form field later.
 
 ### 🔴 3D editing — drag/resize/rotate in 3D view (Sprint 6a / 7a backlog)
 View-only in 3D today. Camera-space drag math + depth disambiguation is a proper
@@ -296,6 +299,8 @@ elements visible on the lawn area until the contractor positions them.
 - ✅ **Sprint 7e** — Shape primitives (trunk+canopy trees, dome shrubs, fire pits with emissive embers) (Apr 23)
 - ✅ **Sprint 6c-residual** — `autoLayout` default origin offset (0, 25) so un-positioned elements sit on lawn not house (Apr 23)
 - ✅ **Sprint 7d (scaffold)** — `notify-client-response` Edge Function + fire-and-forget client call; dormant until Charlie deploys + sets env (Apr 23)
+- ✅ **Sprint 7c** — PlanView3D loads `materials.texture_albedo_url` via TextureLoader; RepeatWrapping, SRGB (Apr 23)
+- ✅ **Sprint 7f** — MaterialFormModal URL input fields (Albedo / Normal / Roughness) persist to mig 030 columns (Apr 23)
 - ✅ Dev-only escape hatches: `VITE_DEV_AUTO_SIGNIN_*` + `VITE_DEV_BYPASS_BILLING` (Apr 22)
 
 ---

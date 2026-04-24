@@ -24,6 +24,10 @@ interface MaterialForm {
   wasteFactor: string;
   subcategory: string;
   supplierSku: string;
+  // Sprint 7f — PBR texture URLs (mig 030)
+  textureAlbedoUrl: string;
+  textureNormalUrl: string;
+  textureRoughnessUrl: string;
 }
 
 interface SelectOption {
@@ -205,6 +209,40 @@ export const MaterialFormModal: React.FC<MaterialFormModalProps> = ({
               value={form.supplierSku}
               onChange={e => setField('supplierSku', e.target.value)}
               placeholder="e.g., BEL-CAM-001"
+            />
+          </div>
+        </div>
+
+        {/* 3D textures (Sprint 7f) — optional URLs consumed by PlanView3D */}
+        <div>
+          <div className="text-[10px] font-[700] text-[var(--text-4)] uppercase tracking-[0.06em] mb-[10px]">
+            3D Textures (optional)
+          </div>
+          <div className="text-[11px] text-[var(--text-4)] mb-[10px]">
+            Paste an image URL to give this material a realistic surface in the client-facing 3D view.
+            Leave blank to use the default flat color. Images should tile cleanly (e.g., 512×512 seamless textures).
+          </div>
+          <div className="grid grid-cols-1 gap-[10px]">
+            <Input
+              label="Albedo (base color) URL"
+              value={form.textureAlbedoUrl}
+              onChange={e => setField('textureAlbedoUrl', e.target.value)}
+              placeholder="https://..."
+              hint="Required for textured rendering. PNG or JPG."
+            />
+            <Input
+              label="Normal map URL"
+              value={form.textureNormalUrl}
+              onChange={e => setField('textureNormalUrl', e.target.value)}
+              placeholder="https://..."
+              hint="Optional. Adds surface bumps/detail."
+            />
+            <Input
+              label="Roughness map URL"
+              value={form.textureRoughnessUrl}
+              onChange={e => setField('textureRoughnessUrl', e.target.value)}
+              placeholder="https://..."
+              hint="Optional. Controls specular variation per pixel."
             />
           </div>
         </div>

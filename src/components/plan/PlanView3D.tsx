@@ -1,9 +1,9 @@
 import React, { useMemo, Suspense } from 'react'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls, Grid, Html } from '@react-three/drei'
-import { TextureLoader, SRGBColorSpace } from 'three'
+import { TextureLoader, SRGBColorSpace, RepeatWrapping } from 'three'
 import type { Texture } from 'three'
-import type { ProjectElement } from '@/types'
+import type { ProjectElement, Material } from '@/types'
 import { autoLayout, computeBoundingBox, elementColor, elementHeightFt, elementMaterial } from '@/lib/planLayout'
 
 // ===== PlanView3D (Sprint 4) =====
@@ -37,6 +37,14 @@ interface Props {
    * Same shape as PlanView2D's backdrop prop.
    */
   backdrop?: { lat: number; lng: number } | null
+  /**
+   * Sprint 7c: Material catalog lookup by id. When provided, each element's
+   * first material with `textureAlbedoUrl` set has that URL loaded as an
+   * albedo texture on the 3D mesh. Falls back to flat color when absent.
+   * OverviewTab passes `useMaterialStore().materials` indexed by id;
+   * SharedProjectView gets it from `fetchSharedProjectByToken`.
+   */
+  materialsById?: Record<string, Material>
 }
 
 const BACKDROP_ZOOM = 19
@@ -92,8 +100,79 @@ function labelHeightFt(b: {
   }
 }
 
+/**
+ * A textured meshStandardMaterial. Loads the albedo from URL + tiles it
+ * (RepeatWrapping) so boxes don't stretch one image across a big surface.
+ * SRGB color space keeps the texture from washing out under PBR lighting.
+ */
+function TexturedBoxMaterial({
+  url,
+  roughness,
+  metalness,
+  color,
+  tileUnits,
+}: {
+  url: string
+  roughness: number
+  metalness: number
+  color: string
+  tileUnits: number // feet per tile — e.g. 2 means each 2ft×2ft patch gets one tile
+}) {
+  const texture = useLoader(TextureLoader, url) as Texture
+  texture.colorSpace = SRGBColorSpace
+  texture.wrapS = texture.wrapT = RepeatWrapping
+  // Cheap heuristic: ~1 tile every 3ft so a 15ft patio reads as pavers
+  const repeat = Math.max(1, tileUnits / 3)
+  texture.repeat.set(repeat, repeat)
+  return (
+    <meshStandardMaterial
+      map={texture}
+      // Tint the texture with the element's color at low intensity so
+      // the category color still reads through a grayscale texture
+      color={color}
+      roughness={roughness}
+      metalness={metalness}
+    />
+  )
+}
+
+function FlatBoxMaterial({
+  color,
+  roughness,
+  metalness,
+}: {
+  color: string
+  roughness: number
+  metalness: number
+}) {
+  return <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+}
+
+function BoxMaterial(props: {
+  textureAlbedoUrl: string | null
+  color: string
+  roughness: number
+  metalness: number
+  tileUnits: number
+}) {
+  if (props.textureAlbedoUrl) {
+    return (
+      <Suspense fallback={<FlatBoxMaterial color={props.color} roughness={props.roughness} metalness={props.metalness} />}>
+        <TexturedBoxMaterial
+          url={props.textureAlbedoUrl}
+          color={props.color}
+          roughness={props.roughness}
+          metalness={props.metalness}
+          tileUnits={props.tileUnits}
+        />
+      </Suspense>
+    )
+  }
+  return <FlatBoxMaterial color={props.color} roughness={props.roughness} metalness={props.metalness} />
+}
+
 function ElementPrimitive({ b }: { b: ExtrudedBox }) {
-  const { elementType, width, depth, height, color, roughness, metalness } = b
+  const { elementType, width, depth, height, color, roughness, metalness, textureAlbedoUrl } = b
 
   if (elementType === 'tree_planting') {
     // Radius based on element footprint (smaller of width/depth), minimum 1.5
@@ -143,11 +222,18 @@ function ElementPrimitive({ b }: { b: ExtrudedBox }) {
     )
   }
 
-  // Default: box extrusion
+  // Default: box extrusion (with optional PBR albedo texture per Sprint 7c)
+  const tileUnits = Math.max(width, depth)
   return (
     <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
       <boxGeometry args={[width, height, depth]} />
-      <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+      <BoxMaterial
+        textureAlbedoUrl={textureAlbedoUrl}
+        color={color}
+        roughness={roughness}
+        metalness={metalness}
+        tileUnits={tileUnits}
+      />
     </mesh>
   )
 }
@@ -190,9 +276,11 @@ interface ExtrudedBox {
   metalness: number
   /** Sprint 7e: element type drives primitive choice (tree/shrub/fire_pit get special shapes). */
   elementType: import('@/types').ElementType
+  /** Sprint 7c: albedo texture URL from first element-material with one set. Null = flat color. */
+  textureAlbedoUrl: string | null
 }
 
-export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }) => {
+export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop, materialsById }) => {
   const backdropUrl = useMemo(
     () => (backdrop ? buildMapboxStaticUrl(backdrop.lat, backdrop.lng) : null),
     [backdrop],
@@ -205,6 +293,20 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
       const cy = position.y + shape.height / 2
       const h = elementHeightFt(element)
       const mat = elementMaterial(element.elementType)
+      // Sprint 7c: first material with a textureAlbedoUrl wins. A patio with
+      // `pavers + base sand + polymeric sand` will render with the pavers'
+      // texture (since contractors always set the primary material first).
+      let textureAlbedoUrl: string | null = null
+      if (materialsById && element.materials) {
+        for (const em of element.materials) {
+          if (!em.materialId) continue
+          const mat = materialsById[em.materialId]
+          if (mat?.textureAlbedoUrl) {
+            textureAlbedoUrl = mat.textureAlbedoUrl
+            break
+          }
+        }
+      }
       return [
         {
           key: element.id,
@@ -219,10 +321,11 @@ export const PlanView3D: React.FC<Props> = ({ elements, height = 560, backdrop }
           roughness: mat.roughness,
           metalness: mat.metalness,
           elementType: element.elementType,
+          textureAlbedoUrl,
         },
       ]
     })
-  }, [elements])
+  }, [elements, materialsById])
 
   const bbox = useMemo(() => {
     // Re-use 2D bbox in feet for camera framing

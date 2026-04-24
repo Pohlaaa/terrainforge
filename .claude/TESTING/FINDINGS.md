@@ -589,12 +589,31 @@ Honest scorekeeping: Sprint 7 was proposed as 7a-7e. Only **7b** (geo-aligned ti
 
 **Still open as Sprint 7 backlog**:
 - 🔴 **7a** — 3D editing (same as 6a — drag/resize/rotate in 3D)
-- 🔴 **7c** — real PBR texture maps via migration 030 columns (needs texture hosting decision: Supabase Storage vs external CDN)
+- ✅ **7c** — Real PBR texture maps via mig 030 columns (closed 2026-04-23)
 - ✅ **7d** — Resend email (scaffold closed 2026-04-23; activates when Edge Function deployed + env var set)
 - ✅ **7e** — Shape primitives (closed 2026-04-23)
-- 🔴 **7f** — Per-material texture URL editor (gated on 7c)
+- ✅ **7f** — Per-material texture URL editor in MaterialFormModal (closed 2026-04-23)
 
 **Precision note**: element origin still starts at (0, 0) in plan feet, which is the property lat/lng center, but elements default-auto-layout from (0, 0) outward — so an untouched project's elements sit NEAR the house but not ON its outline. Contractor must drag elements in 2D edit mode to position them precisely. **Precise element placement is not yet a sprint item** — it's a UX flow that already works, just not automatic.
+
+---
+
+## 2026-04-23 — Sprint 7c + 7f closed: real PBR textures via mig 030
+
+**Commit**: (next git add/commit) — full texture loading pipeline
+
+**7c** — PlanView3D now loads albedo texture URLs from the materials table:
+1. `fetchSharedProjectByToken` extended to return `materialsById: Record<string, Material>` (anon-safe via the mig 028 RLS policy that widens materials-SELECT through active share tokens)
+2. `OverviewTab` pulls the same map from `useMaterialStore().materials`
+3. `PlanView3D` accepts an optional `materialsById` prop
+4. For each element, picks the FIRST material with `textureAlbedoUrl` set — a paver patio with pavers+sand+polymeric uses the pavers' texture since contractors add primary materials first
+5. New `BoxMaterial` component wraps `TexturedBoxMaterial` in Suspense with a flat-color fallback. Textures load via `useLoader(TextureLoader)` with SRGB color space + RepeatWrapping (tile ~1 per 3ft so a 15ft patio shows 5 paver patches instead of one stretched image)
+
+**7f** — `MaterialFormModal` gains three URL input fields (albedo / normal / roughness). `MaterialLibrary.tsx` extends `MaterialForm` interface + conversions (`materialToForm`, `formToMaterial`). Empty strings persist as null to the `materials` row.
+
+The pipeline is complete: contractor opens a material, pastes a seamless-tile texture URL into the Albedo field, saves — PlanView3D starts rendering elements that reference that material with the texture.
+
+No schema change (mig 030 already live). No regression path: materials with null texture URLs fall through to the existing flat-color rendering; both OverviewTab and SharedProjectView consume the same data shape.
 
 ---
 

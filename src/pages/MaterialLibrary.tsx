@@ -67,6 +67,10 @@ interface MaterialForm {
   wasteFactor: string;
   subcategory: string;
   supplierSku: string;
+  // Sprint 7f — PBR texture URLs (mig 030). Rendered in PlanView3D when set.
+  textureAlbedoUrl: string;
+  textureNormalUrl: string;
+  textureRoughnessUrl: string;
 }
 
 const EMPTY_FORM: MaterialForm = {
@@ -75,6 +79,7 @@ const EMPTY_FORM: MaterialForm = {
   qtyOnHand: '0', minStockLevel: '0', storageLocation: '', lastRestocked: '',
   computationModel: 'AREA_COVERAGE', purchaseUnit: 'each', wasteFactor: '5',
   subcategory: '', supplierSku: '',
+  textureAlbedoUrl: '', textureNormalUrl: '', textureRoughnessUrl: '',
 };
 
 function materialToForm(m: Material): MaterialForm {
@@ -96,6 +101,9 @@ function materialToForm(m: Material): MaterialForm {
     wasteFactor: m.defaultWasteFactor != null ? String(m.defaultWasteFactor * 100) : '5',
     subcategory: m.subcategory ?? '',
     supplierSku: m.supplierSku ?? '',
+    textureAlbedoUrl: m.textureAlbedoUrl ?? '',
+    textureNormalUrl: m.textureNormalUrl ?? '',
+    textureRoughnessUrl: m.textureRoughnessUrl ?? '',
   };
 }
 
@@ -121,6 +129,9 @@ function formToMaterial(f: MaterialForm): Omit<Material, 'id'> {
     defaultWasteFactor: f.wasteFactor ? parseFloat(f.wasteFactor) / 100 : 0.05,
     subcategory: f.subcategory.trim() || undefined,
     supplierSku: f.supplierSku.trim() || undefined,
+    textureAlbedoUrl: f.textureAlbedoUrl.trim() || null,
+    textureNormalUrl: f.textureNormalUrl.trim() || null,
+    textureRoughnessUrl: f.textureRoughnessUrl.trim() || null,
     isActive: true,
   };
 }

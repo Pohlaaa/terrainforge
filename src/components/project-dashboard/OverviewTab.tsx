@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ScheduleEntry, CrewMember, Equipment, ProjectElement, ProjectSiteCondition, ShareToken } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
+import { useMaterialStore } from '@/stores/materialStore';
 import { TaskTimeline } from '@/components/shared/TaskTimeline';
 import { TaskTable } from './tasks/TaskTable';
 import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
@@ -130,6 +131,13 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
 
   // ── Layout editor (Sprint 3a/c/d — move + resize + rotate) ─────────────
   const [editingLayout, setEditingLayout] = useState(false);
+  // Sprint 7c: material catalog lookup for PlanView3D texture resolution.
+  const materialCatalog = useMaterialStore((s) => s.materials);
+  const materialsById = useMemo(() => {
+    const map: Record<string, import('@/types').Material> = {};
+    for (const m of materialCatalog) map[m.id] = m;
+    return map;
+  }, [materialCatalog]);
   // ── 2D / 3D view toggle (Sprint 4, restored Sprint 5 after Vite fix) ────
   const [planViewMode, setPlanViewMode] = useState<'2d' | '3d'>('2d');
 
@@ -394,6 +402,7 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   ? { lat: project.lat, lng: project.lng }
                   : null
               }
+              materialsById={materialsById}
             />
           )}
         </div>
