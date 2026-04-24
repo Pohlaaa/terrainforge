@@ -721,3 +721,65 @@ Problem observed: Sprint 6 and Sprint 7 were each proposed as N items (6a-6f, 7a
 3. Before declaring a sprint complete, verify EACH letter item was coded + tested + logged. If any skipped, label the sprint partial.
 4. The pending items from a partial sprint become that sprint's backlog. A new sprint number starts only when a genuinely new body of work begins.
 5. FINDINGS.md is the ground truth for what actually shipped per sprint. ROADMAP.md tracks what's still open.
+
+---
+
+## 2026-04-23 — Contractor persona front-to-back walkthrough
+
+**Scenario**: Fresh contractor sets up a full-patio-with-stairs job ("Thompson Backyard Patio + Stairs"). Goal: wizard → project creation → share link → email proposal to woodsrider82@gmail.com. Purpose: identify friction a first-time user hits.
+
+**Result**: Project created successfully (id `114ab033-1e75-47a3-86b4-b080be6dcddf`). Share URL generated. Email flow blocked at the UI modal + verified broken at the Edge Function. Full findings below.
+
+### F-CW-01 / P2 — Landing page lazy-loads to a blank green screen (~2-3s)
+Hitting `/` as an authed user shows an empty `--brand-500` green panel for a couple seconds before the marketing sections paint. On a cold visit it reads as "is this thing broken?". Either preload the hero above-the-fold copy, show a spinner, or skip the marketing site entirely for authed users.
+
+### F-CW-02 / P3 — "Start Free Trial" on landing routes authed users to `/dashboard`
+When already signed in and clicking the landing CTA, you get dashboard. That's fine, but the button label "Start Free Trial" on an authed session is misleading. Swap copy to "Open dashboard" when `user` is present.
+
+### F-CW-03 / P3 — Org name "Test 1" in dashboard header looks placeholder-y
+The default org name for a new auto-provisioned account is literally "Test 1" (or whatever the dev signin user landed on). A real first-time contractor would be confused about where this came from. Onboarding should ask for company name up-front and default it into the org row.
+
+### F-CW-04 / P1 — AI element inference treats "demo" as "build" in Step 2
+Project description: *"Build a 24×18 paver patio ... Demo existing concrete slab first. Include string lighting..."*. Step 2's AI-inferred elements list includes `Concrete Slab` as a NEW element to build — contradicting the description. Meanwhile in Step 3, the AI-inferred task list *correctly* has `Existing Concrete Slab Demolition` as a Demo/Prep phase task. So the task inference understands "demo = remove", but the element inference doesn't. Same prompt, two different interpretations. Either unify the two inferences, or pass demolition tasks through as signals to the element filter.
+
+**Workaround**: contractor deletes the bogus element manually (one click on `✕`). But trust is eroded — "what else did it get wrong?"
+
+### F-CW-05 / P2 — Address "not verified" banner when typed address is perfectly valid
+Typed `482 Oak Ridge Drive, Asheville, NC 28803` into Step 1's address autocomplete. Banner underneath: "Address not verified — project won't appear on map." Because the user didn't click an autocomplete suggestion, the geocode never ran. Result: a perfectly typed real address silently fails to geo-anchor. Needs either (a) automatic geocode on blur, or (b) clearer copy on what "verified" means and how to trigger it.
+
+### F-CW-06 / P2 — Wizard Step 5 Numbers vs Step 6 Review show different totals
+Step 5 "Numbers": Total Cost $15,267, Client Quote $19,084, Margin 20%, Profit $3,817.
+Step 6 "Review & Create" (same project, same inputs, ~2 seconds later): Total Cost $15,009, Client Quote $19,084.
+Delta: $258 on cost between screens. No inputs changed. Suggests a recompute on navigation that uses slightly different inputs. Contractor trust: "which number is the real one?". Pick one compute pipeline, run it once, memoize.
+
+### F-CW-07 / P1 — Overview Budget panel disagrees with wizard estimates
+Wizard showed $15,267 cost → $11,789 budget on the project Overview card. Margin jumped from 20% to 38%. Neither derivation is explained. A contractor who quoted a client based on the wizard's 20% margin would open the Overview and see "38% margin" and assume they either got the math wrong or the app did. Needs a consistent derivation (one rollup formula) and a tooltip showing inputs.
+
+### F-CW-08 / P1 — "Email to client" modal never renders after button click
+Clicked "Email to client" in the Client Preview panel. Button's React onClick fires (verified — `emailTo` state updates from the onClick setter). But `emailModalOpen` doesn't stay true — no modal renders. Forcing `emailModalOpen = true` via direct React hook dispatch ALSO didn't render the modal. Suggests either:
+- The render flushes but the modal is immediately hidden by CSS (z-index / display issue), OR
+- The modal subtree is being gated by another condition (e.g. `activeToken` null race) and silently skipped, OR
+- A parent re-render is bumping `emailModalOpen` back to false right after it flips.
+
+Needs debugger-level investigation. For contractors, this means the core "click button → fill form → send" flow is broken end-to-end in the UI — no email can be sent from the app today.
+
+### F-CW-09 / P1 — `send-proposal-email` Edge Function returns 401 "auth invalid" with a valid user JWT
+Bypassed the broken modal by calling the Edge Function directly with the user's `access_token` from localStorage. JWT validated: `iss` matches the project, `exp` in the future, `aud: authenticated`. Response:
+```json
+{ "ok": false, "reason": "auth invalid" }  // HTTP 401
+```
+The function does `supabase.auth.getUser(jwt)` with a service-role-keyed client. That should work with any valid user JWT from the same project. Two possible causes:
+- Service role key in the function env is from a different project (unlikely but check)
+- supabase-js 2 on Deno has a known issue passing JWT to `getUser()` with service role client — may need to create an anon client with the user JWT instead.
+
+Combined with F-CW-08, the proposal-email flow is **end-to-end broken**. Even if the modal rendered, the network call would fail.
+
+### F-CW-10 / P3 — Wizard "Next" button doesn't scroll to top of new step
+After clicking Next from Step 1, Step 2 loads with the page scrolled to the middle of the element list. Contractor sees "Height (ft) [0]" and no context for which element or what "Total Area" means. Either scroll to top on step change or animate the new step into view. Small thing, but disorienting.
+
+### Summary
+**Shipped pipeline**: wizard correctly collects job → measurements → plan → materials → numbers → review → create. Status flows into `estimate`. Share-token creation works (URL confirmed in DOM and in `project_share_tokens` table).
+
+**Broken at the finish line**: the email-to-client feature — which is the actual contractor-to-client handoff — fails at both the UI layer (modal) and the Edge Function layer (auth). Today a contractor has to copy the share URL manually and paste it into their own email. That works, but defeats the purpose of the built-in email send.
+
+**Recommended priority**: fix F-CW-08 and F-CW-09 before pitching email-to-client as a feature. Fix F-CW-04 (AI misinterpretation) as part of next AI prompt pass — it's the most visible "the AI doesn't understand my job" moment.
