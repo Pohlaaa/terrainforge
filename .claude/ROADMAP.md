@@ -224,11 +224,19 @@ shadow-casting directional light, hemisphere fill. Extrudes rectangle elements t
 boxes sized by measured dimensions. Ground plane is the Mapbox satellite of the
 real property (geo-aligned to actual extent via Web Mercator math).
 
-### 🔴 PBR texture library (Sprint 7c backlog)
+### 🔴 PBR texture library (Sprint 6d misshipped / 7c backlog)
 Migration 030 columns live but no textures loaded yet — `PlanView3D` still uses
 per-category roughness/metalness on solid-color materials. Real albedo/normal/
 roughness maps pending, gated on a texture-hosting decision (Supabase Storage vs
-external CDN). See FINDINGS for sprint breakdown.
+external CDN). **Note**: Sprint 6d shipped a roughness/metalness "lite" variant
+that was conflated with this item in the original wrap-up. Real texture-map
+loading is genuinely still pending.
+
+### 🔴 Per-material texture URL editor (Sprint 7f backlog)
+UI on MaterialFormModal to upload a texture file to Supabase Storage and save the
+resulting URL into `materials.texture_albedo_url`. Gated on 7c — contractors
+can't meaningfully set textures until the 3D renderer consumes them. Scope
+missed in the original audit; added here.
 
 ### 🔴 3D editing — drag/resize/rotate in 3D view (Sprint 6a / 7a backlog)
 View-only in 3D today. Camera-space drag math + depth disambiguation is a proper
@@ -245,8 +253,9 @@ a Supabase webhook → Resend email to the contractor is a small sprint.
 ### 🔴 Precise element-on-property placement (Sprint 6c backlog, partial via 7b)
 S7b delivered the geo-aligned satellite plane. Untouched elements still auto-lay
 out from (0, 0) = property center — contractor must drag them in 2D mode to
-position them relative to visible property features. Automatic "fit to yard"
-inference is a separate problem.
+position them relative to visible property features. Auto-inference ("fit to
+yard") is a design problem, not just an implementation one; deferred pending a
+UX decision.
 
 ---
 
