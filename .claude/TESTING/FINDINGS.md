@@ -516,3 +516,37 @@ Likely culprits (for Sprint 5):
 - `src/lib/planLayout.ts` — `elementHeightFt()` helper
 
 **Production impact**: zero. User-facing surfaces (contractor Overview, /share/:token) are identical to Sprint 3d.
+
+---
+
+## 2026-04-23 — Sprint 5 resolved: 2D/3D toggle live
+
+| Commit | What |
+|---|---|
+| `67cb4ba` | Vite `optimizeDeps.include: ['three', '@react-three/fiber', '@react-three/drei']` + restored 2D/3D toggles + StrictMode re-enabled |
+
+**Root cause (confirmed):** Vite's dep-optimizer was skipping `three.js` because no source file in `src/` imported it directly — only `@react-three/fiber` did, at its module top level. Without `three` in `optimizeDeps.include`, fiber's pre-bundled chunks contained `new THREE.WebGLRenderer(...)` referring to a THREE symbol that was never actually linked. Canvas mounted in the React tree, reconciler tried to attach, and then silently exited when it couldn't find WebGLRenderer. No console error because the reference error happened inside an async reconciler path that swallowed exceptions.
+
+**Debug path**:
+1. Inspected `node_modules/.vite/deps/` → confirmed no `three.js` bundle (only `@react-three_fiber.js` + `@react-three_drei.js`)
+2. Grep'd fiber's chunks for `WebGLRenderer`, `REVISION`, `Scene` → zero hits
+3. Conclusion: three wasn't linked into fiber's pre-bundle
+4. Added three + fiber + drei to `optimizeDeps.include` → one bundle rebuild later, sandbox cube paints
+5. Re-enabled the 2D/3D toggle UI on OverviewTab + SharedProjectView
+6. Re-enabled StrictMode
+
+**Verified in Chrome against live Supabase**:
+- Contractor Overview tab → click 3D → Backyard Rennovation elements extrude (Walkway/Patio/Garden Beds raised, Sod Area flat) over dark ground + grid, labels float above each
+- Client `/share/:token` → click 3D → same scene, read-only, no handles, labeled elements
+- 2D toggle still works, edit-layout handles still work, edit-layout disabled when 3D active
+- StrictMode on, no render regressions in 2D surfaces
+
+**Fix is a one-liner in vite.config.ts**. Future projects should know: anywhere r3f is used, add `three` to `optimizeDeps.include`.
+
+**Sprint queue** (real options now that the 3D pipe is open):
+- 6a: apply element rotation/resize to 3D view (currently 3D mirrors 2D but editing stays 2D-only)
+- 6b: Mapbox satellite plane as 3D ground (map texture applied to ground plane in PlanView3D)
+- 6c: true geo-alignment — element feet ↔ tile pixel space via `site_geometry.center`
+- 6d: PBR textures — use migration 030 columns + load albedo/normal maps per-material
+- 6e: email notification on client response (Resend + Supabase webhook)
+- 6f: Extruded trees/shrubs/fire pits using proper shape primitives (cylinders, cones)
