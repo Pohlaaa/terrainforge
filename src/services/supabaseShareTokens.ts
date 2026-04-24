@@ -197,6 +197,60 @@ export function buildShareUrl(token: string): string {
   return `${window.location.origin}/share/${token}`
 }
 
+/**
+ * Emails the share link + optional custom message to a client via the
+ * send-proposal-email Edge Function. Requires Supabase auth session.
+ *
+ * Returns:
+ *   - { ok: true, emailed: true } — Resend delivered
+ *   - { ok: true, emailed: false, reason } — function reached but backend
+ *     not configured (RESEND_API_KEY missing). Still counts as "flow worked."
+ *   - { ok: false, error } — call failed before reaching the function
+ */
+export async function sendProposalEmail(params: {
+  token: string
+  clientEmail: string
+  message?: string
+  shareUrl: string
+}): Promise<{ ok: true; emailed: boolean; reason?: string } | { ok: false; error: string }> {
+  const { data: session } = await supabase.auth.getSession()
+  const jwt = session.session?.access_token
+  if (!jwt) {
+    return { ok: false, error: 'Not signed in' }
+  }
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+  if (!supabaseUrl) {
+    return { ok: false, error: 'VITE_SUPABASE_URL not configured' }
+  }
+  const url = `${supabaseUrl}/functions/v1/send-proposal-email`
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${jwt}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        token: params.token,
+        client_email: params.clientEmail,
+        message: params.message,
+        share_url: params.shareUrl,
+      }),
+    })
+    const data = (await res.json()) as {
+      ok?: boolean
+      emailed?: boolean
+      reason?: string
+    }
+    if (!res.ok || !data.ok) {
+      return { ok: false, error: data.reason ?? `HTTP ${res.status}` }
+    }
+    return { ok: true, emailed: data.emailed ?? false, reason: data.reason }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 // ===== CLIENT RESPONSE (migration 029) =====
 
 /**

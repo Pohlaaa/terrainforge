@@ -11,7 +11,7 @@ import { ElementVisual } from '@/components/shared/ElementVisual';
 import { MaterialPicker } from '@/components/shared/MaterialPicker';
 import PlanView2D from '@/components/plan/PlanView2D';
 import PlanView3D from '@/components/plan/PlanView3D';
-import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl } from '@/services/supabaseShareTokens';
+import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl, sendProposalEmail } from '@/services/supabaseShareTokens';
 import { toast } from '@/hooks/useToast';
 
 interface Props {
@@ -127,6 +127,39 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
     const refreshed = await fetchShareTokensForProject(project.id);
     setShareTokens(refreshed);
     toast.success('Link revoked.');
+  }
+
+  // ── Email proposal to client ──────────────────────────────────────────
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState(project.clientEmail ?? '');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+
+  async function handleSendProposalEmail() {
+    if (!activeToken) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTo.trim())) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+    setEmailSending(true);
+    const result = await sendProposalEmail({
+      token: activeToken.token,
+      clientEmail: emailTo.trim(),
+      message: emailMessage.trim() || undefined,
+      shareUrl: buildShareUrl(activeToken.token),
+    });
+    setEmailSending(false);
+    if (!result.ok) {
+      toast.error(`Could not send email: ${result.error}`);
+      return;
+    }
+    if (result.emailed) {
+      toast.success(`Proposal emailed to ${emailTo.trim()}.`);
+    } else {
+      toast.success(`Share link prepared. Email delivery is not configured (${result.reason ?? 'backend off'}) — copy the link and send manually.`);
+    }
+    setEmailModalOpen(false);
+    setEmailMessage('');
   }
 
   // ── Layout editor (Sprint 3a/c/d — move + resize + rotate) ─────────────
@@ -292,9 +325,17 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               <div className="flex gap-[6px]">
                 <button
                   type="button"
-                  onClick={handleCopyShareLink}
+                  onClick={() => { setEmailTo(project.clientEmail ?? ''); setEmailModalOpen(true); }}
                   className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] cursor-pointer border-none"
                   style={{ backgroundColor: 'var(--green)', color: '#fff' }}
+                >
+                  Email to client
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyShareLink}
+                  className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] cursor-pointer bg-transparent border"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
                 >
                   Copy link
                 </button>
@@ -558,6 +599,106 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
           isOpen={!!pickerElementId}
           onClose={() => setPickerElementId(null)}
         />
+      )}
+
+      {/* Email-to-client modal (Phase 2a) */}
+      {emailModalOpen && activeToken && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setEmailModalOpen(false); }}
+        >
+          <div
+            style={{
+              background: 'var(--surface-card, #0F1510)',
+              color: 'var(--text, #F9FAFB)',
+              borderRadius: 12,
+              border: '1px solid var(--border)',
+              maxWidth: 520, width: '100%',
+              padding: 24,
+            }}
+          >
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Email proposal to client</h2>
+            <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 18 }}>
+              Sends them the shareable link + optional note. They click it to preview + approve.
+            </p>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Client email
+            </label>
+            <input
+              type="email"
+              value={emailTo}
+              onChange={(e) => setEmailTo(e.target.value)}
+              placeholder="client@example.com"
+              style={{
+                width: '100%', padding: 10, borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                fontSize: 14, marginTop: 6, marginBottom: 14,
+                boxSizing: 'border-box',
+              }}
+            />
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Personal note (optional)
+            </label>
+            <textarea
+              value={emailMessage}
+              onChange={(e) => setEmailMessage(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              placeholder={`Hi ${project.client || 'there'}, here's the design we put together — take a look and let me know what you think.`}
+              style={{
+                width: '100%', padding: 10, borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                fontSize: 13, marginTop: 6, marginBottom: 14,
+                resize: 'vertical', fontFamily: 'inherit',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setEmailModalOpen(false)}
+                disabled={emailSending}
+                style={{
+                  padding: '10px 16px', borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text-3)',
+                  fontSize: 13, fontWeight: 500,
+                  cursor: emailSending ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendProposalEmail}
+                disabled={emailSending || !emailTo.trim()}
+                style={{
+                  padding: '10px 20px', borderRadius: 8,
+                  border: 'none',
+                  background: 'var(--green)',
+                  color: '#fff',
+                  fontSize: 13, fontWeight: 600,
+                  cursor: emailSending || !emailTo.trim() ? 'not-allowed' : 'pointer',
+                  opacity: emailSending ? 0.6 : 1,
+                }}
+              >
+                {emailSending ? 'Sending…' : 'Send proposal'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
