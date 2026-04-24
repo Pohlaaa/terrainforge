@@ -3,17 +3,33 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-17) — Stabilization: git sync + perf/security hardening
+## Current Status (2026-04-23) — 3D pivot shipped through Sprint 7 (partial)
 
-**Active work**: Platform stabilization before pivoting to the 3D client-facing design app (the real killer feature). Status as of Apr 17: production code caught up with git (commits a668c96 → 1fb3efc recovered the Apr 1-11 build sprint that was drag-deployed to Netlify but never committed); Supabase advisors dropped from 113 perf warnings + 14 security warnings to ~25 perf (multiple-permissive consolidation deferred) + 1 security (HaveIBeenPwned toggle, dashboard-only); 3 unrouted pages deleted (Schedule/CrewManager/EquipmentManager — 2,127 LOC of dead code); orphan WizardStep3.tsx removed.
+**Active work**: 3D client-facing design app is live end-to-end — contractor draws elements in 2D over a satellite backdrop, generates a `/share/:token` link, client opens it without a TerrainForge account and sees their design in either 2D (Mapbox satellite + scaled shapes) or 3D (r3f Canvas, extruded boxes on geo-aligned satellite ground), client approves or requests changes with a note, contractor sees response banner on OverviewTab. Complete loop operational against prod Supabase.
 
-**Known partner-test blockers (V3 feedback, pending next session)**: CSV material import fails after 50 rows, Materials page AI suggests 4″ base depth contradicting engine's 6″ enforcement, Owner crew role in DB but not exposed in onboarding, supplier search returns schools, equipment auto-assignment shows GUIDs not project names, polymeric sand priced per pound in wizard, task-timeline man-hour distribution visually wrong.
+**3D pivot sprints shipped** (commit range ~`d48061b → 1ee17d9`, 19 commits, 3 migrations):
+- S1: migration 028 + share-link viewer + PlanView2D
+- S2: Mapbox backdrop on 2D + migration 029 client approve/reject
+- S3: drag move + 4-corner resize + rotation handle + r3f/drei install + DesignSandbox
+- S4 PARTIAL: migration 030 PBR columns + PlanView3D scaffolding (3D toggle reverted pending S5)
+- S5: Vite `optimizeDeps` fix — restored 3D toggle end-to-end
+- S6 PARTIAL: 6b satellite 3D ground + 6d per-category material props
+- S7 PARTIAL: 7b geo-aligned Web Mercator tile footprint + element-focused camera
 
-**What's done**: 4-tab hub rebuild, Budget & Finance tab, wizard↔dashboard field alignment, AI wizard with suggest-then-accept UX. Local supplier search rebuilt (Nominatim v5). Landing page updated with green brand identity. Contractor feedback round 1 complete: measurement-input architecture (ProjectElement system), material formula corrections (polymeric sand, base depth minimums), project lifecycle (estimate → quoted → approved → scheduled → in_progress → completed/on_hold with status gates and transition buttons), man hours as base unit with clock hours derived, equipment maintenance bugfix, session persistence fix, soil type UX. Materials engine (`src/materials-engine/`) with 6 computation models (AREA_COVERAGE, UNIT_COVERAGE, LINEAR, POINT_SPACING, LINEAR_DEPTH, SUBSTRATE), purchase units, waste factors, dependent-material suggestions, STARTER_CATALOG. Wizard rebuilt as 6-step flow (Job → Measurements → Plan → Materials → Numbers → Summary). Unified project progress model (`src/lib/projectProgress.ts`) with 5 weighted gates.
+See `.claude/TESTING/FINDINGS.md` for per-sprint detail + partial-ship backlog.
 
-**Milestones complete**: M1, M1.5a, M1.5b, M2. Data layer refactor complete. UI hub rebuild complete. AI wizard complete. Contractor feedback phases 1-4 complete. Currently in M3 "First Revenue" stabilization preceding pivot to 3D design app.
+**3D pivot sprint backlog** (still pending):
+- 6a/7a — 3D editing (drag/resize/rotate with camera-space math)
+- 6c — precise element-on-property placement (partial via 7b; element origin still (0,0))
+- 6e/7d — Resend email on client approve/reject
+- 6f/7e — Shape primitives (cylinders for trees/fire pits)
+- 7c — Real PBR texture maps via migration 030 columns (needs hosting decision)
 
-**Database**: 34 tables, 130 RLS policies (all `auth.*()` calls wrapped in subselects as of mig 027), 117 indexes, 27 migrations applied. Production project: `axasujjoywqadzuisvaj` "Terrain Forge" (us-east-1, Postgres 17). Test fixture data: 22 orgs, 17 projects, 15 elements, 68 materials (all with computation_model), 555 schedule entries — all disposable partner-test data, no real clients yet.
+**Earlier work still shipped**: P0 remediation sweep (F-040 through F-050) Apr 21, platform stabilization (mig 027) Apr 17. Contractor feedback round 1 complete. 4-tab hub, 6-step wizard, materials engine with 6 computation models, measurement-driven ProjectElement architecture, project lifecycle states.
+
+**Dev escape hatches** (DEV-only, stripped from prod builds): `VITE_DEV_AUTO_SIGNIN_EMAIL/PASSWORD` auto-signs in, `VITE_DEV_BYPASS_BILLING=true` skips trial gate. Enables fast local iteration without login friction.
+
+**Database**: 34 tables, 130+ RLS policies, 117+ indexes, **30 migrations applied** (001-030). Production project: `axasujjoywqadzuisvaj` "Terrain Forge" (us-east-1, Postgres 17). Test fixture data still disposable; no real clients.
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand 7 stores (Supabase-primary, localStorage for UI only) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)

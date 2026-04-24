@@ -543,39 +543,67 @@ Likely culprits (for Sprint 5):
 
 **Fix is a one-liner in vite.config.ts**. Future projects should know: anywhere r3f is used, add `three` to `optimizeDeps.include`.
 
-**Sprint queue** (real options now that the 3D pipe is open):
-- 6a: apply element rotation/resize to 3D view (currently 3D mirrors 2D but editing stays 2D-only)
-- 6b: Mapbox satellite plane as 3D ground (map texture applied to ground plane in PlanView3D)
-- 6c: true geo-alignment — element feet ↔ tile pixel space via `site_geometry.center`
-- 6d: PBR textures — use migration 030 columns + load albedo/normal maps per-material
-- 6e: email notification on client response (Resend + Supabase webhook)
-- 6f: Extruded trees/shrubs/fire pits using proper shape primitives (cylinders, cones)
+**Sprint 6 plan** (scope proposed at end of Sprint 5):
+- 6a: apply element rotation/resize to 3D view
+- 6b: Mapbox satellite plane as 3D ground
+- 6c: true geo-alignment — element feet ↔ tile pixel space
+- 6d: PBR textures (migration 030 columns)
+- 6e: email notification on client response
+- 6f: Extruded trees/shrubs/fire pits using shape primitives
 
 ---
 
-## 2026-04-23 — Sprint 6 + 7b shipped: textured 3D view on real property
+## 2026-04-23 — Sprint 6 PARTIAL: 6b + 6d shipped (6a, 6c, 6e, 6f pending)
+
+Honest scorekeeping: Sprint 6 was proposed as 6a-6f (six items). Only **6b** (satellite 3D ground, approx-sized) and **6d** (per-category PBR-ish material props) actually shipped. The others were deferred without explicit "partial ship" language at the time — this entry corrects that.
 
 | Commit | What |
 |---|---|
-| `c807d5f` | S6 — satellite 3D ground (approx-sized) + per-category PBR-ish material props |
-| `61021aa` | S7b — geo-aligned tile footprint (Web Mercator math, lat-aware) + world-origin plane |
+| `c807d5f` | S6b + S6d — satellite 3D ground (approx-sized) + per-category material props |
+
+**S6b shipped**: satellite ground plane in PlanView3D, sized to ~2x element bbox (not geo-accurate — that's S6c). Mapbox static image loaded via `useLoader(TextureLoader)` + Suspense. SRGB color space. Grid hides when satellite is active.
+
+**S6d shipped**: `elementMaterial(type)` helper in `planLayout.ts`. Per-category roughness + metalness (hardscape matte 0.85, sod ultra-matte 0.98, fire pit metal 0.4, outdoor kitchen metal 0.6). Applied to each extruded box's `meshStandardMaterial`.
+
+**Still open as Sprint 6 backlog**:
+- 🔴 **6a** — 3D editing (drag/resize/rotate elements in 3D view)
+- 🔴 **6c** — true geo-alignment (element feet ↔ tile pixel space via `site_geometry.center` + local tangent plane) *→ superseded by S7b which delivered the geo-aligned plane, but element-origin alignment is still pending*
+- 🔴 **6e** — Resend email on client approve/reject
+- 🔴 **6f** — Shape primitives (cylinders for trees, cones for roofs)
+
+---
+
+## 2026-04-23 — Sprint 7 PARTIAL: 7b shipped (7a, 7c, 7d, 7e pending)
+
+Honest scorekeeping: Sprint 7 was proposed as 7a-7e. Only **7b** (geo-aligned tile footprint + world-origin plane) actually shipped. The earlier version of this entry renamed the remaining items into "Sprint 8" which was wrong — they're still Sprint 7 backlog. Fixed here.
+
+| Commit | What |
+|---|---|
+| `61021aa` | S7b — geo-aligned Web Mercator tile footprint (lat-aware) + world-origin plane |
 | `feb773c` | S7b fix — camera back to element-focused framing (prior pass was too zoomed out) |
+| `1ee17d9` | FINDINGS doc |
 
-**What's live** (both contractor OverviewTab and client `/share/:token`):
-- 3D view renders elements extruded as boxes at their geometry positions
-- Ground plane loads the Mapbox satellite tile centered on project lat/lng
-- Plane is sized to the **real-world extent** of the tile at zoom 19 for the project's latitude (Web Mercator: `cos(lat) × earth_circ / 2^z / 256 × px` converted to feet)
-- World origin (0, 0, 0) represents the project's lat/lng; elements stored in plan feet read as geographic offsets
-- Per-element-type material properties: hardscape matte (roughness 0.85), sod ultra-matte (0.98), fire pit with 40% metalness, outdoor kitchen 60% metal
-- Labels float above each element
-- Camera zoom clamped between `frameSpan × 0.4` and `max(frameSpan × 5, backdropFootprint)` — client can zoom tight on design or all the way out to see the whole property
+**S7b shipped**: Web Mercator math `cos(lat) × earth_circ / 2^z / 256 × px → feet`, ground plane sized to real tile footprint (~704 ft wide at zoom 19 for Roseville MN), world origin (0, 0, 0) anchored to project lat/lng. Camera frames tight on elements with OrbitControls zoom-out to full property.
 
-**Precision note**: elements and the house outline don't line up exactly yet. The plane is sized correctly and centered on the project's lat/lng, but elements default-layout from (0,0) in plan feet — meaning untouched projects start near the property center but not on the actual footprint. Once the contractor drags elements in 2D edit mode, they're positioned relative to that center. Full drag-over-satellite in 2D is already live; 3D editing is Sprint 7a.
+**Sprint 6 + 7b combined visible result**: 3D view now renders elements as extruded boxes on the real satellite footprint of the client's property. Both contractor OverviewTab and client `/share/:token` surfaces.
 
-**Deferred**:
-- **7a**: 3D editing (drag + resize + rotate elements with camera-space math)
-- **7c**: real PBR texture maps (migration 030 columns + texture files — needs a hosting decision: Supabase Storage vs external CDN — not rushed this session)
-- **7d**: Resend email notifications
-- **7e**: Shape primitives (cylinders for trees/fire pits, not boxes)
-- **Elevation**: plane is flat; terrain-rgb for real topography would be Sprint 8+
-- **Bearing**: tile is always north-up; future knob if contractors want to rotate the 2D plan to match house orientation
+**Still open as Sprint 7 backlog**:
+- 🔴 **7a** — 3D editing (same as 6a — drag/resize/rotate in 3D)
+- 🔴 **7c** — real PBR texture maps via migration 030 columns (needs texture hosting decision: Supabase Storage vs external CDN)
+- 🔴 **7d** — Resend email on client response (same as 6e)
+- 🔴 **7e** — Shape primitives (same as 6f — cylinders for trees, cones for roofs)
+
+**Precision note**: element origin still starts at (0, 0) in plan feet, which is the property lat/lng center, but elements default-auto-layout from (0, 0) outward — so an untouched project's elements sit NEAR the house but not ON its outline. Contractor must drag elements in 2D edit mode to position them precisely. **Precise element placement is not yet a sprint item** — it's a UX flow that already works, just not automatic.
+
+---
+
+## Process — Sprint bookkeeping principle (locked in 2026-04-23)
+
+Problem observed: Sprint 6 and Sprint 7 were each proposed as N items (6a-6f, 7a-7f). Only 2 items shipped in S6 and 1 item shipped in S7. Without explicit "partial ship" language, the remaining items got quietly renamed into the next sprint number (Sprint 8 etc), obscuring what was promised vs what was delivered.
+
+**Going forward**:
+1. A sprint's letter suffix is **permanent**. If 7a wasn't done in Sprint 7, it stays called "7a" — it does NOT become "8a" next session.
+2. When shipping only a subset, the commit + FINDINGS entry MUST say "**Sprint N PARTIAL: X and Y shipped (A, B, C pending)**" explicitly.
+3. Before declaring a sprint complete, verify EACH letter item was coded + tested + logged. If any skipped, label the sprint partial.
+4. The pending items from a partial sprint become that sprint's backlog. A new sprint number starts only when a genuinely new body of work begins.
+5. FINDINGS.md is the ground truth for what actually shipped per sprint. ROADMAP.md tracks what's still open.

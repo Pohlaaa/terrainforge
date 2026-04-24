@@ -4,7 +4,7 @@
 > contractor feedback (v2-v5), the Apr 5 audit report, Supabase advisor findings, and
 > internal stability work. Status on each item: ✅ done / 🟡 in-progress / 🔴 open.
 >
-> **Last updated:** 2026-04-21 (post stabilization + mig 027 + V4/V5 ingestion).
+> **Last updated:** 2026-04-23 (post 3D pivot Sprints 1-7, migrations 028/029/030 live, client share viewer end-to-end).
 >
 > **Audience.** Next session's default work picker. Read after `CLAUDE.md` + `CONTEXT.md`.
 
@@ -188,43 +188,65 @@ Still over CLAUDE.md's soft limits:
 
 ---
 
-## P3 — 3D pivot preparation (gated on P0 clear)
+## P3 — 3D pivot (ACTIVE)
 
-Tasks that start the architectural shift toward the 3D app. Only begin when the
-P0 list is empty — i.e. when the partner can run an end-to-end flow without
-blockers.
+Originally "gated on P0 clear." P0 cleared and this was the next push. Multiple
+sprints shipped between Apr 21–23. Section reflects current state per-item.
 
-### 🔴 Schema additions for spatial data (migration 029?)
-- `project_elements.geometry` JSONB (shape + position + rotation)
-- `projects.site_geometry` JSONB (boundary polygon, elevation samples)
-- `materials.texture_albedo_url` / `normal_url` / `roughness_url`, or `textures` JSONB
-- New table `element_relationships` (adjacency, containment, elevation)
-- New table `project_share_tokens` (client-view tokens with role + expiry)
-- Optional: new table `project_scenes` (versioned scene graph JSONB) OR extend
-  `manifests` with a `scene` payload.
+### ✅ Schema additions for spatial data (migrations 028 + 029 + 030, all live)
+- ✅ `project_elements.geometry` JSONB (mig 028)
+- ✅ `projects.site_geometry` JSONB (mig 028)
+- ✅ `project_share_tokens` table with RLS + anon policies (mig 028)
+- ✅ `bump_share_token_view` RPC (mig 028)
+- ✅ `project_share_tokens.client_response/responded_at/note` + `respond_to_share_token` RPC (mig 029)
+- ✅ `materials.texture_albedo_url / normal_url / roughness_url` (mig 030)
+- 🔴 `element_relationships` (adjacency/containment/elevation) — not yet needed
+- 🔴 `project_scenes` versioned JSONB — skipped; the `project_elements.geometry` per-row approach is working
 
-See `.claude/ERD.md` "Extension points" table for the full list.
+### ✅ 3D rendering stack decision
+`@react-three/fiber@^8.18.0` + `@react-three/drei@^9.122.0` + `three@^0.162.0`
+pinned in package.json. Requires `optimizeDeps.include: ['three', '@react-three/*']`
+in `vite.config.ts` to be pre-bundled — without that, fiber's `WebGLRenderer`
+references an unresolved THREE and Canvas silently fails to paint (see S5 debug in
+FINDINGS).
 
-### 🔴 3D rendering stack decision
-Default pick: `react-three-fiber` + `@react-three/drei`. Alternatives Babylon.js
-(more feature-heavy, heavier) or vanilla three.js (thinner, more code). Charlie's
-preference TBD — ask at the start of that session.
+### ✅ Start with 2D top-down (PlanView2D)
+Full SVG viewer + editor: auto-layout, drag-to-move, 4-corner resize, rotation
+handle. Mapbox satellite backdrop. Contractor + client (read-only) surfaces.
 
-### 🔴 Start with 2D top-down
-Before 3D, ship a flat top-down view scaled from `project_elements` dimensions +
-shape geometry. This shakes out the "do measurements produce a correct plan"
-question without the 3D camera/lighting complexity. Once that's clean, switch to
-a 3D camera on the same scene data.
+### ✅ Client-facing share link (read-only view)
+`/share/:token` route live. Token-scoped anon RLS. Client approve / request-changes
+workflow (mig 029). Contractor sees response banner + echoed note on Overview tab.
 
-### 🔴 Client-facing share link (read-only view)
-Core of the "killer feature" — contractor designs, client sees a URL, client sees
-the 3D scene rendered with the materials chosen. Needs the `project_share_tokens`
-table and a new `/share/:token` route with no auth but token-scoped read access.
+### ✅ 3D camera (PlanView3D)
+r3f Canvas with orbit controls, per-category material properties, floating labels,
+shadow-casting directional light, hemisphere fill. Extrudes rectangle elements to
+boxes sized by measured dimensions. Ground plane is the Mapbox satellite of the
+real property (geo-aligned to actual extent via Web Mercator math).
 
-### 🔴 PBR texture library
-`ElementVisual.tsx` already uses SVG patterns for each element type. For 3D, upgrade
-to PBR maps (albedo, normal, roughness). Start with ~10 common materials (standard
-paver, concrete, grass, mulch, wood, stone) and expand.
+### 🔴 PBR texture library (Sprint 7c backlog)
+Migration 030 columns live but no textures loaded yet — `PlanView3D` still uses
+per-category roughness/metalness on solid-color materials. Real albedo/normal/
+roughness maps pending, gated on a texture-hosting decision (Supabase Storage vs
+external CDN). See FINDINGS for sprint breakdown.
+
+### 🔴 3D editing — drag/resize/rotate in 3D view (Sprint 6a / 7a backlog)
+View-only in 3D today. Camera-space drag math + depth disambiguation is a proper
+session's worth of work. Contractor edits in 2D mode; 3D is the preview layer.
+
+### 🔴 Shape primitives (Sprint 6f / 7e backlog)
+Everything renders as box extrusions. Cylinders for trees/fire pits, cones for
+roofs, etc. would improve realism. Parked until after 7c.
+
+### 🔴 Resend email on client response (Sprint 6e / 7d backlog)
+Client's approve/reject currently only surfaces in-app on OverviewTab. Wiring
+a Supabase webhook → Resend email to the contractor is a small sprint.
+
+### 🔴 Precise element-on-property placement (Sprint 6c backlog, partial via 7b)
+S7b delivered the geo-aligned satellite plane. Untouched elements still auto-lay
+out from (0, 0) = property center — contractor must drag them in 2D mode to
+position them relative to visible property features. Automatic "fit to yard"
+inference is a separate problem.
 
 ---
 
@@ -250,6 +272,14 @@ paver, concrete, grass, mulch, wood, stone) and expand.
 - ✅ ProjectElement + project_element_materials measurement-driven architecture
 - ✅ Shared components: ElementVisual, MaterialPicker, TaskTimeline
 - ✅ Unified progress model (src/lib/projectProgress.ts)
+- ✅ **3D pivot Sprint 1** — migration 028 + `/share/:token` public route + PlanView2D SVG (Apr 22)
+- ✅ **Sprint 2** — Mapbox satellite on 2D + migration 029 client approve/reject (Apr 22)
+- ✅ **Sprint 3** — drag move + 4-corner resize + rotation handle in PlanView2D + r3f/drei install + DesignSandbox (Apr 22)
+- ✅ **Sprint 4** PARTIAL — migration 030 PBR columns + PlanView3D scaffolding shipped; 2D/3D toggle reverted pending S5 (Apr 22)
+- ✅ **Sprint 5** — Vite `optimizeDeps` fix restored 3D toggle end-to-end (Apr 23)
+- ✅ **Sprint 6** PARTIAL — 6b satellite 3D ground + 6d per-category material props (Apr 23). 6a/6c/6e/6f pending.
+- ✅ **Sprint 7** PARTIAL — 7b geo-aligned Web Mercator tile footprint + element-focused camera (Apr 23). 7a/7c/7d/7e pending.
+- ✅ Dev-only escape hatches: `VITE_DEV_AUTO_SIGNIN_*` + `VITE_DEV_BYPASS_BILLING` (Apr 22)
 
 ---
 
