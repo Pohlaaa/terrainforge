@@ -64,15 +64,34 @@ export function fallbackDimensions(element: ProjectElement): { width: number; he
  * used for the null-geometry fallback. Returns each element paired with
  * its resolved geometry so callers can render directly.
  */
+/**
+ * Default origin offset for auto-laid elements (Sprint 6c residual).
+ *
+ * Elements with null geometry used to spawn at exactly (0, 0), which in the
+ * 3D view (where world origin = project lat/lng ≈ house center) meant the
+ * elements overlapped the house. Offsetting to (0, 25) places them ~25 ft
+ * south of the property center so they sit on the lawn/yard area visible in
+ * the satellite.
+ *
+ * This offset is invisible in the 2D view because the SVG viewBox centers on
+ * the element bbox regardless of absolute position.
+ */
+const DEFAULT_ORIGIN_OFFSET_FT = { x: 0, y: 25 }
+
 export function autoLayout(
   elements: ProjectElement[],
-  opts: { targetRowWidthFt?: number; gapFt?: number } = {},
+  opts: {
+    targetRowWidthFt?: number
+    gapFt?: number
+    originOffsetFt?: { x: number; y: number }
+  } = {},
 ): Array<{ element: ProjectElement; geometry: ElementGeometry }> {
   const targetRowWidthFt = opts.targetRowWidthFt ?? 80
   const gap = opts.gapFt ?? 3
+  const origin = opts.originOffsetFt ?? DEFAULT_ORIGIN_OFFSET_FT
 
-  let cursorX = 0
-  let cursorY = 0
+  let cursorX = origin.x
+  let cursorY = origin.y
   let rowHeight = 0
 
   return elements.map((element) => {
@@ -82,8 +101,8 @@ export function autoLayout(
 
     const { width, height } = fallbackDimensions(element)
 
-    if (cursorX + width > targetRowWidthFt && cursorX > 0) {
-      cursorX = 0
+    if (cursorX + width > origin.x + targetRowWidthFt && cursorX > origin.x) {
+      cursorX = origin.x
       cursorY += rowHeight + gap
       rowHeight = 0
     }

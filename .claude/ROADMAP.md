@@ -252,12 +252,12 @@ actual top height. Other element types keep their box extrusions.
 Client's approve/reject currently only surfaces in-app on OverviewTab. Wiring
 a Supabase webhook → Resend email to the contractor is a small sprint.
 
-### 🔴 Precise element-on-property placement (Sprint 6c backlog, partial via 7b)
-S7b delivered the geo-aligned satellite plane. Untouched elements still auto-lay
-out from (0, 0) = property center — contractor must drag them in 2D mode to
-position them relative to visible property features. Auto-inference ("fit to
-yard") is a design problem, not just an implementation one; deferred pending a
-UX decision.
+### 🟡 Precise element-on-property placement (Sprint 6c — residual closed 2026-04-23)
+S7b delivered the geo-aligned satellite plane. S6c-residual (Apr 23) fixed the
+default auto-layout to offset 25 ft south of origin so un-positioned elements
+don't overlap the house. Full auto-inference ("fit to yard" based on geocoded
+house footprint) remains a UX design problem; the current default keeps
+elements visible on the lawn area until the contractor positions them.
 
 ---
 
@@ -291,6 +291,7 @@ UX decision.
 - ✅ **Sprint 6** PARTIAL — 6b satellite 3D ground + 6d per-category material props (Apr 23). 6a/6c/6e/6f pending.
 - ✅ **Sprint 7** PARTIAL — 7b geo-aligned Web Mercator tile footprint + element-focused camera (Apr 23). 7a/7c/7d/7f pending.
 - ✅ **Sprint 7e** — Shape primitives (trunk+canopy trees, dome shrubs, fire pits with emissive embers) (Apr 23)
+- ✅ **Sprint 6c-residual** — `autoLayout` default origin offset (0, 25) so un-positioned elements sit on lawn not house (Apr 23)
 - ✅ Dev-only escape hatches: `VITE_DEV_AUTO_SIGNIN_*` + `VITE_DEV_BYPASS_BILLING` (Apr 22)
 
 ---

@@ -598,6 +598,18 @@ Honest scorekeeping: Sprint 7 was proposed as 7a-7e. Only **7b** (geo-aligned ti
 
 ---
 
+## 2026-04-23 — Sprint 6c-residual closed: default element placement offset
+
+**Commit**: (next git add/commit) — autoLayout gets default `originOffsetFt` of `{ x: 0, y: 25 }`
+
+Untouched elements (null geometry) used to spawn at exactly (0, 0) in plan feet. In the 3D view — where world origin represents the project's lat/lng, which geocodes to roughly the house center — this meant auto-laid elements overlapped the house. Not useful for a client preview.
+
+The fix: `autoLayout` now takes an optional `originOffsetFt` param (default `(0, 25)`). Un-positioned elements tile starting 25 ft "south" of the property center, placing them on the visible lawn/yard area. The 2D view is unaffected — the SVG viewBox frames on the element bbox regardless of absolute position.
+
+Closes the 6c-residual item: precise element placement is still a UX decision (auto-anchor to geocoded house footprint), but contractors no longer get elements stacked on top of their client's roof by default.
+
+---
+
 ## 2026-04-23 — Sprint 7e closed: shape primitives
 
 **Commit**: (next git add/commit) — shape primitives in PlanView3D
