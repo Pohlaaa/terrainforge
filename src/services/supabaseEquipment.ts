@@ -123,7 +123,15 @@ export async function updateEquipment(id: string, updates: Partial<Equipment>): 
     if ('insurance_expiry' in snakeData && !snakeData.insurance_expiry) snakeData.insurance_expiry = null
     if ('reg_expiry' in snakeData) { snakeData.registration_expiry = snakeData.reg_expiry || null; delete snakeData.reg_expiry }
     if ('inspection_due' in snakeData) { snakeData.inspection_due_date = snakeData.inspection_due || null; delete snakeData.inspection_due }
-    if ('assigned_project' in snakeData) delete snakeData.assigned_project
+    // F-CW-46: column is assigned_project_id (uuid). Camel→snake produces
+    // `assigned_project`, which previously got deleted (so wizard's
+    // equipment-accept never persisted the assignment). Rename it instead
+    // and coerce empty string → null so we can also clear an assignment.
+    if ('assigned_project' in snakeData) {
+      const v = snakeData.assigned_project
+      snakeData.assigned_project_id = typeof v === 'string' && v.length > 0 ? v : null
+      delete snakeData.assigned_project
+    }
     if ('operator' in snakeData) delete snakeData.operator
 
     const { data, error } = await supabase

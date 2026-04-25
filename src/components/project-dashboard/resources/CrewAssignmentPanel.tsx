@@ -117,9 +117,13 @@ export const CrewAssignmentPanel: React.FC<CrewAssignmentPanelProps> = ({
       </div>
 
       {/* Editable crew size and notes */}
+      {/* F-CW-47: distinguish "Crew Size" (target headcount for this job) from
+          "No crew scheduled yet" (no per-day schedule entries). Both can be
+          true without contradiction. Add a small qualifier next to Crew Size
+          so contractors don't see them as conflicting numbers. */}
       <div className="mb-[12px] space-y-[2px]">
         <InlineEditField
-          label="Crew Size"
+          label="Crew Size (target)"
           value={project.crewSize?.toString() || ''}
           type="number"
           placeholder="e.g., 4"

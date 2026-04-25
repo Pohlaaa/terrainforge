@@ -398,6 +398,78 @@ function enrichAvailability(
  * Generate comprehensive AI recommendations for a project.
  * Returns null if the API key is missing, the call fails, or the response is invalid.
  */
+/**
+ * F-CW-16: empty/minimal AIRecommendationSet so the wizard renders gracefully
+ * when the LLM call fails or returns malformed JSON. The downstream wizard
+ * checks `recommendations !== null` to decide whether to render AI sections,
+ * so returning an empty set instead of null keeps the AI panels visible with
+ * "no suggestions" copy rather than disappearing entirely.
+ */
+function emptyRecommendationSet(): AIRecommendationSet {
+  return {
+    tasks: [],
+    crew: [],
+    equipment: [],
+    materials: [],
+    permits: [],
+    budget: {
+      laborBudget: 0,
+      materialsBudget: 0,
+      equipmentBudget: 0,
+      disposalCost: 0,
+      subcontractorBudget: 0,
+      overheadPct: 10,
+      estimatedHours: 0,
+      clientQuoteRange: { low: 0, high: 0 },
+      reasoning: 'AI recommendations unavailable — fill in details manually.',
+    },
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * F-CW-16: parse defensively. Claude occasionally truncates JSON when the
+ * response runs long (the original failure was "Unterminated string at
+ * position 12779"). Two-step rescue:
+ *   1. Try the strict parse.
+ *   2. On failure, try to recover an outer object by trimming any trailing
+ *      garbage. We find the last balanced closing brace and JSON.parse the
+ *      substring up to it. If that still fails, return null.
+ */
+function safeParseRecommendations(raw: string): AIRecommendationSet | null {
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try {
+    return JSON.parse(cleaned) as AIRecommendationSet;
+  } catch (err) {
+    // Try to find a valid outer-object substring by walking braces.
+    let depth = 0;
+    let lastValidEnd = -1;
+    let inString = false;
+    let escape = false;
+    for (let i = 0; i < cleaned.length; i++) {
+      const c = cleaned[i];
+      if (escape) { escape = false; continue; }
+      if (c === '\\') { escape = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (c === '{') depth++;
+      else if (c === '}') {
+        depth--;
+        if (depth === 0) lastValidEnd = i;
+      }
+    }
+    if (lastValidEnd > 0) {
+      try {
+        return JSON.parse(cleaned.slice(0, lastValidEnd + 1)) as AIRecommendationSet;
+      } catch {
+        // fall through
+      }
+    }
+    console.warn('AI JSON parse failed — partial-recovery also failed:', err);
+    return null;
+  }
+}
+
 export async function generateProjectRecommendations(
   ctx: RecommendationContext
 ): Promise<AIRecommendationSet | null> {
@@ -406,9 +478,19 @@ export async function generateProjectRecommendations(
 
   try {
     const prompt = buildPrompt(ctx);
-    const raw = await callClaude(prompt, DEFAULT_MODEL, 4096);
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-    const parsed = JSON.parse(cleaned) as AIRecommendationSet;
+    // F-CW-16: bumped from 4096 → 8192 because the original failure was a
+    // mid-string truncation at position 12779 in the raw response. Softscape
+    // scenarios in particular generate long outputs (more elements + more
+    // dependent materials).
+    const raw = await callClaude(prompt, DEFAULT_MODEL, 8192);
+    const parsed = safeParseRecommendations(raw);
+    if (!parsed) {
+      // Don't return null — return an empty-but-valid set so the wizard
+      // keeps rendering AI panels with "no suggestions" instead of
+      // collapsing the entire Step 3+ flow.
+      console.warn('AI recommendations: parse failed, falling back to empty set');
+      return emptyRecommendationSet();
+    }
 
     const validated = validateAndEnrich(parsed, ctx);
     const enriched = enrichAvailability(validated, ctx);
@@ -416,6 +498,7 @@ export async function generateProjectRecommendations(
     return enriched;
   } catch (err) {
     console.error('AI recommendation generation failed:', err);
-    return null;
+    // F-CW-16: same fallback for network/API errors.
+    return emptyRecommendationSet();
   }
 }

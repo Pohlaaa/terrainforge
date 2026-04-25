@@ -26,6 +26,7 @@ const SharedProjectView: React.FC = () => {
         elements: ProjectElement[]
         tokenRow: ShareToken
         materialsById: Record<string, Material>
+        companyName: string | null
       }
   >({ status: 'loading' })
   const [responding, setResponding] = useState<'approved' | 'changes_requested' | null>(null)
@@ -53,6 +54,7 @@ const SharedProjectView: React.FC = () => {
         elements: result.elements,
         tokenRow: result.token,
         materialsById: result.materialsById,
+        companyName: result.companyName,
       })
     })
   }, [token])
@@ -103,18 +105,33 @@ const SharedProjectView: React.FC = () => {
               color: 'var(--text-tertiary, #9CA3AF)',
             }}
           >
+            {/* F-CW-15b: surface contractor's company name first so the
+                client recognizes whose proposal they're viewing. Falls back
+                to "Your contractor" when org name lookup fails (anon RLS
+                may return null on legacy projects). */}
             <span
               style={{
-                fontFamily: 'var(--font-mono, monospace)',
-                fontWeight: 700,
-                color: 'var(--brand-primary, #10B981)',
-                fontSize: 15,
+                fontWeight: 600,
+                color: 'var(--text-primary, #F9FAFB)',
+                fontSize: 14,
               }}
             >
-              TerrainForge
+              {state.status === 'ready' ? (state.companyName ?? 'Your contractor') : ' '}
             </span>
             <span>·</span>
-            <span>Shared project preview</span>
+            <span>Design proposal</span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.6 }}>
+              powered by{' '}
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontWeight: 700,
+                  color: 'var(--brand-primary, #10B981)',
+                }}
+              >
+                TerrainForge
+              </span>
+            </span>
           </div>
 
           {state.status === 'ready' && (

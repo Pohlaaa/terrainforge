@@ -59,15 +59,63 @@ export const WizardStepNumbers: React.FC<Props> = ({ data, onChange, recommendat
   const subsCostSum = useMemo(() => data.subcontractors.reduce((s, sub) => s + (sub.quotedCost ?? 0), 0), [data.subcontractors]);
   const permitFeesSum = useMemo(() => Object.values(data.permitFees).reduce((s, v) => s + v, 0), [data.permitFees]);
 
+  // F-CW-19: when AI fails (or returns empty) the wizard previously dropped
+  // contractors at $0 across every budget field. Fall back to a per-sqft /
+  // per-element heuristic so they have a starting point. Industry averages
+  // (rough) for residential landscaping in the US Southeast as of 2025:
+  //   - hardscape (patio, walkway, retaining wall, driveway, pool deck):
+  //       ~$18/sqft materials + ~$15/sqft labor
+  //   - softscape (sod, garden bed, mulch, gravel):
+  //       ~$3/sqft materials + ~$4/sqft labor
+  //   - drainage (linear): ~$25/lnft (split 60% materials, 40% labor)
+  //   - point items (trees, fire pits, steps): ~$200/each (60% mat, 40% lab)
+  const heuristicBudget = useMemo(() => {
+    const HARDSCAPE_TYPES = new Set(['patio', 'walkway', 'driveway', 'retaining_wall', 'wall', 'pool_deck', 'concrete_slab', 'parking_lot', 'edging', 'curbing', 'steps_stairs']);
+    const SOFTSCAPE_TYPES = new Set(['sod_area', 'garden_bed', 'mulch_area', 'gravel_area']);
+    const POINT_TYPES = new Set(['fire_pit', 'tree_planting', 'shrub_planting', 'outdoor_kitchen', 'pergola']);
+    let materials = 0;
+    let labor = 0;
+    for (const el of data.elements) {
+      const area = el.areaSqft ?? ((el.lengthFt ?? 0) * (el.widthFt ?? 0));
+      const linear = el.linearFt ?? 0;
+      if (HARDSCAPE_TYPES.has(el.elementType)) {
+        materials += area * 18;
+        labor += area * 15;
+      } else if (SOFTSCAPE_TYPES.has(el.elementType)) {
+        materials += area * 3;
+        labor += area * 4;
+      } else if (el.elementType === 'drainage' || el.elementType === 'irrigation_zone') {
+        materials += linear * 15;
+        labor += linear * 10;
+      } else if (POINT_TYPES.has(el.elementType)) {
+        // Approximate count: 1 point per element. Won't be exact but better than 0.
+        materials += 120;
+        labor += 80;
+      } else {
+        // Unknown / "other" — middle ground
+        materials += area * 8;
+        labor += area * 6;
+      }
+    }
+    return { materials: Math.round(materials), labor: Math.round(labor) };
+  }, [data.elements]);
+
   // Pre-populate on mount from AI or step calculations
   useEffect(() => {
     if (budgetInitialized.current) return;
     budgetInitialized.current = true;
     const ai = recommendations?.budget;
     const updates: Partial<WizardData> = {};
-    if (data.estimatedHours == null) updates.estimatedHours = (ai?.estimatedHours ?? taskHoursSum) || null;
-    if (data.laborBudget == null) updates.laborBudget = (ai?.laborBudget ?? (taskHoursSum * effectiveRate)) || null;
-    if (data.materialsBudget == null) updates.materialsBudget = (ai?.materialsBudget ?? matCostSum) || null;
+    // For each field: prefer AI > step-derived sum > heuristic > 0.
+    if (data.estimatedHours == null) {
+      updates.estimatedHours = (ai?.estimatedHours ?? taskHoursSum) || (heuristicBudget.labor / effectiveRate) || null;
+    }
+    if (data.laborBudget == null) {
+      updates.laborBudget = (ai?.laborBudget ?? (taskHoursSum * effectiveRate)) || heuristicBudget.labor || null;
+    }
+    if (data.materialsBudget == null) {
+      updates.materialsBudget = (ai?.materialsBudget ?? matCostSum) || heuristicBudget.materials || null;
+    }
     if (data.equipmentCost == null) updates.equipmentCost = (ai?.equipmentBudget ?? equipCostSum) || null;
     if (data.subcontractorBudget == null) updates.subcontractorBudget = (ai?.subcontractorBudget ?? subsCostSum) || null;
     if (data.disposalCost == null && ai?.disposalCost) updates.disposalCost = ai.disposalCost;

@@ -18,6 +18,9 @@ interface MaterialTableProps {
   activeCatLabel: string;
   openEditModal: (material: Material) => void;
   openAddModal: () => void;
+  /** F-CW-31: optional inline delete with confirm. Owner page wires this
+      to materialStore.deleteMaterial. */
+  onDeleteMaterial?: (material: Material) => void;
 }
 
 export const MaterialTable: React.FC<MaterialTableProps> = ({
@@ -27,6 +30,7 @@ export const MaterialTable: React.FC<MaterialTableProps> = ({
   activeCatLabel,
   openEditModal,
   openAddModal,
+  onDeleteMaterial,
 }) => {
   const getPreferredSupplier = useSupplierStore((s) => s.getPreferredSupplier);
   const supplierPrices = useSupplierStore((s) => s.supplierPrices);
@@ -115,6 +119,19 @@ export const MaterialTable: React.FC<MaterialTableProps> = ({
                     className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] flex items-center justify-center transition-colors"
                     title="Order"
                   >📦</button>
+                  {/* F-CW-31: inline delete with confirm. Cleanup of stale
+                      test data without opening the Edit modal per row. */}
+                  {onDeleteMaterial && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete "${material.name}"? This can't be undone.`)) {
+                          onDeleteMaterial(material);
+                        }
+                      }}
+                      className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] flex items-center justify-center transition-colors"
+                      title="Delete"
+                    >🗑️</button>
+                  )}
                 </div>
               </td>
             </tr>

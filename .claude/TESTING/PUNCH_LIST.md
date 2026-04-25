@@ -2,7 +2,7 @@
 
 Working list of open findings from the contractor-walkthrough series. Source of truth for findings is `FINDINGS.md` — this file is for tracking fix status during a fix session. Items checked off here get a resolution note in FINDINGS.md too.
 
-**Last updated**: 2026-04-25 (after first fix sweep)
+**Last updated**: 2026-04-25 (after second fix sweep — all P1s + most P2/P3s closed)
 
 ## Fixed in this session ✅
 
@@ -22,6 +22,24 @@ Working list of open findings from the contractor-walkthrough series. Source of 
 - **F-CW-50** P3 — Project name truncation cuts at word boundary + ellipsis instead of mid-word
 - **F-CW-55** P3 — Budget Hub "Avg Budget" relabeled to "Outstanding" (matches the actual data)
 - **F-CW-26** P2 — Was a mis-finding (the "prefilled" text was just placeholder text). Removed from list.
+
+## Fixed in second sweep ✅
+
+- **F-CW-16** P1 — AI cascade fallback. `generateProjectRecommendations` now: (1) requests 8192 max_tokens (was 4096), (2) on JSON parse failure, attempts a balanced-brace recovery to salvage a valid prefix, (3) returns `emptyRecommendationSet()` instead of `null` when all recovery paths fail so the wizard renders empty AI panels instead of collapsing to an unusable state.
+- **F-CW-44** P1 — Closeout actuals persistence. New "Save Usage" button saves `actualUsage` per material WITHOUT changing project status. Complete Project still does both.
+- **F-CW-46** P1 — Wizard equipment-accept persistence. `updateEquipment` was deleting the snake_cased `assigned_project` field instead of mapping it to `assigned_project_id`. Renamed + coerced empty string → null.
+- **F-CW-48** P1 — Add Task button on every phase header in OverviewTab. Empty phases show "No tasks in this phase yet." instead of being hidden.
+- **F-CW-12** P1 — AI element inference now requires an install-verb context in the same clause as the keyword. "Install a flagstone walkway from driveway to front door. Mulch the planting beds." no longer infers Patio (flagstone), Driveway (no install verb), or Garden Beds (mulch isn't an install verb).
+- **F-CW-14** P1 — `equipmentBudget` and `equipmentCost` are duplicate-overlapping fields. `computeProjectCost` now uses `Math.max(equipmentBudget, equipmentCost)` instead of summing both, so wizard ↔ Overview no longer drift on persist.
+- **F-CW-29** P1 — CSV import accepts 9 optional engine columns (coverage, depth_in, default_waste_factor, purchase_unit, qty_per_purchase_unit, cost_per_purchase_unit, subcategory, supplier_sku, computation_model). Modal copy lists them + offers a downloadable template CSV.
+- **F-CW-19** P2 — Wizard Step 5 (Numbers) now falls back to a per-element-type heuristic ($18/$15 hardscape, $3/$4 softscape, $25/lnft drainage, $200/each point items) when AI fails to produce labor/materials estimates. Contractor sees a starting point instead of $0.
+- **F-CW-56** P2 — Budget Hub `getProjectStatus` now respects `project.status` first (falls back to date-based heuristic only for legacy projects). Williams shows "Completed" instead of "Scheduled".
+- **F-CW-15b** P3 — Client share view header now shows the contractor's company name first ("{Company} · Design proposal · powered by TerrainForge"). Anon RLS-safe lookup via `organizations.name`.
+- **F-CW-20** P3 — `computeProjectProgress` returns 100% when `status === 'completed'` regardless of task statuses, so Completed projects can't show 22%.
+- **F-CW-37** P3 — Manifest "Under Budget" baseline switched from `project.budget` (full quote) to `project.materialsBudget` for an apples-to-apples comparison.
+- **F-CW-47** P3 — "Crew Size" relabeled "Crew Size (target)" to distinguish it from per-day schedule entries.
+- **F-CW-24** P3 — Low-stock banner hidden when 100% of materials are "low" (signals no inventory tracking, not a real warning).
+- **F-CW-31** P3 — Inline 🗑️ delete with confirm on each material row. No more opening Edit modal per row to clean up test data.
 
 ## Still open
 

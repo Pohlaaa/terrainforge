@@ -149,17 +149,32 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
   };
 
   const applySuggestions = () => {
-    // F-CW-04 fix: strip demolition phrases first. Otherwise "demo existing
+    // F-CW-04: strip demolition phrases first. Otherwise "demo existing
     // concrete slab" causes the keyword matcher to add Concrete Slab as a
-    // *build* element, contradicting the user's intent. Match the verb +
-    // any non-period text that follows on the same clause.
+    // *build* element, contradicting the user's intent.
     const stripDemoClauses = (s: string) =>
       s.replace(
         /\b(demo(?:lish)?|remove|tear\s*out|tear\s*down|rip\s*out|haul\s*away|dispose\s*of|excavate\s*and\s*remove|demo\s*existing)\b[^.!?]*/gi,
         '',
       );
 
-    const desc = stripDemoClauses(data.description || '').toLowerCase();
+    // F-CW-12: keyword matching alone is too loose. Description like "Install
+    // a flagstone walkway from driveway to front door. Mulch the planting
+    // beds." would infer Patio (because "flagstone" is a Patio keyword) AND
+    // Driveway (because "from driveway" matched) AND Garden Beds (because
+    // "planting beds" matched). Fix: split into clauses and require an
+    // install verb in the same clause as the keyword. Verbs: install, build,
+    // add, plant, construct, lay, place, set up, create, put in, pour. The
+    // existing demo-strip handles the negative cases.
+    const installVerbRegex = /\b(install(?:ing)?|build(?:ing)?|construct(?:ing)?|add(?:ing)?|plant(?:ing)?|lay(?:ing)?|pour(?:ing)?|create(?:ing)?|set\s*up|put\s*in|new)\b/i;
+
+    const fullDesc = stripDemoClauses(data.description || '');
+    // Split into clauses on . ! ? , ; and "and"/" with "/" plus ".
+    const clauses = fullDesc
+      .split(/[.!?;]|\band\b|,\s*/i)
+      .map(c => c.trim())
+      .filter(c => c.length > 0);
+
     const inferred: Omit<WizardElement, 'tempId'>[] = [];
 
     // Always infer from description keywords — this is the primary source
@@ -191,8 +206,22 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
     ];
 
     for (const [terms, name, elementType] of keywords) {
-      if (terms.some(t => desc.includes(t))) {
-        // Don't add duplicate element types
+      // F-CW-12: only count a keyword hit if it appears in a clause that
+      // also contains an install verb. Falls back to whole-description
+      // match for keywords that strongly imply install intent on their own
+      // (e.g. compound terms like "fire pit", "pool deck", "outdoor kitchen").
+      const compoundTerms = terms.some(t => t.includes(' '));
+      const matchedInClause = clauses.some(clause => {
+        const cl = clause.toLowerCase();
+        const hasKeyword = terms.some(t => cl.includes(t));
+        if (!hasKeyword) return false;
+        // Compound multi-word terms (e.g. "retaining wall", "fire pit") are
+        // strong enough on their own — install verb not required because
+        // contractors don't accidentally name them in passing.
+        if (compoundTerms && terms.some(t => t.includes(' ') && cl.includes(t))) return true;
+        return installVerbRegex.test(clause);
+      });
+      if (matchedInClause) {
         if (!inferred.some(e => e.elementType === elementType)) {
           inferred.push({ name, elementType, lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' });
         }

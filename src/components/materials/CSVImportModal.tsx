@@ -40,7 +40,24 @@ export const CSVImportModal: React.FC<CSVImportModalProps> = ({
     >
       <div className="flex flex-col gap-[12px]">
         <div className="text-[12px] text-[var(--text-2)]">
-          Upload a CSV with columns: <code className="bg-[var(--surface3)] px-[4px] rounded text-[11px]">name, category, unit, unit_cost</code>
+          {/* F-CW-29: surface the optional engine columns + offer a template
+              download so power users can ship manifest-engine-ready imports. */}
+          Required columns: <code className="bg-[var(--surface3)] px-[4px] rounded text-[11px]">name, category, unit, unit_cost</code>
+          <br />
+          Optional engine columns: <code className="bg-[var(--surface3)] px-[4px] rounded text-[11px]">coverage, depth_in, default_waste_factor, purchase_unit, qty_per_purchase_unit, cost_per_purchase_unit, subcategory, supplier_sku, computation_model</code>
+          <br />
+          <a
+            href={'data:text/csv;charset=utf-8,' + encodeURIComponent(
+              'name,category,unit,unit_cost,coverage,depth_in,default_waste_factor,purchase_unit,qty_per_purchase_unit,cost_per_purchase_unit,subcategory,supplier_sku,computation_model\n' +
+              'Concrete Pavers 12x12,paver,sqft,4.50,1,3,5%,each,1,4.50,paver,SKU-123,UNIT_COVERAGE\n' +
+              'Topsoil 3in,soil,cubic_yard,40,,3,5%,cubic_yard,1,40,soil,,AREA_COVERAGE\n'
+            )}
+            download="terrainforge-materials-template.csv"
+            className="underline mt-[4px] inline-block"
+            style={{ color: 'var(--green-l)' }}
+          >
+            Download CSV template
+          </a>
         </div>
         <input
           ref={csvInputRef}

@@ -63,7 +63,13 @@ export const ProjectDashboardMaterials: React.FC<Props> = ({ project, loading })
     [projectMaterials]
   );
 
-  const budget = project?.budget ?? 0;
+  // F-CW-37: was comparing manifest cost to total project quote (`project.budget`)
+  // which made every project look wildly under budget because the quote
+  // covers labor + equipment + overhead too, not just materials. Compare to
+  // `materialsBudget` (the wizard's estimated materials line) for an apples-
+  // to-apples view, falling back to the project quote if no materials budget
+  // exists yet.
+  const budget = project?.materialsBudget ?? project?.budget ?? 0;
   const budgetDelta = totalMaterialCost - budget;
   const budgetOver = budgetDelta > 0;
 

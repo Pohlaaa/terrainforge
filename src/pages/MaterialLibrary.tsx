@@ -184,7 +184,12 @@ export const MaterialLibrary: React.FC = () => {
   const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'low' | 'out'>('all');
   // CSV import state
   const [showImportModal, setShowImportModal] = useState(false);
-  const [csvPreview, setCsvPreview] = useState<Array<{ name: string; category: string; unit: string; cost: string }>>([]);
+  const [csvPreview, setCsvPreview] = useState<Array<{
+    name: string; category: string; unit: string; cost: string;
+    coverage?: string; depthIn?: string; defaultWasteFactor?: string;
+    purchaseUnit?: string; qtyPerPurchaseUnit?: string; costPerPurchaseUnit?: string;
+    subcategory?: string; supplierSku?: string; computationModel?: string;
+  }>>([]);
   const [csvError, setCsvError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
   const csvInputRef = React.useRef<HTMLInputElement>(null);
@@ -260,7 +265,27 @@ export const MaterialLibrary: React.FC = () => {
       const clean = vals.map(v => v.replace(/^"|"$/g, '').trim());
       const obj: Record<string, string> = {};
       headers.forEach((h, i) => { obj[h] = clean[i] ?? ''; });
-      return { name: obj['name'] ?? '', category: obj['category'] ?? 'misc', unit: obj['unit'] ?? 'each', cost: obj['unit_cost'] ?? obj['cost'] ?? '0' };
+      // F-CW-29: required columns are still name/category/unit/unit_cost.
+      // Optional engine columns (coverage, depth_in, default_waste_factor,
+      // purchase_unit, qty_per_purchase_unit, cost_per_purchase_unit,
+      // subcategory, supplier_sku, computation_model) accepted for power
+      // users who want library rows ready for the manifest engine without
+      // post-import edits.
+      return {
+        name: obj['name'] ?? '',
+        category: obj['category'] ?? 'misc',
+        unit: obj['unit'] ?? 'each',
+        cost: obj['unit_cost'] ?? obj['cost'] ?? '0',
+        coverage: obj['coverage'] ?? '',
+        depthIn: obj['depth_in'] ?? obj['depth'] ?? '',
+        defaultWasteFactor: obj['default_waste_factor'] ?? obj['waste_factor'] ?? obj['waste'] ?? '',
+        purchaseUnit: obj['purchase_unit'] ?? '',
+        qtyPerPurchaseUnit: obj['qty_per_purchase_unit'] ?? '',
+        costPerPurchaseUnit: obj['cost_per_purchase_unit'] ?? '',
+        subcategory: obj['subcategory'] ?? '',
+        supplierSku: obj['supplier_sku'] ?? obj['sku'] ?? '',
+        computationModel: obj['computation_model'] ?? '',
+      };
     }).filter(r => r.name);
   }
 
@@ -291,19 +316,40 @@ export const MaterialLibrary: React.FC = () => {
     const payloads: Array<Omit<Material, 'id'>> = csvPreview.map((row) => {
       const inferred = inferModel(row.name);
       const cost = parseFloat(row.cost) || 0;
+      // F-CW-29: prefer explicit CSV values over inferred defaults so power
+      // users can supply complete engine-ready rows. Falls back to inferred
+      // for any column the user omitted.
+      const numOrNull = (v: string | undefined): number | null => {
+        if (!v) return null;
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : null;
+      };
+      // Waste factor: accept 5, 0.05, or "5%" — normalize to fraction.
+      const parseWaste = (v: string | undefined): number => {
+        if (!v) return 0.05;
+        const cleaned = v.replace('%', '').trim();
+        const n = parseFloat(cleaned);
+        if (!Number.isFinite(n)) return 0.05;
+        return n > 1 ? n / 100 : n; // assume "5" means 5%
+      };
+      const csvCostPerPurchaseUnit = numOrNull(row.costPerPurchaseUnit);
       return {
         name: row.name,
         category: row.category || inferred.category,
         unit: row.unit || inferred.purchaseUnit,
         cost,
-        reserveOverride: null, coverage: null, depthIn: null,
+        reserveOverride: null,
+        coverage: numOrNull(row.coverage),
+        depthIn: numOrNull(row.depthIn),
         notes: '', qtyOnHand: 0, minStockLevel: 0,
         storageLocation: '', lastRestocked: '',
-        computationModel: inferred.model,
-        purchaseUnit: row.unit || inferred.purchaseUnit,
-        costPerPurchaseUnit: cost,
-        defaultWasteFactor: 0.05,
-        subcategory: inferred.subcategory,
+        computationModel: row.computationModel || inferred.model,
+        purchaseUnit: row.purchaseUnit || row.unit || inferred.purchaseUnit,
+        qtyPerPurchaseUnit: numOrNull(row.qtyPerPurchaseUnit) ?? 1,
+        costPerPurchaseUnit: csvCostPerPurchaseUnit ?? cost,
+        defaultWasteFactor: parseWaste(row.defaultWasteFactor),
+        subcategory: row.subcategory || inferred.subcategory,
+        supplierSku: row.supplierSku || null,
         isActive: true,
       } as Omit<Material, 'id'>;
     });
@@ -546,7 +592,7 @@ export const MaterialLibrary: React.FC = () => {
       </div>
 
       {/* Low Stock Alert Banner — only on inventory tab */}
-      {activeTab === 'inventory' && <LowStockBanner lowStockItems={lowStockItems} />}
+      {activeTab === 'inventory' && <LowStockBanner lowStockItems={lowStockItems} totalCount={materials.length} />}
 
       {/* Reorder Panel — only on inventory tab */}
       {activeTab === 'inventory' && <ReorderPanel />}
@@ -743,6 +789,7 @@ export const MaterialLibrary: React.FC = () => {
               activeCatLabel={activeCatDef.label}
               openEditModal={openEditModal}
               openAddModal={openAddModal}
+              onDeleteMaterial={(m) => setDeleteMaterialId(m.id)}
             />
           </div>
         </div>

@@ -91,6 +91,8 @@ export async function fetchSharedProjectByToken(token: string): Promise<{
   elements: ProjectElement[]
   /** Sprint 7c: map of materialId → Material for texture URL lookup in PlanView3D. */
   materialsById: Record<string, Material>
+  /** F-CW-15b: company name for client-side branding on /share/:token. */
+  companyName: string | null
 } | null> {
   // 1. Token validity check
   const { data: tokenRow, error: tokenErr } = await supabase
@@ -183,12 +185,28 @@ export async function fetchSharedProjectByToken(token: string): Promise<{
     }
   }
 
+  // F-CW-15b: company-name lookup for the client landing on /share/:token.
+  // Anon SELECT on organizations is gated by migration 028 RLS to orgs that
+  // have an active share_token row — safe to fetch without auth. Best-effort:
+  // if RLS denies it, we just show "Your contractor" as a fallback.
+  let companyName: string | null = null
+  try {
+    const { data: orgRow } = await supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', shareToken.orgId)
+      .maybeSingle<{ name: string | null }>()
+    companyName = orgRow?.name ?? null
+  } catch (err) {
+    console.warn('fetchSharedProjectByToken organization lookup failed (non-blocking):', err)
+  }
+
   // 5. Fire-and-forget view bump (RPC; doesn't block render).
   supabase.rpc('bump_share_token_view', { p_token: token }).then(({ error }) => {
     if (error) console.warn('bump_share_token_view:', error.message)
   })
 
-  return { token: shareToken, project, elements, materialsById }
+  return { token: shareToken, project, elements, materialsById, companyName }
 }
 
 /** Builds the absolute URL a contractor copies to share. */

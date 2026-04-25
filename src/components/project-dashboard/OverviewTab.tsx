@@ -565,22 +565,47 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               </div>
             </div>
             {(() => {
-              const phases = [...new Set(tasks.map(t => t.phase))];
-              return phases.map(phase => {
+              // F-CW-48: include all standard phases (even ones with no tasks
+              // yet) so contractors can add tasks to any phase. Wizard-
+              // generated tasks normally only cover the phases AI thought
+              // applied, so missing phases would be invisible without this.
+              const populatedPhases = [...new Set(tasks.map(t => t.phase))];
+              const allPhases = ['demo_prep', 'rough_grade', 'hardscape', 'softscape', 'irrigation', 'lighting', 'cleanup_punchlist'];
+              const phasesToShow = onTaskCreate
+                ? Array.from(new Set([...populatedPhases, ...allPhases]))
+                : populatedPhases;
+              return phasesToShow.map(phase => {
                 const phaseTasks = tasks.filter(t => t.phase === phase).sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+                if (phaseTasks.length === 0 && !onTaskCreate) return null;
                 return (
                   <div key={phase} className="mb-[8px]">
-                    <div className="text-[11px] font-[600] text-[var(--text-3)] uppercase mb-[4px]">{PHASE_LABELS[phase] || phase}</div>
-                    <TaskTable
-                      tasks={phaseTasks}
-                      editingTaskId={editingTaskId}
-                      confirmDeleteId={confirmDeleteId}
-                      onEditTask={setEditingTaskId}
-                      onConfirmDelete={setConfirmDeleteId}
-                      onStatusChange={onStatusChange}
-                      onTaskSave={(id, updates) => { onTaskUpdate?.(id, updates); setEditingTaskId(null); }}
-                      onTaskDelete={(id) => { onTaskDelete?.(id); setConfirmDeleteId(null); }}
-                    />
+                    <div className="flex items-center justify-between mb-[4px]">
+                      <div className="text-[11px] font-[600] text-[var(--text-3)] uppercase">{PHASE_LABELS[phase] || phase}</div>
+                      {onTaskCreate && (
+                        <button
+                          type="button"
+                          onClick={() => onTaskCreate(phase)}
+                          className="text-[11px] font-[500] cursor-pointer bg-transparent border-none px-[6px] py-[2px] rounded-[4px]"
+                          style={{ color: 'var(--green-l)' }}
+                        >
+                          + Add Task
+                        </button>
+                      )}
+                    </div>
+                    {phaseTasks.length > 0 ? (
+                      <TaskTable
+                        tasks={phaseTasks}
+                        editingTaskId={editingTaskId}
+                        confirmDeleteId={confirmDeleteId}
+                        onEditTask={setEditingTaskId}
+                        onConfirmDelete={setConfirmDeleteId}
+                        onStatusChange={onStatusChange}
+                        onTaskSave={(id, updates) => { onTaskUpdate?.(id, updates); setEditingTaskId(null); }}
+                        onTaskDelete={(id) => { onTaskDelete?.(id); setConfirmDeleteId(null); }}
+                      />
+                    ) : (
+                      <div className="text-[11px] text-[var(--text-4)] italic px-[2px] pb-[6px]">No tasks in this phase yet.</div>
+                    )}
                   </div>
                 );
               });

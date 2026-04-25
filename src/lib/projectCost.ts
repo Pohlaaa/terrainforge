@@ -25,7 +25,7 @@ export interface CostInputs {
 }
 
 export interface CostBreakdown {
-  /** labor + materials + equipment + subs + disposal + equipmentCost + permits. Pre-overhead. */
+  /** labor + materials + max(equipmentBudget, equipmentCost) + subs + disposal + permits. Pre-overhead. */
   directCosts: number;
   /** directCosts × (overheadPct / 100). Defaults to 10% when overheadPct is null. */
   overhead: number;
@@ -42,16 +42,23 @@ export interface CostBreakdown {
 export function computeProjectCost(input: CostInputs): CostBreakdown {
   const labor = input.laborBudget ?? 0;
   const materials = input.materialsBudget ?? 0;
+  // F-CW-14: `equipmentBudget` and `equipmentCost` are duplicate-overlapping
+  // fields. Wizard sets equipmentBudget (and sometimes equipmentCost) but
+  // persistence only saves equipmentCost. Summing both double-counted
+  // equipment in the wizard, then under-counted on persisted projects.
+  // Prefer whichever source has a value; if both, take the larger so we
+  // don't silently lose data during the migration period.
   const equipmentBudget = input.equipmentBudget ?? 0;
+  const equipmentCost = input.equipmentCost ?? 0;
+  const equipment = Math.max(equipmentBudget, equipmentCost);
   const subs = input.subcontractorBudget ?? 0;
   const disposal = input.disposalCost ?? 0;
-  const equipmentCost = input.equipmentCost ?? 0;
   const permitFeesSum = input.permitFees
     ? Object.values(input.permitFees).reduce((s, v) => s + (v ?? 0), 0)
     : 0;
 
   const directCosts =
-    labor + materials + equipmentBudget + subs + disposal + equipmentCost + permitFeesSum;
+    labor + materials + equipment + subs + disposal + permitFeesSum;
   const overheadPct = input.overheadPct ?? 10;
   const overhead = directCosts * (overheadPct / 100);
   const totalCost = directCosts + overhead;

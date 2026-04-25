@@ -26,6 +26,16 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
     return initial;
   });
   const [completing, setCompleting] = useState(false);
+  const [savingUsage, setSavingUsage] = useState(false);
+  // F-CW-44: track whether the draft differs from persisted so Save Usage
+  // can be enabled/disabled appropriately.
+  const hasUnsavedUsage = useMemo(() => {
+    return (project.materials ?? []).some(mat => {
+      const persisted = mat.actualUsage ?? mat.quantity;
+      const draft = actualUsages[mat.id] ?? persisted;
+      return draft !== persisted;
+    });
+  }, [project.materials, actualUsages]);
 
   // Get materials with estimated quantity from manifest
   const materials = project.materials ?? [];
@@ -76,6 +86,27 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
   const handleActualChange = (materialId: string, value: string) => {
     const num = parseFloat(value) || 0;
     setActualUsages((prev) => ({ ...prev, [materialId]: Math.max(0, num) }));
+  };
+
+  // F-CW-44: save usage WITHOUT transitioning to Completed. Lets the
+  // contractor track actuals as the project progresses, not just at closeout.
+  const handleSaveUsage = async () => {
+    if (savingUsage) return;
+    setSavingUsage(true);
+    try {
+      const updatedMaterials = materials.map((mat) => ({
+        ...mat,
+        actualUsage: actualUsages[mat.id] ?? mat.quantity,
+      }));
+      await updateProject(project.id, { materials: updatedMaterials });
+      toast.success('Material usage saved');
+      onProjectUpdated();
+    } catch (err) {
+      toast.error('Failed to save usage');
+      console.error('Save usage error:', err);
+    } finally {
+      setSavingUsage(false);
+    }
   };
 
   // Complete project handler
@@ -329,14 +360,28 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
       )}
 
       {/* Completion Button — always rendered regardless of material count.
-          F-CW-39: relabel + offer "Update Usage" when already completed instead
-          of duplicating the Complete action. */}
+          F-CW-39: relabel "Complete Project" → "Update Usage" when project is
+          already Completed (so re-clicking doesn't seem like a duplicate
+          completion).
+          F-CW-44: separate "Save Usage" preserves status; "Complete Project"
+          saves AND transitions status. Without this split, recording actuals
+          on an in-progress project required prematurely marking it complete. */}
       <div className="flex justify-end gap-[12px] pt-[12px]">
+        {hasMaterials && project.status !== 'completed' && (
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={handleSaveUsage}
+            disabled={savingUsage || completing || !hasUnsavedUsage}
+          >
+            {savingUsage ? 'Saving...' : 'Save Usage'}
+          </Button>
+        )}
         <Button
           variant="primary"
           size="md"
           onClick={handleCompleteProject}
-          disabled={completing}
+          disabled={completing || savingUsage}
         >
           {completing
             ? (project.status === 'completed' ? 'Updating...' : 'Completing...')

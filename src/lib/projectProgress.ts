@@ -90,14 +90,19 @@ export function computeProjectProgress(
   const isCompleted = status === 'completed';
   const closeoutScore = [hasActualUsage, isCompleted].filter(Boolean).length / 2;
 
-  // Weighted overall
-  const percentage = Math.round(
-    (setupScore * GATE_WEIGHTS.setup +
-     planningScore * GATE_WEIGHTS.planning +
-     schedulingScore * GATE_WEIGHTS.scheduling +
-     executionScore * GATE_WEIGHTS.execution +
-     closeoutScore * GATE_WEIGHTS.closeout) * 100
-  );
+  // Weighted overall.
+  // F-CW-20: terminal status overrides per-gate math. A `status='completed'`
+  // project should always read 100% even if individual tasks weren't marked
+  // completed (contractor flipped status without backfilling task statuses).
+  const percentage = isCompleted
+    ? 100
+    : Math.round(
+        (setupScore * GATE_WEIGHTS.setup +
+         planningScore * GATE_WEIGHTS.planning +
+         schedulingScore * GATE_WEIGHTS.scheduling +
+         executionScore * GATE_WEIGHTS.execution +
+         closeoutScore * GATE_WEIGHTS.closeout) * 100
+      );
 
   // Determine current stage
   let currentStage = 'Setup';

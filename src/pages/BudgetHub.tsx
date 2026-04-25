@@ -36,6 +36,21 @@ function getChecklistCompletion(p: Project): number {
 }
 
 function getProjectStatus(p: Project): { label: string; variant: 'green' | 'blue' | 'red' | 'purple' | 'amber' } {
+  // F-CW-56: respect the project's actual status field first. The previous
+  // version only looked at start_date / target_date and would label a
+  // status='completed' project as "Active" or "Scheduled" depending on
+  // the dates, contradicting the badge on the project page.
+  switch (p.status) {
+    case 'completed': return { label: 'Completed', variant: 'green' };
+    case 'in_progress': return { label: 'Active', variant: 'green' };
+    case 'scheduled': return { label: 'Scheduled', variant: 'blue' };
+    case 'approved': return { label: 'Approved', variant: 'amber' };
+    case 'quoted': return { label: 'Quoted', variant: 'amber' };
+    case 'estimate': return { label: 'Estimate', variant: 'purple' };
+    case 'on_hold': return { label: 'On Hold', variant: 'red' };
+  }
+  // Fallback for legacy projects without a status field — keep the original
+  // date-based heuristic so we don't break older data.
   const now = new Date();
   const start = p.startDate ? new Date(p.startDate) : null;
   const target = p.targetDate ? new Date(p.targetDate) : null;
