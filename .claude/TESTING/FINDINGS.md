@@ -884,3 +884,50 @@ Test send #2 returned `{ ok: true, emailed: true }` in 2.3s. Email reached the i
 `Contractor clicks Email → wizard's modal → frontend service → Edge Function → Resend → client inbox`
 
 The contractor-walkthrough loop is complete.
+
+---
+
+## 2026-04-24 — Walkthrough #2 (Garcia Front Walkway + Retaining Wall)
+
+Re-ran the contractor walkthrough on a different scenario to verify Session 1 + Session 2 fixes hold and surface net-new findings. Project: front walkway (30×3 flagstone), retaining wall (20ft linear, 3ft tall, stacked stone), 2 ornamental trees, 6 boxwood shrubs, mulched planting beds. Different element types from Walkthrough #1 (no demolition, no patio, point-spacing planting).
+
+### Verifications of prior fixes
+- ✅ **F-CW-05** copy verified: address warning now reads "Pick a result from the dropdown to verify the address."
+- ✅ **F-CW-04** demo-strip not triggered (no demolition in description) — but see F-CW-12 for related issue.
+- ✅ **F-CW-07** wizard Step 5 vs Step 6 numbers identical: $12,846 / $16,057 / 20% across both screens.
+- ✅ **F-CW-09** + **F-CW-EMAIL-02** verified live: send-proposal-email returned `emailed: true` in 1.7s, sent for "Garcia Front Walkway + Retaining Wall" with greeting "Hi Maria Garcia,". Live in prod.
+- 🟡 **F-CW-10** partial: scroll-to-top works on Step 2→3 transition (Step 3 rendered with header visible) but **failed on Step 1→2** (`mainScroll: 3924` post-click). Hypothesis: Step 2's `applySuggestions` useEffect fills 8 elements after mount → DOM grows → my synchronous scrollTop reset runs before the content swap and gets overridden by the browser's scroll-anchoring. Fix: defer `scrollToWizardTop()` to a `requestAnimationFrame` after step state commits.
+
+### Net-new findings
+
+#### F-CW-11 / P3 — Step-indicator row overflows wizard panel
+The horizontal row of 6 step pills (Job / Measurements / Plan / Materials / Numbers / Review) is wider than the wizard card on a typical 535px viewport, producing a horizontal scrollbar inside the card. Visible immediately on Step 1. Doesn't break functionality but looks unfinished. Likely needs responsive sizing on the step indicator (truncate labels, smaller pills, or wrap).
+
+#### F-CW-12 / P1 — AI element inference still too loose on non-install context
+The F-CW-04 fix (strip demolition clauses) doesn't cover this related class of false positive. With the description *"Install a flagstone walkway from driveway to front door … Mulch the planting beds"*, the keyword matcher inferred:
+- ❌ **Patio** — because "flagstone" is a Patio keyword (it appeared inside "flagstone walkway")
+- ❌ **Driveway** — because "from **driveway** to" matched, even though driveway is a reference point, not an install target
+- ❌ **Garden Beds** — because "planting beds" matched, even though contractor is mulching *existing* beds, not building new ones
+
+The matcher needs verb-context awareness ("install/build/add" + keyword) or AI-driven inference instead of pure substring matching. F-CW-04 was a band-aid; this is the deeper fix.
+
+#### F-CW-13 / P2 — Tree Planting element has Area input but trees are counts, not square footage
+For "2 small ornamental trees by the entrance," the Tree Planting element's only numeric input is "Area (sqft)." That's awkward — contractors think of trees in counts (with optional spacing), not sqft. Element-type dimension config (`DIMENSION_CONFIG` in `WizardStepMeasurements.tsx`) needs a `count` and/or `spacing` mode for the planting element types. Same issue likely applies to Shrub Planting.
+
+#### F-CW-14 / P2 — Wizard vs Overview $230 drift on persist
+Wizard Step 5+6 showed $12,846 total cost. Project Overview showed $12,616. Database row reveals: `equipment_budget: null`, `equipment_cost: 1200`. The wizard's `computeProjectCost` (post-Session-1 fix) sums BOTH `equipmentBudget` + `equipmentCost`, but only `equipmentCost` got persisted. So wizard had `equipmentBudget=200` (probably AI-seeded), which vanished on save → Overview's recomputation comes up $230 short.
+
+Root cause: `equipmentBudget` and `equipmentCost` are duplicate-overlapping fields on the `Project` row. Either persist both or collapse the schema to one. F-CW-07 closed the formula divergence; F-CW-14 is the data-shape divergence.
+
+### Status snapshot after Walkthrough #2
+| ID | Status |
+|----|--------|
+| F-CW-01..05, 08, 09 | ✅ verified live |
+| F-CW-06, 07 | ✅ verified at wizard layer; F-CW-14 reveals data-persist edge case |
+| F-CW-10 | 🟡 partial (Step 1→2 still off) |
+| F-CW-11 | 🆕 P3 — step-indicator overflow |
+| F-CW-12 | 🆕 **P1** — element inference context misreads (real category) |
+| F-CW-13 | 🆕 P2 — Tree/Shrub dimension config |
+| F-CW-14 | 🆕 P2 — equipment_budget vs equipment_cost persist drift |
+
+**Verdict on Walkthrough #2**: the major bugs are fixed and the email loop works, but two new P1/P2 findings emerged (F-CW-12 element inference, F-CW-14 budget persist) plus a smaller F-CW-10 partial regression. Recommended next session: tackle F-CW-12 (most user-visible — every fresh-contractor description hits this) and F-CW-14 (trust-erosion).
