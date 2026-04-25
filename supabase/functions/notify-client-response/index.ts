@@ -41,7 +41,7 @@ interface ShareTokenRow {
 
 interface ProjectRow {
   name: string
-  client: string | null
+  client_name: string | null
   address: string | null
 }
 
@@ -116,11 +116,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // ── Get the project + contractor (org owner) ──────────────────────────
-  const { data: projectRow } = await supabase
+  // Same client_name fix as send-proposal-email + surface errors instead of
+  // swallowing them.
+  const { data: projectRow, error: projectErr } = await supabase
     .from('projects')
-    .select('name, client, address')
+    .select('name, client_name, address')
     .eq('id', tokenRow.project_id)
     .maybeSingle<ProjectRow>()
+  if (projectErr) {
+    console.error('notify-client-response: project lookup failed', projectErr)
+  }
 
   const { data: orgRow } = await supabase
     .from('organizations')
@@ -143,7 +148,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // Log for debugging regardless of whether we actually send
   console.log('notify-client-response', {
     project: projectRow?.name,
-    client: projectRow?.client,
+    client: projectRow?.client_name,
     response: body.response,
     note: body.note,
     contractorEmail,
@@ -164,8 +169,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const subject =
     body.response === 'approved'
-      ? `✓ ${projectRow?.client ?? 'Your client'} approved: ${projectRow?.name ?? 'project'}`
-      : `✎ ${projectRow?.client ?? 'Your client'} requested changes: ${projectRow?.name ?? 'project'}`
+      ? `✓ ${projectRow?.client_name ?? 'Your client'} approved: ${projectRow?.name ?? 'project'}`
+      : `✎ ${projectRow?.client_name ?? 'Your client'} requested changes: ${projectRow?.name ?? 'project'}`
 
   const noteBlock = body.note
     ? `<p><strong>Their note:</strong></p><blockquote style="border-left:3px solid #10B981;padding:8px 12px;background:#f8fafc;color:#334155;">${escapeHtml(body.note)}</blockquote>`
@@ -177,7 +182,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       <body style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;">
         <h1 style="color:#10B981;font-size:20px;margin:0 0 16px 0;">TerrainForge</h1>
         <p>Hi${contractorName ? ` ${contractorName}` : ''},</p>
-        <p>${projectRow?.client ?? 'Your client'} just ${body.response === 'approved' ? 'approved' : 'requested changes on'} <strong>${projectRow?.name ?? 'their project'}</strong>${projectRow?.address ? ` at ${projectRow.address}` : ''}.</p>
+        <p>${projectRow?.client_name ?? 'Your client'} just ${body.response === 'approved' ? 'approved' : 'requested changes on'} <strong>${projectRow?.name ?? 'their project'}</strong>${projectRow?.address ? ` at ${projectRow.address}` : ''}.</p>
         ${noteBlock}
         <p style="margin-top:24px;font-size:12px;color:#64748b;">This is an automatic notification from TerrainForge.</p>
       </body>

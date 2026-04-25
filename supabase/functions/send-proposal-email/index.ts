@@ -43,7 +43,7 @@ interface ShareTokenRow {
 
 interface ProjectRow {
   name: string
-  client: string | null
+  client_name: string | null
   address: string | null
 }
 
@@ -119,19 +119,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { authorization: authHeader } },
   })
 
-  const { data: userData, error: userErr } = await supabase.auth.getUser(
-    authHeader.replace(/^Bearer\s+/i, ''),
-  )
-  if (userErr || !userData?.user) {
+  // Decode the JWT directly. The function is deployed with verify_jwt=true,
+  // so the Supabase gateway already validated signature + expiry before
+  // invoking us. Calling supabase.auth.getUser(jwt) on a service-role client
+  // returns 401 — that API is for anon-keyed clients only.
+  const jwt = authHeader.replace(/^Bearer\s+/i, '')
+  let userId: string
+  try {
+    const payload = JSON.parse(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    if (!payload.sub) throw new Error('no sub claim')
+    userId = payload.sub
+  } catch (err) {
+    console.error('JWT decode failed', err)
     return new Response(JSON.stringify({ ok: false, reason: 'auth invalid' }), {
       status: 401,
       headers: jsonHeaders,
     })
   }
-  const userId = userData.user.id
 
   // Look up token + verify the caller is a member of the token's org
   const { data: tokenRow } = await supabase
@@ -162,11 +168,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // ── Compose email ─────────────────────────────────────────────────────
-  const { data: projectRow } = await supabase
+  // F-CW-CW-PROJECTNAME fix: column is client_name, not client. Without this
+  // the projectRow query failed silently (no error handling) and emails went
+  // out with subject "Your design proposal: your project". Now: surface
+  // errors so the next column drift doesn't ship to clients unnoticed.
+  const { data: projectRow, error: projectErr } = await supabase
     .from('projects')
-    .select('name, client, address')
+    .select('name, client_name, address')
     .eq('id', tokenRow.project_id)
     .maybeSingle<ProjectRow>()
+  if (projectErr) {
+    console.error('send-proposal-email: project lookup failed', projectErr)
+  }
 
   const { data: orgRow } = await supabase
     .from('organizations')
@@ -186,7 +199,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const companyName = orgRow?.name ?? 'Your contractor'
   const projectName = projectRow?.name ?? 'your project'
-  const clientGreeting = projectRow?.client ? `Hi ${projectRow.client}` : 'Hello'
+  const clientGreeting = projectRow?.client_name ? `Hi ${projectRow.client_name}` : 'Hello'
 
   // Log for debugging
   console.log('send-proposal-email', {
