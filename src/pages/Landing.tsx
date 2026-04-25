@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HOOKS
@@ -470,7 +471,7 @@ function EquipmentMockup() {
    SECTIONS
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function Navbar({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
+function Navbar({ onLogin, onSignup, ctaLabel = 'Start Free Trial', authed = false }: { onLogin: () => void; onSignup: () => void; ctaLabel?: string; authed?: boolean }) {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -504,26 +505,28 @@ function Navbar({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => vo
         </div>
       </div>
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-        <button onClick={onLogin} style={{
-          background: 'transparent', color: C.body,
-          border: `1px solid ${C.borderHover}`, borderRadius: '8px',
-          padding: '8px 20px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease',
-        }}>
-          Log In
-        </button>
+        {!authed && (
+          <button onClick={onLogin} style={{
+            background: 'transparent', color: C.body,
+            border: `1px solid ${C.borderHover}`, borderRadius: '8px',
+            padding: '8px 20px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease',
+          }}>
+            Log In
+          </button>
+        )}
         <button onClick={onSignup} style={{
           background: C.greenDark, color: 'white', border: 'none', borderRadius: '8px',
           padding: '8px 24px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s ease',
           boxShadow: `0 0 20px ${C.greenGlow}`,
         }}>
-          Start Free Trial
+          {ctaLabel}
         </button>
       </div>
     </nav>
   )
 }
 
-function Hero({ onSignup }: { onSignup: () => void }) {
+function Hero({ onSignup, ctaLabel = 'Start Free Trial' }: { onSignup: () => void; ctaLabel?: string }) {
   const parallax = useParallax(0.15)
   const reducedMotion = useReducedMotion()
   const [mounted, setMounted] = useState(false)
@@ -586,7 +589,7 @@ function Hero({ onSignup }: { onSignup: () => void }) {
             padding: '16px 36px', fontSize: '17px', fontWeight: 600, cursor: 'pointer',
             boxShadow: `0 0 30px ${C.greenGlow}, 0 4px 12px rgba(0,0,0,0.3)`, transition: 'all 0.2s ease',
           }}>
-            Start Your Free Trial
+            {ctaLabel}
           </button>
           <a href="#features" style={{
             display: 'inline-flex', alignItems: 'center', gap: '8px',
@@ -930,7 +933,7 @@ function Testimonials() {
   )
 }
 
-function Pricing({ onSignup }: { onSignup: () => void }) {
+function Pricing({ onSignup, ctaLabel = 'Start Free Trial' }: { onSignup: () => void; ctaLabel?: string }) {
   const reveal = useScrollReveal()
   const { ref: cardsRef, getItemStyle } = useStaggerReveal(3, 120)
 
@@ -1013,7 +1016,7 @@ function Pricing({ onSignup }: { onSignup: () => void }) {
               color: plan.highlight ? 'white' : C.body,
               fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s ease',
             }}>
-              Start Free Trial
+              {ctaLabel}
             </button>
           </div>
         ))}
@@ -1022,7 +1025,7 @@ function Pricing({ onSignup }: { onSignup: () => void }) {
   )
 }
 
-function FinalCTA({ onSignup }: { onSignup: () => void }) {
+function FinalCTA({ onSignup, ctaLabel = 'Start Your Free Trial', hideTrialDisclaimer = false }: { onSignup: () => void; ctaLabel?: string; hideTrialDisclaimer?: boolean }) {
   const reveal = useScrollReveal()
 
   return (
@@ -1043,17 +1046,19 @@ function FinalCTA({ onSignup }: { onSignup: () => void }) {
           padding: '18px 48px', fontSize: '18px', fontWeight: 600, cursor: 'pointer',
           boxShadow: `0 0 40px ${C.greenGlow}, 0 4px 12px rgba(0,0,0,0.3)`, transition: 'all 0.2s ease',
         }}>
-          Start Your Free Trial
+          {ctaLabel}
         </button>
-        <p style={{ color: C.subtle, fontSize: '13px', marginTop: '16px' }}>
-          14 days free. No credit card. Cancel anytime.
-        </p>
+        {!hideTrialDisclaimer && (
+          <p style={{ color: C.subtle, fontSize: '13px', marginTop: '16px' }}>
+            14 days free. No credit card. Cancel anytime.
+          </p>
+        )}
       </div>
     </section>
   )
 }
 
-function Footer({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
+function Footer({ onLogin, onSignup, authed = false }: { onLogin: () => void; onSignup: () => void; authed?: boolean }) {
   return (
     <footer style={{
       padding: '40px clamp(16px, 4vw, 48px)', background: C.bg,
@@ -1071,11 +1076,13 @@ function Footer({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => vo
         ].map(link => (
           <a key={link.label} href={link.href} style={{ color: C.muted, fontSize: '13px', textDecoration: 'none' }}>{link.label}</a>
         ))}
-        <button onClick={onLogin} style={{ background: 'transparent', border: 'none', color: C.muted, fontSize: '13px', cursor: 'pointer' }}>
-          Log In
-        </button>
+        {!authed && (
+          <button onClick={onLogin} style={{ background: 'transparent', border: 'none', color: C.muted, fontSize: '13px', cursor: 'pointer' }}>
+            Log In
+          </button>
+        )}
         <button onClick={onSignup} style={{ background: 'transparent', border: 'none', color: C.muted, fontSize: '13px', cursor: 'pointer' }}>
-          Sign Up
+          {authed ? 'Dashboard' : 'Sign Up'}
         </button>
       </div>
     </footer>
@@ -1088,21 +1095,26 @@ function Footer({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => vo
 
 export default function Landing() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const goLogin = () => navigate('/login')
-  const goSignup = () => navigate('/signup')
+  // F-CW-02: when an authed user hits /landing directly, the CTA shouldn't say
+  // "Start Free Trial" — they already have an account. Route them to the
+  // dashboard instead and swap the label everywhere via the shared CTA prop.
+  const goSignup = user ? () => navigate('/dashboard') : () => navigate('/signup')
+  const ctaLabel = user ? 'Open dashboard' : 'Start Free Trial'
 
   return (
     <div style={{ background: C.bg, color: C.heading, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-      <Navbar onLogin={goLogin} onSignup={goSignup} />
-      <Hero onSignup={goSignup} />
+      <Navbar onLogin={goLogin} onSignup={goSignup} ctaLabel={ctaLabel} authed={!!user} />
+      <Hero onSignup={goSignup} ctaLabel={ctaLabel} />
       <PainPoints />
       <Features />
       <HowItWorks />
       <Stats />
       <Testimonials />
-      <Pricing onSignup={goSignup} />
-      <FinalCTA onSignup={goSignup} />
-      <Footer onLogin={goLogin} onSignup={goSignup} />
+      <Pricing onSignup={goSignup} ctaLabel={ctaLabel} />
+      <FinalCTA onSignup={goSignup} ctaLabel={user ? 'Open dashboard' : 'Start Your Free Trial'} hideTrialDisclaimer={!!user} />
+      <Footer onLogin={goLogin} onSignup={goSignup} authed={!!user} />
     </div>
   )
 }

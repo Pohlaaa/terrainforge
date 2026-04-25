@@ -123,12 +123,22 @@ export const useOrgStore = create<OrgStore>()(
               const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
               // Bug 1 fix: include slug (NOT NULL UNIQUE constraint)
               const slug = 'org-' + orgId.replace(/-/g, '').slice(0, 8) + '-' + Date.now()
+
+              // F-CW-03: pull company_name from auth metadata (set on Signup
+              // form). When present, use it as the initial org name so the
+              // contractor doesn't see an empty/placeholder name in the
+              // dashboard before completing onboarding. Onboarding's company
+              // setup step still lets them edit it.
+              const { data: userResp } = await supabase.auth.getUser()
+              const meta = (userResp?.user?.user_metadata ?? {}) as { company_name?: string }
+              const initialName = (meta.company_name ?? '').trim()
+
               const { data: newOrg, error: insertError } = await supabase
                 .from('organizations')
                 .insert([{
                   id: orgId,
                   owner_id: orgId,
-                  name: '',
+                  name: initialName,
                   slug,
                   subscription_status: 'trialing',
                   subscription_tier: 'starter',

@@ -317,6 +317,20 @@ export default function ProjectWizard() {
     }
   }, [recommendations, aiLoading, data, crewStore.crew, equipmentStore.equipment, materialStore.materials, org, scheduleStore.assignments, scheduleStore.entries, projectStore.projects]);
 
+  // F-CW-10: scroll the wizard's scroll container to the top when stepping
+  // forward/back. Without this, contractors land mid-page on the next step's
+  // content with no header context. Targets the inner <main> scroll container
+  // (the AppLayout pattern) plus window for safety.
+  const scrollToWizardTop = () => {
+    // The wizard renders inside <main class="...overflow-y-auto..."> per
+    // AppLayout. Find the nearest scrollable ancestor and reset it.
+    const scrollables = Array.from(document.querySelectorAll('main, [data-scroll-container]'));
+    for (const el of scrollables) {
+      (el as HTMLElement).scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+
   const handleNext = () => {
     if (currentStep < WIZARD_STEPS.length - 1) {
       // Trigger AI after Step 0 (The Job) — has description + address + site conditions
@@ -324,12 +338,14 @@ export default function ProjectWizard() {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
       setHighestVisitedStep(prev => Math.max(prev, nextStep));
+      scrollToWizardTop();
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep((s) => s - 1);
+      scrollToWizardTop();
     }
   };
 
@@ -353,6 +369,7 @@ export default function ProjectWizard() {
         triggerAIIfNeeded();
       }
       setCurrentStep(stepIndex);
+      scrollToWizardTop();
     }
   };
 

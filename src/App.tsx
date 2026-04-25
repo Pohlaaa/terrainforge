@@ -46,8 +46,11 @@ function HomeRoute() {
     )
   }
   if (user) return <Navigate to="/dashboard" replace />
+  // F-CW-01: match Landing's actual root background (#0B1A14, dark
+  // green-black). Was #0A0A0A which produced a visible color flash between
+  // suspense fallback and Landing's first paint.
   return (
-    <React.Suspense fallback={<div style={{ background: '#0A0A0A', minHeight: '100vh' }} />}>
+    <React.Suspense fallback={<div style={{ background: '#0B1A14', minHeight: '100vh' }} />}>
       <Landing />
     </React.Suspense>
   )
@@ -88,7 +91,7 @@ function App() {
           {/* Public routes - no layout */}
           <Route path="/" element={<HomeRoute />} />
           <Route path="/landing" element={
-            <React.Suspense fallback={<div style={{ background: '#0A0A0A', minHeight: '100vh' }} />}>
+            <React.Suspense fallback={<div style={{ background: '#0B1A14', minHeight: '100vh' }} />}>
               <Landing />
             </React.Suspense>
           } />
@@ -100,7 +103,7 @@ function App() {
 
           {/* Public client-facing share link (migration 028) — no auth, no layout */}
           <Route path="/share/:token" element={
-            <React.Suspense fallback={<div style={{ background: '#0A0A0A', minHeight: '100vh' }} />}>
+            <React.Suspense fallback={<div style={{ background: '#0B1A14', minHeight: '100vh' }} />}>
               <SharedProjectView />
             </React.Suspense>
           } />
@@ -109,7 +112,7 @@ function App() {
               import.meta.env.DEV gate means this route just 404s in prod. */}
           {import.meta.env.DEV && (
             <Route path="/design/sandbox" element={
-              <React.Suspense fallback={<div style={{ background: '#0A0A0A', minHeight: '100vh' }} />}>
+              <React.Suspense fallback={<div style={{ background: '#0B1A14', minHeight: '100vh' }} />}>
                 <DesignSandbox />
               </React.Suspense>
             } />

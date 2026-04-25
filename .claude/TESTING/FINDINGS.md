@@ -813,3 +813,49 @@ Original report: clicking "Email to client" didn't open the modal. On retest wit
 | F-CW-09 | ✅ shipped (Edge Function v2 deployed) |
 
 **Remaining for next session**: F-CW-01 (landing blank green), F-CW-02 (CTA copy), F-CW-03 (org name placeholder), F-CW-05 (address autocomplete), F-CW-10 (wizard scroll). All P2/P3.
+
+---
+
+## 2026-04-24 — Walkthrough P2/P3 fixes shipped (Session 2)
+
+All five remaining contractor-walkthrough findings closed. Typecheck clean.
+
+### F-CW-01 ✅ Fixed — Landing flash
+The Suspense fallback for the lazy-loaded Landing component was `#0A0A0A` (near-black) but Landing's actual root background is `#0B1A14` (dark green-black). Visible color flip on every fresh visit. Replaced both `<Suspense fallback={...}>` instances in `src/App.tsx` with `#0B1A14` so the fallback color matches and the transition is invisible.
+
+### F-CW-02 ✅ Fixed — CTA copy for authed users
+Threaded `useAuth().user` into Landing. When authed, `goSignup` redirects to `/dashboard` instead of `/signup`, the CTA label becomes "Open dashboard" instead of "Start Free Trial", the "14 days free…" disclaimer is suppressed under FinalCTA, and the "Log In" link disappears from Navbar + Footer. Added optional `ctaLabel` / `authed` props to Navbar, Hero, Pricing, FinalCTA, Footer.
+
+### F-CW-03 ✅ Fixed — Org name placeholder
+Added an optional **Company Name** field to the Signup form. The value flows into `auth.user.user_metadata.company_name`. `orgStore.fetchOrg` reads that metadata when auto-creating the org row for a brand-new user and uses it as the initial `organizations.name` instead of an empty string. Onboarding's company setup step still lets the contractor edit it later.
+
+### F-CW-05 ✅ Fixed — Address autocomplete copy
+Replaced the cryptic *"Address not verified — project won't appear on map"* warning with actionable copy: *"Pick a result from the dropdown to verify the address. Otherwise the project won't appear on the map."* Now contractors know what to do, not just what's wrong.
+
+### F-CW-10 ✅ Fixed — Wizard scroll-to-top
+`handleNext`, `handleBack`, and `handleStepClick` in `ProjectWizard.tsx` now call a new `scrollToWizardTop()` helper that resets the scroll position on the inner `<main>` scroll container plus the window. Contractor lands at the top of the new step's content with header context, instead of mid-page on a random field.
+
+### Status of all contractor-walkthrough findings
+| ID | Status | Commit |
+|----|--------|--------|
+| F-CW-01 | ✅ shipped | (this session) |
+| F-CW-02 | ✅ shipped | (this session) |
+| F-CW-03 | ✅ shipped | (this session) |
+| F-CW-04 | ✅ shipped | `c219d80` |
+| F-CW-05 | ✅ shipped | (this session) |
+| F-CW-06 | ✅ shipped | `c219d80` |
+| F-CW-07 | ✅ shipped | `c219d80` |
+| F-CW-08 | ✅ false positive | n/a |
+| F-CW-09 | ✅ shipped | `c219d80` (Edge Function v2 deployed) |
+| F-CW-10 | ✅ shipped | (this session) |
+
+Walkthrough is **clean end-to-end** at the application layer. The only outstanding gap is operator-side: Resend's domain verification (caused HTTP 422 on the first real send attempt — handled gracefully by the function's fallback path; needs Charlie to verify the sending domain in Resend before real delivery works).
+
+### Files touched in Session 2
+- `src/App.tsx` — Suspense fallback color match
+- `src/pages/Landing.tsx` — useAuth integration, conditional CTA + Login button
+- `src/pages/Signup.tsx` — Company Name field
+- `src/stores/orgStore.ts` — read company_name from auth metadata on org auto-create
+- `src/components/shared/AddressInput.tsx` — actionable copy
+- `src/pages/ProjectWizard.tsx` — scroll-to-top on step transition
+- `.claude/TESTING/FINDINGS.md`

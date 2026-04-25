@@ -221,8 +221,11 @@ export const AddressInput: React.FC<AddressInputProps> = ({
       )}
 
       {showUnverified && (
+        // F-CW-05: copy was confusing because contractors could type a real
+        // address and still see "not verified". Make it clear the action
+        // they need to take is "pick from the dropdown" — not retype.
         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-          Address not verified — project won't appear on map
+          Pick a result from the dropdown to verify the address. Otherwise the project won't appear on the map.
         </div>
       )}
 
