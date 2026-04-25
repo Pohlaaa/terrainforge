@@ -931,3 +931,117 @@ Root cause: `equipmentBudget` and `equipmentCost` are duplicate-overlapping fiel
 | F-CW-14 | 🆕 P2 — equipment_budget vs equipment_cost persist drift |
 
 **Verdict on Walkthrough #2**: the major bugs are fixed and the email loop works, but two new P1/P2 findings emerged (F-CW-12 element inference, F-CW-14 budget persist) plus a smaller F-CW-10 partial regression. Recommended next session: tackle F-CW-12 (most user-visible — every fresh-contractor description hits this) and F-CW-14 (trust-erosion).
+
+---
+
+## 2026-04-25 — Walkthroughs #3, #4, #5 (surface-find mode)
+
+Three additional walkthroughs to exercise unexplored code paths after Sessions 1+2 P1/P2 fixes shipped. Surfaced 6 new findings spanning AI reliability, schema mismatches, and lifecycle UX. Lifecycle pipeline verified clean.
+
+### Walkthrough #3 — Client-side share view (Garcia project)
+
+Opened `/share/<token>` as the client, navigated 2D viewer, scrolled element list, clicked **Request changes**, filled a multi-paragraph note about wheelchair accessibility + stone material options, submitted.
+
+**Worked**:
+- Share URL renders project name, address, element list with dimensions, 2D/3D toggle
+- "What do you think?" panel with Approve / Request changes buttons
+- Note input + submission
+- "Changes requested · Your contractor has been notified" confirmation card
+- Database write to `project_share_tokens.client_response = 'changes_requested'` + `client_note`
+- Contractor-side banner on Overview shows "✎ Client requested changes · timestamp · view counter (viewed 2×) · full note quoted"
+
+**Broke**:
+
+#### F-CW-15 / P1 — `notify-client-response` queries phantom `profiles` table; should be `auth.users`
+Edge Function v6 returned `{ ok: true, emailed: false, reason: "contractor email not found" }`. Postgres logged `relation "profiles" does not exist`. Both `notify-client-response` and `send-proposal-email` query `from('profiles').select('email, display_name')` — the `profiles` table has never existed in this schema. User identity lives in `auth.users` (email) + `auth.users.raw_user_meta_data->>'full_name'`.
+
+Impact:
+- `notify-client-response` can't find contractor email → no email gets sent (graceful fallback fires, in-app banner still works)
+- `send-proposal-email` silently uses `null` for `contractorName` → email body says "{Company} has prepared a design for…" instead of "{Contractor Name} from {Company} has prepared a design for…". I observed this on the live email but didn't recognize it until now.
+
+Fix: replace `profiles` lookup with `supabase.auth.admin.getUserById(orgRow.owner_id)` on the service-role client.
+
+#### F-CW-15b / P3 — Client share view has no contractor branding
+Landing on `/share/:token` shows generic "TerrainForge · Shared project preview" header. No contractor name, company name, phone, email visible. A real client would wonder "where's my contractor?" Should show "Prepared by {company} · {contractor name} · {contact info}" prominently.
+
+#### F-CW-15c / P3 — Request-changes placeholder copy is not project-aware
+The note input placeholder reads `Be specific — "The patio is too small" or "Can we add a path to the shed?"`. Hardcoded patio reference is wrong for non-patio projects (the Garcia walkway/wall in this case). Either rotate examples by project type or make it generic ("Be specific about what you'd like to change").
+
+### Walkthrough #4 — Softscape scenario (Williams Backyard Lawn + Irrigation)
+
+3,000 sqft sod, drip irrigation for 4 garden beds + rotor sprinklers, 50ft French drain, 4 oak trees, 12 boxwood shrubs.
+
+**Element inference clean** — F-CW-12 didn't trigger here because description used explicit install verbs ("Install …", "Plant …", "Add a French drain"). Six elements correctly inferred: Garden Beds, Sod Area, Tree Planting, Shrub Planting, Drainage, Irrigation Zone.
+
+**Catastrophic AI cascade on Step 3+**:
+
+#### F-CW-16 / P1 — Claude JSON parse fails on softscape, drops all recommendations
+Console:
+```
+AI recommendation generation failed: SyntaxError: Unterminated string in JSON at position 12779 (line 310 column 136)
+  at JSON.parse (<anonymous>)
+  at generateProjectRecommendations (src/services/aiRecommendations.ts:273:25)
+```
+Claude's response got truncated mid-string (likely max_tokens hit). Wizard has no retry, no partial-extraction, no fallback. Result: Step 3 shows "No crew recommendations · No equipment recommendations · Tasks (collapsed, empty)". Steps 4-6 inherit zero data.
+
+This is silent on the UI — contractor sees an empty wizard and probably blames themselves or the description.
+
+Fix candidates:
+- Bump `max_tokens` in the API call
+- Wrap `JSON.parse` in try/catch and salvage what parsed cleanly (extract complete sub-objects with regex or partial parse)
+- Surface a toast ("AI temporarily unavailable — fill in details manually or try again")
+- Auto-retry once with a "respond more concisely" instruction
+
+#### F-CW-17 / P1 — `createMaterial` errors 22× during wizard auto-add (silent)
+Console showed 22 instances of `[error] createMaterial error: Object`. Object body wasn't logged with full detail. Hypothesis: AI material objects missing required fields or violating CHECK constraints when materials engine attempts to insert library rows for "Not in your library — will be added automatically" items. The wizard swallows these and continues. Some materials end up not in the library, which means the manifest engine can't price them.
+
+Need to: (a) log full error body, (b) decide whether failed material adds should block project create or warn-and-continue.
+
+#### F-CW-18 / P1 — `project_element_materials` INSERTs fail multiple times (silent)
+Console showed `[TF-SUPABASE] INSERT on project_element_materials failed: [object Object]` 4×. Element↔material junction rows missing means manifest engine has no element-scoped quantities even when materials saved at project level. Likely related to F-CW-17 (orphan material_ids referenced by junction inserts).
+
+#### F-CW-19 / P2 — When AI fails, Numbers step shows $0 across the board
+Step 5 displayed Total Cost $0, Quote $0, Margin 0% because AI seeded nothing. Wizard should fall back to a per-sqft heuristic by element type (e.g., $8/sqft for sod, $12/lnft for drainage, $50/lnft for retaining walls × 3ft height) so the contractor has a starting point even when AI fails.
+
+### Walkthrough #5 — Lifecycle pipeline (Williams project)
+
+Walked the full 6-state pipeline as a contractor:
+
+| From → To | Trigger | Status badge | DB column set |
+|----|----|----|----|
+| Estimate → Quoted | "Send Quote" button | ✅ Quoted | (no quoted_at column — fine) |
+| Quoted → Approved | "Client Approved" button | ✅ Approved | `approved_at: 5:27:45` |
+| Approved → Scheduled | "Schedule Project" exposes date inputs → set start + target → "Confirm Schedule" | ✅ Scheduled | `start_date: 2026-05-01`, `target_date: 2026-05-15` |
+| Scheduled → In Progress | "Start Work" button | ✅ In Progress | `started_at: 5:29:29` |
+| In Progress → Completed | "Complete Project" button | ✅ Completed | `completed_at: 5:29:49` |
+
+All transitions persist correctly. Dashboard reflects "Completed" status. The original ROADMAP P0 "Completed project stays scheduled" issue does not reproduce here — appears to have been fixed in earlier work.
+
+#### F-CW-20 / P3 — Project status=Completed but progress percentage stays at 22%
+Marking the project complete didn't backfill task statuses, so the Progress widget reads 22% on a Completed project. Should either auto-mark all tasks completed when project status hits `completed`, OR have the progress calculator return 100% when `status === 'completed'` regardless of task states.
+
+#### F-CW-21 / P3 — Two-step Schedule transition is undiscoverable
+Clicking "Schedule Project" reveals two date inputs + a new "Confirm Schedule" button. No visual cue explains "you must enter dates and click Confirm." A contractor would click Schedule, see the date fields appear, fill them, then look for a confirm button — but it's a separate button rather than the same one updating its label. Minor friction; could collapse to a modal or single-button-with-validation.
+
+### Status snapshot after Walkthroughs #3-5
+| ID | Sev | Status |
+|----|-----|--------|
+| F-CW-15 | **P1** | 🆕 notify-client-response queries phantom `profiles` table |
+| F-CW-15b | P3 | 🆕 client share view has no contractor branding |
+| F-CW-15c | P3 | 🆕 request-changes placeholder mentions "patio" hardcoded |
+| F-CW-16 | **P1** | 🆕 AI JSON parse failure cascades through wizard, no fallback |
+| F-CW-17 | **P1** | 🆕 createMaterial errors 22× silently during auto-add |
+| F-CW-18 | **P1** | 🆕 project_element_materials INSERTs fail silently |
+| F-CW-19 | P2 | 🆕 wizard Numbers $0 when AI fails — needs per-sqft fallback |
+| F-CW-20 | P3 | 🆕 Completed project shows non-100% progress |
+| F-CW-21 | P3 | 🆕 Schedule transition's two-step pattern is undiscoverable |
+
+**Verdict on Walkthroughs #3-5**: client-side viewer + lifecycle pipeline are healthy. The AI dependency is a single point of failure — when the LLM truncates or returns malformed JSON, the entire wizard collapses to zeros (F-CW-16/17/18/19 all root in this). Schema-vs-code mismatch on `profiles` table is a sleeper bug that breaks the contractor-side email notifications.
+
+**Recommended next session**:
+1. **F-CW-15** (auth.users fix) — small, mechanical, unblocks contractor email notifications
+2. **F-CW-16** (AI fallback + retry + partial parse) — biggest leverage; fixes the cascade that produces 17, 18, 19
+3. **F-CW-12** (AI element-inference context awareness) — still highest user-visibility from earlier walkthroughs
+4. **F-CW-14** (equipment_budget vs equipment_cost schema cleanup)
+
+After those four, walk through #6 (an edit-flow scenario — contractor edits an existing project's elements/dimensions/materials) and #7 (commercial scope or maintenance to exercise the remaining job_type values).
