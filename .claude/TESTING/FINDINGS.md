@@ -1045,3 +1045,113 @@ Clicking "Schedule Project" reveals two date inputs + a new "Confirm Schedule" b
 4. **F-CW-14** (equipment_budget vs equipment_cost schema cleanup)
 
 After those four, walk through #6 (an edit-flow scenario — contractor edits an existing project's elements/dimensions/materials) and #7 (commercial scope or maintenance to exercise the remaining job_type values).
+
+---
+
+## 2026-04-25 — Walkthroughs #6, #7, #8 (deep surface-find)
+
+Three more walkthroughs across previously untouched UI surface area: Materials Library page, edit-existing-project flows, and Manifest Engine. Surfaced 17 net-new findings (F-CW-22 through F-CW-38). Two are P0/P1 data-loss bugs.
+
+### Walkthrough #6 — Materials Library
+
+KPI strip + tabs (Inventory On Hand · Suppliers · Material Library) + 127 existing test materials.
+
+#### F-CW-22 / P3 — "Low Stock" KPI is meaningless
+"Low Stock: 127" exactly equals "Total Materials: 127" because no material in the org has `qty_on_hand` populated; everything counts as low. KPI is decorative noise.
+
+#### F-CW-23 / P3 — "In Stock: $0"
+Same root cause as F-CW-22. Should hide the inventory-value KPI until the org actually tracks on-hand inventory, or compute it differently.
+
+#### F-CW-24 / P3 — Low-stock banner phrasing
+"Low stock: Walkthrough Bulk 001, 002, 003, 004, 005 and 122 more" — frames it as if 127 is a subset, but actually it's all 127 materials. Misleading.
+
+#### F-CW-25 / P3 — Category pill row overflows panel width
+Same shape as F-CW-11 (wizard step indicator) — horizontal scrollbar inside a panel. Becoming a pattern; needs a shared responsive solution.
+
+#### F-CW-26 / P2 — Add Material modal opens with prefilled "Concrete Pavers 12×12" / depth 3"
+Looks like leftover form state from a prior interaction, not intentional defaults. Plus depth=3" for pavers is wrong (pavers are discrete count, not depth-based bulk). Reset form state on modal open.
+
+#### F-CW-27 / P1 — Add/Edit Material modal can't scroll
+Computation Engine section is below the fold; the modal has no internal scroll container. On a typical viewport, the user can't reach the Save/Cancel buttons. Same for Edit Material modal.
+
+#### F-CW-28 / P3 — Material modals lack `role="dialog"` + `aria-modal="true"`
+Accessibility miss; screen readers can't announce the modal as a dialog.
+
+#### F-CW-29 / P1 — CSV import only accepts 4 columns
+Modal copy: "Upload a CSV with columns: name, category, unit, unit_cost". Materials engine columns added in migration 026 (computation_model, compute_params, purchase_unit, qty_per_purchase_unit, default_waste_factor, supplier_sku) are NOT importable via CSV. Materials imported this way are unusable in the manifest engine until manually edited.
+
+#### F-CW-30 / P3 — CSV import has no template, no examples, no validation guidance
+No download-template button, no inline example, no list of valid category/unit values. Contractors will guess and fail.
+
+#### F-CW-31 / P3 — No inline delete on material rows
+Each row has Edit (✏) but no Delete. Cleanup of test data requires opening Edit modal per row. With 127 stale items, this is painful.
+
+### Walkthrough #7 — Edit existing project (Garcia)
+
+Tested inline-edit pattern across Client & Location and Project Details sections.
+
+#### F-CW-32 / P3 — Inconsistent edit patterns (modal vs inline)
+Materials use a modal; Project sections use inline edit-mode. Unifying would reduce cognitive load.
+
+#### F-CW-33 / P1 — Client & Location inline edit silently drops changes
+Clicked Edit, changed phone to 555-987-1234, clicked Done. UI reverted to original. DB still has original. Tried twice with full event dispatch (input + change + blur). Confirmed not a test methodology issue. Other inline-edit sections (Project Details) **do** persist correctly — this is scoped to the Client & Location form's Done handler. Likely a missing `onChange` wire-up or a stale `onSave` payload.
+
+### Walkthrough #8 — Manifest Engine view (Garcia project's Materials tab)
+
+#### F-CW-34 / P3 — No top-level Manifest Engine entry
+The "More" menu has Work Orders / Price Research / Settings / Billing but no Manifest. Lives only inside ProjectDashboard's Materials tab. May be intentional (manifest is project-scoped), but a top-level "All Manifests" view would help contractors see purchase obligations across active projects.
+
+#### F-CW-35 / P3 — More menu doesn't dismiss on Escape
+Accessibility miss + general usability — clicking More opens the menu, but Escape doesn't close it; user must click More again or click outside.
+
+#### F-CW-36 / **P0** — Manifest engine sees only 1 of 10 saved materials
+Garcia project's `projects.materials` JSONB has **10 entries**. `project_element_materials` junction has **1**. The Material Manifest tab renders only the junction-linked materials, so 9 of 10 contractor-quoted materials are invisible to the manifest engine, the purchase list, and the cost rollup.
+
+This explains:
+- Why the manifest table shows only Polymeric Sand for a project that includes flagstone walkway, stacked stone retaining wall, and planting beds.
+- Why the "Under Budget" line reads −$11,782 (manifest cost is artificially low because 90% of materials are missing).
+- Why F-CW-14 wizard-vs-Overview budget drift exists in the same direction.
+
+Root cause: cascade from F-CW-17 (createMaterial errors during wizard auto-add) + F-CW-18 (project_element_materials INSERT failures). The wizard SAVES materials at the project level (JSONB on `projects.materials`) but loses them at the element-junction level. Materials engine consumes the junction.
+
+This is the most important finding so far. The materials engine is the core value prop of TerrainForge, and it's quietly running on 10% of the contractor's data.
+
+#### F-CW-37 / P3 — "Under Budget" label compares to wrong baseline
+The −$11,782 figure compares manifest cost ($4,275) to **client quote** ($16,057) instead of materials budget ($6,270). Mislabeled — should compare to `materials_budget`.
+
+#### F-CW-38 / P3 — Manifest table overflows horizontally; total cost clipped
+Same pattern as F-CW-11/25.
+
+### Status snapshot after Walkthroughs #6-8
+| ID | Sev | Summary |
+|----|-----|---------|
+| **F-CW-36** | **P0** | 9 of 10 materials missing from element-junction → manifest engine running on partial data |
+| F-CW-27 | P1 | Add/Edit Material modal can't scroll to Save button |
+| F-CW-29 | P1 | CSV import missing engine columns; imports unusable in manifest |
+| F-CW-33 | P1 | Client & Location inline-edit silently drops changes |
+| F-CW-26 | P2 | Add Material form has stale prefilled state |
+| F-CW-22 | P3 | Low-stock KPI = total materials KPI |
+| F-CW-23 | P3 | In-stock value = $0 |
+| F-CW-24 | P3 | Low-stock banner phrasing misleading |
+| F-CW-25 | P3 | Category pill row overflow |
+| F-CW-28 | P3 | Material modals lack a11y dialog attrs |
+| F-CW-30 | P3 | CSV import has no template/examples |
+| F-CW-31 | P3 | No inline delete on material rows |
+| F-CW-32 | P3 | Inconsistent edit patterns (modal vs inline) |
+| F-CW-34 | P3 | No top-level Manifest entry point |
+| F-CW-35 | P3 | More menu doesn't close on Escape |
+| F-CW-37 | P3 | Manifest "Under Budget" compares to wrong baseline |
+| F-CW-38 | P3 | Manifest table overflows horizontally |
+
+**Cumulative open findings**: 24 distinct findings across 8 walkthroughs (F-CW-10 partial, 11-14 from #2, 15-15c + 16-21 from #3-5, 22-38 from #6-8). One P0 (F-CW-36), six P1s (F-CW-12, 14, 15, 16, 17/18 cascade, 27, 29, 33), with the AI-cascade (F-CW-16) and material data-loss (F-CW-36) being the highest-impact.
+
+**Recommended next session priority** (revised):
+1. **F-CW-36 + F-CW-17/18** — root-cause the material data loss. Likely one fix; this is the materials engine's correctness baseline.
+2. **F-CW-15** — auth.users / profiles fix. Mechanical, ~20 min.
+3. **F-CW-16** — AI cascade fallback. Closes 16/17/18/19 in one stroke if 17/18 are LLM-payload artifacts.
+4. **F-CW-33** — Client & Location edit save fix.
+5. **F-CW-27** — modal scroll.
+6. **F-CW-12** — element inference context awareness.
+7. **F-CW-14** — equipment_budget/equipment_cost schema cleanup.
+
+P3 polish (F-CW-22, 23, 24, 25, 26, 28, 30, 31, 32, 34, 35, 37, 38, F-CW-10 partial, 11, 13, 15b, 15c, 19, 20, 21) batched separately.
