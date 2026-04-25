@@ -297,7 +297,17 @@ const CrewEquipmentHub: React.FC = () => {
                               style={{ background: 'var(--brand-primary-bg)', color: 'var(--brand-primary)' }}
                               title={`${crewMember?.name || 'Unknown'} - ${project?.name || 'Unknown project'}`}
                             >
-                              {project?.name?.slice(0, 15) || '?'} ({crewMember?.name?.split(' ')[0] || '?'})
+                              {/* F-CW-50: avoid mid-word truncation. Trim
+                                  at the last whitespace ≤ 15 chars and add
+                                  an ellipsis. Title attr above shows full
+                                  name on hover. */}
+                              {(() => {
+                                const n = project?.name ?? '?';
+                                if (n.length <= 15) return n;
+                                const cut = n.slice(0, 15);
+                                const lastSpace = cut.lastIndexOf(' ');
+                                return (lastSpace > 6 ? cut.slice(0, lastSpace) : cut) + '\u2026';
+                              })()} ({crewMember?.name?.split(' ')[0] || '?'})
                             </span>
                           );
                         })}

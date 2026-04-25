@@ -1,6 +1,7 @@
 import React from 'react';
 import { EmptyState, MaterialsIcon } from '@/components/shared/EmptyState';
 import { getCategoryLabel } from '@/lib/categories';
+import { formatPhone } from '@/utils/phone';
 import type { Supplier } from '@/types';
 
 interface SupplierTableProps {
@@ -58,7 +59,7 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({
               {supplier.contactName || '—'}
             </td>
             <td className="px-4 py-3 text-[13px] text-[var(--text-secondary)]">
-              {supplier.phone || '—'}
+              {supplier.phone ? formatPhone(supplier.phone) : '—'}
             </td>
             <td className="px-4 py-3 text-[13px] text-[var(--text-secondary)]">
               {supplier.email ? (

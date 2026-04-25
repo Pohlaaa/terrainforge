@@ -90,11 +90,14 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
         actualUsage: actualUsages[mat.id] ?? mat.quantity,
       }));
 
-      // Call updateProject with status and completedAt
+      // F-CW-42: idempotent — preserve original completedAt if already completed.
+      // Re-clicking Complete (e.g. to update usage) should not overwrite the
+      // first completion timestamp.
+      const completedAt = project.completedAt ?? new Date().toISOString();
       await updateProject(project.id, {
         materials: updatedMaterials,
         status: 'completed',
-        completedAt: new Date().toISOString(),
+        completedAt,
       });
 
       toast.success('Project marked as completed with usage data recorded');
@@ -325,7 +328,9 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
       </>
       )}
 
-      {/* Completion Button — always rendered regardless of material count */}
+      {/* Completion Button — always rendered regardless of material count.
+          F-CW-39: relabel + offer "Update Usage" when already completed instead
+          of duplicating the Complete action. */}
       <div className="flex justify-end gap-[12px] pt-[12px]">
         <Button
           variant="primary"
@@ -333,7 +338,9 @@ export const CloseoutTab: React.FC<Props> = ({ project, permits = [], onPermitCr
           onClick={handleCompleteProject}
           disabled={completing}
         >
-          {completing ? 'Completing...' : 'Complete Project'}
+          {completing
+            ? (project.status === 'completed' ? 'Updating...' : 'Completing...')
+            : (project.status === 'completed' ? 'Update Usage' : 'Complete Project')}
         </Button>
       </div>
     </div>

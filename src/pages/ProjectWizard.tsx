@@ -720,7 +720,11 @@ export default function ProjectWizard() {
           // Project creation continues even if this fails
           if (!mat.inLibrary || !resolvedMaterialId) {
             try {
-              await materialStore.addMaterial({
+              // F-CW-45: capture the returned Material instead of looking it
+              // up by name+category afterward (racy — fetchMaterials inside
+              // addMaterial replaces state mid-lookup, and concurrent adds
+              // with the same name+category collide).
+              const created = await materialStore.addMaterial({
                 name: mat.materialName,
                 category: mat.category,
                 unit: mat.unit,
@@ -734,12 +738,13 @@ export default function ProjectWizard() {
                 storageLocation: '',
                 lastRestocked: '',
               });
-              // Find the newly created material in the store
-              const found = useMaterialStore.getState().materials.find(
-                (m) => m.name === mat.materialName && m.category === mat.category
-              );
-              if (found) {
-                resolvedMaterialId = found.id;
+              if (created) {
+                resolvedMaterialId = created.id;
+                // Mutate the source mat too — the element-material auto-link
+                // loop further down reads mat.materialId. Without this it
+                // sees the empty string and the junction insert fails with
+                // "invalid input syntax for type uuid" (F-CW-18).
+                mat.materialId = created.id;
               }
               // Clear any store error from the add attempt
               if (useMaterialStore.getState().error) {
@@ -875,7 +880,10 @@ export default function ProjectWizard() {
               await projectStore.addElementMaterial(el.id, {
                 orgId,
                 elementId: el.id,
-                materialId: mat.materialId ?? '',
+                // F-CW-18: column is uuid-typed; empty string fails Postgres
+                // parse. Use null when the material isn't yet linked to the
+                // library (e.g. addMaterial failed in the loop above).
+                materialId: mat.materialId && mat.materialId.length > 0 ? mat.materialId : null,
                 name: mat.materialName,
                 category,
                 quantity,

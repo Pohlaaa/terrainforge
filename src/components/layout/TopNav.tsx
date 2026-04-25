@@ -25,7 +25,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
     setIsDark(theme === 'dark');
   }, []);
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click — and on Escape (F-CW-35: a11y).
   useEffect(() => {
     if (!userDropdownOpen && !moreDropdownOpen) return;
     function handleClick(e: MouseEvent) {
@@ -36,8 +36,18 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
         setMoreDropdownOpen(false);
       }
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setUserDropdownOpen(false);
+        setMoreDropdownOpen(false);
+      }
+    }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [userDropdownOpen, moreDropdownOpen]);
 
   // Close dropdowns on route change

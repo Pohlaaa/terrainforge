@@ -119,7 +119,9 @@ export interface ProjectElementMaterial {
   id: string;
   orgId: string;
   elementId: string;
-  materialId: string;
+  // F-CW-18: column is uuid NULLABLE per migration 021. Use null when an
+  // ad-hoc element-material isn't yet linked to a library row.
+  materialId: string | null;
   name: string;
   category: string;
   quantity: number;

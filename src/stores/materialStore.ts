@@ -20,7 +20,13 @@ interface MaterialStore {
   isLoading: boolean
   error: string | null
   reset: () => void
-  addMaterial: (material: Omit<Material, 'id'>) => Promise<void>
+  /**
+   * F-CW-45: Returns the saved Material (with its real id) on success, or
+   * null if the DB write failed. Wizards must capture the returned id;
+   * looking it up by name+category afterward is racy because addMaterial
+   * triggers a fetchMaterials() that can replace state mid-lookup.
+   */
+  addMaterial: (material: Omit<Material, 'id'>) => Promise<Material | null>
   /**
    * F-045: Bulk insert in chunks. Replaces the CSV importer's sequential
    * for-await loop that silently failed past ~50 rows. Chunks of 100, up
@@ -65,7 +71,7 @@ export const useMaterialStore = create<MaterialStore>()(
     },
     addMaterial: async (materialData) => {
       const orgId = useOrgStore.getState().org?.id
-      if (!orgId) return
+      if (!orgId) return null
       const newMaterial: Material = {
         ...materialData,
         id: crypto.randomUUID(),
@@ -78,14 +84,19 @@ export const useMaterialStore = create<MaterialStore>()(
             materials: state.materials.filter((m) => m.id !== newMaterial.id),
             error: 'Failed to save material. Please try again.'
           }))
-          return
+          return null
         }
         await get().fetchMaterials()
+        // newMaterial.id was the client-generated UUID we passed to createMaterial,
+        // so it matches the persisted row. Return the optimistic Material — the
+        // post-fetch state will already include it (or its server-side equivalent).
+        return newMaterial
       } catch (err: unknown) {
         set((state) => ({
           materials: state.materials.filter((m) => m.id !== newMaterial.id),
           error: err instanceof Error ? err.message : 'Unknown error'
         }))
+        return null
       }
     },
     bulkImportMaterials: async (materials, onProgress) => {

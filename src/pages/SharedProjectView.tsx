@@ -359,7 +359,7 @@ const SharedProjectView: React.FC = () => {
                     onChange={(e) => setNote(e.target.value)}
                     maxLength={2000}
                     rows={4}
-                    placeholder={noteFormFor === 'approved' ? 'Optional — e.g. "Looks great, go for it."' : 'Be specific — "The patio is too small" or "Can we add a path to the shed?"'}
+                    placeholder={noteFormFor === 'approved' ? 'Optional — e.g. "Looks great, go for it."' : 'Be specific about what you\u2019d like to change. Mention which element (e.g. the walkway, the wall, a planting bed) and how.'}
                     style={{
                       width: '100%',
                       padding: 10,

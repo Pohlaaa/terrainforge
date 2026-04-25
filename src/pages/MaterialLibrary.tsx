@@ -485,33 +485,45 @@ export const MaterialLibrary: React.FC = () => {
     <div className="h-full flex flex-col gap-4">
       <HubHeader />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          label="Total Materials"
-          value={totalItems}
-          icon={<Package size={20} />}
-          iconVariant="teal"
-        />
-        <KPICard
-          label="Low Stock"
-          value={lowStockCount}
-          icon={<AlertTriangle size={20} />}
-          iconVariant="red"
-        />
-        <KPICard
-          label="In Stock"
-          value={`$${inventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-          icon={<CheckCircle size={20} />}
-          iconVariant="green"
-        />
-        <KPICard
-          label="Categories"
-          value={new Set(materials.map(m => m.category)).size}
-          icon={<ShoppingCart size={20} />}
-          iconVariant="blue"
-        />
-      </div>
+      {/* KPI Cards
+          F-CW-22/23: Hide stock-tracking KPIs until the org actually tracks
+          on-hand inventory. Otherwise "Low Stock: 127 / Total: 127" and
+          "In Stock: $0" are decorative noise on a brand-new account. */}
+      {(() => {
+        const tracksInventory = materials.some(m => m.qtyOnHand > 0)
+        return (
+          <div className={`grid gap-4 ${tracksInventory ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2'}`}>
+            <KPICard
+              label="Total Materials"
+              value={totalItems}
+              icon={<Package size={20} />}
+              iconVariant="teal"
+            />
+            {tracksInventory && (
+              <KPICard
+                label="Low Stock"
+                value={lowStockCount}
+                icon={<AlertTriangle size={20} />}
+                iconVariant="red"
+              />
+            )}
+            {tracksInventory && (
+              <KPICard
+                label="In Stock"
+                value={`$${inventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                icon={<CheckCircle size={20} />}
+                iconVariant="green"
+              />
+            )}
+            <KPICard
+              label="Categories"
+              value={new Set(materials.map(m => m.category)).size}
+              icon={<ShoppingCart size={20} />}
+              iconVariant="blue"
+            />
+          </div>
+        )
+      })()}
 
       {/* Tab bar */}
       <div className="flex gap-0 border-b border-[var(--border-default)]">

@@ -249,7 +249,7 @@ const BudgetHub: React.FC = () => {
           <KPICard label="Revenue" value="$0" icon={<DollarSign size={20} />} iconVariant="teal" />
           <KPICard label="Expenses" value="$0" icon={<TrendingDown size={20} />} iconVariant="pink" />
           <KPICard label="Profit" value="$0" icon={<TrendingUp size={20} />} iconVariant="blue" />
-          <KPICard label="Avg Budget" value="$0" icon={<DollarSign size={20} />} iconVariant="orange" />
+          <KPICard label="Outstanding" value="$0" icon={<DollarSign size={20} />} iconVariant="orange" />
         </div>
         <div
           className="rounded-xl p-12 text-center"
@@ -310,7 +310,11 @@ const BudgetHub: React.FC = () => {
           iconVariant="blue"
         />
         <KPICard
-          label="Avg Budget"
+          // F-CW-55: was labeled "Avg Budget" but the value is actually
+          // outstanding (sum of non-completed project budgets), making it
+          // equal to total revenue when nothing is completed yet. Relabel
+          // to match the data.
+          label="Outstanding"
           value={fmt(kpis.outstanding)}
           icon={<DollarSign size={20} />}
           iconVariant="orange"

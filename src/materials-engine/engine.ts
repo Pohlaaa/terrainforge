@@ -154,7 +154,9 @@ export function generateEngineManifest(
       lineItems.push({
         elementId: element.id,
         elementName: element.name,
-        materialId: elMat.materialId,
+        // F-CW-18: ad-hoc element materials with no library link have null
+        // materialId; fall back to the junction row's id.
+        materialId: elMat.materialId ?? elMat.id,
         materialName: elMat.name,
         category: elMat.category,
         computationModel: model,

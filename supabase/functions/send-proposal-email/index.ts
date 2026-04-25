@@ -47,11 +47,6 @@ interface ProjectRow {
   address: string | null
 }
 
-interface OrgOwnerRow {
-  email: string | null
-  display_name: string | null
-}
-
 const jsonHeaders = {
   'content-type': 'application/json',
   'Access-Control-Allow-Origin': '*',
@@ -187,14 +182,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     .eq('id', tokenRow.org_id)
     .maybeSingle<{ owner_id: string; name: string | null }>()
 
+  // F-CW-15: query auth.users via the admin API. The `profiles` table never
+  // existed in this schema; identity lives in auth.users (email + raw_user_metadata).
   let contractorName: string | null = null
   if (orgRow?.owner_id) {
-    const { data: ownerRow } = await supabase
-      .from('profiles')
-      .select('email, display_name')
-      .eq('id', orgRow.owner_id)
-      .maybeSingle<OrgOwnerRow>()
-    contractorName = ownerRow?.display_name ?? null
+    const { data: ownerData, error: ownerErr } = await supabase.auth.admin.getUserById(orgRow.owner_id)
+    if (ownerErr) {
+      console.error('send-proposal-email: auth.users lookup failed', ownerErr)
+    } else {
+      const meta = (ownerData?.user?.user_metadata ?? {}) as { full_name?: string; display_name?: string }
+      contractorName = meta.display_name ?? meta.full_name ?? null
+    }
   }
 
   const companyName = orgRow?.name ?? 'Your contractor'

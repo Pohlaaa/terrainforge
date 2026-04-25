@@ -42,7 +42,11 @@ export const Settings: React.FC = () => {
   return (
     <div>
       <PageHeader title="Settings" subtitle="Manage your account, company, and preferences." />
-      <div className="flex gap-0 h-full">
+      {/* F-CW-54: layout was `flex gap-0 h-full` (row direction unconditionally),
+          which on narrow viewports rendered the mobile tab pills as a tall
+          vertical bar next to the content. Stack on mobile, side-by-side on
+          md+ where the desktop sidebar nav takes over. */}
+      <div className="flex flex-col md:flex-row gap-0">
         {/* Left nav */}
         <nav className="hidden md:block w-[220px] border-r border-[var(--border-default)] bg-[var(--surface-card)] py-4 flex-shrink-0">
           {navItems.map(item => (

@@ -135,8 +135,14 @@ export const CrewAssignmentPanel: React.FC<CrewAssignmentPanelProps> = ({
       </div>
 
       {scheduledCrew.length === 0 ? (
+        // F-CW-53: pre-extraction copy referenced /schedule (404'd after the
+        // page was extracted into Crew + Equipment hub's Weekly Schedule).
         <p className="text-[12px] text-[var(--text-4)]">
-          No crew scheduled yet. Assign crew on the Schedule page.
+          No crew scheduled yet. Use the Weekly Schedule on the{' '}
+          <a href="/crew-hub" className="underline" style={{ color: 'var(--green-l)' }}>
+            Crew &amp; Equipment
+          </a>{' '}
+          page to assign crew to this project.
         </p>
       ) : (
         <div className="space-y-[8px]">

@@ -252,7 +252,10 @@ function buildMaterialAdapter(
   elementDepthIn: number | null
 ): Material {
   return {
-    id: elMat.materialId,
+    // F-CW-18: ad-hoc element-materials with no library link have null
+    // materialId; fall back to the junction row's own id for engine
+    // identity purposes.
+    id: elMat.materialId ?? elMat.id,
     name: elMat.name,
     category: elMat.category,
     unit: elMat.unit,
@@ -328,7 +331,7 @@ function generateFromElementMaterials(
       const subtotal = totalOrder * unitCost;
 
       items.push({
-        materialId: elMat.materialId,
+        materialId: elMat.materialId ?? elMat.id,
         materialName: elMat.name,
         zoneName: element.name,
         zoneId: element.id,
@@ -377,12 +380,14 @@ export function computeElementQuantities(
   };
 
   return element.materials.map(elMat => {
-    const libMat = libraryMaterials.find(m => m.id === elMat.materialId);
+    const libMat = elMat.materialId
+      ? libraryMaterials.find(m => m.id === elMat.materialId)
+      : undefined;
     const matAdapter = buildMaterialAdapter(elMat, libMat, element.depthIn);
     const quantity = computeQty(matAdapter, syntheticZone);
 
     return {
-      materialId: elMat.materialId,
+      materialId: elMat.materialId ?? elMat.id,
       materialName: elMat.name,
       quantity,
       unit: elMat.unit,

@@ -106,6 +106,11 @@ export default function ProjectDashboard() {
   const [scheduleStart, setScheduleStart] = useState('');
   const [scheduleEnd, setScheduleEnd] = useState('');
   const [editingClient, setEditingClient] = useState(false);
+  // F-CW-33: Client & Location was uncontrolled with defaultValue + onBlur
+  // saves. Race between Done click toggling unmount and the input's blur
+  // handler firing meant edits silently dropped. Controlled state + an
+  // explicit save on Done makes it deterministic.
+  const [clientDraft, setClientDraft] = useState({ name: '', phone: '', email: '', address: '' });
   const [editingDetails, setEditingDetails] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
 
@@ -351,14 +356,43 @@ export default function ProjectDashboard() {
           <div className="rounded-[10px] border p-[14px]" style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between mb-[8px]">
               <div className="text-[10px] font-[600] uppercase text-[var(--text-4)]">Client & Location</div>
-              <button type="button" onClick={() => setEditingClient(!editingClient)} className="text-[10px] font-[500] bg-transparent border-none cursor-pointer" style={{ color: editingClient ? 'var(--green-l)' : 'var(--text-4)' }}>{editingClient ? 'Done' : 'Edit'}</button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!editingClient) {
+                    // Entering edit mode — seed draft from project
+                    setClientDraft({
+                      name: project.clientName ?? '',
+                      phone: project.clientPhone ?? '',
+                      email: project.clientEmail ?? '',
+                      address: project.address ?? '',
+                    });
+                    setEditingClient(true);
+                  } else {
+                    // Leaving edit mode — save the draft
+                    if (id) {
+                      void updateProject(id, {
+                        clientName: clientDraft.name.trim() || null,
+                        clientPhone: clientDraft.phone.trim() || null,
+                        clientEmail: clientDraft.email.trim() || null,
+                        address: clientDraft.address.trim() || '',
+                      });
+                    }
+                    setEditingClient(false);
+                  }
+                }}
+                className="text-[10px] font-[500] bg-transparent border-none cursor-pointer"
+                style={{ color: editingClient ? 'var(--green-l)' : 'var(--text-4)' }}
+              >
+                {editingClient ? 'Done' : 'Edit'}
+              </button>
             </div>
             {editingClient ? (
               <div className="space-y-[6px]">
-                <input className="w-full px-[8px] py-[4px] text-[12px] rounded-[4px] bg-transparent border" style={{ borderColor: 'var(--border)', color: 'var(--text)' }} defaultValue={project.clientName ?? ''} placeholder="Client name" onBlur={(e) => updateProject(id!, { clientName: e.target.value || null })} />
-                <input className="w-full px-[8px] py-[4px] text-[12px] rounded-[4px] bg-transparent border" style={{ borderColor: 'var(--border)', color: 'var(--text)' }} defaultValue={project.clientPhone ?? ''} placeholder="Phone" onBlur={(e) => updateProject(id!, { clientPhone: e.target.value || null })} />
-                <input className="w-full px-[8px] py-[4px] text-[12px] rounded-[4px] bg-transparent border" style={{ borderColor: 'var(--border)', color: 'var(--text)' }} defaultValue={project.clientEmail ?? ''} placeholder="Email" onBlur={(e) => updateProject(id!, { clientEmail: e.target.value || null })} />
-                <input className="w-full px-[8px] py-[4px] text-[12px] rounded-[4px] bg-transparent border" style={{ borderColor: 'var(--border)', color: 'var(--text)' }} defaultValue={project.address ?? ''} placeholder="Address" onBlur={(e) => updateProject(id!, { address: e.target.value || '' })} />
+                <input className="w-full px-[8px] py-[4px] text-[12px] rounded-[4px] bg-transparent border" style={{ borderColor: 'var(--border)', color: 'var(--text)' }} value={clientDraft.name} placeholder="Client name" onChange={(e) => setClientDraft(d => ({ ...d, name: e.target.value }))} />
+                <input className="w-full px-[8px] py-[4px] text-[12px] rounded-[4px] bg-transparent border" style={{ borderColor: 'var(--border)', color: 'var(--text)' }} value={clientDraft.phone} placeholder="Phone" onChange={(e) => setClientDraft(d => ({ ...d, phone: e.target.value }))} />
+                <input className="w-full px-[8px] py-[4px] text-[12px] rounded-[4px] bg-transparent border" style={{ borderColor: 'var(--border)', color: 'var(--text)' }} value={clientDraft.email} placeholder="Email" onChange={(e) => setClientDraft(d => ({ ...d, email: e.target.value }))} />
+                <input className="w-full px-[8px] py-[4px] text-[12px] rounded-[4px] bg-transparent border" style={{ borderColor: 'var(--border)', color: 'var(--text)' }} value={clientDraft.address} placeholder="Address" onChange={(e) => setClientDraft(d => ({ ...d, address: e.target.value }))} />
               </div>
             ) : (
               <>

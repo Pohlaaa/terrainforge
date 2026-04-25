@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Project } from '@/types';
+import { formatPhone } from '@/utils/phone';
 
 const cardClass = 'rounded-[10px] border p-[16px]';
 const cardHead = 'text-[12px] font-[700] uppercase text-[var(--text-3)] mb-[12px]';
@@ -60,7 +61,7 @@ export const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project, onEdi
         {project.clientPhone && (
           <div className={rowClass}>
             <span className={labelSpan}>Phone</span>
-            <span className={valueSpan}>{project.clientPhone}</span>
+            <span className={valueSpan}>{formatPhone(project.clientPhone)}</span>
           </div>
         )}
         {project.clientEmail && (
