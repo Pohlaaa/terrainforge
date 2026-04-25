@@ -1155,3 +1155,125 @@ Same pattern as F-CW-11/25.
 7. **F-CW-14** — equipment_budget/equipment_cost schema cleanup.
 
 P3 polish (F-CW-22, 23, 24, 25, 26, 28, 30, 31, 32, 34, 35, 37, 38, F-CW-10 partial, 11, 13, 15b, 15c, 19, 20, 21) batched separately.
+
+---
+
+## 2026-04-25 — Walkthroughs #9-13 (deep coverage)
+
+Five more walkthroughs across previously untouched UI: Closeout flow, Tasks tab CRUD, Crew + Equipment Hub, Schedule view, and Settings/Budget/Suppliers. Surfaced 21 net-new findings (F-CW-39 through F-CW-59).
+
+### Walkthrough #9 — Closeout flow
+
+#### F-CW-39 / P3 — Already-Completed project still shows "Complete Project" button
+Williams was at `status='completed'`. Closeout tab still showed an active "Complete Project" button.
+
+#### F-CW-40 — Closeout empty-state copy is OK
+"No materials on this project. You can still mark the project complete below. Add materials later for usage tracking on future jobs." — actually decent.
+
+#### F-CW-41 / P3 — Stage gates show Closeout in active orange but project is Completed
+Same machinery as F-CW-20. Stages don't reflect terminal status.
+
+#### F-CW-42 / P2 — Re-clicking Complete overwrites `completed_at`
+Clicking Complete on already-Completed project bumped `completed_at` from 5:29:49 to 5:58:54. Original timestamp lost. Mutation should be idempotent.
+
+#### F-CW-43 / **P0** — Closeout reads `projects.materials` JSONB; Manifest reads `project_element_materials` junction
+**Same project, different tabs, different material lists.** Closeout shows 8+ materials (Flagstone, Stacked Stone, Topsoil, Mulch, Boxwood Shrubs, Ornamental Trees, Sand Bedding, Landscape Fabric…). Manifest shows 1 (Polymeric Sand). Worse than F-CW-36 alone — they actively disagree because they read from different sources. Pick one source of truth.
+
+#### F-CW-44 / P1 — Closeout tab numeric inputs don't persist
+Edited Flagstone qty 90→95, no save button, no auto-save on blur, no PATCH fired. JSONB still has 90. The "record actual material usage to refine reserve percentages" value prop is non-functional.
+
+#### F-CW-45 / P1 (root cause of F-CW-36/17/18) — 8 of 10 saved materials have empty `materialId`
+JSONB inspection of Garcia: only 2 of 10 materials reference the materials library; rest have `materialId: ""`. AI suggested "will be added automatically" → `createMaterial` failed silently → entries saved as project-level orphans. The materials engine needs a real `material_id` to price via its computation models. Real fix means making `createMaterial` reliable AND backfilling library rows for orphan project materials.
+
+### Walkthrough #10 — Tasks tab CRUD on Garcia
+
+#### F-CW-46 / P1 — Wizard-accepted equipment doesn't persist to project
+Resources tab shows "EQUIPMENT (0)" despite wizard accepting equipment. DB confirms `0` rows in `equipment` with `assigned_project_id = '<garcia>'`. Either the wizard's equipment-accept handler doesn't set the assignment, or the schema requires a different junction.
+
+#### F-CW-47 / P3 — "Crew Size: 4" + "No crew scheduled yet" is confusing
+Resources tab shows both simultaneously. 4 rows in `project_crew_assignments` exist; the "No crew scheduled" text seems to mean something different (maybe daily schedule-entries vs project-level assignments). Distinction not clear to a contractor.
+
+#### F-CW-48 / P1 — No "Add Task" button anywhere on project
+Tasks created by the wizard's AI can be edited (status select works — confirmed Site Prep & Layout → completed persists). But contractors can't add new tasks post-creation. Significant functional gap.
+
+### Walkthrough #11 — Crew + Equipment Hub
+
+#### F-CW-49 / P3 — `/crew` route is the worker app, not the admin hub
+Admin user navigating to `/crew` lands on the foreman/laborer "Who are you?" mobile app. Admin Crew + Equipment lives at `/crew-hub`. URL is misleading.
+
+#### F-CW-50 / P3 — Project name truncation
+"Chamberlain Apa", "Popeyes Retaini", "Richfield Targe" — mid-word cut. Use ellipsis at word boundary or tooltip.
+
+#### F-CW-51 / P3 — Equipment-profile completion warning lists missing fields but doesn't deep-link
+Pills name the missing fields (Clock hours, Service due hours, Insurance provider…) but clicking them doesn't take you anywhere.
+
+#### F-CW-52 / P3 — Add Crew Member form is minimal
+Only Name, Role, Phone. No email (so they can't be invited to the crew app), no hourly rate, no skills, no certifications. Each new crew add needs an immediate follow-up edit.
+
+### Walkthrough #12 — Schedule view
+
+#### F-CW-53 / P1 — `/schedule` returns 404 but is referenced from Resources tab copy
+Resources tab says: *"No crew scheduled yet. Assign crew on the Schedule page."* Clicking through (or typing `/schedule`) gives "Page not found." The schedule UI was extracted into `/crew-hub`'s Weekly Schedule section but the dangling reference text was never updated. Confusing dead-end for contractors trying to assign crew.
+
+### Walkthrough #13 — Settings + Budget + Suppliers
+
+#### F-CW-54 / **P1** — Settings page layout is broken
+The 6 tab pills (Profile, Company, Preferences, Notifications, Billing, Danger Zone) render as **massive vertical bars** taking the full viewport height. Content area is clipped off-screen on the right. The page is unusable. Looks like a flex/grid CSS regression — possibly the tabs container is using `flex-direction: column` with `flex: 1 1 auto` causing each tab to stretch to viewport height.
+
+#### F-CW-55 / P3 — "AVG BUDGET" equals "REVENUE" in Budget hub KPI strip
+Both showing $227,328. Average shouldn't equal total. Math bug or label mismatch.
+
+#### F-CW-56 / P2 — Williams shows "Sched..." status in Budget hub but actual status is `completed`
+Walked the project through full lifecycle (Estimate → Quoted → Approved → Scheduled → In Progress → Completed) earlier this session. Budget hub still shows Scheduled. Stale cache or wrong-source query.
+
+#### F-CW-57 / P3 — Production data has profanity from prior testing
+"Bill shit", "Cock", and other words visible in Budget hub project list. Test-data cleanup overdue (also relates to F-CW-22's 127 stale "Walkthrough Bulk" entries).
+
+#### F-CW-58 / P3 — Supplier phone "3211233213" displayed unformatted
+Should auto-format to `(321) 123-3213` or `321-123-3213`.
+
+#### F-CW-59 / P3 — Suppliers table also overflows horizontally
+Same pattern as F-CW-11/25/38. Table layouts don't reflow on narrow viewports.
+
+### Status snapshot after Walkthroughs #9-13
+| ID | Sev | Summary |
+|----|-----|---------|
+| **F-CW-43** | **P0** | Closeout vs Manifest read different sources → disagree on material list |
+| **F-CW-44** | **P1** | Closeout numeric inputs don't persist (no save mechanism) |
+| **F-CW-45** | **P1** | 8/10 materials have empty materialId (root of F-CW-17/18/36) |
+| **F-CW-46** | **P1** | Wizard equipment accept doesn't persist |
+| **F-CW-48** | **P1** | No "Add Task" affordance on project page |
+| **F-CW-53** | **P1** | `/schedule` 404 + dangling reference from Resources tab |
+| **F-CW-54** | **P1** | Settings page layout broken |
+| F-CW-42 | P2 | Re-completing project overwrites `completed_at` |
+| F-CW-56 | P2 | Williams shows wrong status in Budget hub |
+| F-CW-39 | P3 | Already-Completed project shows "Complete Project" button |
+| F-CW-40 | — | Closeout empty-state copy OK |
+| F-CW-41 | P3 | Stage gates don't reflect terminal status |
+| F-CW-47 | P3 | "Crew Size 4 + No crew scheduled" copy confusion |
+| F-CW-49 | P3 | `/crew` is worker app, not admin |
+| F-CW-50 | P3 | Project name mid-word truncation |
+| F-CW-51 | P3 | Equipment-profile pills don't deep-link |
+| F-CW-52 | P3 | Add Crew form minimal |
+| F-CW-55 | P3 | AVG BUDGET = REVENUE math bug |
+| F-CW-57 | P3 | Profanity in test data |
+| F-CW-58 | P3 | Supplier phone not formatted |
+| F-CW-59 | P3 | Suppliers table horizontal overflow |
+
+**Cumulative open findings**: 45 distinct findings across 13 walkthroughs (F-CW-10 partial through F-CW-59). 2 P0s (F-CW-36, F-CW-43), 12 P1s, several P2s, lots of P3 polish.
+
+**The two P0s share a root cause**: F-CW-45 — most materials end up as project-level JSONB orphans without library references because `createMaterial` fails silently when AI says "will be added automatically." That cascades into F-CW-17/18 (silent INSERT failures) and F-CW-36 (manifest engine sees only library-linked materials), AND into F-CW-43 (Closeout reads JSONB and sees them all; Manifest reads junction and sees one). Fix `createMaterial` reliability + backfill orphan library rows + reconcile JSONB↔junction sources of truth, and ~5 findings close at once.
+
+**Recommended fix order for next session**:
+1. **F-CW-45 / 17 / 18 / 36 / 43** (single root cause) — most impactful, fixes the materials engine's correctness baseline
+2. **F-CW-54** — Settings page layout. CSS regression. Fast.
+3. **F-CW-15** — Edge Function `profiles` → `auth.users`. Fast, mechanical.
+4. **F-CW-16** — AI cascade fallback (closes 19, partially closes 17/18 if it was an LLM payload artifact)
+5. **F-CW-53** — `/schedule` route + dangling reference. Fast.
+6. **F-CW-46** — Wizard equipment accept persistence
+7. **F-CW-48** — Add Task affordance
+8. **F-CW-44** — Closeout actuals persistence
+9. **F-CW-33** — Client & Location edit save
+10. **F-CW-27** — Modal scroll
+11. **F-CW-12, 14, 56** — earlier P1/P2s
+12. P3 polish batch — ~25 small fixes that can be one-shot
