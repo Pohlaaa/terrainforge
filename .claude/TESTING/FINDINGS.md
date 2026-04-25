@@ -859,3 +859,28 @@ Walkthrough is **clean end-to-end** at the application layer. The only outstandi
 - `src/components/shared/AddressInput.tsx` — actionable copy
 - `src/pages/ProjectWizard.tsx` — scroll-to-top on step transition
 - `.claude/TESTING/FINDINGS.md`
+
+---
+
+## 2026-04-24 — Live email delivery: two operator/code bugs found + fixed
+
+After Charlie set RESEND_API_KEY + NOTIFY_FROM_EMAIL, the first real send to woodsrider82@gmail.com failed with HTTP 422 "Invalid `from` field." Inspecting the request body in Resend's logs surfaced **two** distinct bugs:
+
+### F-CW-EMAIL-01 ✅ Fixed (operator config) — Malformed From header
+`NOTIFY_FROM_EMAIL` was set to `TerrainForge <onboarding@resend.dev` — missing the closing `>`. Resend's parser rejected the whole send. Charlie corrected the secret to `TerrainForge <onboarding@resend.dev>`.
+
+### F-CW-EMAIL-02 ✅ Fixed (commit `e4e5c06`) — Edge Functions queried wrong column
+`send-proposal-email` and `notify-client-response` both selected `client` from the `projects` table. The actual column is `client_name` (`projects` also has `client_email`, `client_phone`, `client_quote`, `client_id` — naming convention is `client_*`). The query failed silently because the destructure didn't pull `error`. Result: every email went out with subject `Your design proposal: your project` and greeting `Hello,` instead of `Hi {clientName},`.
+
+Two-part fix:
+- Selected `client_name` and updated the `ProjectRow` interfaces accordingly in both functions.
+- Destructured `error` and `console.error`-d it on the project lookup so future column drift surfaces in function logs instead of silently sending fallback-content emails.
+
+`send-proposal-email` redeployed as v5 (then auto-bumped to v6 on next invocation), `notify-client-response` redeployed as v4.
+
+### Live verification
+Test send #2 returned `{ ok: true, emailed: true }` in 2.3s. Email reached the inbox. Loop confirmed working end-to-end:
+
+`Contractor clicks Email → wizard's modal → frontend service → Edge Function → Resend → client inbox`
+
+The contractor-walkthrough loop is complete.
