@@ -5,6 +5,7 @@ import React, { useMemo } from 'react';
 import type { WizardData } from '@/pages/ProjectWizard';
 import { getCategoryLabel } from '@/lib/categories';
 import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
+import { computeProjectCost } from '@/lib/projectCost';
 
 interface Props {
   data: WizardData;
@@ -26,12 +27,21 @@ const cardClass = 'rounded-[8px] border p-[14px]';
 export const WizardStepSummary: React.FC<Props> = ({ data }) => {
   const totalManHours = data.tasks.reduce((s, t) => s + (t.estimatedHours ?? 0), 0);
   const totalMatCost = data.materialSelections.reduce((s, m) => s + m.quantity * m.unitCost, 0);
-  const directCosts = (data.laborBudget ?? 0) + (data.materialsBudget ?? 0) + (data.equipmentBudget ?? 0) + (data.subcontractorBudget ?? 0) + (data.disposalCost ?? 0) + (data.equipmentCost ?? 0);
-  const overhead = directCosts * ((data.overheadPct ?? 10) / 100);
-  const total = directCosts + overhead;
+  // F-CW-06 + F-CW-07 fix: shared rollup. Step 6 was previously omitting
+  // permit fees from directCosts (Step 5 included them) — that was the
+  // $258 drift between screens.
+  const { totalCost: total, profit, marginPct: margin } = computeProjectCost({
+    laborBudget: data.laborBudget,
+    materialsBudget: data.materialsBudget,
+    equipmentBudget: data.equipmentBudget,
+    subcontractorBudget: data.subcontractorBudget,
+    disposalCost: data.disposalCost,
+    equipmentCost: data.equipmentCost,
+    overheadPct: data.overheadPct,
+    clientQuote: data.clientQuote,
+    permitFees: data.permitFees,
+  });
   const quote = data.clientQuote ?? 0;
-  const profit = quote - total;
-  const margin = quote > 0 ? (profit / quote) * 100 : 0;
   const marginColor = margin >= 20 ? 'var(--status-green)' : margin >= 10 ? 'var(--status-amber)' : 'var(--status-red)';
 
   const totalArea = useMemo(() => data.elements.reduce((s, el) => {

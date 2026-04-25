@@ -783,3 +783,33 @@ After clicking Next from Step 1, Step 2 loads with the page scrolled to the midd
 **Broken at the finish line**: the email-to-client feature — which is the actual contractor-to-client handoff — fails at both the UI layer (modal) and the Edge Function layer (auth). Today a contractor has to copy the share URL manually and paste it into their own email. That works, but defeats the purpose of the built-in email send.
 
 **Recommended priority**: fix F-CW-08 and F-CW-09 before pitching email-to-client as a feature. Fix F-CW-04 (AI misinterpretation) as part of next AI prompt pass — it's the most visible "the AI doesn't understand my job" moment.
+
+---
+
+## 2026-04-24 — Walkthrough P1 fixes shipped
+
+Resolutions for the four P1 findings:
+
+### F-CW-09 ✅ Fixed — Edge Function auth 401
+The function created a service-role client and then called `supabase.auth.getUser(jwt)` on it. That API combination doesn't validate user JWTs (it's for anon-keyed clients). Replaced with direct JWT decode — the gateway's `verify_jwt: true` already validated signature + expiry before invoking the function, so the body just trusts the `sub` claim. Deployed v2; verified `POST /functions/v1/send-proposal-email` returns 200 OK. The graceful-fallback path now fires correctly: `{ ok: true, emailed: false, reason: "RESEND_API_KEY not set" }`. Once Charlie sets `RESEND_API_KEY` and `NOTIFY_FROM_EMAIL` on the function env, real email starts flowing.
+
+### F-CW-04 ✅ Fixed — AI element inference reads "demo" as build
+The element matcher was naive substring search ("concrete" anywhere in the description matches Concrete Slab). Added a pre-pass that strips demolition clauses (`demo|remove|tear out|tear down|rip out|haul away|dispose of|excavate and remove`) from the description before keyword matching. So `"Build a 24×18 paver patio. Demo existing concrete slab first."` now infers Patio only — the demo clause is invisible to the matcher. The Step 3 task inference still picks up demolition correctly (it has its own logic).
+
+### F-CW-08 ❌ Not a bug — false positive in original test
+Original report: clicking "Email to client" didn't open the modal. On retest with a real DOM click event (instead of the React-fiber dispatch I'd used originally), the modal opens immediately and renders all fields. The earlier failure was an artifact of my eval methodology (synthetic events / direct hook dispatches don't always trigger React's render cycle). Verified end-to-end: opened modal → filled email + note → clicked Send → network log shows 200 from the function → toast confirmed share-link prepared.
+
+### F-CW-07 ✅ Fixed — Wizard $15,267 cost vs Overview $11,789 budget
+**Root cause**: three different files computed totalCost three different ways. WizardStepNumbers included `disposalCost + equipmentCost + permitFeesSum`. WizardStepSummary included `disposalCost + equipmentCost` but **omitted permits** ($258 difference, also explains F-CW-06). OverviewTab omitted all three.
+
+**Fix**: extracted `computeProjectCost(input): CostBreakdown` to `src/lib/projectCost.ts`. All three screens now call the same helper and compute identical numbers. Verified live in the preview: project that previously read $11,789 / 38% on Overview now reads $15,009 / 21% — exactly matching Step 6 of the wizard. F-CW-06 (Step 5 vs Step 6 drift) resolved by the same helper.
+
+### Status of contractor-walkthrough P1s
+| ID | Status |
+|----|--------|
+| F-CW-04 | ✅ shipped |
+| F-CW-07 | ✅ shipped (also closes F-CW-06) |
+| F-CW-08 | ✅ false positive — flow works end-to-end |
+| F-CW-09 | ✅ shipped (Edge Function v2 deployed) |
+
+**Remaining for next session**: F-CW-01 (landing blank green), F-CW-02 (CTA copy), F-CW-03 (org name placeholder), F-CW-05 (address autocomplete), F-CW-10 (wizard scroll). All P2/P3.

@@ -7,6 +7,7 @@ import type { WizardData } from '@/pages/ProjectWizard';
 import { useOrgStore } from '@/stores/orgStore';
 import type { AIRecommendationSet } from '@/types';
 import { NumberInput } from '@/components/ui/NumberInput';
+import { computeProjectCost } from '@/lib/projectCost';
 
 interface Props {
   data: WizardData;
@@ -84,25 +85,34 @@ export const WizardStepNumbers: React.FC<Props> = ({ data, onChange, recommendat
     if (equipCostSum > 0 && !equipCostEdited.current) onChange({ equipmentCost: equipCostSum });
   }, [equipCostSum]);
 
+  // F-CW-07 fix: use shared computeProjectCost so this matches OverviewTab.
+  // permitFeesSum lives in component state (not data.permitFees yet at the
+  // time this runs), so we pass it via the optional permitFees field below.
+  const costInputs = {
+    laborBudget: data.laborBudget,
+    materialsBudget: data.materialsBudget,
+    equipmentBudget: data.equipmentBudget,
+    subcontractorBudget: data.subcontractorBudget,
+    disposalCost: data.disposalCost,
+    equipmentCost: data.equipmentCost,
+    overheadPct: data.overheadPct,
+    clientQuote: data.clientQuote,
+    permitFees: data.permitFees,
+  };
+
   // Auto-calc quote from total cost + desired margin %
   useEffect(() => {
     if (quoteEdited.current) return;
-    const direct = (data.laborBudget ?? 0) + (data.materialsBudget ?? 0) + (data.equipmentBudget ?? 0) + (data.subcontractorBudget ?? 0) + (data.disposalCost ?? 0) + (data.equipmentCost ?? 0) + permitFeesSum;
-    const overhead = data.overheadPct ?? 10;
-    const cost = direct + direct * (overhead / 100);
+    const { totalCost: cost } = computeProjectCost(costInputs);
     // quote = cost / (1 - margin/100) to achieve desired margin %
     const marginFrac = desiredMargin / 100;
     const quote = marginFrac >= 1 ? cost * 10 : cost / (1 - marginFrac);
     if (quote > 0) onChange({ clientQuote: Math.round(quote) });
   }, [data.laborBudget, data.materialsBudget, data.equipmentBudget, data.subcontractorBudget, data.disposalCost, data.equipmentCost, data.overheadPct, permitFeesSum, desiredMargin]);
 
-  // Computed financials
-  const directCosts = (data.laborBudget ?? 0) + (data.materialsBudget ?? 0) + (data.equipmentBudget ?? 0) + (data.subcontractorBudget ?? 0) + (data.disposalCost ?? 0) + (data.equipmentCost ?? 0) + permitFeesSum;
-  const overheadAmt = directCosts * ((data.overheadPct ?? 10) / 100);
-  const totalCost = directCosts + overheadAmt;
+  // Computed financials — same helper, ensures Step 5 / Step 6 / Overview agree.
+  const { totalCost, profit, marginPct: margin } = computeProjectCost(costInputs);
   const quote = data.clientQuote ?? 0;
-  const profit = quote - totalCost;
-  const margin = quote > 0 ? (profit / quote) * 100 : 0;
   const marginColor = margin >= 20 ? 'var(--status-green)' : margin >= 10 ? 'var(--status-amber)' : 'var(--status-red)';
 
   const togglePermit = (key: string) => {

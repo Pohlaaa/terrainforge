@@ -12,6 +12,7 @@ import { MaterialPicker } from '@/components/shared/MaterialPicker';
 import PlanView2D from '@/components/plan/PlanView2D';
 import PlanView3D from '@/components/plan/PlanView3D';
 import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl, sendProposalEmail } from '@/services/supabaseShareTokens';
+import { computeProjectCost } from '@/lib/projectCost';
 import { toast } from '@/hooks/useToast';
 
 interface Props {
@@ -186,16 +187,11 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   const crewSize = project.crewSize ?? 1;
   const clockHours = crewSize > 0 ? totalManHours / crewSize : totalManHours;
 
-  const labor = project.laborBudget ?? 0;
-  const materials = project.materialsBudget ?? 0;
-  const equipment = project.equipmentBudget ?? 0;
-  const subs = project.subcontractorBudget ?? 0;
-  const subtotal = labor + materials + equipment + subs;
-  const overhead = subtotal * ((project.overheadPct ?? 10) / 100);
-  const totalCost = subtotal + overhead;
-  const quote = project.clientQuote ?? project.budget ?? 0;
-  const profit = quote - totalCost;
-  const marginPct = quote > 0 ? (profit / quote) * 100 : 0;
+  // F-CW-07 fix: use the shared computeProjectCost helper so this matches
+  // the wizard's Numbers/Review screens exactly. Previously this subset
+  // omitted disposalCost, equipmentCost, and permit fees, producing a
+  // budget figure ~$3-4k below what the contractor saw at quote time.
+  const { totalCost, quote, profit, marginPct } = computeProjectCost(project);
 
   const phasesInProgress = [...new Set(tasks.filter((t) => t.status === 'in_progress').map((t) => t.phase))];
 

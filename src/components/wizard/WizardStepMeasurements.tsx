@@ -149,7 +149,17 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
   };
 
   const applySuggestions = () => {
-    const desc = (data.description || '').toLowerCase();
+    // F-CW-04 fix: strip demolition phrases first. Otherwise "demo existing
+    // concrete slab" causes the keyword matcher to add Concrete Slab as a
+    // *build* element, contradicting the user's intent. Match the verb +
+    // any non-period text that follows on the same clause.
+    const stripDemoClauses = (s: string) =>
+      s.replace(
+        /\b(demo(?:lish)?|remove|tear\s*out|tear\s*down|rip\s*out|haul\s*away|dispose\s*of|excavate\s*and\s*remove|demo\s*existing)\b[^.!?]*/gi,
+        '',
+      );
+
+    const desc = stripDemoClauses(data.description || '').toLowerCase();
     const inferred: Omit<WizardElement, 'tempId'>[] = [];
 
     // Always infer from description keywords — this is the primary source
