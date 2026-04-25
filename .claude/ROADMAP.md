@@ -4,7 +4,7 @@
 > contractor feedback (v2-v5), the Apr 5 audit report, Supabase advisor findings, and
 > internal stability work. Status on each item: ✅ done / 🟡 in-progress / 🔴 open.
 >
-> **Last updated:** 2026-04-23 (post 3D pivot Sprints 1-7, migrations 028/029/030 live, client share viewer end-to-end).
+> **Last updated:** 2026-04-24 (contractor-walkthrough findings F-CW-01..10 + F-CW-EMAIL-01/02 closed, real email delivery operational).
 >
 > **Audience.** Next session's default work picker. Read after `CLAUDE.md` + `CONTEXT.md`.
 
@@ -258,12 +258,11 @@ sized to element footprint. Fire pits as a short stone-rim cylinder with a
 glowing ember top (emissive material). Labels position above the primitive's
 actual top height. Other element types keep their box extrusions.
 
-### 🟡 Resend email on client response (Sprint 7d — scaffold closed 2026-04-23)
-Edge Function `notify-client-response` shipped at `supabase/functions/`.
-`respondToShareToken` fires a best-effort POST after the RPC succeeds. Dormant
-until Charlie (1) deploys the function, (2) sets `RESEND_API_KEY` +
-`NOTIFY_FROM_EMAIL` as function env, (3) sets `VITE_RESPONSE_NOTIFY_URL` in
-`.env.local`. In-app banner on OverviewTab continues to work regardless.
+### ✅ Resend email on client response + contractor-to-client proposal email (Sprint 7d — closed 2026-04-24)
+Both Edge Functions deployed and operational against prod Resend. `send-proposal-email` v6 verified live with `emailed: true` round-trip in 2.3s. `notify-client-response` v4 same code path. Two emergent bugs found + fixed during live testing:
+- F-CW-EMAIL-01: malformed `NOTIFY_FROM_EMAIL` (missing closing `>`) — operator config
+- F-CW-EMAIL-02: functions queried `client` instead of `client_name` from projects table — silent query failure produced placeholder-text emails. Commit `e4e5c06`.
+In-app banner on OverviewTab continues to work as a fallback when env vars aren't configured.
 
 ### 🟡 Precise element-on-property placement (Sprint 6c — residual closed 2026-04-23)
 S7b delivered the geo-aligned satellite plane. S6c-residual (Apr 23) fixed the
@@ -276,6 +275,10 @@ elements visible on the lawn area until the contractor positions them.
 
 ## Done recently (last 2 weeks)
 
+- ✅ Contractor-walkthrough verification (Apr 24): full fresh-contractor persona walked through wizard → share link → email proposal. 10 findings logged (F-CW-01..10), 9 shipped + 1 false positive. 2 emergent email-side bugs found + fixed during live verification (F-CW-EMAIL-01 operator typo, F-CW-EMAIL-02 wrong projects column). Commits `c219d80`, `4c6bd84`, `e4e5c06`, `8c6d5b4`.
+- ✅ Real Resend email delivery operational end-to-end (Apr 24): both Edge Functions verified live against prod Resend
+- ✅ Shared `computeProjectCost` helper at `src/lib/projectCost.ts` — single source of truth for cost rollup; closes wizard-vs-Overview number disagreement
+- ✅ Edge Function JWT decode fix (replaced wrong `supabase.auth.getUser(jwt)` API with direct base64 decode; gateway already validated via `verify_jwt: true`)
 - ✅ Migration 020-026 schema catch-up (Apr 17, committed)
 - ✅ Migration 027 perf + security hardening (88 RLS wraps, 12 FK indexes, 28 unused
   drops, 10 function pins, audit_log tighten)

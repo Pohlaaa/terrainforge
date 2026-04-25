@@ -3,9 +3,17 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-23) — 3D pivot shipped through Sprint 7 (partial)
+## Current Status (2026-04-24) — Contractor walkthrough loop fully operational + email delivery live
 
-**Active work**: 3D client-facing design app is live end-to-end — contractor draws elements in 2D over a satellite backdrop, generates a `/share/:token` link, client opens it without a TerrainForge account and sees their design in either 2D (Mapbox satellite + scaled shapes) or 3D (r3f Canvas, extruded boxes on geo-aligned satellite ground), client approves or requests changes with a note, contractor sees response banner on OverviewTab. Complete loop operational against prod Supabase.
+**Active work**: full contractor → client loop verified end-to-end with real email delivery. Wizard creates a project, share link generates, contractor clicks **Email to client** in the modal, Edge Function sends via Resend, client receives an email and clicks through to view the design at `/share/:token` (2D or 3D), can approve or request changes with a note, contractor sees the response banner on OverviewTab. **All twelve contractor-walkthrough findings (F-CW-01..10 plus emergent F-CW-EMAIL-01/02) closed.**
+
+**Recent commit chain** (`claude/quirky-ishizaka` branch):
+- `c219d80` — Session 1 P1 walkthrough fixes (F-CW-04 AI demo handling, F-CW-06+07 unified `computeProjectCost`, F-CW-09 Edge Function JWT decode)
+- `4c6bd84` — Session 2 P2/P3 walkthrough fixes (F-CW-01 Suspense bg match, F-CW-02 authed CTA copy, F-CW-03 Company Name on signup, F-CW-05 actionable address copy, F-CW-10 wizard scroll-to-top)
+- `e4e5c06` — Edge Functions queried wrong column (`client` → `client_name`) + redeployed v5/v4
+- `8c6d5b4` — FINDINGS doc update logging the email-side bugs
+
+**Email delivery configured**: Resend API integrated. `RESEND_API_KEY` + `NOTIFY_FROM_EMAIL` set as Supabase Edge Function secrets. Functions auto-pickup secret changes; no redeploy needed for env var updates. Live verification: `send-proposal-email` v6 returned `emailed: true` in 2.3s. Real inbox delivery confirmed.
 
 **3D pivot sprints shipped** (commit range ~`d48061b → 1ee17d9`, 19 commits, 3 migrations):
 - S1: migration 028 + share-link viewer + PlanView2D
@@ -15,14 +23,14 @@ TerrainForge is a SaaS platform for landscaping contractors. It replaces spreads
 - S5: Vite `optimizeDeps` fix — restored 3D toggle end-to-end
 - S6 PARTIAL: 6b satellite 3D ground + 6d per-category material props
 - S7 PARTIAL: 7b geo-aligned Web Mercator tile footprint + element-focused camera
+- 7d: Resend email on client approve/reject (closed via F-CW-EMAIL-02 fix; both functions verified live)
 
-See `.claude/TESTING/FINDINGS.md` for per-sprint detail + partial-ship backlog.
+See `.claude/TESTING/FINDINGS.md` for per-sprint detail, contractor-walkthrough findings, and resolutions.
 
 **3D pivot sprint backlog** (still pending):
 - 6a/7a — 3D editing (drag/resize/rotate with camera-space math)
 - 6c — precise element-on-property placement (partial via 7b; element origin still (0,0))
-- 6e/7d — Resend email on client approve/reject
-- 6f/7e — Shape primitives (cylinders for trees/fire pits)
+- 6f/7e — Shape primitives for remaining types (currently boxes/cylinders/spheres for trees/shrubs/fire pits)
 - 7c — Real PBR texture maps via migration 030 columns (needs hosting decision)
 
 **Earlier work still shipped**: P0 remediation sweep (F-040 through F-050) Apr 21, platform stabilization (mig 027) Apr 17. Contractor feedback round 1 complete. 4-tab hub, 6-step wizard, materials engine with 6 computation models, measurement-driven ProjectElement architecture, project lifecycle states.
