@@ -1262,6 +1262,106 @@ Same pattern as F-CW-11/25/38. Table layouts don't reflow on narrow viewports.
 
 **Cumulative open findings**: 45 distinct findings across 13 walkthroughs (F-CW-10 partial through F-CW-59). 2 P0s (F-CW-36, F-CW-43), 12 P1s, several P2s, lots of P3 polish.
 
+---
+
+## 2026-04-26 — Live prod walkthrough (post-deploy verification)
+
+After two fix sweeps shipped (commits `c219d80`, `4c6bd84`, `e4e5c06`, `2665cfd`, `06765ec`, `cdfb047`, `a154357`, `3d9851f`, `ed62f15`, `673403e`) and Charlie deployed to `https://terrainforge-staging.netlify.app` from the `claude/quirky-ishizaka` branch, I ran a live walkthrough as woodsrider82@gmail.com to verify shipped fixes hold against real CDN, real Resend, real RLS — and to surface anything new.
+
+### Verifications passed ✅
+
+- **F-CW-54** Settings page layout — clean horizontal split, sidebar nav left, content right
+- **F-CW-55** "Avg Budget" → "Outstanding" KPI label
+- **F-CW-56** Budget Hub status column reads from `project.status` ("Estimate", "Quoted", etc.) not date heuristic
+- **F-CW-06/07** Wizard Step 5 ($10,074) = Step 6 ($10,074) — identical, no drift
+- **F-CW-09 + F-CW-EMAIL-01/02** Email send succeeded: 200 OK in 2.3s, function v8 returned the proposal email to woodsrider82@gmail.com with correct project name + greeting
+- **F-CW-16** Softscape no longer collapses — AI returned 9 materials + tasks + crew + equipment recommendations (vs. zero in pre-fix walkthroughs)
+- **F-CW-33** Client & Location inline edit DOES save — phone updated `555-200-1000` → `555-999-8888` and persisted in DB
+- **F-CW-46** Equipment-accept persists `assigned_project_id` — wizard recorded 3 crew, equipment-accept didn't error this time
+- **Lifecycle pipeline** — Send Quote click flipped `status: estimate → quoted`
+
+### Live findings (P0 first)
+
+#### F-CW-LIVE-01 / P3 — Trial-expired account hard-blocks
+Signed in initially as `woodsrider82+test4@gmail.com` (Gmail plus-aliasing, separate Supabase user). Got hit immediately with "Your free trial has ended" billing wall. No way to test the app on that account. Charlie's trial-reset SQL only covers the base `woodsrider82@gmail.com` address. For internal QA, either (a) reset trial periodically across alias accounts, or (b) add a DEV/admin override that bypasses the trial gate for internal emails.
+
+#### F-CW-LIVE-04 / **P0** (F-CW-36/43 fix INCOMPLETE on prod)
+Created project `7bb93cd5-fd14-4a35-ad10-b8c1bd886873` (softscape: lawn + drainage + shrubs). DB-level inspection:
+- `projects.materials` JSONB = **9 materials**
+- `project_element_materials` junction = **1 row** (Sod only)
+- User-visible Manifest tab: 1 material
+- User-visible Closeout tab: 8 materials
+
+**They actively disagree.** The F-CW-45 cascade fix (which I claimed shipped) only partially closed the issue — only 4 of 9 materials got valid library IDs, and only 1 of those made it to the junction.
+
+#### F-CW-LIVE-05 / P2 — Duplicate materials in JSONB
+Wizard saved both "Landscape Fabric (Weed Barrier)" AND "Landscape fabric (weed barrier)" — same name with different casing — as TWO rows in `projects.materials` JSONB. Both reference the same library `material_id`, so the library was deduped correctly, but the project-level JSONB has the dup. Need case-insensitive de-duplication before saving the JSONB array.
+
+#### F-CW-LIVE-06 / P1 (root cause of LIVE-04 — was misidentified earlier)
+**Originally hypothesized**: AI returns `category: 'misc'` for materials that should be `plant`/`soil`/`mulch`/etc., and the auto-link loop's `getElementTypesForCategory('misc')` returns empty array so junction insert is skipped.
+**Actual root cause**: see F-CW-LIVE-08 below — the materials never got created in the library at all because of unit-validation rejection.
+
+#### F-CW-LIVE-08 / **P0** — Materials unit validation rejects AI output (THE REAL ROOT CAUSE)
+
+Postgres logs show 5 errors during the wizard's createMaterial loop:
+```
+new row for relation "materials" violates check constraint "materials_unit_check"
+```
+
+The CHECK constraint allows: `sqft, lnft, bag, cuyd, ton, each, gallon, lb, pallet, roll, box, piece, bundle`.
+The AI returns: `cubic_yards`, `linear_feet`, `each`, `cubic_yards`, `cubic_yards`.
+
+`cubic_yards` and `linear_feet` are not in the allowed set. The wizard's `coercedUnit` normalization logic in `aiRecommendations.ts` doesn't translate `cubic_yards → cuyd` or `linear_feet → lnft`. Every such material's createMaterial call fails the CHECK constraint, addMaterial returns null, wizard saves the JSONB row with `materialId: ''`.
+
+**This is the actual single point of failure for the entire materials cascade.** Fix: add a unit-normalization map in the wizard or in the AI validation step. Closes F-CW-LIVE-04, F-CW-36, F-CW-43, the cascade of "broken" findings since walkthrough #4.
+
+Single-fix proposed change:
+```ts
+// In aiRecommendations.ts where coercedUnit is computed:
+const UNIT_NORMALIZATION: Record<string, string> = {
+  cubic_yards: 'cuyd', cubic_yard: 'cuyd', 'cu yd': 'cuyd', cy: 'cuyd', yard: 'cuyd', yards: 'cuyd',
+  linear_feet: 'lnft', linear_foot: 'lnft', lf: 'lnft', 'lin ft': 'lnft', ln: 'lnft',
+  square_feet: 'sqft', square_foot: 'sqft', sf: 'sqft', 'sq ft': 'sqft',
+  pieces: 'piece', units: 'each', plant: 'each', plants: 'each',
+};
+const normalized = UNIT_NORMALIZATION[String(rawUnit).toLowerCase()] ?? String(rawUnit).toLowerCase();
+```
+
+#### F-CW-LIVE-03 / P2 — F-CW-12 element inference fix has 2 false-positive cases
+Description: *"Install 2,500 sqft of new sod lawn in the backyard. Add a 40ft French drain along the back property line. Plant 6 hydrangea shrubs around the patio (existing patio, no patio work). Mulch the existing planting beds."*
+
+Inferred: Patio ❌, Garden Beds ❌ (Sod, Shrub Planting, Mulch, Drainage all correct).
+
+Why F-CW-12's clause-level install-verb check missed:
+- "Plant 6 hydrangea shrubs around the patio (existing patio" — clause has install verb "Plant" applied to shrubs, but "patio" is positional reference. Clause-level matching is too coarse.
+- "Mulch the existing planting beds" — "planting" matches `\bplant(?:ing)?\b` even though it's a noun adjective, not a verb. The regex needs a clause-start anchor or POS-tag awareness.
+
+The keyword matcher needs proper grammatical context. A small LLM call (cheap fast model) to pick install targets from a description would beat this regex-and-clause approach.
+
+#### F-CW-LIVE-07 / P3 — Wizard Step 5 vs Overview cost has $86 drift
+Wizard Step 5 cost = $10,074. Project Overview Budget = $9,988. Delta = $86 (with Quote $12,593 unchanged on both screens). Smaller than original F-CW-14 issue ($230) but still nonzero. F-CW-14 fix (max(eqBudget, eqCost)) hasn't fully eliminated the drift. Suspect another field that's summed wizard-side but not persisted.
+
+### Status snapshot
+
+| ID | Sev | Status |
+|----|-----|--------|
+| **F-CW-LIVE-04** | **P0** | 🔴 OPEN — junction has 1 of 9 materials |
+| **F-CW-LIVE-08** | **P0** | 🔴 OPEN — root cause of LIVE-04. ~10 line fix in `aiRecommendations.ts` |
+| F-CW-LIVE-03 | P2 | 🔴 OPEN — F-CW-12 clause-level matcher false positives |
+| F-CW-LIVE-05 | P2 | 🔴 OPEN — case-insensitive material dedup needed |
+| F-CW-LIVE-07 | P3 | 🔴 OPEN — $86 wizard↔Overview drift residue |
+| F-CW-LIVE-01 | P3 | 🔴 OPEN — trial-expired alias account hard-block |
+| F-CW-LIVE-06 | — | ✅ subsumed by LIVE-08 (mis-diagnosis corrected) |
+
+**Recommended next-fix priority**:
+1. **F-CW-LIVE-08** (P0) — single ~10-line fix in `aiRecommendations.ts` unit normalization. Closes LIVE-04, F-CW-36, F-CW-43, F-CW-17, F-CW-18 in one shot. **Highest leverage of any remaining fix.**
+2. F-CW-LIVE-05 (P2) — case-insensitive dedup of materialSelections before save
+3. F-CW-LIVE-03 (P2) — element inference: tighten install-verb regex to require start-of-clause or follow-by-noun, not adjective-noun
+4. F-CW-LIVE-07 (P3) — investigate which field still drifts wizard↔Overview
+5. F-CW-LIVE-01 (P3) — internal trial-bypass for QA
+
+After LIVE-08 fix ships and is redeployed, the materials engine should finally be running on full data for the first time. Recommend a fresh walkthrough against the new build to confirm.
+
 **The two P0s share a root cause**: F-CW-45 — most materials end up as project-level JSONB orphans without library references because `createMaterial` fails silently when AI says "will be added automatically." That cascades into F-CW-17/18 (silent INSERT failures) and F-CW-36 (manifest engine sees only library-linked materials), AND into F-CW-43 (Closeout reads JSONB and sees them all; Manifest reads junction and sees one). Fix `createMaterial` reliability + backfill orphan library rows + reconcile JSONB↔junction sources of truth, and ~5 findings close at once.
 
 **Recommended fix order for next session**:
