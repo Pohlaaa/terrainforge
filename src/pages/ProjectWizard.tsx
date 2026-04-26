@@ -708,6 +708,20 @@ export default function ProjectWizard() {
         }
       }
 
+      // F-CW-LIVE-05: case-insensitive dedup before BOTH the JSONB save
+      // and the element-material auto-link loops below. AI sometimes
+      // suggests slight case variants of the same material
+      // (e.g. "Landscape Fabric (Weed Barrier)" + "Landscape fabric
+      // (weed barrier)") which used to ship as two JSONB rows AND two
+      // junction inserts.
+      const dedupSeen = new Set<string>();
+      data.materialSelections = data.materialSelections.filter(mat => {
+        const key = `${(mat.materialName || '').toLowerCase().trim()}|${(mat.category || '').toLowerCase().trim()}`;
+        if (dedupSeen.has(key)) return false;
+        dedupSeen.add(key);
+        return true;
+      });
+
       // Materials: save to project JSONB (primary), best-effort add to library
       if (data.materialSelections.length > 0) {
         setCreateStatus('Saving materials...');

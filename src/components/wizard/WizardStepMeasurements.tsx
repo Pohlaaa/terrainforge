@@ -158,21 +158,38 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
         '',
       );
 
-    // F-CW-12: keyword matching alone is too loose. Description like "Install
-    // a flagstone walkway from driveway to front door. Mulch the planting
-    // beds." would infer Patio (because "flagstone" is a Patio keyword) AND
-    // Driveway (because "from driveway" matched) AND Garden Beds (because
-    // "planting beds" matched). Fix: split into clauses and require an
-    // install verb in the same clause as the keyword. Verbs: install, build,
-    // add, plant, construct, lay, place, set up, create, put in, pour. The
-    // existing demo-strip handles the negative cases.
-    const installVerbRegex = /\b(install(?:ing)?|build(?:ing)?|construct(?:ing)?|add(?:ing)?|plant(?:ing)?|lay(?:ing)?|pour(?:ing)?|create(?:ing)?|set\s*up|put\s*in|new)\b/i;
+    // F-CW-12 / F-CW-LIVE-03: keyword matching alone is too loose. The
+    // clause-level install-verb check still false-positives in two cases
+    // observed in live walkthroughs:
+    //   1. "Plant 6 hydrangea shrubs around the patio" — clause has install
+    //      verb "Plant" but applied to shrubs, not patio. Patio is positional.
+    //   2. "Mulch the existing planting beds" — "planting" matches the verb
+    //      regex /plant(?:ing)?/ as a noun adjective, not a verb.
+    // Tighter check: install verb must appear at the START of the clause AS
+    // A VERB (followed by a determiner / quantity / preposition that signals
+    // direct-object intent). Also strip "(existing X)" / "no X work" phrases
+    // first so positional references can't be misread.
+    const stripExistingPhrases = (s: string) =>
+      s
+        .replace(/\(\s*existing[^)]*\)/gi, '')           // "(existing patio, no patio work)"
+        .replace(/\bexisting[^.,;()]+/gi, '')              // "existing planting beds"
+        .replace(/\bno\s+\w+\s+work\b/gi, '');             // "no patio work"
+
+    // Install verb must appear at clause start (with optional leading article)
+    // and be followed by a direct-object signal (article, number, "some", etc.)
+    // or immediately by a noun. This rejects "Mulch the existing planting beds"
+    // because "planting" is mid-clause as a noun adjective, while accepting
+    // "Plant 6 hydrangeas" because "Plant" leads the clause.
+    const clauseStartsWithInstallVerb = (clause: string): boolean =>
+      /^\s*(?:install(?:ing)?|build(?:ing)?|construct(?:ing)?|add(?:ing)?|plant(?:ing|s)?|lay(?:ing)?|pour(?:ing)?|create(?:ing)?|set\s*up|put\s*in|new\b|include\b|including\b)\s+(?:a\s|an\s|the\s|some\s|new\s|\d|[A-Z])/i.test(clause);
 
     const fullDesc = stripDemoClauses(data.description || '');
     // Split into clauses on . ! ? , ; and "and"/" with "/" plus ".
+    // Then strip parentheticals + existing-X phrases so positional references
+    // ("around the patio", "(existing patio)") don't trip keyword matches.
     const clauses = fullDesc
       .split(/[.!?;]|\band\b|,\s*/i)
-      .map(c => c.trim())
+      .map(c => stripExistingPhrases(c).trim())
       .filter(c => c.length > 0);
 
     const inferred: Omit<WizardElement, 'tempId'>[] = [];
@@ -206,10 +223,6 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
     ];
 
     for (const [terms, name, elementType] of keywords) {
-      // F-CW-12: only count a keyword hit if it appears in a clause that
-      // also contains an install verb. Falls back to whole-description
-      // match for keywords that strongly imply install intent on their own
-      // (e.g. compound terms like "fire pit", "pool deck", "outdoor kitchen").
       const compoundTerms = terms.some(t => t.includes(' '));
       const matchedInClause = clauses.some(clause => {
         const cl = clause.toLowerCase();
@@ -217,9 +230,13 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
         if (!hasKeyword) return false;
         // Compound multi-word terms (e.g. "retaining wall", "fire pit") are
         // strong enough on their own — install verb not required because
-        // contractors don't accidentally name them in passing.
+        // contractors don't name them in passing.
         if (compoundTerms && terms.some(t => t.includes(' ') && cl.includes(t))) return true;
-        return installVerbRegex.test(clause);
+        // F-CW-LIVE-03: require the install verb to appear at clause start
+        // followed by a direct-object signal (article, number, capital letter).
+        // Rejects "Mulch the existing planting beds" (planting is noun) and
+        // "Plant 6 hydrangea shrubs around the patio" (patio is positional).
+        return clauseStartsWithInstallVerb(clause);
       });
       if (matchedInClause) {
         if (!inferred.some(e => e.elementType === elementType)) {

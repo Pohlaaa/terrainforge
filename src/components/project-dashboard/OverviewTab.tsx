@@ -191,7 +191,17 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   // the wizard's Numbers/Review screens exactly. Previously this subset
   // omitted disposalCost, equipmentCost, and permit fees, producing a
   // budget figure ~$3-4k below what the contractor saw at quote time.
-  const { totalCost, quote, profit, marginPct } = computeProjectCost(project);
+  // F-CW-LIVE-07: permitFees aren't stored on the Project row — they live
+  // on `project_permits.fee`. Build the map from the permits prop so the
+  // total cost includes them and matches the wizard exactly.
+  const permitFeesMap: Record<string, number> = {};
+  for (const p of permits) {
+    if (p.fee != null && p.permitType) permitFeesMap[p.permitType] = (permitFeesMap[p.permitType] ?? 0) + p.fee;
+  }
+  const { totalCost, quote, profit, marginPct } = computeProjectCost({
+    ...project,
+    permitFees: permitFeesMap,
+  });
 
   const phasesInProgress = [...new Set(tasks.filter((t) => t.status === 'in_progress').map((t) => t.phase))];
 

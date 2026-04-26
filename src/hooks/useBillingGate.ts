@@ -17,6 +17,25 @@
 
 import { useMemo } from 'react';
 import { useOrgStore } from '@/stores/orgStore';
+import { useAuth } from '@/contexts/AuthContext';
+
+/**
+ * F-CW-LIVE-01: emails that bypass the billing gate even on prod.
+ * Used for internal QA / contractor-walkthrough testing where the trial-
+ * expired billing wall would otherwise block the entire app surface. The
+ * match is case-insensitive and tolerates Gmail plus-aliasing
+ * (woodsrider82+anything@gmail.com → all bypass). Keep this short and
+ * audit-friendly.
+ */
+const INTERNAL_BYPASS_EMAILS = new Set<string>([
+  'woodsrider82@gmail.com',
+]);
+function isInternalEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  // Strip Gmail plus-alias for matching (foo+anything@gmail.com → foo@gmail.com)
+  const normalized = email.toLowerCase().replace(/^([^+@]+)\+[^@]*@/, '$1@');
+  return INTERNAL_BYPASS_EMAILS.has(normalized);
+}
 
 export interface BillingGateResult {
   /**
@@ -65,6 +84,7 @@ export interface BillingGateResult {
 
 export function useBillingGate(): BillingGateResult {
   const org = useOrgStore((s) => s.org);
+  const { user } = useAuth();
 
   return useMemo((): BillingGateResult => {
     // Dev escape hatch — lets solo developers (or Claude) walk through a
@@ -73,6 +93,13 @@ export function useBillingGate(): BillingGateResult {
     // explicit VITE_DEV_BYPASS_BILLING opt-in so devs who want to test the
     // gate itself can leave it enabled.
     if (import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_BILLING === 'true') {
+      return { isGated: false, daysLeft: null, isTrial: false, showUrgentBanner: false, isExpiredTrial: false, isPastDue: false, readOnly: false };
+    }
+
+    // F-CW-LIVE-01: internal QA email allowlist bypass — works in any env
+    // including prod. Without this, alias accounts (woodsrider82+test4@gmail.com)
+    // hit the trial-expired wall on staging and can't exercise the app.
+    if (isInternalEmail(user?.email)) {
       return { isGated: false, daysLeft: null, isTrial: false, showUrgentBanner: false, isExpiredTrial: false, isPastDue: false, readOnly: false };
     }
 
@@ -115,5 +142,5 @@ export function useBillingGate(): BillingGateResult {
     const isPastDue = subscriptionStatus === 'past_due';
 
     return { isGated, daysLeft, isTrial, showUrgentBanner, isExpiredTrial, isPastDue, readOnly: isExpiredTrial };
-  }, [org]);
+  }, [org, user?.email]);
 }

@@ -141,6 +141,46 @@ Rules:
 }
 
 /**
+ * F-CW-LIVE-08: normalize AI unit strings to the values allowed by the
+ * `materials_unit_check` CHECK constraint. The constraint allows:
+ *   sqft, lnft, bag, cuyd, ton, each, gallon, lb, pallet, roll, box, piece, bundle
+ * AI commonly returns plural / verbose variants like "cubic_yards",
+ * "linear_feet", "square_feet", "pieces", "plants", etc. Without this
+ * map, every createMaterial call for an AI-suggested material with a
+ * non-canonical unit fails silently and the manifest engine never sees
+ * it. Lowercases + strips spaces/dashes/underscores before matching.
+ */
+const UNIT_NORMALIZATION: Record<string, string> = {
+  // Square feet
+  sqft: 'sqft', squarefeet: 'sqft', squarefoot: 'sqft', sf: 'sqft',
+  // Linear feet
+  lnft: 'lnft', linearfeet: 'lnft', linearfoot: 'lnft', lf: 'lnft', lin: 'lnft',
+  // Cubic yards
+  cuyd: 'cuyd', cubicyards: 'cuyd', cubicyard: 'cuyd', cy: 'cuyd', yard: 'cuyd', yards: 'cuyd',
+  // Tons
+  ton: 'ton', tons: 'ton',
+  // Bags
+  bag: 'bag', bags: 'bag',
+  // Each / count
+  each: 'each', ea: 'each', units: 'each', unit: 'each', count: 'each', plant: 'each', plants: 'each',
+  // Pallet / roll / box / piece / bundle
+  pallet: 'pallet', pallets: 'pallet',
+  roll: 'roll', rolls: 'roll',
+  box: 'box', boxes: 'box',
+  piece: 'piece', pieces: 'piece', pcs: 'piece', pc: 'piece',
+  bundle: 'bundle', bundles: 'bundle',
+  // Pounds + gallons
+  lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
+  gallon: 'gallon', gallons: 'gallon', gal: 'gallon',
+};
+
+export function normalizeAIUnit(raw: string | null | undefined): string {
+  if (!raw) return 'each';
+  const key = String(raw).toLowerCase().replace(/[\s_\-]+/g, '');
+  return UNIT_NORMALIZATION[key] ?? String(raw).toLowerCase();
+}
+
+/**
  * Validate and enrich AI response against actual org data.
  * Drops hallucinated IDs, corrects budget math.
  */
@@ -215,7 +255,15 @@ function validateAndEnrich(
   const materials: AIMaterialRecommendation[] = (raw.materials || []).map((m) => {
     // Coerce unit for bagged-only materials if AI returned something else.
     const nameLc = (m.materialName || '').toLowerCase();
-    let coercedUnit = m.unit;
+    // F-CW-LIVE-08: AI returns variants like "cubic_yards" / "linear_feet"
+    // / "square_feet" / "pieces" that the DB's materials_unit_check
+    // CHECK constraint rejects. Allowed values: sqft|lnft|bag|cuyd|ton|
+    // each|gallon|lb|pallet|roll|box|piece|bundle. Without this map
+    // every createMaterial call fails with a CHECK violation, the
+    // material ends up as a project-level orphan with empty materialId,
+    // and the manifest engine never sees it. This single normalization
+    // unblocks the entire materials cascade end-to-end.
+    let coercedUnit = normalizeAIUnit(m.unit);
     let coercedQuantity = m.estimatedQuantity;
     for (const rule of BAGGED_UNIT_COERCIONS) {
       if (rule.keywords.some((k) => nameLc.includes(k))) {
