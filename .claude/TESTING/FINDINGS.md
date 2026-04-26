@@ -1362,6 +1362,60 @@ Wizard Step 5 cost = $10,074. Project Overview Budget = $9,988. Delta = $86 (wit
 
 After LIVE-08 fix ships and is redeployed, the materials engine should finally be running on full data for the first time. Recommend a fresh walkthrough against the new build to confirm.
 
+---
+
+## 2026-04-26 — Re-test on prod after LIVE-08 ship
+
+After deploying commit `e3799eb` to staging, ran a fresh softscape walkthrough. New project `7d2695b0`. DB inspection:
+
+### ✅ LIVE-08 verified working
+
+**8 of 8 materials in `projects.materials` JSONB now have `HAS_ID`** (was 4 of 9 pre-fix). Units normalized to canonical CHECK-allowed values: `sqft`, `cuyd`, `lnft`, `each`. The unit-validation rejection that caused createMaterial to silently fail is gone. The cornerstone bug for the entire materials cascade is closed.
+
+### Junction count still 1 of 8 — different root cause now
+
+The materials all exist in the library — but only **Mulch (cuyd)** got a junction row, linked to **Shrub Planting**. Diagnosing the remaining gap:
+
+| Material | Category | Should link to | Linked? |
+|----|----|----|----|
+| Sod (2,500 sqft) | sod | Sod Area | **No element exists** — F-CW-LIVE-03 regression (Sod wasn't inferred due to comma in "3,000") |
+| Sod (additional 500 sqft…) | sod | Sod Area | (same — and **F-CW-LIVE-11** dup, see below) |
+| Hydrangea Shrubs | **misc** | Shrub Planting | **No** — category='misc' has no element-type mapping |
+| Mulch (bulk) | mulch | Mulch Area or Shrub Planting | **Yes** ✅ (linked to Shrub Planting) |
+| Drain Pipe | misc | Drainage | **No** — misc has no mapping |
+| Drain Rock / Gravel | stone | Drainage | **No** — stone maps to hardscape, not drainage |
+| Landscape fabric | misc | (any) | **No** — misc has no mapping |
+| Topsoil | misc | Garden Beds / Sod Area | **No** — misc has no mapping |
+
+So the cascade fix is **architecturally working** — when an element + a properly-categorized material exists, they link. The remaining gap is two layers up:
+
+#### F-CW-LIVE-09 / P1 — Category-to-element-type mapping is too narrow
+`getElementTypesForCategory()` doesn't have entries for `misc`, doesn't map `stone` to `drainage`, etc. AI legitimately returns `misc` for materials that don't fit a tight category (drain pipe, landscape fabric, topsoil). The mapping needs broader coverage:
+- `misc` → could fit any element (especially drainage, garden_bed)
+- `stone` → drainage + retaining_wall
+- `pipe` (or recognize "drain pipe" name pattern) → drainage
+
+Or even simpler: when no category mapping matches, attempt name-based linking (does the material name mention "drain", "shrub", "sod" etc., to find a matching element).
+
+#### F-CW-LIVE-10 / P2 — AI defaults to category='misc' too aggressively
+Hydrangea Shrubs returned with `category='misc'` instead of `'plant'`. The AI prompt should make the category list more visible / require specific picks for items that match obvious categories. Add a category-validation step that re-classifies based on name keywords ("shrub" / "tree" / "plant" → `plant`).
+
+#### F-CW-LIVE-11 / P2 — AI suggests duplicate-conceptually materials with different names
+"Sod (2,500 sqft)" + "Sod (additional 500 sqft to complete 3,000 sqft)" both shipped as separate JSONB rows because the LIVE-05 dedup is exact-name match. Need fuzzy dedup: same category + name starts-with or contains the same noun ("Sod") → merge. Or better — fix the AI prompt so it doesn't suggest two rows for the same material.
+
+### Status
+
+| ID | Sev | Status |
+|----|-----|--------|
+| F-CW-LIVE-08 | P0 | ✅ shipped + verified live |
+| F-CW-LIVE-04 | P0 | ✅ closed via LIVE-08 (8/8 HAS_ID) |
+| F-CW-LIVE-03 iteration | P2 | 🟡 committed `1193844`, needs redeploy |
+| F-CW-LIVE-09 | P1 | 🆕 OPEN — category→element mapping too narrow |
+| F-CW-LIVE-10 | P2 | 🆕 OPEN — AI defaults to misc too readily |
+| F-CW-LIVE-11 | P2 | 🆕 OPEN — fuzzy dedup needed for AI material suggestions |
+
+**Next**: redeploy with commit `1193844` (LIVE-03 iteration) so Sod actually gets inferred, then iterate F-CW-LIVE-09 (broader category mapping) which would push junction count from 1/8 toward something like 5/8. F-CW-LIVE-10 + 11 are AI-prompt polish that can wait.
+
 **The two P0s share a root cause**: F-CW-45 — most materials end up as project-level JSONB orphans without library references because `createMaterial` fails silently when AI says "will be added automatically." That cascades into F-CW-17/18 (silent INSERT failures) and F-CW-36 (manifest engine sees only library-linked materials), AND into F-CW-43 (Closeout reads JSONB and sees them all; Manifest reads junction and sees one). Fix `createMaterial` reliability + backfill orphan library rows + reconcile JSONB↔junction sources of truth, and ~5 findings close at once.
 
 **Recommended fix order for next session**:
