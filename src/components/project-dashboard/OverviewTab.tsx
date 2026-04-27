@@ -108,6 +108,31 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
     }
   }
 
+  // Phase C v0: issue a client-editable design link. Same flow as the
+  // view-only link, but `role: 'client_design'` unlocks the
+  // client_update_element_geometry RPC for the holder.
+  async function handleCreateDesignLink() {
+    const orgId = useOrgStore.getState().org?.id;
+    if (!orgId) {
+      toast.error('No organization context; cannot create design link.');
+      return;
+    }
+    setCreatingShare(true);
+    const created = await createShareToken(project.id, orgId, { role: 'client_design' });
+    setCreatingShare(false);
+    if (!created) {
+      toast.error('Could not create design link. Check that migration 031 is applied.');
+      return;
+    }
+    setShareTokens((prev) => [created, ...prev]);
+    try {
+      await navigator.clipboard.writeText(buildShareUrl(created.token));
+      toast.success('Design link copied to clipboard.');
+    } catch {
+      toast.success('Design link created.');
+    }
+  }
+
   async function handleCopyShareLink() {
     if (!activeToken) return;
     try {
@@ -355,20 +380,39 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={handleCreateShareLink}
-                disabled={creatingShare || elements.length === 0}
-                className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] border-none"
-                style={{
-                  backgroundColor: elements.length === 0 ? 'var(--surface)' : 'var(--green)',
-                  color: elements.length === 0 ? 'var(--text-4)' : '#fff',
-                  cursor: creatingShare || elements.length === 0 ? 'not-allowed' : 'pointer',
-                  opacity: creatingShare ? 0.6 : 1,
-                }}
-              >
-                {creatingShare ? 'Creating…' : 'Share with client'}
-              </button>
+              <div className="flex gap-[6px]">
+                <button
+                  type="button"
+                  onClick={handleCreateShareLink}
+                  disabled={creatingShare || elements.length === 0}
+                  className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] border-none"
+                  style={{
+                    backgroundColor: elements.length === 0 ? 'var(--surface)' : 'var(--green)',
+                    color: elements.length === 0 ? 'var(--text-4)' : '#fff',
+                    cursor: creatingShare || elements.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: creatingShare ? 0.6 : 1,
+                  }}
+                  title="Read-only preview — client can approve or request changes"
+                >
+                  {creatingShare ? 'Creating…' : 'Share with client'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateDesignLink}
+                  disabled={creatingShare || elements.length === 0}
+                  className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] border"
+                  style={{
+                    borderColor: elements.length === 0 ? 'var(--border)' : 'var(--green)',
+                    color: elements.length === 0 ? 'var(--text-4)' : 'var(--green-l)',
+                    backgroundColor: 'transparent',
+                    cursor: creatingShare || elements.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: creatingShare ? 0.6 : 1,
+                  }}
+                  title="Editable link — client can drag/resize elements, then submit for review"
+                >
+                  ✎ Design link
+                </button>
+              </div>
             )}
             </div>
           </div>
@@ -378,6 +422,14 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                 className="mb-[8px] px-[10px] py-[8px] rounded-[6px] text-[11px] font-mono break-all"
                 style={{ backgroundColor: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--border)' }}
               >
+                {activeToken.role === 'client_design' && (
+                  <span
+                    className="mr-[8px] px-[6px] py-[1px] rounded-[3px] text-[10px] font-[600] font-sans"
+                    style={{ backgroundColor: 'rgba(16,185,129,0.15)', color: 'var(--green-l)' }}
+                  >
+                    ✎ EDIT
+                  </span>
+                )}
                 {buildShareUrl(activeToken.token)}
                 {activeToken.viewCount > 0 && (
                   <span className="ml-[8px]" style={{ color: 'var(--green-l)' }}>
@@ -385,6 +437,32 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   </span>
                 )}
               </div>
+              {/* Phase C v0: client_design submission banner */}
+              {activeToken.role === 'client_design' && activeToken.clientChangesSubmittedAt && (
+                <div
+                  className="mb-[12px] px-[12px] py-[10px] rounded-[8px] text-[12px]"
+                  style={{
+                    backgroundColor: 'rgba(16,185,129,0.08)',
+                    border: '1px solid #10B981',
+                    color: '#10B981',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: activeToken.clientChangesNote ? 4 : 0 }}>
+                    ✎ Client submitted design changes
+                    <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.75 }}>
+                      · {new Date(activeToken.clientChangesSubmittedAt).toLocaleString()}
+                    </span>
+                  </div>
+                  {activeToken.clientChangesNote && (
+                    <div style={{ color: 'var(--text-secondary)', marginTop: 4 }}>
+                      "{activeToken.clientChangesNote}"
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6 }}>
+                    Their edits are reflected on the plan above. Review and revoke or send a follow-up link.
+                  </div>
+                </div>
+              )}
               {activeToken.clientResponse && (
                 <div
                   className="mb-[12px] px-[12px] py-[10px] rounded-[8px] text-[12px]"

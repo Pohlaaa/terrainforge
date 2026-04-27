@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { fetchSharedProjectByToken, respondToShareToken } from '@/services/supabaseShareTokens'
-import type { Project, ProjectElement, ShareToken, Material } from '@/types'
+import {
+  fetchSharedProjectByToken,
+  respondToShareToken,
+  clientUpdateElementGeometry,
+  submitDesignChanges,
+} from '@/services/supabaseShareTokens'
+import type { ElementGeometry, Project, ProjectElement, ShareToken, Material } from '@/types'
 import PlanView2D from '@/components/plan/PlanView2D'
 import PlanView3D from '@/components/plan/PlanView3D'
 import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
@@ -34,6 +39,12 @@ const SharedProjectView: React.FC = () => {
   const [noteFormFor, setNoteFormFor] = useState<'approved' | 'changes_requested' | null>(null)
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
 
+  // Phase C v0: client design edit state
+  const [submitOpen, setSubmitOpen] = useState(false)
+  const [designNote, setDesignNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!token) {
       setState({ status: 'error', message: 'Missing share token.' })
@@ -58,6 +69,57 @@ const SharedProjectView: React.FC = () => {
       })
     })
   }, [token])
+
+  // Phase C v0: client edits one element's geometry. Optimistic — update
+  // local state immediately, then call the RPC. On failure, reload from
+  // server (cheapest correctness recovery for an anon flow).
+  async function handleClientGeometryChange(elementId: string, geometry: ElementGeometry) {
+    if (!token || state.status !== 'ready') return
+    setEditError(null)
+    // Optimistic local update so the canvas visually settles instantly.
+    setState({
+      ...state,
+      elements: state.elements.map((el) =>
+        el.id === elementId ? { ...el, geometry } : el,
+      ),
+    })
+    const result = await clientUpdateElementGeometry(token, elementId, geometry)
+    if (!result.ok) {
+      setEditError(result.error)
+      // Refetch to revert (cheaper than tracking pre-edit state)
+      const refresh = await fetchSharedProjectByToken(token)
+      if (refresh) {
+        setState({
+          status: 'ready',
+          project: refresh.project,
+          elements: refresh.elements,
+          tokenRow: refresh.token,
+          materialsById: refresh.materialsById,
+          companyName: refresh.companyName,
+        })
+      }
+    }
+  }
+
+  async function handleSubmitDesign() {
+    if (!token || state.status !== 'ready') return
+    setSubmitting(true)
+    const trimmed = designNote.trim()
+    const result = await submitDesignChanges(token, trimmed || undefined)
+    setSubmitting(false)
+    if (!result.ok) return
+    // Stamp local state so the UI flips to "submitted"
+    setState({
+      ...state,
+      tokenRow: {
+        ...state.tokenRow,
+        clientChangesSubmittedAt: new Date().toISOString(),
+        clientChangesNote: trimmed || null,
+      },
+    })
+    setSubmitOpen(false)
+    setDesignNote('')
+  }
 
   async function handleSubmitResponse(response: 'approved' | 'changes_requested') {
     if (!token || state.status !== 'ready') return
@@ -184,6 +246,33 @@ const SharedProjectView: React.FC = () => {
 
         {state.status === 'ready' && (
           <>
+            {/* Phase C v0: client_design role banner */}
+            {state.tokenRow.role === 'client_design' && (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: 14,
+                  borderRadius: 10,
+                  border: '1px solid #10B981',
+                  background: 'rgba(16,185,129,0.08)',
+                  fontSize: 13,
+                  color: 'var(--text-primary, #F9FAFB)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <span style={{ fontSize: 18 }}>✎</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 2 }}>Edit mode</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary, #9CA3AF)' }}>
+                    Click any element on the canvas to select it, then drag to move, or use the
+                    rotate / resize handles. Submit your changes when you're done.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <section style={{ marginBottom: 24 }}>
               <div
                 style={{
@@ -229,6 +318,10 @@ const SharedProjectView: React.FC = () => {
                       ? { lat: state.project.lat, lng: state.project.lng }
                       : null
                   }
+                  editable={state.tokenRow.role === 'client_design'}
+                  onElementGeometryChange={
+                    state.tokenRow.role === 'client_design' ? handleClientGeometryChange : undefined
+                  }
                 />
               ) : (
                 <PlanView3D
@@ -240,7 +333,26 @@ const SharedProjectView: React.FC = () => {
                       : null
                   }
                   materialsById={state.materialsById}
+                  editable={state.tokenRow.role === 'client_design'}
+                  onElementGeometryChange={
+                    state.tokenRow.role === 'client_design' ? handleClientGeometryChange : undefined
+                  }
                 />
+              )}
+              {editError && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: 10,
+                    borderRadius: 6,
+                    border: '1px solid #F59E0B',
+                    background: 'rgba(245,158,11,0.08)',
+                    fontSize: 12,
+                    color: '#F59E0B',
+                  }}
+                >
+                  Couldn't save that change: {editError}. Try again or refresh the page.
+                </div>
               )}
             </section>
 
@@ -308,7 +420,189 @@ const SharedProjectView: React.FC = () => {
               )}
             </section>
 
+            {/* Phase C v0: client_design submit-for-review panel. Otherwise
+                fall through to the Phase B approve/request-changes flow. */}
+            {state.tokenRow.role === 'client_design' && (
+              <section style={{ marginTop: 32 }}>
+                {state.tokenRow.clientChangesSubmittedAt ? (
+                  <div
+                    style={{
+                      padding: 20,
+                      borderRadius: 12,
+                      border: '1px solid #10B981',
+                      background: 'rgba(16,185,129,0.08)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: '#10B981',
+                        marginBottom: 6,
+                      }}
+                    >
+                      ✓ Design submitted
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary, #9CA3AF)' }}>
+                      Submitted{' '}
+                      {new Date(state.tokenRow.clientChangesSubmittedAt).toLocaleString()}.
+                      Your contractor has been notified — they'll review and follow up.
+                    </div>
+                    {state.tokenRow.clientChangesNote && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: 10,
+                          borderRadius: 6,
+                          background: 'rgba(255,255,255,0.04)',
+                          fontSize: 13,
+                          color: 'var(--text-secondary, #D1D5DB)',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: 'var(--text-tertiary, #9CA3AF)',
+                            marginBottom: 4,
+                          }}
+                        >
+                          Your note
+                        </div>
+                        {state.tokenRow.clientChangesNote}
+                      </div>
+                    )}
+                    <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-tertiary, #9CA3AF)' }}>
+                      You can keep tweaking and resubmit if you change your mind.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSubmitOpen(true)}
+                      style={{
+                        marginTop: 8,
+                        padding: '8px 14px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border-default, #374151)',
+                        background: 'transparent',
+                        color: 'var(--text-secondary, #D1D5DB)',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Resubmit
+                    </button>
+                  </div>
+                ) : submitOpen ? (
+                  <div
+                    style={{
+                      padding: 20,
+                      borderRadius: 12,
+                      border: '1px solid var(--border-default, #374151)',
+                      background: 'var(--surface-card, #111827)',
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
+                      Anything to tell your contractor about your changes?
+                    </div>
+                    <textarea
+                      value={designNote}
+                      onChange={(e) => setDesignNote(e.target.value)}
+                      maxLength={2000}
+                      rows={4}
+                      placeholder="Optional — e.g. &quot;Moved the patio further from the deck and made the bed smaller.&quot;"
+                      style={{
+                        width: '100%',
+                        padding: 10,
+                        borderRadius: 6,
+                        border: '1px solid var(--border-default, #374151)',
+                        background: 'var(--surface-bg, #0A0A0A)',
+                        color: 'var(--text-primary, #F9FAFB)',
+                        fontSize: 13,
+                        fontFamily: 'inherit',
+                        resize: 'vertical',
+                        marginBottom: 12,
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setSubmitOpen(false); setDesignNote('') }}
+                        disabled={submitting}
+                        style={{
+                          padding: '10px 16px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border-default, #374151)',
+                          background: 'transparent',
+                          color: 'var(--text-secondary, #D1D5DB)',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          cursor: submitting ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSubmitDesign}
+                        disabled={submitting}
+                        style={{
+                          padding: '10px 20px',
+                          borderRadius: 8,
+                          border: 'none',
+                          background: '#10B981',
+                          color: '#fff',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: submitting ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {submitting ? 'Sending…' : 'Submit changes'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: 20,
+                      borderRadius: 12,
+                      border: '1px solid var(--border-default, #374151)',
+                      background: 'var(--surface-card, #111827)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
+                      Done editing?
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary, #9CA3AF)', marginBottom: 16 }}>
+                      Submit your changes for your contractor to review.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSubmitOpen(true)}
+                      style={{
+                        padding: '12px 24px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: '#10B981',
+                        color: '#fff',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✓ Submit design changes
+                    </button>
+                  </div>
+                )}
+              </section>
+            )}
+
             {/* Approve / Request changes (Phase B — migration 029). */}
+            {state.tokenRow.role !== 'client_design' && (
             <section style={{ marginTop: 32 }}>
               {state.tokenRow.clientResponse ? (
                 <div
@@ -484,6 +778,7 @@ const SharedProjectView: React.FC = () => {
                 </div>
               )}
             </section>
+            )}
 
             <footer
               style={{

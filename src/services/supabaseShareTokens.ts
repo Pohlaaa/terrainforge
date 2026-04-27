@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { toCamelCase } from './supabaseCore'
-import type { ShareToken, Project, ProjectElement, ProjectElementMaterial, Material } from '@/types'
+import type { ShareToken, Project, ProjectElement, ProjectElementMaterial, Material, ElementGeometry } from '@/types'
 
 // ===== SHARE TOKENS (migration 028) =====
 //
@@ -22,7 +22,15 @@ function generateToken(): string {
 export async function createShareToken(
   projectId: string,
   orgId: string,
-  opts: { expiresInDays?: number; role?: 'client_view' | 'client_approve' } = {},
+  opts: {
+    expiresInDays?: number;
+    /**
+     * Phase C v0 (migration 031): pass 'client_design' to issue an
+     * editable design link. Anon RPC `client_update_element_geometry`
+     * lets the holder mutate element geometry until revoked or expired.
+     */
+    role?: 'client_view' | 'client_approve' | 'client_design';
+  } = {},
 ): Promise<ShareToken | null> {
   const token = generateToken()
   const expiresAt = opts.expiresInDays
@@ -314,6 +322,72 @@ export async function respondToShareToken(
       .catch((err) => {
         console.warn('notify-client-response failed', err)
       })
+  }
+
+  return { ok: true }
+}
+
+// ===== CLIENT DESIGN EDIT (migration 031, Phase C v0) =====
+
+/**
+ * Phase C v0. Updates one element's geometry on behalf of an anon client
+ * holding a `client_design` share token. Calls the SECURITY DEFINER RPC
+ * `client_update_element_geometry` (validates token + role + project
+ * membership server-side; rejects cross-project edits).
+ *
+ * Used by SharedProjectView when the loaded token's role is 'client_design'.
+ * The contractor sees the changes immediately via the same project-elements
+ * fetch path; submission for review is a separate explicit action.
+ */
+export async function clientUpdateElementGeometry(
+  token: string,
+  elementId: string,
+  geometry: ElementGeometry,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.rpc('client_update_element_geometry', {
+    p_token: token,
+    p_element_id: elementId,
+    p_geometry: geometry as unknown as Record<string, unknown>,
+  })
+  if (error) {
+    console.error('clientUpdateElementGeometry error:', error)
+    return { ok: false, error: error.message }
+  }
+  return { ok: true }
+}
+
+/**
+ * Phase C v0. Records that the client clicked "Submit design changes".
+ * Stamps `client_changes_submitted_at = now()` and stores the optional
+ * note. The contractor's OverviewTab surfaces both fields in the share-
+ * token banner so they know to review.
+ *
+ * Idempotent: re-submitting just updates the timestamp. The contractor
+ * sees the most recent submission.
+ */
+export async function submitDesignChanges(
+  token: string,
+  note?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.rpc('submit_design_changes', {
+    p_token: token,
+    p_note: note ?? null,
+  })
+  if (error) {
+    console.error('submitDesignChanges error:', error)
+    return { ok: false, error: error.message }
+  }
+
+  // Fire-and-forget contractor notification reuses the same edge-function
+  // pattern as approve/reject. Adds a `kind: 'design_submitted'` discriminator
+  // so the function can render a different subject line.
+  const notifyUrl = import.meta.env.VITE_RESPONSE_NOTIFY_URL as string | undefined
+  if (notifyUrl) {
+    fetch(notifyUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, kind: 'design_submitted', note: note ?? null }),
+    }).catch(() => { /* non-blocking */ })
   }
 
   return { ok: true }

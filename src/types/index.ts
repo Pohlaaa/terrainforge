@@ -104,7 +104,12 @@ export interface ShareToken {
   projectId: string;
   orgId: string;
   token: string;
-  role: 'client_view' | 'client_approve';
+  /**
+   * client_design (Phase C v0, migration 031): grants the holder edit
+   * permission on element geometry via SECURITY DEFINER RPC. Submitted-back
+   * changes surface to the contractor on OverviewTab.
+   */
+  role: 'client_view' | 'client_approve' | 'client_design';
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;
@@ -113,6 +118,10 @@ export interface ShareToken {
   clientResponse?: 'approved' | 'changes_requested' | null;
   clientRespondedAt?: string | null;
   clientNote?: string | null;
+  /** Phase C v0: timestamp of the client's most recent "Submit design" click. */
+  clientChangesSubmittedAt?: string | null;
+  /** Phase C v0: optional note attached to the most recent submission. */
+  clientChangesNote?: string | null;
 }
 
 export interface ProjectElementMaterial {

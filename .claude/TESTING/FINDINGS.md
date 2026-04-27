@@ -1581,3 +1581,53 @@ Deployed commit `5cb1d7c` (LIVE-11/12/13 precision fixes). Same softscape walkth
 10. **F-CW-27** — Modal scroll
 11. **F-CW-12, 14, 56** — earlier P1/P2s
 12. P3 polish batch — ~25 small fixes that can be one-shot
+
+---
+
+# 3D-in-Wizard Phase A + Phase B (2026-04-26, commits `70ced06` + `a409bfb`)
+
+## Phase A walkthrough (Thompson Backyard Patio + Stairs scenario)
+
+Live verification on `terrainforge-staging.netlify.app` from a fresh wizard. All checks passed:
+
+- 5-step compressed stepper (Job → Design → Plan → Numbers → Review)
+- AI element inference: 3/3 correct (Paver Patio 24×18 = 432 sqft, Stone Stairs 12×4 = 48 sqft, String Lighting 84 LF). Demolition clause correctly excluded.
+- Geometry seeded via `placementBucket()` → all elements visible on Mapbox satellite tile, none overlapping property origin
+- 2D ↔ 3D toggle, click-to-select, sidebar focus tracking, drag/resize/rotate via TransformControls all functional
+- Per-element materials filter (Phase A baseline): Stone Stairs surfaced 5 stair-relevant suggestions
+- Materials review section on Step 3 (4 materials, $5,505.50 total, element-assignment preview "Applies to: Paver Patio, Stone Stairs to Back Door")
+- Cost rollup matches across Step 4 (Numbers) and Step 5 (Review): $12,230 cost / $15,287 quote / 20% margin / $3,057 profit
+- Project create persisted geometry: OverviewTab opens with all 3 elements at wizard-placed coordinates in BOTH 2D and 3D viewers
+
+Project: `https://terrainforge-staging.netlify.app/projects/53e745f6-394f-43b2-bff9-d8643ae03d83`
+
+## Phase B walkthrough ("Mixed Hardscape & Beds" scenario)
+
+Live verification of per-element AI material calls:
+
+| Check | Calls | Result |
+|---|---|---|
+| Step 1→2 fires project + elements + first-element materials | 3 | ✅ |
+| Click new element (Sod Installation) | +1 | ✅ |
+| Re-click first element (cache hit) | +0 | ✅ |
+| Tweak dimension (length 16→20) | +0 | ✅ |
+| Change type (patio→walkway) | +1 | ✅ |
+
+- Per-element specialization confirmed: Paver Patio (192 sqft) returned `paver / base / polymeric / fabric / leveling sand / edging`; Sod Installation returned `sod / topsoil / soil amendments / fertilizer / fabric`; Walkway returned `paver / base / mason bedding sand / polymeric jointing / fabric / edging` — three distinct material sets for three distinct element types from the same parent project.
+- Quantities scale with dimensions (e.g., 192 sqft fabric for 192 sqft patio; 880 sqft fabric for 800 sqft sod with waste).
+- Loading state pulse + "tailored to this element" green badge render correctly during in-flight calls.
+
+## Findings logged
+
+- **F-PHB-01** — P3 — `inferMaterialsForElement` returned **1 sqft of Landscape Fabric** for a 16×12 walkway after type change. Should be ~192 sqft. Suspected cause: AI sees "1 unit" and emits 1 sqft instead of computing area × 1. Fix: tighten prompt to require `estimatedQuantity = element_area × waste_factor` for sqft-unit underlayment.
+- **F-PHB-02** — P2 — Sod Installation (800 sqft) returned **14.8 cuyd of Crushed Stone Base** as a material. Sod doesn't need a 6" gravel base — it sits on prepared topsoil. AI is applying hardscape base-prep rules to softscape. Fix: in `relevantCategoriesForType('sod_area')`, exclude `gravel` from the catalog hint AND add a negative example to the prompt ("sod does NOT need crushed stone base").
+- **F-PHB-03** — P3 — Cache key includes element **name**, so renaming an element triggers a fresh API call. Likely intentional (name might encode contractor intent), but worth noting as cost. Could relax to just `elementType` since material categories don't change with name.
+- **F-PHB-04** — P3 — Notes field copy doesn't update when element type changes. After `patio → walkway` the Notes still read "16×12 paver patio explicitly specified for backyard install". Minor friction; contractor can edit, but a clear-on-type-change toast or behaviour would feel cleaner. Possibly deferred to AI-rewriting notes on type change.
+- **F-PHB-05** — P3 — When type changes, the `Length × Width × Area-override` triplet stays in sync but the contractor sees a stale "Area (sqft) override: 192" value derived from the prior dimensions. If they then edit length, the override doesn't recompute. Easy fix: clear `areaSqft` to null on type-change so `length × width` takes precedence.
+- **F-PHB-06** — P2 — AI returned `unit: 'sqft'` for a `Landscape Fabric` material in the per-element call (correct unit for fabric measured by area), but the validator allowed `1` as a valid quantity. Add per-unit minimum sanity checks: `sqft` materials with quantity < 10 on an element with area > 50 sqft should be flagged for review. Belt-and-suspenders for F-PHB-01.
+
+## Verification artefacts
+
+- Phase A test project: `/projects/53e745f6-394f-43b2-bff9-d8643ae03d83` ("Thompson Backyard Patio + Stairs")
+- Phase B test project: not created (test was driven through Step 2 only to count network calls; no project saved)
+- Network requests verified via Chrome MCP `read_network_requests({ urlPattern: 'anthropic' })`
