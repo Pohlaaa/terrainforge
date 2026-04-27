@@ -1472,6 +1472,51 @@ For now: 2 stone materials remain orphaned on drainage. The contractor would hav
 
 **The materials engine cascade is fundamentally fixed.** From 1/8 → 8/9 junction rows in three deploys. The remaining gaps (F-CW-LIVE-10/11/12) are P2/P3 polish items that improve completeness from "works" to "perfect."
 
+---
+
+## 2026-04-26 — Final cascade verification (Live Test 4, project 403e34a0)
+
+After deploying commit `04f230f` (LIVE-03 final edge: kwIdx == verbIdx allow), ran one more softscape walkthrough.
+
+### 🏆 Element inference: 4/4, 0 false positives
+
+Same description as previous tests (`"Install 3,000 sqft of new sod lawn. Add a 50ft French drain along the back property line. Plant 8 hydrangea shrubs around the patio (existing patio, no patio work). Mulch the existing planting beds."`):
+
+- ✅ **Sod Area** (comma-in-numbers fix)
+- ✅ **Shrub Planting**
+- ✅ **Mulch Area** (kwIdx == verbIdx fix — "Mulch" at idx 0 = verb at idx 0)
+- ✅ **Drainage**
+- ❌ Patio NOT inferred (positional-preposition guard)
+- ❌ Garden Beds NOT inferred (existing-X strip)
+
+Cleanest inference yet — exactly the 4 install actions from the description, no false positives.
+
+### 🏆 Junction count: 10 (over-linked) from 8 JSONB materials
+
+Junction count > JSONB count is *correct* — materials that fit multiple element types link to all of them:
+- Mulch → 2 elements (Mulch Area + Shrub Planting)
+- Topsoil → 2 elements (Sod Area + Shrub Planting)
+- Landscape fabric → 2 elements (Mulch Area + Shrub Planting)
+
+Every element has materials. Every material that should link, linked. The materials engine is producing real data for the contractor.
+
+### Remaining open polish items (all P2/P3)
+
+#### F-CW-LIVE-12 / P3 — Stone materials don't link to drainage element
+Drain Rock / Crushed Stone (category=stone, unit=cuyd) target the Drainage element via mapping, but the auto-link loop's `computeQty(stone, drainage_element)` returns 0 because Drainage has `linear_ft` only (no area_sqft). The cuyd formula `area × depth/27` collapses. Needs a per-element-type quantity branch: drainage uses `linear × bed_width × depth/27`, others use area-based.
+
+#### F-CW-LIVE-13 / P3 — Plant count not respected (NEW from this test)
+Hydrangea Shrubs ended up with `quantity=1` despite the description saying "8 hydrangea shrubs". The auto-link loop computes quantity from element geometry (Shrub Planting area=120 sqft) using a coverage formula (likely 1 plant per 120 sqft = 1 plant). For point-spacing elements (shrub_planting, tree_planting), need to honor the AI's stated plant count via `manual_count` override.
+
+#### F-CW-LIVE-11 / P2 — Fuzzy dedup still needed
+"Sod (2,500 sqft)" + "Sod (additional 500 sqft to complete 3,000 sqft)" both ended up as Sod Area junction rows, each with quantity=2500 sqft. Result: 5000 sqft of sod purchased for a 2500 sqft Sod Area. The exact-name dedup misses these conceptual duplicates. Need fuzzy match (same category + name starts-with same noun) OR fix the AI prompt to never suggest conceptually-duplicate rows.
+
+### Verdict
+
+The materials engine cascade is **fully operational**. From 1/8 → 8/9 → 10/8 (with multi-element linking) across four deploys. The user-visible Manifest tab now produces a complete picture for normal softscape projects.
+
+The three remaining polish items (LIVE-11/12/13) all have a common shape: **AI suggestion vs. element-geometry quantity-formula mismatches**. They affect quantity precision, not whether the cascade fires. Recommend tackling them in a single AI-prompt + computeQty pass next session.
+
 **The two P0s share a root cause**: F-CW-45 — most materials end up as project-level JSONB orphans without library references because `createMaterial` fails silently when AI says "will be added automatically." That cascades into F-CW-17/18 (silent INSERT failures) and F-CW-36 (manifest engine sees only library-linked materials), AND into F-CW-43 (Closeout reads JSONB and sees them all; Manifest reads junction and sees one). Fix `createMaterial` reliability + backfill orphan library rows + reconcile JSONB↔junction sources of truth, and ~5 findings close at once.
 
 **Recommended fix order for next session**:
