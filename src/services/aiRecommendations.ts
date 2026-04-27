@@ -706,3 +706,274 @@ export async function inferElements(ctx: RecommendationContext): Promise<AIEleme
     return [];
   }
 }
+
+// ===== 3D-in-Wizard Phase B: per-element material inference =====
+//
+// Project-level material suggestions (in generateProjectRecommendations) are
+// useful for budget rollups but blunt for per-element picking — Claude has
+// to guess which patio gets the polymeric sand vs which walkway gets the
+// pavers vs which bed gets the topsoil. With per-element prompting we can
+// scope the question tightly: "given THIS patio at 24x18 ft with a 6-inch
+// base depth, what materials does it need and how much?"
+//
+// The result: tighter quantity estimates (Claude can apply industry formulas
+// against real dimensions instead of an unknown total), narrower hallucination
+// space (organic plant materials don't show up on a hardscape patio), and
+// faster contractor flow (the first material the contractor sees per element
+// is the right one).
+//
+// Cached per element on the wizard side so dimension tweaks don't re-prompt;
+// only element-type changes invalidate. See WizardStepMeasurements.tsx.
+
+export interface ElementMaterialInferenceContext {
+  name: string;
+  elementType: ElementType;
+  lengthFt: number | null;
+  widthFt: number | null;
+  areaSqft: number | null;
+  linearFt: number | null;
+  heightFt: number | null;
+  depthIn: number | null;
+}
+
+/**
+ * Categories that are typically irrelevant for an element type. Used to filter
+ * the org catalog hint passed to Claude so the prompt stays small AND so
+ * Claude doesn't see "tree fertilizer" in the catalog when we're picking
+ * patio materials and feel tempted to suggest it.
+ */
+function relevantCategoriesForType(type: ElementType): string[] {
+  // Reuse the same buckets as src/lib/elements.ts CATEGORY_TO_ELEMENT_TYPES,
+  // inverted: given an element type, what categories typically apply?
+  const HARDSCAPE_SURFACE: ElementType[] = ['patio', 'walkway', 'driveway', 'pool_deck', 'fire_pit', 'parking_lot', 'concrete_slab', 'steps_stairs'];
+  if (HARDSCAPE_SURFACE.includes(type)) {
+    return ['paver', 'stone', 'tile', 'brick', 'concrete', 'gravel', 'sand', 'edging'];
+  }
+  if (type === 'wall' || type === 'retaining_wall') {
+    return ['stone', 'brick', 'concrete', 'lumber'];
+  }
+  if (type === 'fence' || type === 'pergola') {
+    return ['lumber'];
+  }
+  if (type === 'garden_bed') {
+    return ['soil', 'mulch', 'plant', 'shrub', 'edging', 'irrigation'];
+  }
+  if (type === 'sod_area') {
+    return ['sod', 'seed', 'soil', 'irrigation'];
+  }
+  if (type === 'tree_planting') {
+    return ['tree', 'soil', 'mulch'];
+  }
+  if (type === 'shrub_planting') {
+    return ['shrub', 'soil', 'mulch'];
+  }
+  if (type === 'mulch_area') {
+    return ['mulch', 'soil'];
+  }
+  if (type === 'gravel_area') {
+    return ['gravel', 'stone'];
+  }
+  if (type === 'edging' || type === 'curbing') {
+    return ['edging', 'stone', 'concrete'];
+  }
+  if (type === 'drainage') {
+    return ['gravel', 'stone', 'sand', 'misc'];
+  }
+  if (type === 'irrigation_zone') {
+    return ['irrigation', 'misc'];
+  }
+  if (type === 'outdoor_kitchen') {
+    return ['paver', 'stone', 'brick', 'concrete', 'misc'];
+  }
+  return []; // 'other' — let Claude decide, no filter
+}
+
+function buildPerElementMaterialPrompt(
+  el: ElementMaterialInferenceContext,
+  orgMaterials: Material[],
+): string {
+  const relevant = relevantCategoriesForType(el.elementType);
+  // Filter the catalog hint to relevant categories (saves tokens and reduces
+  // wrong-category hallucinations). Empty `relevant` = pass everything.
+  const filtered = relevant.length > 0
+    ? orgMaterials.filter((m) => relevant.includes((m.category || '').toLowerCase()))
+    : orgMaterials;
+  const catalogHint = filtered.slice(0, 40).map((m) => ({
+    id: m.id,
+    name: m.name,
+    category: m.category,
+    unit: m.unit,
+    unitCost: m.cost,
+  }));
+
+  const dimsBits: string[] = [];
+  if (el.lengthFt && el.widthFt) dimsBits.push(`${el.lengthFt} ft × ${el.widthFt} ft`);
+  if (el.areaSqft) dimsBits.push(`${el.areaSqft} sqft`);
+  if (el.linearFt) dimsBits.push(`${el.linearFt} linear ft`);
+  if (el.heightFt) dimsBits.push(`${el.heightFt} ft tall`);
+  if (el.depthIn) dimsBits.push(`${el.depthIn}" depth`);
+  const dims = dimsBits.length > 0 ? dimsBits.join(', ') : 'dimensions not yet entered';
+
+  return `You are an experienced landscaping estimator. List the materials needed for ONE element on a project, with realistic quantities scoped to its dimensions.
+
+INDUSTRY RULES (non-negotiable):
+- Base material (gravel, crushed stone, sand for base) MINIMUM 6 inches deep. Never less.
+- Polymeric sand sold per 50lb BAG, ~65 sqft per bag. Unit must be "bag".
+- Topsoil minimum 3" for garden beds. Mulch minimum 2" for weed suppression.
+- Concrete slab minimum 4" thick.
+- Bulk material formula: sqft / 324 × depth_inches = cubic yards.
+
+UNIT VOCAB (use these EXACT strings; CHECK constraint enforces):
+sqft, lnft, bag, cuyd, ton, each, gallon, lb, pallet, roll, box, piece, bundle.
+
+## Element
+- Name: "${el.name}"
+- Type: ${el.elementType}
+- Dimensions: ${dims}
+
+## Org Library Hint (prefer items from this list when applicable; set materialId from the matching id, set inLibrary:true)
+${JSON.stringify(catalogHint, null, 2)}
+
+## Rules
+- Return 3-7 materials directly required for THIS element. No project-level overhead (e.g. don't list trash bags or general PPE).
+- For materials NOT in the org library, set materialId:null and inLibrary:false. Use realistic unit costs from current US market prices.
+- Compute estimatedQuantity from the element's dimensions using industry formulas. Apply 5-10% waste factor.
+- Include all dependent materials (e.g. a paver patio needs pavers + base gravel + bedding sand + polymeric sand + edge restraint).
+- Do not suggest materials inappropriate for this element type (no fertilizer on a patio, no rebar in a garden bed).
+
+Return JSON ONLY (no markdown fencing) matching:
+{
+  "materials": [
+    {
+      "materialId": string | null,
+      "materialName": string,
+      "category": string,
+      "estimatedQuantity": number,
+      "unit": string,
+      "unitCost": number,
+      "reason": string,
+      "inLibrary": boolean
+    }
+  ]
+}`;
+}
+
+function safeParsePerElementMaterials(raw: string): { materials?: AIMaterialRecommendation[] } | null {
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try {
+    return JSON.parse(cleaned) as { materials?: AIMaterialRecommendation[] };
+  } catch {
+    let depth = 0;
+    let lastValidEnd = -1;
+    let inString = false;
+    let escape = false;
+    for (let i = 0; i < cleaned.length; i++) {
+      const c = cleaned[i];
+      if (escape) { escape = false; continue; }
+      if (c === '\\') { escape = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (c === '{') depth++;
+      else if (c === '}') { depth--; if (depth === 0) lastValidEnd = i; }
+    }
+    if (lastValidEnd > 0) {
+      try { return JSON.parse(cleaned.slice(0, lastValidEnd + 1)); } catch { /* fall through */ }
+    }
+    return null;
+  }
+}
+
+/**
+ * Validate + normalize per-element material suggestions. Reuses the same
+ * unit-coercion + bagged-material guards as the project-level path so AI
+ * idiosyncrasies (cubic_yards / linear_feet / pieces / "lb of polymeric")
+ * never make it to createMaterial().
+ */
+function validatePerElementMaterials(
+  raw: { materials?: AIMaterialRecommendation[] } | null,
+  orgMaterials: Material[],
+): AIMaterialRecommendation[] {
+  if (!raw?.materials || !Array.isArray(raw.materials)) return [];
+  const materialMap = new Map(orgMaterials.map((m) => [m.id, m]));
+  const materialNameMap = new Map(orgMaterials.map((m) => [m.name.toLowerCase(), m]));
+
+  const BAGGED_UNIT_COERCIONS: Array<{ keywords: string[]; unit: string; defaultCoverage: number }> = [
+    { keywords: ['polymeric sand', 'poly sand'], unit: 'bag', defaultCoverage: 65 },
+  ];
+
+  const out: AIMaterialRecommendation[] = [];
+  const seen = new Set<string>();
+
+  for (const m of raw.materials) {
+    if (!m || typeof m !== 'object') continue;
+    if (!m.materialName || typeof m.materialName !== 'string') continue;
+
+    let coercedUnit = normalizeAIUnit(m.unit);
+    let coercedQuantity = typeof m.estimatedQuantity === 'number' ? m.estimatedQuantity : 0;
+    const nameLc = m.materialName.toLowerCase();
+
+    for (const rule of BAGGED_UNIT_COERCIONS) {
+      if (rule.keywords.some((k) => nameLc.includes(k))) {
+        if (coercedUnit !== rule.unit) {
+          if (coercedUnit === 'lb' || coercedUnit === 'pound') {
+            coercedQuantity = Math.max(1, Math.ceil(coercedQuantity / 50));
+          } else if (coercedUnit === 'sqft') {
+            coercedQuantity = Math.max(1, Math.ceil(coercedQuantity / rule.defaultCoverage));
+          }
+          coercedUnit = rule.unit;
+        }
+        break;
+      }
+    }
+
+    // Match against org library by ID first, then name
+    const byId = m.materialId ? materialMap.get(m.materialId) : undefined;
+    const byName = !byId ? materialNameMap.get(nameLc) : undefined;
+    const match = byId || byName;
+
+    // Dedup by name (lowercased, parens stripped) so we don't double-list
+    // "Pavers" and "Concrete Pavers" coming out of the same prompt.
+    const dedupKey = nameLc.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+    if (seen.has(dedupKey)) continue;
+    seen.add(dedupKey);
+
+    out.push({
+      materialId: match?.id ?? null,
+      materialName: m.materialName,
+      category: m.category || 'misc',
+      estimatedQuantity: Math.max(0, coercedQuantity),
+      unit: match?.unit || coercedUnit,
+      unitCost: match?.cost ?? (typeof m.unitCost === 'number' ? m.unitCost : 0),
+      reason: typeof m.reason === 'string' ? m.reason : '',
+      inLibrary: !!match,
+    });
+
+    if (out.length >= 8) break;
+  }
+
+  return out;
+}
+
+/**
+ * Phase B. Per-element material inference. Returns 3-7 materials with
+ * dimension-aware quantities. Empty array on failure so the sidebar
+ * gracefully falls back to the project-level filter.
+ */
+export async function inferMaterialsForElement(
+  el: ElementMaterialInferenceContext,
+  orgMaterials: Material[],
+): Promise<AIMaterialRecommendation[]> {
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
+  if (!apiKey) return [];
+
+  try {
+    const prompt = buildPerElementMaterialPrompt(el, orgMaterials);
+    // Tight prompt → tight budget. 1024 fits ~5-7 materials with reasons.
+    const raw = await callClaude(prompt, DEFAULT_MODEL, 1024);
+    const parsed = safeParsePerElementMaterials(raw);
+    return validatePerElementMaterials(parsed, orgMaterials);
+  } catch (err) {
+    console.error('inferMaterialsForElement failed:', err);
+    return [];
+  }
+}

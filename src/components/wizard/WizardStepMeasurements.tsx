@@ -19,7 +19,7 @@
  * rows by element-type/category mapping (unchanged from the legacy
  * flow).
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ELEMENT_TYPE_LABELS, getElementTypesForMaterial } from '@/lib/elements';
 import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
 import { normalizeCategory, getCategoryLabel } from '@/lib/categories';
@@ -27,8 +27,21 @@ import { useMaterialStore } from '@/stores/materialStore';
 import { NumberInput } from '@/components/ui/NumberInput';
 import PlanView2D from '@/components/plan/PlanView2D';
 import PlanView3D from '@/components/plan/PlanView3D';
+import { inferMaterialsForElement } from '@/services/aiRecommendations';
 import type { WizardData, WizardElement, WizardMaterial } from '@/pages/ProjectWizard';
-import type { AIRecommendationSet, ElementGeometry, ElementType, Material, ProjectElement } from '@/types';
+import type { AIMaterialRecommendation, AIRecommendationSet, ElementGeometry, ElementType, Material, ProjectElement } from '@/types';
+
+// 3D-in-Wizard Phase B: per-element AI material cache, keyed by tempId.
+// We invalidate (and re-prompt) when a contractor changes the element's
+// type — different types need different material sets. Dimension tweaks
+// stay cached because Claude's quantity estimate is just one of many
+// downstream inputs anyway (the engine will recompute final qty at create
+// time using the latest dimensions).
+type PerElementCacheEntry =
+  | { status: 'loading'; cacheKey: string }
+  | { status: 'ready'; cacheKey: string; recs: AIMaterialRecommendation[] }
+  | { status: 'failed'; cacheKey: string };
+type PerElementCache = Record<string, PerElementCacheEntry | undefined>;
 
 interface Props {
   data: WizardData;
@@ -160,6 +173,60 @@ export const WizardStepMeasurements: React.FC<Props> = ({
     () => elements.find((e) => e.tempId === selectedTempId) ?? null,
     [elements, selectedTempId],
   );
+
+  // ── Phase B: per-element AI material suggestions cache ─────────────────
+  // Fires inferMaterialsForElement() the first time the contractor selects an
+  // element with a given type, caches by tempId. Type changes invalidate
+  // (cacheKey embeds elementType). In-flight tracking via inFlightRef keeps
+  // a fast double-click from spawning duplicate calls.
+  const [perElementMaterials, setPerElementMaterials] = useState<PerElementCache>({});
+  const orgCatalog = useMaterialStore((s) => s.materials);
+  const inFlightRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!selected) return;
+    const cacheKey = `${selected.elementType}|${selected.name || ELEMENT_TYPE_LABELS[selected.elementType]}`;
+    const existing = perElementMaterials[selected.tempId];
+    if (existing && existing.cacheKey === cacheKey) return; // already cached for this type/name
+    const inFlightKey = `${selected.tempId}::${cacheKey}`;
+    if (inFlightRef.current.has(inFlightKey)) return; // call already in flight
+
+    inFlightRef.current.add(inFlightKey);
+    setPerElementMaterials((prev) => ({ ...prev, [selected.tempId]: { status: 'loading', cacheKey } }));
+
+    inferMaterialsForElement(
+      {
+        name: selected.name,
+        elementType: selected.elementType,
+        lengthFt: selected.lengthFt,
+        widthFt: selected.widthFt,
+        areaSqft: selected.areaSqft,
+        linearFt: selected.linearFt,
+        heightFt: selected.heightFt,
+        depthIn: selected.depthIn,
+      },
+      orgCatalog,
+    )
+      .then((recs) => {
+        setPerElementMaterials((prev) => ({
+          ...prev,
+          [selected.tempId]: recs.length > 0
+            ? { status: 'ready', cacheKey, recs }
+            : { status: 'failed', cacheKey },
+        }));
+      })
+      .catch(() => {
+        setPerElementMaterials((prev) => ({ ...prev, [selected.tempId]: { status: 'failed', cacheKey } }));
+      })
+      .finally(() => {
+        inFlightRef.current.delete(inFlightKey);
+      });
+  // Intentionally only depend on selection identity + type, NOT on dimensions.
+  // Dimension tweaks shouldn't burn a fresh API call.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.tempId, selected?.elementType, selected?.name, orgCatalog]);
+
+  const perElementEntry = selected ? perElementMaterials[selected.tempId] : undefined;
 
   // ── Element CRUD on wizard data ─────────────────────────────────────────
   const updateElement = (tempId: string, updates: Partial<WizardElement>) => {
@@ -381,6 +448,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({
               materialDismissed={materialDismissed}
               onAcceptMaterial={onAcceptMaterial}
               onDismissMaterial={onDismissMaterial}
+              perElementEntry={perElementEntry}
             />
           )}
         </div>
@@ -421,6 +489,8 @@ interface SidebarProps {
   materialDismissed: Set<string>;
   onAcceptMaterial: (id: string) => void;
   onDismissMaterial: (id: string) => void;
+  /** Phase B: per-element AI material cache entry for THIS element. */
+  perElementEntry: PerElementCacheEntry | undefined;
 }
 
 const ElementSidebar: React.FC<SidebarProps> = ({
@@ -434,6 +504,7 @@ const ElementSidebar: React.FC<SidebarProps> = ({
   materialDismissed,
   onAcceptMaterial,
   onDismissMaterial,
+  perElementEntry,
 }) => {
   const cfg = DIMENSION_CONFIG[element.elementType];
   const showLW = cfg.lengthWidth || cfg.allFields;
@@ -452,26 +523,57 @@ const ElementSidebar: React.FC<SidebarProps> = ({
     });
   }, [data.materialSelections, element.elementType]);
 
-  // AI material suggestions filtered to this element's type. Skip ones the
-  // contractor already added to the project bucket (`materialSelections`)
-  // or explicitly dismissed earlier.
-  const aiMaterialMatches = useMemo(() => {
+  // ── Phase B: prefer per-element AI suggestions over project-level filter ──
+  // When the per-element call is ready, use those suggestions (tighter
+  // quantities, narrower hallucination space). While loading or on failure,
+  // fall back to filtering project-level recommendations by element type
+  // so the sidebar never feels empty.
+  type AIMatch = { rec: AIMaterialRecommendation; id: string; source: 'per-element' | 'project' };
+
+  const aiMaterialMatches = useMemo<AIMatch[]>(() => {
+    const acceptedNames = new Set(
+      data.materialSelections.map((m) => m.materialName.toLowerCase()),
+    );
+
+    // Per-element source: ready + has results
+    if (perElementEntry?.status === 'ready' && perElementEntry.recs.length > 0) {
+      return perElementEntry.recs
+        .map((rec, i) => ({
+          rec,
+          id: `el-${element.tempId}-mat-${i}`,
+          source: 'per-element' as const,
+        }))
+        .filter(({ rec, id }) => {
+          if (materialDismissed.has(id)) return false;
+          if (acceptedNames.has(rec.materialName.toLowerCase())) return false;
+          return true;
+        });
+    }
+
+    // Fallback: project-level recommendations filtered by element type
     const items = recommendations?.materials ?? [];
-    const acceptedNames = new Set(data.materialSelections.map((m) => m.materialName));
     return items
-      .map((m, i) => ({ rec: m, id: `mat-${i}`, idx: i }))
+      .map((rec, i) => ({ rec, id: `mat-${i}`, source: 'project' as const }))
       .filter(({ rec, id }) => {
         if (materialDismissed.has(id)) return false;
-        if (acceptedNames.has(rec.materialName)) return false;
-        const types = getElementTypesForMaterial(normalizeCategory(rec.category), rec.materialName);
+        if (acceptedNames.has(rec.materialName.toLowerCase())) return false;
+        const types = getElementTypesForMaterial(
+          normalizeCategory(rec.category),
+          rec.materialName,
+        );
         return types.length > 0 && types.includes(element.elementType);
       });
-  }, [recommendations, element.elementType, materialDismissed, data.materialSelections]);
+  }, [
+    perElementEntry,
+    recommendations,
+    element.elementType,
+    element.tempId,
+    materialDismissed,
+    data.materialSelections,
+  ]);
 
-  const acceptAIMaterial = (idx: number) => {
-    const rec = recommendations?.materials[idx];
-    if (!rec) return;
-    if (data.materialSelections.some((m) => m.materialName === rec.materialName)) return;
+  const acceptAIMaterial = (rec: AIMaterialRecommendation, id: string) => {
+    if (data.materialSelections.some((m) => m.materialName.toLowerCase() === rec.materialName.toLowerCase())) return;
     const newMat: WizardMaterial = {
       tempId: crypto.randomUUID(),
       materialId: rec.materialId,
@@ -483,7 +585,7 @@ const ElementSidebar: React.FC<SidebarProps> = ({
       inLibrary: rec.inLibrary,
     };
     onChange({ materialSelections: [...data.materialSelections, newMat] });
-    onAcceptMaterial(`mat-${idx}`);
+    onAcceptMaterial(id);
   };
 
   const removeMaterial = (tempId: string) => {
@@ -687,25 +789,52 @@ const ElementSidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* AI suggestions for THIS element type */}
+        {/* AI suggestions for THIS element. Phase B: prefer per-element call. */}
+        {perElementEntry?.status === 'loading' && (
+          <div className="flex items-center gap-[6px] mb-[8px] text-[10px] text-[var(--text-4)]">
+            <span className="inline-block w-[6px] h-[6px] rounded-full animate-pulse" style={{ backgroundColor: 'var(--green)' }} />
+            AI is sizing materials for this {ELEMENT_TYPE_LABELS[element.elementType].toLowerCase()}…
+          </div>
+        )}
         {aiMaterialMatches.length > 0 && (
           <div className="space-y-[3px] mb-[8px]">
-            <span className="text-[10px] text-[var(--text-4)]">AI suggests:</span>
-            {aiMaterialMatches.slice(0, 5).map(({ rec, id, idx }) => {
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-[var(--text-4)]">
+                AI suggests
+                {aiMaterialMatches[0]?.source === 'per-element' && (
+                  <span className="text-[var(--green-l)] ml-[4px]">· tailored to this element</span>
+                )}
+              </span>
+              {perElementEntry?.status === 'failed' && (
+                <span className="text-[10px] text-[var(--status-amber)]">
+                  Per-element AI unavailable — showing project-level matches
+                </span>
+              )}
+            </div>
+            {aiMaterialMatches.slice(0, 6).map(({ rec, id, source }) => {
               return (
                 <div
                   key={id}
                   className="flex items-center gap-[6px] rounded-[5px] border px-[8px] py-[4px]"
-                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+                  style={{
+                    borderColor: source === 'per-element' ? 'rgba(45,106,79,0.4)' : 'var(--border)',
+                    backgroundColor: 'var(--surface)',
+                  }}
+                  title={rec.reason || undefined}
                 >
                   <span className="px-[5px] py-[1px] rounded-[3px] text-[9px] font-[500]"
                     style={{ backgroundColor: 'rgba(212,164,76,0.12)', color: 'var(--status-amber)' }}>
                     {getCategoryLabel(rec.category)}
                   </span>
                   <span className="text-[11px] text-[var(--text)] flex-1 truncate">{rec.materialName}</span>
+                  {rec.estimatedQuantity > 0 && (
+                    <span className="text-[10px] text-[var(--text-4)] tabular-nums">
+                      {rec.estimatedQuantity} {rec.unit}
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => acceptAIMaterial(idx)}
+                    onClick={() => acceptAIMaterial(rec, id)}
                     className="px-[6px] py-[2px] rounded-[3px] text-[10px] font-[500] cursor-pointer border-none"
                     style={{ backgroundColor: 'var(--green)', color: '#fff' }}
                   >
