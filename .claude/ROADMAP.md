@@ -4,7 +4,7 @@
 > contractor feedback (v2-v5), the Apr 5 audit report, Supabase advisor findings, and
 > internal stability work. Status on each item: ✅ done / 🟡 in-progress / 🔴 open.
 >
-> **Last updated:** 2026-04-24 (contractor-walkthrough findings F-CW-01..10 + F-CW-EMAIL-01/02 closed, real email delivery operational).
+> **Last updated:** 2026-04-26 (~50 contractor-walkthrough findings closed across 18 commits; materials engine verified end-to-end on staging; next focus: 3D in wizard).
 >
 > **Audience.** Next session's default work picker. Read after `CLAUDE.md` + `CONTEXT.md`.
 
@@ -192,6 +192,30 @@ Still over CLAUDE.md's soft limits:
 
 Originally "gated on P0 clear." P0 cleared and this was the next push. Multiple
 sprints shipped between Apr 21–23. Section reflects current state per-item.
+
+### 🆕 Next session focus: 3D preview inside the project wizard
+
+3D rendering is currently post-creation only — the contractor enters dimensions in Step 2 (Measurements), creates the project, and then can toggle 3D on the Overview tab. The next push pulls that 3D viewer back INTO the wizard so contractors see their elements rendered in 3D as they enter measurements, with the preview updating live as dimensions change.
+
+**Why this matters**: tightens the feedback loop from "type 24×18, hope it's right" → "type 24×18, see the patio appear at full size on the property." Contractors catch sizing mistakes at the source. Also exercises the 3D-editing modes (Sprint 7a) on a different surface, which surfaces any state-handling assumptions baked into the post-creation flow.
+
+**Open backlog this push will likely close or advance**:
+- 6a/7a editing parity inside the wizard (drag to move/resize/rotate so contractors can tweak placement before saving)
+- 6c precise placement (use the wizard's address-geocoded property footprint as the 3D ground origin instead of `(0,0)`)
+- 6f/7e shape primitive coverage for any element type that's still rendering as a generic box
+- 7c real PBR texture maps once a hosting decision lands (currently per-category material props only)
+
+**Architectural questions to settle early**:
+1. Where exactly does the 3D canvas mount — embedded in WizardStepMeasurements (alongside the dimension form) or as a fullscreen toggle from that step?
+2. Live preview state — does the wizard pass un-persisted `WizardElement[]` directly to PlanView3D, or does PlanView3D need a different prop shape?
+3. How do edits flow back — drag in 3D updates `data.elements[i].lengthFt` / `widthFt` / position, then the dimension form fields reflect the change.
+4. Performance — does mounting r3f on every step transition + every dimension keystroke cause lag? Probably need a `requestAnimationFrame`-debounced re-render.
+
+**Critical files to read first**:
+- [PlanView3D.tsx](src/components/plan/PlanView3D.tsx) — current 3D viewer (~750 LOC)
+- [WizardStepMeasurements.tsx](src/components/wizard/WizardStepMeasurements.tsx) — Step 2 of the wizard
+- [planLayout.ts](src/lib/planLayout.ts) — shared geometry helpers (`autoLayout`, element-type heights, default origin offset)
+- [DesignSandbox.tsx](src/pages/DesignSandbox.tsx) — DEV-only 3D r3f playground; useful reference for live-edit flows
 
 ### ✅ Schema additions for spatial data (migrations 028 + 029 + 030, all live)
 - ✅ `project_elements.geometry` JSONB (mig 028)

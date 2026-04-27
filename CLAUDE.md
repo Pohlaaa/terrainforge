@@ -3,35 +3,58 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-24) — Contractor walkthrough loop fully operational + email delivery live
+## Current Status (2026-04-26) — Materials engine end-to-end working, contractor walkthrough complete
 
-**Active work**: full contractor → client loop verified end-to-end with real email delivery. Wizard creates a project, share link generates, contractor clicks **Email to client** in the modal, Edge Function sends via Resend, client receives an email and clicks through to view the design at `/share/:token` (2D or 3D), can approve or request changes with a note, contractor sees the response banner on OverviewTab. **All twelve contractor-walkthrough findings (F-CW-01..10 plus emergent F-CW-EMAIL-01/02) closed.**
+**Active work**: ~50 distinct contractor-walkthrough findings closed across 18 commits over the F-CW series. The materials engine — TerrainForge's central value prop — went from completely broken to producing accurate, contractor-ready material rows with sensible quantities, verified live on staging.
 
-**Recent commit chain** (`claude/quirky-ishizaka` branch):
-- `c219d80` — Session 1 P1 walkthrough fixes (F-CW-04 AI demo handling, F-CW-06+07 unified `computeProjectCost`, F-CW-09 Edge Function JWT decode)
-- `4c6bd84` — Session 2 P2/P3 walkthrough fixes (F-CW-01 Suspense bg match, F-CW-02 authed CTA copy, F-CW-03 Company Name on signup, F-CW-05 actionable address copy, F-CW-10 wizard scroll-to-top)
-- `e4e5c06` — Edge Functions queried wrong column (`client` → `client_name`) + redeployed v5/v4
-- `8c6d5b4` — FINDINGS doc update logging the email-side bugs
+**Materials engine cascade journey** (5 deploys on staging, junction-row count is the headline metric):
+- Pre-fix: **1 of 8** materials linked to elements (silent unit-CHECK rejection)
+- `e3799eb` (LIVE-08 unit normalization): 1/8 with library IDs now valid
+- `e7c3972`+`1193844` (LIVE-09 + LIVE-03 iter): **8/9** — broader category mapping + name-keyword fallback
+- `04f230f` (kwIdx fix): 10/8 — final element-inference edge case
+- `5cb1d7c` (LIVE-11/12/13): **10/7** — dedup + trench formula + AI plant count
 
-**Email delivery configured**: Resend API integrated. `RESEND_API_KEY` + `NOTIFY_FROM_EMAIL` set as Supabase Edge Function secrets. Functions auto-pickup secret changes; no redeploy needed for env var updates. Live verification: `send-proposal-email` v6 returned `emailed: true` in 2.3s. Real inbox delivery confirmed.
+**Live-verified working as of project bbf79870**:
+- Element inference clean: 4/4 elements (Sod, Shrub, Mulch, Drainage), 0 false positives
+- Materials cascade: every element has materials, multi-element linking works
+- Hydrangea qty = AI's stated count (8), not 1
+- Stone material on drainage = trench-formula cuyd, not 0
+- No duplicate Sod entries
+- Manifest tab and Closeout tab agree (single junction source of truth)
+
+**Recent commit chain** (`claude/quirky-ishizaka` branch, walkthrough series):
+- `c219d80` — F-CW-04/06/07/09 (P1 walkthrough fixes)
+- `4c6bd84` — F-CW-01/02/03/05/10 (P2/P3 polish)
+- `e4e5c06` — Edge Functions `client → client_name` + redeploy
+- `2665cfd` — MD refresh
+- `06765ec` — walkthrough #2 findings
+- `cdfb047` — walkthroughs #3-5 findings
+- `a154357` — walkthroughs #6-8 + 2nd P0 surfaced
+- `3d9851f` — walkthroughs #9-13
+- `ed62f15` — Session 1 fix sweep (16 findings)
+- `673403e` — Session 2 fix sweep (15 findings)
+- `7869eb8` — live walkthrough on staging
+- `e3799eb` — LIVE-01/03/05/07/08 fixes
+- `1193844` — LIVE-03 iteration
+- `e7c3972` — LIVE-09 broader mapping + name-keyword fallback
+- `04f230f` — LIVE-03 final edge (kwIdx == verbIdx)
+- `5cb1d7c` — LIVE-11/12/13 precision (dedup + trench + plant count)
+- `3ede65f` — final FINDINGS update
+
+**Email delivery configured**: Resend API + Supabase Edge Function secrets. `send-proposal-email` v8 verified live with `emailed: true` in 2.3s. Real inbox delivery confirmed.
 
 **3D pivot sprints shipped** (commit range ~`d48061b → 1ee17d9`, 19 commits, 3 migrations):
-- S1: migration 028 + share-link viewer + PlanView2D
-- S2: Mapbox backdrop on 2D + migration 029 client approve/reject
-- S3: drag move + 4-corner resize + rotation handle + r3f/drei install + DesignSandbox
-- S4 PARTIAL: migration 030 PBR columns + PlanView3D scaffolding (3D toggle reverted pending S5)
-- S5: Vite `optimizeDeps` fix — restored 3D toggle end-to-end
-- S6 PARTIAL: 6b satellite 3D ground + 6d per-category material props
-- S7 PARTIAL: 7b geo-aligned Web Mercator tile footprint + element-focused camera
-- 7d: Resend email on client approve/reject (closed via F-CW-EMAIL-02 fix; both functions verified live)
+- S1-S7 PARTIAL: full share-link viewer at `/share/:token` with 2D + 3D toggle, Mapbox backdrop, geo-aligned satellite ground, element-focused camera, per-category material props, shape primitives for trees/shrubs/fire pits, client approve/reject loop with email notifications
 
-See `.claude/TESTING/FINDINGS.md` for per-sprint detail, contractor-walkthrough findings, and resolutions.
-
-**3D pivot sprint backlog** (still pending):
+**3D pivot sprint backlog** (still pending — feeds into next session):
 - 6a/7a — 3D editing (drag/resize/rotate with camera-space math)
 - 6c — precise element-on-property placement (partial via 7b; element origin still (0,0))
 - 6f/7e — Shape primitives for remaining types (currently boxes/cylinders/spheres for trees/shrubs/fire pits)
 - 7c — Real PBR texture maps via migration 030 columns (needs hosting decision)
+
+**Next session focus**: integrate the 3D viewer into the project wizard so contractors see their elements rendered in 3D as they enter measurements (Step 2 Measurements), with live preview that updates as dimensions change. Currently 3D is post-creation only — toggle on Overview after project exists. Pulling 3D into the wizard tightens the feedback loop and exercises the 3D editing backlog (6a/7a) on a different surface.
+
+See `.claude/TESTING/FINDINGS.md` for per-finding detail and `.claude/TESTING/PUNCH_LIST.md` for the open polish backlog.
 
 **Earlier work still shipped**: P0 remediation sweep (F-040 through F-050) Apr 21, platform stabilization (mig 027) Apr 17. Contractor feedback round 1 complete. 4-tab hub, 6-step wizard, materials engine with 6 computation models, measurement-driven ProjectElement architecture, project lifecycle states.
 
