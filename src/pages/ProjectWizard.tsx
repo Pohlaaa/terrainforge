@@ -5,7 +5,6 @@ import { WizardStepper } from '@/components/wizard/WizardStepper';
 import { WizardStepJob } from '@/components/wizard/WizardStepJob';
 import WizardStepMeasurements from '@/components/wizard/WizardStepMeasurements';
 import { WizardStepPlan } from '@/components/wizard/WizardStepPlan';
-import { WizardStepMaterials } from '@/components/wizard/WizardStepMaterials';
 import { WizardStepNumbers } from '@/components/wizard/WizardStepNumbers';
 import { WizardStepSummary } from '@/components/wizard/WizardStepSummary';
 import { useProjectStore } from '@/stores/projectStore';
@@ -14,8 +13,9 @@ import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
-import { generateProjectRecommendations } from '@/services/aiRecommendations';
-import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, Material, Zone, SiteConditionType } from '@/types';
+import { generateProjectRecommendations, inferElements } from '@/services/aiRecommendations';
+import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
+import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, ElementGeometry, Material, Zone, SiteConditionType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
 import { normalizeCategory } from '@/lib/categories';
 import { getElementTypesForMaterial } from '@/lib/elements';
@@ -74,6 +74,13 @@ export interface WizardElement {
   heightFt: number | null;
   depthIn: number | null;
   notes: string;
+  /**
+   * 3D-in-wizard (Phase A): on-plan geometry — position, rotation, shape.
+   * Pre-populated from AI inference's `placementHint` via planLayout's
+   * `placementBucket()`. Edited by the contractor via PlanView3D/2D drag
+   * handles. Persisted as `project_elements.geometry` at create time.
+   */
+  geometry?: ElementGeometry | null;
 }
 
 export interface WizardData {
@@ -200,13 +207,16 @@ const INITIAL_DATA: WizardData = {
   complianceNotes: null,
 };
 
+// 3D-in-Wizard (Phase A): compressed to 5 steps. The materials step folded
+// into Step 2's per-element sidebar (assignment) + Step 3's review panel
+// (totals, library reconciliation). Step 2 now shows a 3D + 2D canvas
+// with AI-pre-placed elements the contractor refines visually.
 const WIZARD_STEPS = [
-  { label: 'The Job', shortLabel: 'Job' },              // 0 — What + Where + Who
-  { label: 'Measurements', shortLabel: 'Measurements' }, // 1 — Dimensions
-  { label: 'The Plan', shortLabel: 'Plan' },             // 2 — AI: tasks, crew, equipment
-  { label: 'Materials', shortLabel: 'Materials' },       // 3 — Materials + pricing + RFQ
-  { label: 'The Numbers', shortLabel: 'Numbers' },       // 4 — Budget + permits
-  { label: 'Review & Create', shortLabel: 'Review' },    // 5
+  { label: 'The Job', shortLabel: 'Job' },                   // 0 — Description + client + address
+  { label: 'Design', shortLabel: 'Design' },                  // 1 — 3D canvas + per-element measurements + materials
+  { label: 'The Plan', shortLabel: 'Plan' },                  // 2 — Crew, equipment, tasks, materials review
+  { label: 'The Numbers', shortLabel: 'Numbers' },            // 3 — Budget + permits
+  { label: 'Review & Create', shortLabel: 'Review' },         // 4 — Final review + create
 ];
 
 export default function ProjectWizard() {
@@ -282,11 +292,19 @@ export default function ProjectWizard() {
     }
   };
 
-  // Shared AI trigger — fires when navigating past Site Intelligence step
+  // Shared AI trigger — fires when navigating past Job step.
+  // 3D-in-Wizard: kicks off two calls in parallel:
+  //   1. generateProjectRecommendations — tasks/crew/equipment/materials/budget
+  //   2. inferElements — element list with rough dims + placement hints
+  // The element list is then merged into wizardData.elements with each
+  // element seeded with `geometry` from placementBucket() so PlanView2D/3D
+  // renders them in the right yard region of the satellite map. We only
+  // seed if `data.elements` is empty so we don't clobber user edits if the
+  // contractor had already manually added elements.
   const triggerAIIfNeeded = useCallback(() => {
     if (!recommendations && !aiLoading) {
       setAiLoading(true);
-      generateProjectRecommendations({
+      const ctx = {
         description: data.description || '',
         projectType: data.projectType,
         propertyType: data.propertyType,
@@ -310,10 +328,65 @@ export default function ProjectWizard() {
         existingAssignments: scheduleStore.assignments,
         existingScheduleEntries: scheduleStore.entries,
         existingProjects: projectStore.projects,
-      }).then((result) => {
+      };
+
+      // Fire main recommendation call (tasks/crew/equipment/materials/budget).
+      generateProjectRecommendations(ctx).then((result) => {
         setRecommendations(result);
         setAiLoading(false);
       }).catch(() => setAiLoading(false));
+
+      // Fire element inference in parallel. Independent failure mode — if
+      // element inference fails the wizard still gets the main set; users
+      // can hand-add elements in Step 2.
+      if (data.elements.length === 0) {
+        inferElements(ctx).then((aiElements) => {
+          if (aiElements.length === 0) return;
+          // Group by placementHint so multiple backyard elements stack
+          // along an arc inside the same bucket instead of overlapping.
+          const stackByHint: Record<string, number> = {};
+          const seeded: WizardElement[] = aiElements.map((ai) => {
+            const tempId = crypto.randomUUID();
+            const synthetic: WizardElement = {
+              tempId,
+              name: ai.name,
+              elementType: ai.elementType,
+              lengthFt: ai.lengthFt,
+              widthFt: ai.widthFt,
+              areaSqft: ai.areaSqft,
+              linearFt: ai.linearFt,
+              heightFt: ai.heightFt,
+              depthIn: ai.depthIn,
+              notes: ai.reason ?? '',
+            };
+            // resolveGeometry-equivalent for WizardElement — fallbackDimensions
+            // expects a ProjectElement-like shape.
+            // fallbackDimensions reads only a subset of ProjectElement fields,
+            // but TypeScript wants the full shape. The cast is safe because
+            // those are the only fields touched.
+            const dims = fallbackDimensions({
+              elementType: ai.elementType,
+              lengthFt: ai.lengthFt,
+              widthFt: ai.widthFt,
+              areaSqft: ai.areaSqft,
+              linearFt: ai.linearFt,
+              computedAreaSqft: ai.areaSqft ?? 0,
+            } as unknown as Parameters<typeof fallbackDimensions>[0]);
+            const stackIdx = stackByHint[ai.placementHint] ?? 0;
+            stackByHint[ai.placementHint] = stackIdx + 1;
+            const pos = placementBucket(ai.placementHint, dims, stackIdx);
+            synthetic.geometry = {
+              position: pos,
+              rotation: 0,
+              shape: { kind: 'rectangle', width: dims.width, height: dims.height },
+            };
+            return synthetic;
+          });
+          // Merge into existing wizard state — only seed when user hasn't
+          // already started adding elements (race-safe via setData).
+          setData((prev) => prev.elements.length === 0 ? { ...prev, elements: seeded } : prev);
+        }).catch(() => { /* non-blocking */ });
+      }
     }
   }, [recommendations, aiLoading, data, crewStore.crew, equipmentStore.equipment, materialStore.materials, org, scheduleStore.assignments, scheduleStore.entries, projectStore.projects]);
 
@@ -837,6 +910,11 @@ export default function ProjectWizard() {
               notes: el.notes || '',
               sequence: i,
               createdAt: new Date().toISOString(),
+              // 3D-in-Wizard: persist on-plan geometry from the canvas. The
+              // contractor refined position/rotation/size visually in Step 2;
+              // saving it means OverviewTab opens the project with elements
+              // exactly where they were placed in the wizard.
+              geometry: el.geometry ?? null,
             }, orgId);
             if (saved) {
               savedElements.push({
@@ -1015,7 +1093,18 @@ export default function ProjectWizard() {
         }}
       >
         {currentStep === 0 && <WizardStepJob data={data} onChange={handleChange} />}
-        {currentStep === 1 && <WizardStepMeasurements data={data} onChange={handleChange} />}
+        {currentStep === 1 && (
+          <WizardStepMeasurements
+            data={data}
+            onChange={handleChange}
+            recommendations={recommendations}
+            aiLoading={aiLoading}
+            materialAccepted={acceptedItems.materials}
+            materialDismissed={dismissedItems.materials}
+            onAcceptMaterial={(id: string) => handleAccept('materials', id)}
+            onDismissMaterial={(id: string) => handleDismiss('materials', id)}
+          />
+        )}
         {currentStep === 2 && (
           <WizardStepPlan
             data={data}
@@ -1037,28 +1126,13 @@ export default function ProjectWizard() {
           />
         )}
         {currentStep === 3 && (
-          <WizardStepMaterials
-            data={data}
-            onChange={handleChange}
-            recommendations={recommendations}
-            aiLoading={aiLoading}
-            acceptedIds={acceptedItems.materials}
-            dismissedIds={dismissedItems.materials}
-            onAccept={(id: string) => handleAccept('materials', id)}
-            onDismiss={(id: string) => handleDismiss('materials', id)}
-            onAcceptAll={(ids: string[]) => handleAcceptAll('materials', ids)}
-            onDismissAll={(ids: string[]) => handleDismissAll('materials', ids)}
-            onReset={() => handleResetCategory('materials')}
-          />
-        )}
-        {currentStep === 4 && (
           <WizardStepNumbers
             data={data}
             onChange={handleChange}
             recommendations={recommendations}
           />
         )}
-        {currentStep === 5 && <WizardStepSummary data={data} />}
+        {currentStep === 4 && <WizardStepSummary data={data} />}
       </div>
 
       {/* Navigation buttons */}

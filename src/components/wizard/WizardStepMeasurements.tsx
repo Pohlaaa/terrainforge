@@ -1,35 +1,59 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
-import type { WizardData, WizardElement } from '@/pages/ProjectWizard';
-import type { ElementType } from '@/types';
-import { normalizeCategory } from '@/lib/categories';
-import { ElementVisual } from '@/components/shared/ElementVisual';
-import type { ProjectElement } from '@/types';
-// F-050: swap raw number inputs for NumberInput so the same zero-on-focus
-// + select-all UX applies on the Measurements step. Matches F-040's treatment
-// of the Numbers step, BudgetBreakdownTable, and MaterialFormModal.
+/**
+ * Step 2 — Design (3D-in-Wizard, Phase A)
+ *
+ * Split-screen design surface that replaces the legacy table-based
+ * measurements step. Left side is a 2D/3D canvas (PlanView2D/PlanView3D)
+ * showing the AI-pre-placed elements on the property's satellite map.
+ * Right side is a per-element sidebar with dimension inputs and a
+ * material picker scoped to the selected element's type. Selecting an
+ * element on the canvas focuses it in the sidebar; editing a dimension
+ * in the sidebar updates the canvas instantly. The visual scaffolding
+ * makes AI suggestions falsifiable (you can SEE the patio overhanging
+ * the deck) and the sidebar keeps tabular precision for dimensions
+ * that drag handles can't nail (a 6-inch edging strip).
+ *
+ * Materials assignment compresses what used to be a separate Step 4
+ * Materials screen into per-element picking. Acceptance still routes to
+ * the wizard's project-level `materialSelections` array; create-time
+ * auto-link logic in ProjectWizard.handleCreate() handles the junction
+ * rows by element-type/category mapping (unchanged from the legacy
+ * flow).
+ */
+import React, { useEffect, useMemo, useState } from 'react';
+import { ELEMENT_TYPE_LABELS, getElementTypesForMaterial } from '@/lib/elements';
+import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
+import { normalizeCategory, getCategoryLabel } from '@/lib/categories';
+import { useMaterialStore } from '@/stores/materialStore';
 import { NumberInput } from '@/components/ui/NumberInput';
+import PlanView2D from '@/components/plan/PlanView2D';
+import PlanView3D from '@/components/plan/PlanView3D';
+import type { WizardData, WizardElement, WizardMaterial } from '@/pages/ProjectWizard';
+import type { AIRecommendationSet, ElementGeometry, ElementType, Material, ProjectElement } from '@/types';
 
 interface Props {
   data: WizardData;
   onChange: (updates: Partial<WizardData>) => void;
+  recommendations: AIRecommendationSet | null;
+  aiLoading: boolean;
+  materialAccepted: Set<string>;
+  materialDismissed: Set<string>;
+  onAcceptMaterial: (id: string) => void;
+  onDismissMaterial: (id: string) => void;
 }
 
 const inputClass =
-  'w-full bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] px-[12px] py-[10px] text-[13px] text-[var(--text)] placeholder:text-[var(--text-4)] focus:outline-none focus:border-[var(--green)] transition-colors';
-
-const labelClass = 'block text-[12px] font-[600] text-[var(--text-2)] mb-[6px]';
+  'w-full bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] px-[10px] py-[7px] text-[12px] text-[var(--text)] placeholder:text-[var(--text-4)] focus:outline-none focus:border-[var(--green)] transition-colors';
+const labelClass = 'block text-[11px] font-[600] text-[var(--text-2)] mb-[4px]';
 
 const ELEMENT_TYPE_OPTIONS = Object.entries(ELEMENT_TYPE_LABELS) as [ElementType, string][];
 
-// Which dimension fields are relevant per element type
 type DimensionConfig = {
-  lengthWidth?: boolean;    // length × width → auto-calc area
-  manualArea?: boolean;     // manual area override
-  linearFt?: boolean;       // linear feet
-  heightFt?: boolean;       // height
-  depthIn?: boolean;        // depth in inches
-  allFields?: boolean;      // show everything
+  lengthWidth?: boolean;
+  manualArea?: boolean;
+  linearFt?: boolean;
+  heightFt?: boolean;
+  depthIn?: boolean;
+  allFields?: boolean;
 };
 
 const DIMENSION_CONFIG: Record<ElementType, DimensionConfig> = {
@@ -59,80 +83,98 @@ const DIMENSION_CONFIG: Record<ElementType, DimensionConfig> = {
   other:            { allFields: true },
 };
 
-// AI suggestion presets based on project type
-const PROJECT_TYPE_PRESETS: Record<string, Omit<WizardElement, 'tempId'>[]> = {
-  hardscape: [
-    { name: 'Main Patio', elementType: 'patio', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Base Prep Area', elementType: 'patio', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: 'Base material area — match patio dimensions' },
-    { name: 'Patio Edging', elementType: 'edging', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: 'Perimeter restraint edging' },
-  ],
-  full_install: [
-    { name: 'Patio', elementType: 'patio', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Walkway', elementType: 'walkway', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Garden Beds', elementType: 'garden_bed', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Sod Area', elementType: 'sod_area', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Edging', elementType: 'edging', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-  ],
-  softscape: [
-    { name: 'Garden Beds', elementType: 'garden_bed', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Sod / Turf Area', elementType: 'sod_area', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Bed Edging', elementType: 'edging', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-  ],
-  renovation: [
-    { name: 'Renovation Area', elementType: 'patio', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-  ],
-  drainage: [
-    { name: 'Drainage Run', elementType: 'other', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: 'Drainage channel / French drain' },
-  ],
-  mixed: [
-    { name: 'Hardscape Area', elementType: 'patio', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Planting Beds', elementType: 'garden_bed', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-    { name: 'Edging', elementType: 'edging', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' },
-  ],
-};
-
-function computeArea(el: WizardElement): number | null {
-  // Manual area override takes precedence
+function computeArea(el: WizardElement): number {
   if (el.areaSqft != null && el.areaSqft > 0) return el.areaSqft;
-  const cfg = DIMENSION_CONFIG[el.elementType];
-  // Length × width
-  if ((cfg.lengthWidth || cfg.allFields) && el.lengthFt && el.widthFt) {
-    return Math.round(el.lengthFt * el.widthFt * 100) / 100;
-  }
-  // Linear ft × height → face area (walls)
-  if ((cfg.heightFt || cfg.allFields) && el.linearFt && el.heightFt) {
-    return Math.round(el.linearFt * el.heightFt * 100) / 100;
-  }
-  return null;
+  if (el.lengthFt && el.widthFt) return Math.round(el.lengthFt * el.widthFt * 100) / 100;
+  if (el.linearFt && el.heightFt) return Math.round(el.linearFt * el.heightFt * 100) / 100;
+  return 0;
 }
 
-export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
+/**
+ * Adapt a WizardElement (no DB ID, transient) to the ProjectElement shape
+ * that PlanView2D/3D expects. The canvas only reads `id`, `name`,
+ * `elementType`, dimensions, and `geometry`. Other fields are stubbed.
+ */
+function toProjectElement(el: WizardElement): ProjectElement {
+  return {
+    id: el.tempId,
+    orgId: '',
+    projectId: '',
+    name: el.name || ELEMENT_TYPE_LABELS[el.elementType],
+    elementType: el.elementType,
+    lengthFt: el.lengthFt,
+    widthFt: el.widthFt,
+    areaSqft: el.areaSqft,
+    linearFt: el.linearFt,
+    heightFt: el.heightFt,
+    depthIn: el.depthIn,
+    computedAreaSqft: computeArea(el),
+    notes: el.notes,
+    sequence: 0,
+    createdAt: '',
+    materials: [],
+    geometry: el.geometry ?? null,
+  };
+}
+
+/**
+ * Synthesizes geometry for an element when it has none yet. Mirrors the
+ * Step 1→2 AI seeding logic so manually-added elements also drop into a
+ * sensible slot rather than landing at (0, 0).
+ */
+function seedGeometry(el: WizardElement, stackIndex: number): ElementGeometry {
+  const dims = fallbackDimensions(toProjectElement(el));
+  const pos = placementBucket('unknown', dims, stackIndex);
+  return {
+    position: pos,
+    rotation: 0,
+    shape: { kind: 'rectangle', width: dims.width, height: dims.height },
+  };
+}
+
+export const WizardStepMeasurements: React.FC<Props> = ({
+  data,
+  onChange,
+  recommendations,
+  aiLoading,
+  materialAccepted,
+  materialDismissed,
+  onAcceptMaterial,
+  onDismissMaterial,
+}) => {
   const elements = data.elements;
-  const [suggestionsApplied, setSuggestionsApplied] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const prevElementCount = useRef(elements.length);
-
-  // Auto-scroll when new elements are added
+  const [planViewMode, setPlanViewMode] = useState<'2d' | '3d'>('3d');
+  const [selectedTempId, setSelectedTempId] = useState<string | null>(
+    elements[0]?.tempId ?? null,
+  );
+  // Keep selection valid as the array changes (e.g. user removes the focused element).
   useEffect(() => {
-    if (elements.length > prevElementCount.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (selectedTempId && !elements.some((e) => e.tempId === selectedTempId)) {
+      setSelectedTempId(elements[0]?.tempId ?? null);
+    } else if (!selectedTempId && elements.length > 0) {
+      setSelectedTempId(elements[0].tempId);
     }
-    prevElementCount.current = elements.length;
-  }, [elements.length]);
+  }, [elements, selectedTempId]);
 
+  const selected = useMemo(
+    () => elements.find((e) => e.tempId === selectedTempId) ?? null,
+    [elements, selectedTempId],
+  );
+
+  // ── Element CRUD on wizard data ─────────────────────────────────────────
   const updateElement = (tempId: string, updates: Partial<WizardElement>) => {
     onChange({
-      elements: elements.map((el) =>
-        el.tempId === tempId ? { ...el, ...updates } : el
-      ),
+      elements: elements.map((el) => (el.tempId === tempId ? { ...el, ...updates } : el)),
     });
   };
 
-  const addElement = () => {
-    const newEl: WizardElement = {
-      tempId: crypto.randomUUID(),
-      name: '',
-      elementType: 'patio',
+  const addElement = (type: ElementType = 'patio') => {
+    const tempId = crypto.randomUUID();
+    const stackIdx = elements.length;
+    const stub: WizardElement = {
+      tempId,
+      name: ELEMENT_TYPE_LABELS[type],
+      elementType: type,
       lengthFt: null,
       widthFt: null,
       areaSqft: null,
@@ -141,489 +183,219 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
       depthIn: null,
       notes: '',
     };
-    onChange({ elements: [...elements, newEl] });
+    stub.geometry = seedGeometry(stub, stackIdx);
+    onChange({ elements: [...elements, stub] });
+    setSelectedTempId(tempId);
   };
 
   const removeElement = (tempId: string) => {
     onChange({ elements: elements.filter((el) => el.tempId !== tempId) });
   };
 
-  const applySuggestions = () => {
-    // F-CW-04: strip demolition phrases first. Otherwise "demo existing
-    // concrete slab" causes the keyword matcher to add Concrete Slab as a
-    // *build* element, contradicting the user's intent.
-    const stripDemoClauses = (s: string) =>
-      s.replace(
-        /\b(demo(?:lish)?|remove|tear\s*out|tear\s*down|rip\s*out|haul\s*away|dispose\s*of|excavate\s*and\s*remove|demo\s*existing)\b[^.!?]*/gi,
-        '',
-      );
-
-    // F-CW-12 / F-CW-LIVE-03: keyword matching alone is too loose. Two
-    // false positives observed in live walkthroughs:
-    //   1. "Plant 6 hydrangea shrubs around the patio" — "patio" is
-    //      positional, not the install target.
-    //   2. "Mulch the existing planting beds" — "planting" matches the verb
-    //      regex /plant(?:ing)?/ as a noun adjective, not a verb.
-    // And two regressions caught when iterating the fix:
-    //   3. "Install 3,000 sqft of sod" — comma in 3,000 split the clause
-    //      so the keyword ended up in a clause without an install verb.
-    //   4. "Mulch the planting beds" rejected — "Mulch" is itself an install
-    //      action for mulch and should count.
-    // Strategy: split into clauses without breaking number literals. Strip
-    // "(existing X)" / "no X work" parentheticals so positional references
-    // can't trip keyword matches. Require an install verb in the clause AND
-    // the keyword to appear within ~5 words of the verb (proximity).
-    const stripExistingPhrases = (s: string) =>
-      s
-        .replace(/\(\s*existing[^)]*\)/gi, '')             // "(existing patio, no patio work)"
-        .replace(/\bexisting[^.,;()]+/gi, '')              // "existing planting beds"
-        .replace(/\bno\s+\w+\s+work\b/gi, '');             // "no patio work"
-
-    // Install-action verbs. Includes domain-specific actions (mulch, sod,
-    // gravel, drain, pave, edge, fence) which are themselves installs of
-    // their corresponding material.
-    const INSTALL_VERBS = ['install', 'installing', 'build', 'building', 'construct', 'constructing', 'add', 'adding', 'plant', 'planting', 'plants', 'lay', 'laying', 'pour', 'pouring', 'create', 'creating', 'set up', 'put in', 'new', 'include', 'including', 'mulch', 'mulching', 'sod', 'sodding', 'gravel', 'pave', 'paving', 'edge', 'edging', 'fence', 'fencing', 'drain', 'spread', 'spreading', 'apply', 'applying'];
-    const installVerbRegex = new RegExp(`\\b(?:${INSTALL_VERBS.join('|')})\\b`, 'i');
-
-    // Returns the index (in the clause) of the first install verb, or -1.
-    const findInstallVerbIndex = (clause: string): number => {
-      const m = clause.match(installVerbRegex);
-      return m && typeof m.index === 'number' ? m.index : -1;
-    };
-
-    const fullDesc = stripDemoClauses(data.description || '');
-    // Clause split: full stops, semicolons, exclamations, question marks,
-    // " and ", and commas — but NOT commas between digits ("3,000").
-    const clauses = fullDesc
-      .split(/[.!?;]|\band\b|(?<!\d),\s*(?!\d)/i)
-      .map(c => stripExistingPhrases(c).trim())
-      .filter(c => c.length > 0);
-
-    const inferred: Omit<WizardElement, 'tempId'>[] = [];
-
-    // Always infer from description keywords — this is the primary source
-    const keywords: [string[], string, ElementType][] = [
-      [['patio', 'paver patio', 'stone patio', 'flagstone'], 'Patio', 'patio'],
-      [['walkway', 'path', 'sidewalk', 'paver walkway', 'stepping stone'], 'Walkway', 'walkway'],
-      [['driveway'], 'Driveway', 'driveway'],
-      [['parking lot', 'parking area', 'parking'], 'Parking Lot', 'parking_lot'],
-      [['retaining wall', 'retaining'], 'Retaining Wall', 'retaining_wall'],
-      [['seating wall', 'seat wall', 'block wall'], 'Wall', 'wall'],
-      [['garden bed', 'garden', 'planting bed', 'flower bed', 'planting area', 'curbed garden'], 'Garden Beds', 'garden_bed'],
-      [['sod', 'turf', 'lawn', 'grass', 'resod'], 'Sod Area', 'sod_area'],
-      [['edging', 'border', 'landscape border', 'paver border'], 'Edging', 'edging'],
-      [['curb', 'curbing'], 'Curbing', 'curbing'],
-      [['fire pit', 'firepit', 'fire feature', 'fire ring'], 'Fire Pit', 'fire_pit'],
-      [['pool deck', 'pool surround'], 'Pool Deck', 'pool_deck'],
-      [['tree', 'trees', 'shade tree', 'ornamental tree', 'oak', 'maple'], 'Tree Planting', 'tree_planting'],
-      [['shrub', 'shrubs', 'hedge', 'hedges', 'bush', 'bushes', 'boxwood'], 'Shrub Planting', 'shrub_planting'],
-      [['mulch', 'wood chips', 'bark'], 'Mulch Area', 'mulch_area'],
-      [['gravel', 'rock', 'decomposed granite', 'river rock'], 'Gravel Area', 'gravel_area'],
-      [['concrete', 'slab', 'pad'], 'Concrete Slab', 'concrete_slab'],
-      [['fence', 'fencing', 'gate'], 'Fence', 'fence'],
-      [['pergola', 'arbor', 'trellis'], 'Pergola', 'pergola'],
-      [['outdoor kitchen', 'grill', 'bbq'], 'Outdoor Kitchen', 'outdoor_kitchen'],
-      [['drain', 'drainage', 'french drain', 'swale'], 'Drainage', 'drainage'],
-      [['step', 'stairs', 'staircase'], 'Steps / Stairs', 'steps_stairs'],
-      [['irrigation', 'sprinkler', 'drip'], 'Irrigation Zone', 'irrigation_zone'],
-      [['seed', 'overseed'], 'Sod Area', 'sod_area'],
-    ];
-
-    // Proximity threshold: keyword must appear within this many characters
-    // of the install verb. ~80 chars covers normal phrasing like
-    // "Install a 24x18 paver patio" (~30 chars verb→keyword) but rejects
-    // "Plant 8 shrubs around the patio" where "patio" is ~30 chars after
-    // "Plant" — wait, that's also ~30. Hmm, this won't separate them by
-    // distance alone. Stronger heuristic: require keyword to NOT come after
-    // a positional preposition (around, near, behind, by, next to, beside).
-    const POSITIONAL_PREPS = /\b(around|near|behind|beside|next\s+to|by|along|adjacent\s+to|between|across\s+from|in\s+front\s+of|outside|outside\s+of)\s+(?:the\s+|a\s+|an\s+)?$/i;
-
-    for (const [terms, name, elementType] of keywords) {
-      const compoundTerms = terms.some(t => t.includes(' '));
-      const matchedInClause = clauses.some(clause => {
-        const cl = clause.toLowerCase();
-        const hasKeyword = terms.some(t => cl.includes(t));
-        if (!hasKeyword) return false;
-        // Compound multi-word terms (retaining wall, fire pit, pool deck)
-        // are strong enough on their own — install verb not required.
-        if (compoundTerms && terms.some(t => t.includes(' ') && cl.includes(t))) return true;
-        // F-CW-LIVE-03: require an install verb in the clause AND the
-        // keyword to NOT appear after a positional preposition (which
-        // would mean it's a location reference, not the install target).
-        const verbIdx = findInstallVerbIndex(clause);
-        if (verbIdx < 0) return false;
-        // Find the keyword position in the clause
-        let kwIdx = -1;
-        for (const t of terms) {
-          const i = cl.indexOf(t);
-          if (i >= 0 && (kwIdx < 0 || i < kwIdx)) kwIdx = i;
+  // ── Geometry callback from PlanView2D/3D ────────────────────────────────
+  const handleElementGeometryChange = (id: string, geometry: ElementGeometry) => {
+    // The canvas may also have changed the rectangle dimensions (resize
+    // gizmo). When that happens, mirror the new dimensions back to the
+    // wizard element's dimension fields so the sidebar inputs stay in
+    // sync. We only mirror length/width for elements whose
+    // DimensionConfig actually exposes those fields — for linear-only
+    // elements (edging, fence, drainage), we update linearFt instead.
+    const target = elements.find((e) => e.tempId === id);
+    if (!target) return;
+    const updates: Partial<WizardElement> = { geometry };
+    if (geometry.shape.kind === 'rectangle') {
+      const cfg = DIMENSION_CONFIG[target.elementType];
+      if (cfg.lengthWidth || cfg.allFields) {
+        updates.lengthFt = geometry.shape.width;
+        updates.widthFt = geometry.shape.height;
+        // Drop the manual area override so length×width takes precedence again.
+        if (target.areaSqft != null && target.lengthFt && target.widthFt) {
+          updates.areaSqft = null;
         }
-        if (kwIdx < 0) return false;
-        // Keyword should come AT or AFTER the verb. Equal positions are
-        // legit when the verb IS the install action for the material's
-        // category (e.g. "Mulch the planting beds" — verb "Mulch" is also
-        // the Mulch keyword). Strictly-before would skip those.
-        if (kwIdx < verbIdx) return false;
-        // Reject when keyword is preceded by a positional preposition
-        // phrase ("around the X", "next to the X") within the verb→keyword
-        // span — those mean X is a location, not the install target.
-        if (kwIdx > verbIdx) {
-          const between = clause.slice(verbIdx, kwIdx);
-          if (POSITIONAL_PREPS.test(between)) return false;
-        }
-        return true;
-      });
-      if (matchedInClause) {
-        if (!inferred.some(e => e.elementType === elementType)) {
-          inferred.push({ name, elementType, lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, notes: '' });
-        }
+      } else if (cfg.linearFt) {
+        // Treat the longer side as the linear run.
+        updates.linearFt = Math.max(geometry.shape.width, geometry.shape.height);
       }
     }
-
-    // If description didn't produce anything, fall back to project type presets
-    if (inferred.length === 0) {
-      const presetKey = data.projectType || '';
-      const preset = PROJECT_TYPE_PRESETS[presetKey];
-      if (preset) {
-        const newElements: WizardElement[] = preset.map(p => ({ ...p, tempId: crypto.randomUUID() }));
-        onChange({ elements: [...elements, ...newElements] });
-        setSuggestionsApplied(true);
-        return;
-      }
-      return; // nothing to suggest
-    }
-
-    const newElements: WizardElement[] = inferred.map(p => ({ ...p, tempId: crypto.randomUUID() }));
-    onChange({ elements: [...elements, ...newElements] });
-    setSuggestionsApplied(true);
+    updateElement(id, updates);
   };
 
-  // Auto-suggest on mount if elements are empty
-  useEffect(() => {
-    if (elements.length === 0 && !suggestionsApplied && (data.projectType || data.description)) {
-      applySuggestions();
-    }
-  }, []); // only on mount
-
-  // Computed total area across all elements
-  const totalArea = useMemo(() => {
-    return elements.reduce((sum, el) => sum + (computeArea(el) ?? 0), 0);
+  // ── Adapt for canvas + ensure all elements have geometry ───────────────
+  // The canvas falls back to autoLayout when geometry is null, but the
+  // sidebar drag-edit only round-trips elements that have geometry. Seed
+  // any missing geometry on the fly so newly-added elements click-edit.
+  const elementsForCanvas = useMemo(() => {
+    return elements.map((el, i) => {
+      const proj = toProjectElement(el);
+      if (!proj.geometry) proj.geometry = seedGeometry(el, i);
+      return proj;
+    });
   }, [elements]);
 
-  const projectTypeLabel = data.projectType
-    ? (({ full_install: 'Full Install', renovation: 'Renovation', hardscape: 'Hardscape', softscape: 'Softscape', drainage: 'Drainage', irrigation: 'Irrigation', maintenance: 'Maintenance', mixed: 'Mixed' } as Record<string, string>)[data.projectType] ?? data.projectType)
-    : null;
+  // ── Property satellite backdrop ─────────────────────────────────────────
+  const backdrop =
+    data.lat != null && data.lng != null ? { lat: data.lat, lng: data.lng } : null;
 
-  const hasSuggestions = !!(data.projectType || data.description);
+  const totalArea = useMemo(
+    () => elements.reduce((sum, el) => sum + computeArea(el), 0),
+    [elements],
+  );
 
   return (
-    <div className="space-y-[24px]">
+    <div className="space-y-[16px]">
       {/* Header */}
-      <div>
-        <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[4px]">
-          Project Elements
-        </h3>
-        <p className="text-[12px] text-[var(--text-4)]">
-          Add each area of work with its measurements. These drive all material calculations.
-        </p>
+      <div className="flex items-start justify-between gap-[12px]">
+        <div>
+          <h3 className="text-[16px] font-[600] text-[var(--text)] mb-[2px]">Design</h3>
+          <p className="text-[12px] text-[var(--text-4)]">
+            AI placed elements on your property map. Drag to reposition, resize from the
+            corners, or fine-tune dimensions in the sidebar. Materials attach per element.
+          </p>
+        </div>
+        {aiLoading && elements.length === 0 && (
+          <span className="text-[11px] text-[var(--text-4)] shrink-0 flex items-center gap-[6px]">
+            <span className="inline-block w-[8px] h-[8px] rounded-full animate-pulse" style={{ backgroundColor: 'var(--green)' }} />
+            AI is sketching elements…
+          </span>
+        )}
       </div>
 
-      {/* AI Suggestion Button */}
-      {hasSuggestions && !suggestionsApplied && (
-        <button
-          type="button"
-          onClick={applySuggestions}
-          className="w-full rounded-[8px] border px-[14px] py-[10px] flex items-center gap-[8px] cursor-pointer transition-colors"
-          style={{
-            backgroundColor: 'rgba(45,106,79,0.06)',
-            borderColor: 'var(--green)',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M7 1L8.5 4.5L12.5 5L9.5 7.5L10.5 11.5L7 9.5L3.5 11.5L4.5 7.5L1.5 5L5.5 4.5L7 1Z" fill="var(--green)" />
-          </svg>
-          <span className="text-[13px] font-[500]" style={{ color: 'var(--green-l)' }}>
-            Suggest elements from job description
-          </span>
-          <span className="text-[11px] text-[var(--text-4)] ml-auto">
-            Pre-fills typical areas — all values editable
-          </span>
-        </button>
-      )}
-
-      {suggestionsApplied && (
-        <div
-          className="rounded-[8px] border px-[14px] py-[8px] flex items-center gap-[6px]"
-          style={{ backgroundColor: 'rgba(45,106,79,0.06)', borderColor: 'var(--border)' }}
-        >
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-            <path d="M7 1L8.5 4.5L12.5 5L9.5 7.5L10.5 11.5L7 9.5L3.5 11.5L4.5 7.5L1.5 5L5.5 4.5L7 1Z" fill="var(--green)" />
-          </svg>
-          <span className="text-[12px] text-[var(--text-3)]">
-            AI suggested elements added — enter your real measurements below.
-            All values are <strong style={{ color: 'var(--status-amber)' }}>estimated</strong> until you fill them in.
-          </span>
+      {/* Empty state — pre-AI or AI failed */}
+      {elements.length === 0 && !aiLoading && (
+        <div className="rounded-[10px] border-dashed border-2 px-[16px] py-[24px] text-center" style={{ borderColor: 'var(--border)' }}>
+          <p className="text-[12px] text-[var(--text-3)] mb-[8px]">
+            No elements yet. Add one to start designing.
+          </p>
+          <button
+            type="button"
+            onClick={() => addElement('patio')}
+            className="px-[12px] py-[6px] rounded-[6px] text-[12px] font-[500] cursor-pointer border-none"
+            style={{ backgroundColor: 'var(--green)', color: '#fff' }}
+          >
+            + Add element
+          </button>
         </div>
       )}
 
-      {/* Element Cards */}
-      <div className="space-y-[12px]">
-        {elements.map((el, idx) => {
-          const cfg = DIMENSION_CONFIG[el.elementType];
-          const area = computeArea(el);
-          const showLengthWidth = cfg.lengthWidth || cfg.allFields;
-          const showLinearFt = cfg.linearFt || cfg.allFields;
-          const showHeight = cfg.heightFt || cfg.allFields;
-          const showDepth = cfg.depthIn || cfg.allFields;
-          const showManualArea = cfg.manualArea || cfg.allFields;
-
-          // Flag elements that have no contractor-entered dimensions
-          const hasDimensions = !!(
-            (el.lengthFt && el.widthFt) ||
-            el.areaSqft ||
-            el.linearFt
-          );
-
-          return (
-            <div
-              key={el.tempId}
-              className="rounded-[10px] border p-[16px]"
-              style={{
-                backgroundColor: 'var(--surface2)',
-                borderColor: hasDimensions ? 'var(--border)' : 'var(--status-amber)',
-              }}
-            >
-              {/* Card header: number, name, type, delete */}
-              <div className="flex items-start gap-[10px] mb-[12px]">
-                <span className="text-[12px] font-[600] text-[var(--text-4)] mt-[10px] shrink-0 w-[20px]">
-                  {idx + 1}.
-                </span>
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-[10px]">
-                  <div>
-                    <label className={labelClass}>Element Name</label>
-                    <input
-                      className={inputClass}
-                      placeholder="e.g., Back Patio, Front Walkway"
-                      value={el.name}
-                      onChange={(e) => updateElement(el.tempId, { name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Type</label>
-                    <select
-                      className={inputClass}
-                      value={el.elementType}
-                      onChange={(e) => updateElement(el.tempId, { elementType: e.target.value as ElementType })}
-                    >
-                      {ELEMENT_TYPE_OPTIONS.map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeElement(el.tempId)}
-                  className="w-[28px] h-[28px] rounded-[6px] flex items-center justify-center text-[var(--text-4)] hover:text-[var(--text)] hover:bg-[var(--surface)] cursor-pointer bg-transparent border-none transition-colors mt-[6px] shrink-0"
-                  title="Remove element"
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M4 4l8 8M12 4l-8 8" />
-                  </svg>
-                </button>
+      {/* Canvas + sidebar split */}
+      {elements.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-[16px]">
+          {/* Canvas + thumbnail strip */}
+          <div className="space-y-[10px]">
+            {/* Mode toggle */}
+            <div className="flex items-center justify-between">
+              <div className="inline-flex rounded-[8px] border" style={{ borderColor: 'var(--border)' }}>
+                {(['2d', '3d'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setPlanViewMode(m)}
+                    className="px-[14px] py-[5px] text-[11px] font-[600] uppercase cursor-pointer border-none"
+                    style={{
+                      backgroundColor: planViewMode === m ? 'var(--green)' : 'transparent',
+                      color: planViewMode === m ? '#fff' : 'var(--text-3)',
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
               </div>
+              <span className="text-[11px] text-[var(--text-4)]">
+                {selected
+                  ? `Editing: ${selected.name || ELEMENT_TYPE_LABELS[selected.elementType]}`
+                  : 'Click an element to select'}
+              </span>
+            </div>
 
-              {/* Missing dimensions warning */}
-              {!hasDimensions && (
-                <div className="ml-[30px] mb-[8px] flex items-center gap-[6px]">
-                  <span className="text-[11px] font-[500]" style={{ color: 'var(--status-amber)' }}>
-                    Needs measurements — enter dimensions below for accurate material quantities
-                  </span>
-                </div>
-              )}
-
-              {/* Dimensions + Live Visual */}
-              <div className="flex gap-[12px] ml-[30px]">
-              {/* Visual preview */}
-              <div className="shrink-0 flex items-start pt-[20px]">
-                <ElementVisual element={{
-                  id: el.tempId, orgId: '', projectId: '', name: el.name,
-                  elementType: el.elementType, lengthFt: el.lengthFt, widthFt: el.widthFt,
-                  areaSqft: el.areaSqft, linearFt: el.linearFt, heightFt: el.heightFt,
-                  depthIn: el.depthIn, computedAreaSqft: area ?? 0,
-                  notes: el.notes, sequence: 0, createdAt: '', materials: [],
-                } as ProjectElement} size={110} />
-              </div>
-              <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-[10px]">
-                {showLengthWidth && (
-                  <>
-                    <div>
-                      <label className={labelClass}>Length (ft)</label>
-                      <NumberInput
-                        className={inputClass}
-                        min={0}
-                        step={0.5}
-                        placeholder="0"
-                        value={el.lengthFt}
-                        onChange={(value) => updateElement(el.tempId, { lengthFt: value })}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Width (ft)</label>
-                      <NumberInput
-                        className={inputClass}
-                        min={0}
-                        step={0.5}
-                        placeholder="0"
-                        value={el.widthFt}
-                        onChange={(value) => updateElement(el.tempId, { widthFt: value })}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {showLinearFt && (
-                  <div>
-                    <label className={labelClass}>Linear Ft</label>
-                    <NumberInput
-                      className={inputClass}
-                      min={0}
-                      step={0.5}
-                      placeholder="0"
-                      value={el.linearFt}
-                      onChange={(value) => updateElement(el.tempId, { linearFt: value })}
-                    />
-                  </div>
-                )}
-
-                {showHeight && (
-                  <div>
-                    <label className={labelClass}>Height (ft)</label>
-                    <NumberInput
-                      className={inputClass}
-                      min={0}
-                      step={0.25}
-                      placeholder="0"
-                      value={el.heightFt}
-                      onChange={(value) => updateElement(el.tempId, { heightFt: value })}
-                    />
-                  </div>
-                )}
-
-                {showDepth && (
-                  <div>
-                    <label className={labelClass}>Depth (in)</label>
-                    <NumberInput
-                      className={inputClass}
-                      min={0}
-                      step={0.5}
-                      placeholder="0"
-                      value={el.depthIn}
-                      onChange={(value) => updateElement(el.tempId, { depthIn: value })}
-                    />
-                  </div>
-                )}
-
-                {showManualArea && (
-                  <div>
-                    <label className={labelClass}>
-                      Area (sqft){el.lengthFt && el.widthFt ? ' override' : ''}
-                    </label>
-                    <NumberInput
-                      className={inputClass}
-                      min={0}
-                      step={1}
-                      placeholder={el.lengthFt && el.widthFt ? String(Math.round(el.lengthFt * el.widthFt)) : '0'}
-                      value={el.areaSqft}
-                      onChange={(value) => updateElement(el.tempId, { areaSqft: value })}
-                    />
-                  </div>
-                )}
-
-              </div>
-              </div>
-
-              {/* Notes */}
-              <div className="ml-[30px] mt-[8px]">
-                <input
-                  className={`${inputClass} text-[12px]`}
-                  placeholder="Notes (optional)"
-                  value={el.notes}
-                  onChange={(e) => updateElement(el.tempId, { notes: e.target.value })}
+            {/* Canvas */}
+            <div onMouseDown={() => { /* canvas-area click is handled inside views */ }}>
+              {planViewMode === '2d' ? (
+                <PlanView2D
+                  elements={elementsForCanvas}
+                  height={420}
+                  labelMode="full"
+                  backdrop={backdrop}
+                  editable
+                  onElementClick={(el) => setSelectedTempId(el.id)}
+                  onElementGeometryChange={handleElementGeometryChange}
                 />
-              </div>
-
-              {/* Material quantity estimate preview */}
-              {area != null && area > 0 && (
-                <div className="ml-[30px] mt-[8px] rounded-[6px] px-[10px] py-[6px]" style={{ backgroundColor: 'rgba(45,106,79,0.05)' }}>
-                  <span className="text-[10px] font-[600] text-[var(--text-4)] uppercase">Material estimates</span>
-                  <div className="flex flex-wrap gap-x-[16px] gap-y-[2px] mt-[2px]">
-                    {/* Base gravel (6" min) */}
-                    {['patio', 'walkway', 'driveway', 'pool_deck', 'fire_pit'].includes(el.elementType) && (
-                      <span className="text-[11px] text-[var(--text-3)]">
-                        Base gravel: <strong className="text-[var(--text)]">{((area / 324) * 6).toFixed(1)} cuyd</strong>
-                      </span>
-                    )}
-                    {/* Polymeric sand */}
-                    {['patio', 'walkway', 'driveway', 'pool_deck'].includes(el.elementType) && (
-                      <span className="text-[11px] text-[var(--text-3)]">
-                        Polymeric sand: <strong className="text-[var(--text)]">{Math.ceil(area / 65)} bags</strong>
-                      </span>
-                    )}
-                    {/* Topsoil for garden beds */}
-                    {el.elementType === 'garden_bed' && (
-                      <span className="text-[11px] text-[var(--text-3)]">
-                        Topsoil (3"): <strong className="text-[var(--text)]">{((area / 324) * 3).toFixed(1)} cuyd</strong>
-                      </span>
-                    )}
-                    {/* Mulch for garden beds */}
-                    {el.elementType === 'garden_bed' && (
-                      <span className="text-[11px] text-[var(--text-3)]">
-                        Mulch (2"): <strong className="text-[var(--text)]">{((area / 324) * 2).toFixed(1)} cuyd</strong>
-                      </span>
-                    )}
-                    {/* Sod */}
-                    {el.elementType === 'sod_area' && (
-                      <span className="text-[11px] text-[var(--text-3)]">
-                        Sod: <strong className="text-[var(--text)]">{area.toLocaleString()} sqft</strong>
-                      </span>
-                    )}
-                    <span className="text-[10px] text-[var(--text-4)] italic">estimates only</span>
-                  </div>
-                </div>
+              ) : (
+                <PlanView3D
+                  elements={elementsForCanvas}
+                  height={420}
+                  backdrop={backdrop}
+                  editable
+                  onElementGeometryChange={handleElementGeometryChange}
+                />
               )}
             </div>
-          );
-        })}
-      </div>
 
-      {/* Add Element button */}
-      <button
-        type="button"
-        onClick={addElement}
-        className="w-full rounded-[8px] border-2 border-dashed py-[12px] flex items-center justify-center gap-[6px] cursor-pointer transition-colors"
-        style={{ borderColor: 'var(--border)', color: 'var(--text-3)' }}
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M8 3v10M3 8h10" />
-        </svg>
-        <span className="text-[13px] font-[500]">Add Element</span>
-      </button>
-      <div ref={bottomRef} />
+            {/* Thumbnail strip — quick access to select */}
+            <div className="flex flex-wrap gap-[6px]">
+              {elements.map((el) => {
+                const isSelected = el.tempId === selectedTempId;
+                const area = computeArea(el);
+                return (
+                  <button
+                    key={el.tempId}
+                    type="button"
+                    onClick={() => setSelectedTempId(el.tempId)}
+                    className="rounded-[6px] border px-[10px] py-[5px] text-[11px] cursor-pointer transition-colors"
+                    style={{
+                      borderColor: isSelected ? 'var(--green)' : 'var(--border)',
+                      backgroundColor: isSelected ? 'rgba(45,106,79,0.08)' : 'var(--surface2)',
+                      color: 'var(--text)',
+                    }}
+                  >
+                    <span className="font-[500]">{el.name || ELEMENT_TYPE_LABELS[el.elementType]}</span>
+                    {area > 0 && (
+                      <span className="text-[var(--text-4)] ml-[6px]">{area} sqft</span>
+                    )}
+                    {!area && el.linearFt && (
+                      <span className="text-[var(--text-4)] ml-[6px]">{el.linearFt} LF</span>
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => addElement(selected?.elementType ?? 'patio')}
+                className="rounded-[6px] border-2 border-dashed px-[10px] py-[5px] text-[11px] cursor-pointer"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-3)', backgroundColor: 'transparent' }}
+              >
+                + Element
+              </button>
+            </div>
+          </div>
 
-      {/* Summary */}
+          {/* Per-element sidebar */}
+          {selected && (
+            <ElementSidebar
+              element={selected}
+              data={data}
+              onChange={onChange}
+              onUpdate={(updates) => updateElement(selected.tempId, updates)}
+              onRemove={() => removeElement(selected.tempId)}
+              recommendations={recommendations}
+              materialAccepted={materialAccepted}
+              materialDismissed={materialDismissed}
+              onAcceptMaterial={onAcceptMaterial}
+              onDismissMaterial={onDismissMaterial}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Total area pill */}
       {elements.length > 0 && totalArea > 0 && (
         <div
-          className="flex items-center justify-between rounded-[8px] border px-[16px] py-[10px]"
+          className="flex items-center justify-between rounded-[8px] border px-[14px] py-[8px]"
           style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
         >
-          <span className="text-[13px] font-[600] text-[var(--text)]">
-            Total Area ({elements.length} element{elements.length !== 1 ? 's' : ''})
+          <span className="text-[12px] font-[600] text-[var(--text)]">
+            Total Area · {elements.length} element{elements.length !== 1 ? 's' : ''}
           </span>
-          <span
-            className="text-[18px] font-[700] tabular-nums"
-            style={{ color: 'var(--status-green)' }}
-          >
+          <span className="text-[16px] font-[700] tabular-nums" style={{ color: 'var(--status-green)' }}>
             {totalArea.toLocaleString()} sqft
           </span>
         </div>
@@ -633,3 +405,357 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
 };
 
 export default WizardStepMeasurements;
+
+// =============================================================================
+// ElementSidebar — per-element editor panel
+// =============================================================================
+
+interface SidebarProps {
+  element: WizardElement;
+  data: WizardData;
+  onChange: (updates: Partial<WizardData>) => void;
+  onUpdate: (updates: Partial<WizardElement>) => void;
+  onRemove: () => void;
+  recommendations: AIRecommendationSet | null;
+  materialAccepted: Set<string>;
+  materialDismissed: Set<string>;
+  onAcceptMaterial: (id: string) => void;
+  onDismissMaterial: (id: string) => void;
+}
+
+const ElementSidebar: React.FC<SidebarProps> = ({
+  element,
+  data,
+  onChange,
+  onUpdate,
+  onRemove,
+  recommendations,
+  materialAccepted,
+  materialDismissed,
+  onAcceptMaterial,
+  onDismissMaterial,
+}) => {
+  const cfg = DIMENSION_CONFIG[element.elementType];
+  const showLW = cfg.lengthWidth || cfg.allFields;
+  const showLin = cfg.linearFt || cfg.allFields;
+  const showH = cfg.heightFt || cfg.allFields;
+  const showD = cfg.depthIn || cfg.allFields;
+  const showArea = cfg.manualArea || cfg.allFields;
+
+  const orgCatalog = useMaterialStore((s) => s.materials);
+
+  // Materials currently in the project bucket that apply to this element type.
+  const elementMaterials = useMemo(() => {
+    return data.materialSelections.filter((m) => {
+      const types = getElementTypesForMaterial(normalizeCategory(m.category), m.materialName);
+      return types.length === 0 ? false : types.includes(element.elementType);
+    });
+  }, [data.materialSelections, element.elementType]);
+
+  // AI material suggestions filtered to this element's type. Skip ones the
+  // contractor already added to the project bucket (`materialSelections`)
+  // or explicitly dismissed earlier.
+  const aiMaterialMatches = useMemo(() => {
+    const items = recommendations?.materials ?? [];
+    const acceptedNames = new Set(data.materialSelections.map((m) => m.materialName));
+    return items
+      .map((m, i) => ({ rec: m, id: `mat-${i}`, idx: i }))
+      .filter(({ rec, id }) => {
+        if (materialDismissed.has(id)) return false;
+        if (acceptedNames.has(rec.materialName)) return false;
+        const types = getElementTypesForMaterial(normalizeCategory(rec.category), rec.materialName);
+        return types.length > 0 && types.includes(element.elementType);
+      });
+  }, [recommendations, element.elementType, materialDismissed, data.materialSelections]);
+
+  const acceptAIMaterial = (idx: number) => {
+    const rec = recommendations?.materials[idx];
+    if (!rec) return;
+    if (data.materialSelections.some((m) => m.materialName === rec.materialName)) return;
+    const newMat: WizardMaterial = {
+      tempId: crypto.randomUUID(),
+      materialId: rec.materialId,
+      materialName: rec.materialName,
+      category: rec.category,
+      quantity: rec.estimatedQuantity,
+      unit: rec.unit,
+      unitCost: rec.unitCost,
+      inLibrary: rec.inLibrary,
+    };
+    onChange({ materialSelections: [...data.materialSelections, newMat] });
+    onAcceptMaterial(`mat-${idx}`);
+  };
+
+  const removeMaterial = (tempId: string) => {
+    onChange({
+      materialSelections: data.materialSelections.filter((m) => m.tempId !== tempId),
+    });
+  };
+
+  // ── Library-search add (for materials AI didn't suggest) ───────────────
+  const [libSearch, setLibSearch] = useState('');
+  const libMatches = useMemo(() => {
+    if (!libSearch.trim()) return [];
+    const q = libSearch.toLowerCase();
+    return orgCatalog
+      .filter((m) => m.isActive !== false)
+      .filter((m) => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q))
+      .filter((m) => !data.materialSelections.some((sel) => sel.materialName === m.name))
+      .slice(0, 5);
+  }, [libSearch, orgCatalog, data.materialSelections]);
+
+  const addFromLibrary = (mat: Material) => {
+    const newMat: WizardMaterial = {
+      tempId: crypto.randomUUID(),
+      materialId: mat.id,
+      materialName: mat.name,
+      category: mat.category,
+      quantity: 0,
+      unit: mat.unit,
+      unitCost: mat.cost,
+      inLibrary: true,
+    };
+    onChange({ materialSelections: [...data.materialSelections, newMat] });
+    setLibSearch('');
+  };
+
+  return (
+    <aside
+      className="rounded-[10px] border p-[14px] space-y-[12px] self-start"
+      style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
+    >
+      {/* Header */}
+      <div className="flex items-start gap-[8px]">
+        <div className="flex-1 space-y-[8px]">
+          <div>
+            <label className={labelClass}>Element name</label>
+            <input
+              className={inputClass}
+              value={element.name}
+              onChange={(e) => onUpdate({ name: e.target.value })}
+              placeholder={ELEMENT_TYPE_LABELS[element.elementType]}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Type</label>
+            <select
+              className={inputClass}
+              value={element.elementType}
+              onChange={(e) => onUpdate({ elementType: e.target.value as ElementType })}
+            >
+              {ELEMENT_TYPE_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="w-[26px] h-[26px] rounded-[6px] flex items-center justify-center text-[var(--text-4)] hover:text-[var(--status-red)] hover:bg-[var(--surface)] cursor-pointer bg-transparent border-none mt-[16px] shrink-0"
+          title="Remove this element"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Dimensions */}
+      <div className="grid grid-cols-2 gap-[8px]">
+        {showLW && (
+          <>
+            <div>
+              <label className={labelClass}>Length (ft)</label>
+              <NumberInput
+                className={inputClass}
+                min={0}
+                step={0.5}
+                value={element.lengthFt}
+                onChange={(v) => onUpdate({ lengthFt: v })}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Width (ft)</label>
+              <NumberInput
+                className={inputClass}
+                min={0}
+                step={0.5}
+                value={element.widthFt}
+                onChange={(v) => onUpdate({ widthFt: v })}
+              />
+            </div>
+          </>
+        )}
+        {showLin && (
+          <div>
+            <label className={labelClass}>Linear ft</label>
+            <NumberInput
+              className={inputClass}
+              min={0}
+              step={0.5}
+              value={element.linearFt}
+              onChange={(v) => onUpdate({ linearFt: v })}
+            />
+          </div>
+        )}
+        {showH && (
+          <div>
+            <label className={labelClass}>Height (ft)</label>
+            <NumberInput
+              className={inputClass}
+              min={0}
+              step={0.25}
+              value={element.heightFt}
+              onChange={(v) => onUpdate({ heightFt: v })}
+            />
+          </div>
+        )}
+        {showD && (
+          <div>
+            <label className={labelClass}>Depth (in)</label>
+            <NumberInput
+              className={inputClass}
+              min={0}
+              step={0.5}
+              value={element.depthIn}
+              onChange={(v) => onUpdate({ depthIn: v })}
+            />
+          </div>
+        )}
+        {showArea && (
+          <div className="col-span-2">
+            <label className={labelClass}>
+              Area (sqft){element.lengthFt && element.widthFt ? ' override' : ''}
+            </label>
+            <NumberInput
+              className={inputClass}
+              min={0}
+              step={1}
+              value={element.areaSqft}
+              onChange={(v) => onUpdate({ areaSqft: v })}
+              placeholder={element.lengthFt && element.widthFt ? String(Math.round(element.lengthFt * element.widthFt)) : '0'}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label className={labelClass}>Notes</label>
+        <input
+          className={inputClass}
+          value={element.notes}
+          onChange={(e) => onUpdate({ notes: e.target.value })}
+          placeholder="Optional"
+        />
+      </div>
+
+      {/* Materials — filtered to this element's type */}
+      <div className="pt-[10px] border-t" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between mb-[6px]">
+          <span className="text-[11px] font-[600] uppercase text-[var(--text-3)]">
+            Materials · {elementMaterials.length}
+          </span>
+        </div>
+
+        {/* Currently assigned */}
+        {elementMaterials.length > 0 && (
+          <div className="space-y-[3px] mb-[8px]">
+            {elementMaterials.map((m) => (
+              <div
+                key={m.tempId}
+                className="flex items-center gap-[6px] rounded-[5px] border px-[8px] py-[4px]"
+                style={{ borderColor: 'var(--green)', backgroundColor: 'rgba(45,106,79,0.06)' }}
+              >
+                <span className="text-[var(--green-l)] text-[10px]">✓</span>
+                <span className="px-[5px] py-[1px] rounded-[3px] text-[9px] font-[500]"
+                  style={{ backgroundColor: 'rgba(45,106,79,0.12)', color: 'var(--green-l)' }}>
+                  {getCategoryLabel(m.category)}
+                </span>
+                <span className="text-[11px] text-[var(--text)] font-[500] flex-1 truncate">{m.materialName}</span>
+                <span className="text-[10px] text-[var(--text-3)] tabular-nums">
+                  {m.quantity || '—'} {m.unit}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeMaterial(m.tempId)}
+                  className="text-[var(--text-4)] hover:text-[var(--status-red)] bg-transparent border-none cursor-pointer text-[10px]"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* AI suggestions for THIS element type */}
+        {aiMaterialMatches.length > 0 && (
+          <div className="space-y-[3px] mb-[8px]">
+            <span className="text-[10px] text-[var(--text-4)]">AI suggests:</span>
+            {aiMaterialMatches.slice(0, 5).map(({ rec, id, idx }) => {
+              return (
+                <div
+                  key={id}
+                  className="flex items-center gap-[6px] rounded-[5px] border px-[8px] py-[4px]"
+                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+                >
+                  <span className="px-[5px] py-[1px] rounded-[3px] text-[9px] font-[500]"
+                    style={{ backgroundColor: 'rgba(212,164,76,0.12)', color: 'var(--status-amber)' }}>
+                    {getCategoryLabel(rec.category)}
+                  </span>
+                  <span className="text-[11px] text-[var(--text)] flex-1 truncate">{rec.materialName}</span>
+                  <button
+                    type="button"
+                    onClick={() => acceptAIMaterial(idx)}
+                    className="px-[6px] py-[2px] rounded-[3px] text-[10px] font-[500] cursor-pointer border-none"
+                    style={{ backgroundColor: 'var(--green)', color: '#fff' }}
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDismissMaterial(id)}
+                    className="text-[var(--text-4)] hover:text-[var(--text)] bg-transparent border-none cursor-pointer text-[10px]"
+                    title="Dismiss"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Library search */}
+        <div className="relative">
+          <input
+            className={inputClass}
+            value={libSearch}
+            onChange={(e) => setLibSearch(e.target.value)}
+            placeholder="Search your library to add…"
+          />
+          {libMatches.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-[2px] rounded-[6px] border z-10 max-h-[180px] overflow-y-auto"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+            >
+              {libMatches.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => addFromLibrary(m)}
+                  className="w-full text-left px-[10px] py-[5px] flex items-center gap-[6px] cursor-pointer bg-transparent border-none hover:bg-[var(--surface2)]"
+                >
+                  <span className="px-[5px] py-[1px] rounded-[3px] text-[9px] font-[500]"
+                    style={{ backgroundColor: 'rgba(45,106,79,0.12)', color: 'var(--green-l)' }}>
+                    {getCategoryLabel(m.category)}
+                  </span>
+                  <span className="text-[11px] text-[var(--text)] flex-1 truncate">{m.name}</span>
+                  <span className="text-[10px] text-[var(--text-4)]">${m.cost}/{m.unit}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+};

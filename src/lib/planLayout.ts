@@ -313,3 +313,68 @@ const ELEMENT_MATERIALS: Record<ElementType, ElementMaterialProps> = {
 export function elementMaterial(type: ElementType): ElementMaterialProps {
   return ELEMENT_MATERIALS[type] ?? ELEMENT_MATERIALS.other
 }
+
+// ===== 3D-in-Wizard: Placement Buckets =====
+//
+// AI element inference returns a coarse `placementHint` per element
+// ("backyard", "frontyard", "side", "perimeter", "driveway", "unknown").
+// Without a cadastral parcel/structure outline (we only have a satellite
+// tile centered on the property lat/lng), we can't pinpoint where the
+// house actually sits. The buckets below are reasonable defaults relative
+// to the world origin (which IS the property lat/lng, so the house tends
+// to be near origin in the satellite tile):
+//
+//   - backyard: south of origin (positive plan-Y)
+//   - frontyard: north (negative plan-Y, closer to the street in most US lots)
+//   - side: east of origin
+//   - driveway: west of origin
+//   - perimeter: wraps the property ~50ft from origin
+//   - unknown: falls back to autoLayout's tiling
+//
+// The contractor drags from these defaults to the actual location in
+// seconds. The point isn't to be right — it's to scaffold faster than
+// "everything overlapping the house."
+
+export type PlacementHint = 'frontyard' | 'backyard' | 'side' | 'perimeter' | 'driveway' | 'unknown'
+
+interface PlacementSlot {
+  /** Center of the bucket region in plan-feet. */
+  center: { x: number; y: number }
+  /** Rough radius the bucket can spread elements within before stacking visibly. */
+  radius: number
+}
+
+const PLACEMENT_BUCKETS: Record<PlacementHint, PlacementSlot> = {
+  backyard: { center: { x: 0, y: 35 }, radius: 25 },
+  frontyard: { center: { x: 0, y: -35 }, radius: 20 },
+  side: { center: { x: 35, y: 0 }, radius: 18 },
+  driveway: { center: { x: -35, y: 0 }, radius: 18 },
+  perimeter: { center: { x: 0, y: 50 }, radius: 30 },
+  unknown: { center: { x: 0, y: 25 }, radius: 20 },
+}
+
+/**
+ * Computes the top-left position (in plan feet) for an element with the
+ * given hint, dimensions, and stack index. The stack index lets multiple
+ * elements with the same hint spread along an arc inside the bucket
+ * instead of overlapping perfectly. Use a deterministic spread so re-runs
+ * of the wizard place the same elements in the same default slots.
+ */
+export function placementBucket(
+  hint: PlacementHint,
+  dimensions: { width: number; height: number },
+  stackIndex = 0,
+): { x: number; y: number } {
+  const slot = PLACEMENT_BUCKETS[hint] ?? PLACEMENT_BUCKETS.unknown
+  // Deterministic angular spread: golden-angle-ish. First element at center,
+  // subsequent ones fan around it.
+  const phi = stackIndex === 0 ? 0 : stackIndex * 137.5 * (Math.PI / 180)
+  const r = stackIndex === 0 ? 0 : Math.min(slot.radius, 6 + stackIndex * 4)
+  const cx = slot.center.x + Math.cos(phi) * r
+  const cy = slot.center.y + Math.sin(phi) * r
+  // Convert center → top-left in plan-feet.
+  return {
+    x: Math.round(cx - dimensions.width / 2),
+    y: Math.round(cy - dimensions.height / 2),
+  }
+}

@@ -1,6 +1,11 @@
 /**
- * Step 3: "The Plan" — AI-generated recommendations for crew, equipment, and tasks.
- * Materials are in their own step (Step 4).
+ * Step 3: "The Plan" — AI-generated recommendations for crew, equipment, tasks,
+ * and a materials review panel.
+ *
+ * 3D-in-Wizard (Phase A): the legacy separate Materials step was folded into
+ * Step 2's per-element sidebar (where contractors assign materials per element)
+ * and this step (where they review the cumulative project materials list,
+ * adjust quantities, and confirm library auto-add behavior).
  */
 import React, { useState, useMemo } from 'react';
 import { SuggestionPanel } from '@/components/shared/SuggestionPanel';
@@ -9,6 +14,8 @@ import type { WizardData, WizardTask } from '@/pages/ProjectWizard';
 import type { AIRecommendationSet, CrewMember, Equipment } from '@/types';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
+import { getCategoryLabel, normalizeCategory } from '@/lib/categories';
+import { getElementTypesForMaterial, ELEMENT_TYPE_LABELS } from '@/lib/elements';
 
 interface Props {
   data: WizardData;
@@ -52,6 +59,33 @@ export const WizardStepPlan: React.FC<Props> = ({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     materials: true, crew: true, equipment: true, tasks: false,
   });
+
+  // ── Materials review (3D-in-Wizard) ──
+  // Read-only view of the project-level materialSelections accumulated from
+  // Step 2's per-element sidebar. Lets the contractor adjust qty/cost in one
+  // place, see element assignments, and remove anything they don't want.
+  const totalMaterialsCost = useMemo(
+    () => data.materialSelections.reduce((s, m) => s + m.quantity * m.unitCost, 0),
+    [data.materialSelections],
+  );
+  const updateMatQuantity = (tempId: string, qty: number) => {
+    onChange({
+      materialSelections: data.materialSelections.map((m) =>
+        m.tempId === tempId ? { ...m, quantity: qty } : m,
+      ),
+    });
+  };
+  const removeMaterial = (tempId: string) => {
+    onChange({ materialSelections: data.materialSelections.filter((m) => m.tempId !== tempId) });
+  };
+  const elementAssignmentsFor = (mat: typeof data.materialSelections[number]) => {
+    const category = normalizeCategory(mat.category);
+    const targetTypes = getElementTypesForMaterial(category, mat.materialName);
+    if (!data.elements.length || targetTypes.length === 0) return [];
+    return data.elements
+      .filter((el) => targetTypes.includes(el.elementType))
+      .map((el) => el.name || ELEMENT_TYPE_LABELS[el.elementType]);
+  };
   const [editing, setEditing] = useState<Record<string, boolean>>({
     tasks: false, crew: false, equipment: false, materials: false,
   });
@@ -395,6 +429,91 @@ export const WizardStepPlan: React.FC<Props> = ({
             )}
             {data.equipmentSelections.length > 0 && (
               <div className="text-[11px] text-[var(--text-4)] px-[4px]">Equipment cost: {fmt(totalEquipCost)}</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* MATERIALS REVIEW (3D-in-Wizard) — totals, adjust qty, see element assignments */}
+      <div>
+        <SectionHead
+          title="Materials"
+          count={data.materialSelections.length}
+          onClick={() => toggle('materials')}
+          open={expanded.materials}
+        />
+        {expanded.materials && (
+          <div className="mt-[8px] space-y-[6px]">
+            {data.materialSelections.length === 0 ? (
+              <div className="text-[12px] text-[var(--text-4)] px-[8px] py-[6px]">
+                No materials yet. Add per-element materials in Step 2 (Design).
+              </div>
+            ) : (
+              <>
+                {data.materialSelections.map((m) => {
+                  const assignments = elementAssignmentsFor(m);
+                  return (
+                    <div
+                      key={m.tempId}
+                      className="rounded-[6px] border p-[8px]"
+                      style={{ backgroundColor: 'rgba(45,106,79,0.04)', borderColor: 'var(--border)' }}
+                    >
+                      <div className="flex items-center gap-[8px]">
+                        <span
+                          className="px-[5px] py-[1px] rounded-[3px] text-[10px] font-[500] shrink-0"
+                          style={{ backgroundColor: 'rgba(45,106,79,0.12)', color: 'var(--green-l)' }}
+                        >
+                          {getCategoryLabel(m.category)}
+                        </span>
+                        <span className="text-[12px] font-[500] text-[var(--text)] flex-1 truncate">
+                          {m.materialName}
+                          {!m.inLibrary && (
+                            <span className="text-[10px] text-[var(--status-amber)] ml-[6px]">+ new</span>
+                          )}
+                        </span>
+                        <input
+                          className="w-[64px] bg-[var(--surface)] border border-[var(--border)] rounded-[4px] px-[6px] py-[3px] text-[11px] text-[var(--text)] text-right focus:outline-none focus:border-[var(--green)]"
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={m.quantity}
+                          onChange={(e) => updateMatQuantity(m.tempId, parseFloat(e.target.value) || 0)}
+                        />
+                        <span className="text-[11px] text-[var(--text-3)] w-[36px]">{m.unit}</span>
+                        <span className="text-[11px] text-[var(--text-3)] w-[60px] text-right">@ {fmt(m.unitCost)}</span>
+                        <span className="text-[12px] font-[600] text-[var(--text)] w-[78px] text-right tabular-nums">
+                          {fmt(m.quantity * m.unitCost)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeMaterial(m.tempId)}
+                          className="text-[var(--text-4)] hover:text-[var(--status-red)] bg-transparent border-none cursor-pointer text-[11px]"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {assignments.length > 0 && (
+                        <div className="mt-[3px] pl-[2px] text-[10px] text-[var(--text-4)]">
+                          Applies to: <span className="text-[var(--text-3)]">{assignments.join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <div className="flex items-center justify-between pt-[6px]">
+                  <span className="text-[11px] text-[var(--text-4)]">
+                    {data.materialSelections.length} material{data.materialSelections.length !== 1 ? 's' : ''} ·
+                    {data.materialSelections.filter((m) => !m.inLibrary).length > 0 && (
+                      <span className="text-[var(--status-amber)] ml-[4px]">
+                        {data.materialSelections.filter((m) => !m.inLibrary).length} will be added to your library
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[12px] font-[700] text-[var(--green-l)] tabular-nums">
+                    {fmt(totalMaterialsCost)}
+                  </span>
+                </div>
+              </>
             )}
           </div>
         )}

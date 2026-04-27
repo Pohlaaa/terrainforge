@@ -686,7 +686,33 @@ export interface AIRecommendationSet {
   materials: AIMaterialRecommendation[];
   budget: AIBudgetRecommendation;
   permits: AIPermitRecommendation[];
+  /**
+   * 3D-in-wizard: AI-inferred ProjectElements with rough dimensions and a
+   * spatial placement hint. Populated by `inferElements()` and merged into
+   * the same set so downstream code only reads one source.
+   */
+  elements?: AIElementRecommendation[];
   generatedAt: string;
+}
+
+/**
+ * 3D-in-wizard: a single element suggestion from Claude. Dimensions are
+ * estimates the contractor refines visually in Step 2. `placementHint`
+ * drives a spatial bucket in `placementBucket()` so the element drops onto
+ * the right region of the satellite map (front yard / back yard / side /
+ * perimeter) instead of stacking on the property origin.
+ */
+export interface AIElementRecommendation {
+  name: string;
+  elementType: ElementType;
+  lengthFt: number | null;
+  widthFt: number | null;
+  areaSqft: number | null;
+  linearFt: number | null;
+  heightFt: number | null;
+  depthIn: number | null;
+  placementHint: 'frontyard' | 'backyard' | 'side' | 'perimeter' | 'driveway' | 'unknown';
+  reason?: string;
 }
 
 export interface AITaskRecommendation {

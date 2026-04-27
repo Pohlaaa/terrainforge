@@ -17,12 +17,14 @@ import type {
   AIMaterialRecommendation,
   AIBudgetRecommendation,
   AIPermitRecommendation,
+  AIElementRecommendation,
   CrewMember,
   Equipment,
   Material,
   ProjectCrewAssignment,
   ScheduleEntry,
   ProjectListItem,
+  ElementType,
 } from '@/types';
 
 export interface RecommendationContext {
@@ -548,5 +550,159 @@ export async function generateProjectRecommendations(
     console.error('AI recommendation generation failed:', err);
     // F-CW-16: same fallback for network/API errors.
     return emptyRecommendationSet();
+  }
+}
+
+// ===== 3D-in-Wizard: Element Inference =====
+//
+// Phase A. The legacy keyword-regex inference in WizardStepMeasurements is
+// not enough for a 3D-first wizard — it can't reason about scope (frontyard
+// vs backyard), can't ballpark dimensions, can't produce per-element
+// placement intent. This call gives Claude a tight prompt focused on a
+// single job: turn the project description + scope into a list of
+// ProjectElements with rough dimensions and a coarse spatial hint that
+// `placementBucket()` translates into an initial canvas position.
+//
+// Runs in parallel with `generateProjectRecommendations` from the same
+// wizard trigger so the user-perceived latency is the slower of the two,
+// not the sum. Smaller token budget keeps responses fast (~1-2s typical).
+
+const VALID_ELEMENT_TYPES: ElementType[] = [
+  'patio', 'wall', 'garden_bed', 'sod_area', 'edging', 'walkway',
+  'driveway', 'retaining_wall', 'fire_pit', 'pool_deck',
+  'parking_lot', 'steps_stairs', 'fence', 'pergola', 'outdoor_kitchen',
+  'drainage', 'tree_planting', 'shrub_planting', 'irrigation_zone',
+  'mulch_area', 'gravel_area', 'concrete_slab', 'curbing', 'other',
+];
+
+const VALID_PLACEMENT_HINTS = ['frontyard', 'backyard', 'side', 'perimeter', 'driveway', 'unknown'] as const;
+
+function buildElementInferencePrompt(ctx: RecommendationContext): string {
+  const allowedTypes = VALID_ELEMENT_TYPES.join(' | ');
+  return `You are a senior landscape estimator. Given a contractor's project description, return the list of physical work elements they intend to install. Each element will be placed on a satellite map of the property and edited visually, so include a coarse spatial hint and a best-guess set of dimensions.
+
+## Project
+- Name: "${ctx.description?.slice(0, 200) || ''}"
+- Description: "${ctx.description || ''}"
+${ctx.projectType ? `- Project type: ${ctx.projectType}` : ''}
+${ctx.scopeSize ? `- Scope size: ${ctx.scopeSize}` : ''}
+- Address: "${ctx.address}"
+
+## Rules
+- Strip demolition phrases. "Demo existing slab" is NOT a slab to build.
+- One element per distinct area of work. A 24x18 paver patio is one element. A 12x4 stone stair is a separate element. Edging around the patio is its own element.
+- Set dimensions only when the description gives signal. Otherwise return null and let the contractor enter them.
+- For \`linearFt\`: walls, fences, edging, drainage, curbing.
+- For \`lengthFt\` x \`widthFt\` (and optionally \`areaSqft\`): patios, walkways, driveways, sod, beds, mulch, gravel.
+- For \`heightFt\`: walls, fences, pergolas.
+- For \`depthIn\`: drainage trenches, base material reads.
+- For point/each elements (trees, shrubs, fire pits): use \`areaSqft\` as a rough footprint (e.g., 9 sqft for a fire pit) and set length/width to null.
+- \`placementHint\`: where on the property the element typically belongs.
+  - "backyard" — patios, decks, fire pits, pool decks behind the house
+  - "frontyard" — front walkways, curb-side beds, lawn replacement at the street
+  - "side" — side yards, narrow runs, gates
+  - "perimeter" — fences, edging that wraps the entire lot
+  - "driveway" — driveway extensions, parking pads, motor-court hardscape
+  - "unknown" — when the description gives no signal
+- Only use \`elementType\` from this allowlist: ${allowedTypes}.
+- Don't invent elements not in the description. No more than 8 elements.
+
+Return JSON ONLY (no markdown fencing) matching:
+{
+  "elements": [
+    {
+      "name": string,
+      "elementType": string,
+      "lengthFt": number | null,
+      "widthFt": number | null,
+      "areaSqft": number | null,
+      "linearFt": number | null,
+      "heightFt": number | null,
+      "depthIn": number | null,
+      "placementHint": "frontyard" | "backyard" | "side" | "perimeter" | "driveway" | "unknown",
+      "reason": string
+    }
+  ]
+}`;
+}
+
+function safeParseElements(raw: string): { elements?: AIElementRecommendation[] } | null {
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try {
+    return JSON.parse(cleaned) as { elements?: AIElementRecommendation[] };
+  } catch {
+    // Retry by trimming to last balanced brace (mirror safeParseRecommendations).
+    let depth = 0;
+    let lastValidEnd = -1;
+    let inString = false;
+    let escape = false;
+    for (let i = 0; i < cleaned.length; i++) {
+      const c = cleaned[i];
+      if (escape) { escape = false; continue; }
+      if (c === '\\') { escape = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (c === '{') depth++;
+      else if (c === '}') { depth--; if (depth === 0) lastValidEnd = i; }
+    }
+    if (lastValidEnd > 0) {
+      try { return JSON.parse(cleaned.slice(0, lastValidEnd + 1)); } catch { /* fall through */ }
+    }
+    return null;
+  }
+}
+
+function validateElements(raw: { elements?: AIElementRecommendation[] } | null): AIElementRecommendation[] {
+  if (!raw?.elements || !Array.isArray(raw.elements)) return [];
+  const seen = new Set<string>();
+  const out: AIElementRecommendation[] = [];
+  for (const r of raw.elements) {
+    if (!r || typeof r !== 'object') continue;
+    const type = (r.elementType as string) ?? '';
+    if (!VALID_ELEMENT_TYPES.includes(type as ElementType)) continue;
+    const hint = (r.placementHint as string) ?? 'unknown';
+    const validHint = (VALID_PLACEMENT_HINTS as readonly string[]).includes(hint)
+      ? (hint as AIElementRecommendation['placementHint'])
+      : 'unknown';
+    // Dedup by (type + name) to drop near-duplicate suggestions.
+    const dedupKey = `${type}|${(r.name || '').toLowerCase().trim()}`;
+    if (seen.has(dedupKey)) continue;
+    seen.add(dedupKey);
+    out.push({
+      name: typeof r.name === 'string' && r.name.trim() ? r.name.trim() : type.replace(/_/g, ' '),
+      elementType: type as ElementType,
+      lengthFt: typeof r.lengthFt === 'number' && r.lengthFt > 0 ? r.lengthFt : null,
+      widthFt: typeof r.widthFt === 'number' && r.widthFt > 0 ? r.widthFt : null,
+      areaSqft: typeof r.areaSqft === 'number' && r.areaSqft > 0 ? r.areaSqft : null,
+      linearFt: typeof r.linearFt === 'number' && r.linearFt > 0 ? r.linearFt : null,
+      heightFt: typeof r.heightFt === 'number' && r.heightFt > 0 ? r.heightFt : null,
+      depthIn: typeof r.depthIn === 'number' && r.depthIn > 0 ? r.depthIn : null,
+      placementHint: validHint,
+      reason: typeof r.reason === 'string' ? r.reason : undefined,
+    });
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+/**
+ * 3D-in-Wizard. Generates element suggestions for the project canvas. Runs
+ * in parallel with the main recommendation call; returns an empty array
+ * (not null) on failure so the wizard renders gracefully.
+ */
+export async function inferElements(ctx: RecommendationContext): Promise<AIElementRecommendation[]> {
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
+  if (!apiKey) return [];
+  if (!ctx.description || !ctx.description.trim()) return [];
+
+  try {
+    const prompt = buildElementInferencePrompt(ctx);
+    // 2048 is plenty — even a busy 8-element response fits in ~1500.
+    const raw = await callClaude(prompt, DEFAULT_MODEL, 2048);
+    const parsed = safeParseElements(raw);
+    return validateElements(parsed);
+  } catch (err) {
+    console.error('inferElements failed:', err);
+    return [];
   }
 }
