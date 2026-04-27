@@ -1416,6 +1416,62 @@ Hydrangea Shrubs returned with `category='misc'` instead of `'plant'`. The AI pr
 
 **Next**: redeploy with commit `1193844` (LIVE-03 iteration) so Sod actually gets inferred, then iterate F-CW-LIVE-09 (broader category mapping) which would push junction count from 1/8 toward something like 5/8. F-CW-LIVE-10 + 11 are AI-prompt polish that can wait.
 
+---
+
+## 2026-04-26 — Re-test after LIVE-03 iteration + LIVE-09 ship
+
+Deployed commits `1193844` (LIVE-03 iteration) + `e7c3972` (LIVE-09 broader category mapping + name-keyword fallback). Created project `9c9520e5` ("Live Test 3") with the same softscape description as Live Test 2.
+
+### 🎯 Junction count: 8 of 9 (was 1 of 8)
+
+**The materials engine is finally producing a complete picture.** 7 unique materials linked to elements + 1 material (Topsoil) linked to 2 elements = 8 junction rows. Manifest tab shows real material rows for the contractor.
+
+| Material | Category | Linked? | Note |
+|----|----|----|----|
+| Sod (2,500 sqft) | sod | ✅ → Sod Area | |
+| Sod (additional 500 sqft…) | sod | ✅ → Sod Area | F-CW-LIVE-11 dup not yet fixed |
+| Hydrangea Shrubs | misc | ✅ → Shrub Planting (via "hydrangea" name keyword) | |
+| Mulch (bulk) | mulch | ✅ → Shrub Planting | |
+| Topsoil | misc | ✅ → 2 elements (Sod Area + Shrub Planting) | |
+| Landscape fabric | misc | ✅ → Shrub Planting (via "fabric") | |
+| Perforated Drain Pipe | misc | ✅ → Drainage (via "drain pipe") | |
+| **Crushed Stone / Gravel Base** | stone | ❌ ORPHAN | F-CW-LIVE-12 below |
+| **Drain Rock / Gravel** | stone | ❌ ORPHAN | F-CW-LIVE-12 below |
+
+### Element inference (LIVE-03 iteration)
+
+Same description ("Install 3,000 sqft of new sod lawn. Add a 50ft French drain… Plant 8 hydrangea shrubs around the patio (existing patio, no patio work). Mulch the existing planting beds.") inferred:
+- ✅ Sod Area (the comma-in-numbers fix worked — "3,000" no longer breaks the clause)
+- ✅ Shrub Planting (correct)
+- ✅ Drainage (correct)
+- ✅ Patio NOT inferred (the positional-preposition guard worked: "around the patio")
+- ❌ Mulch Area NOT inferred — root cause: "Mulch the existing planting beds" → "(existing planting beds)" stripped → "Mulch the" → keyword "mulch" at idx 0 = install verb at idx 0 → strict `kwIdx <= verbIdx` rejected. **Fixed in commit `04f230f`** — allow `kwIdx == verbIdx` since the verb IS the keyword for self-named install actions (Mulch, Sod, Drain, Pave, Edge…). Needs redeploy.
+
+### F-CW-LIVE-12 / P3 — Stone materials don't link to drainage element (no area)
+
+The Drainage element has `linear_ft=50`, `depth_in=12`, but `area_sqft=null` (linear-only geometry). When the wizard's auto-link loop calls `computeQty(stoneMatAdapter, syntheticZone)` with a stone material on a drainage element, the synthetic zone has `area=0`, `perimeter=50`. The cuyd formula for stone is `area × depth/27` which returns 0 — so the loop skips the junction insert.
+
+This is a per-element-type formula gap. Drainage elements should price stone via `linear_ft × bed_width × depth/27`. Mulch/topsoil price via area. Pavers price via area. Need a per-element-type computeQty branch.
+
+For now: 2 stone materials remain orphaned on drainage. The contractor would have to add them manually via the Materials tab. P3 polish — not blocking.
+
+### Status snapshot
+
+| ID | Sev | Status |
+|----|-----|--------|
+| F-CW-LIVE-08 | P0 | ✅ shipped + verified (8/8 HAS_ID, was 4/9) |
+| F-CW-LIVE-09 | P1 | ✅ shipped + verified (junction 8/9, was 1/8) |
+| F-CW-LIVE-03 | P2 | ✅ shipped + iterated (last edge case in commit `04f230f`, needs redeploy) |
+| F-CW-LIVE-04 | P0 | ✅ closed via LIVE-08 + LIVE-09 |
+| F-CW-LIVE-12 | P3 | 🆕 OPEN — stone material on drainage computes 0 qty (no area) |
+| F-CW-LIVE-10 | P2 | 🟡 OPEN — AI defaults to misc; partially mitigated by name-keyword fallback |
+| F-CW-LIVE-11 | P2 | 🟡 OPEN — fuzzy material dedup needed |
+| F-CW-LIVE-05 | P2 | ✅ shipped |
+| F-CW-LIVE-07 | P3 | ✅ shipped (permits passed to OverviewTab) |
+| F-CW-LIVE-01 | P3 | ✅ shipped (internal email allowlist bypass) |
+
+**The materials engine cascade is fundamentally fixed.** From 1/8 → 8/9 junction rows in three deploys. The remaining gaps (F-CW-LIVE-10/11/12) are P2/P3 polish items that improve completeness from "works" to "perfect."
+
 **The two P0s share a root cause**: F-CW-45 — most materials end up as project-level JSONB orphans without library references because `createMaterial` fails silently when AI says "will be added automatically." That cascades into F-CW-17/18 (silent INSERT failures) and F-CW-36 (manifest engine sees only library-linked materials), AND into F-CW-43 (Closeout reads JSONB and sees them all; Manifest reads junction and sees one). Fix `createMaterial` reliability + backfill orphan library rows + reconcile JSONB↔junction sources of truth, and ~5 findings close at once.
 
 **Recommended fix order for next session**:
