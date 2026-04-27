@@ -185,9 +185,13 @@ export const WizardStepMeasurements: React.FC<Props> = ({
 
   useEffect(() => {
     if (!selected) return;
-    const cacheKey = `${selected.elementType}|${selected.name || ELEMENT_TYPE_LABELS[selected.elementType]}`;
+    // F-PHB-03: cache by element type only. Renaming doesn't change which
+    // material categories apply, so re-prompting on rename burns API
+    // budget for no gain. Type changes still invalidate (different
+    // category set entirely).
+    const cacheKey = selected.elementType;
     const existing = perElementMaterials[selected.tempId];
-    if (existing && existing.cacheKey === cacheKey) return; // already cached for this type/name
+    if (existing && existing.cacheKey === cacheKey) return; // already cached for this type
     const inFlightKey = `${selected.tempId}::${cacheKey}`;
     if (inFlightRef.current.has(inFlightKey)) return; // call already in flight
 
@@ -221,10 +225,11 @@ export const WizardStepMeasurements: React.FC<Props> = ({
       .finally(() => {
         inFlightRef.current.delete(inFlightKey);
       });
-  // Intentionally only depend on selection identity + type, NOT on dimensions.
-  // Dimension tweaks shouldn't burn a fresh API call.
+  // Intentionally only depend on selection identity + type, NOT on
+  // dimensions or name. Dimension tweaks + renames shouldn't burn a
+  // fresh API call (F-PHB-03).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.tempId, selected?.elementType, selected?.name, orgCatalog]);
+  }, [selected?.tempId, selected?.elementType, orgCatalog]);
 
   const perElementEntry = selected ? perElementMaterials[selected.tempId] : undefined;
 
@@ -643,7 +648,21 @@ const ElementSidebar: React.FC<SidebarProps> = ({
             <select
               className={inputClass}
               value={element.elementType}
-              onChange={(e) => onUpdate({ elementType: e.target.value as ElementType })}
+              onChange={(e) => {
+                const newType = e.target.value as ElementType;
+                if (newType === element.elementType) return;
+                // F-PHB-04: AI-generated notes describe the OLD type
+                // ("16x12 paver patio") and stay stale after a type
+                // change. Clear them so the contractor isn't confused.
+                // F-PHB-05: areaSqft override mismatches new dimensions
+                // after type change. Clear so length×width takes
+                // precedence again until contractor enters a fresh value.
+                onUpdate({
+                  elementType: newType,
+                  notes: '',
+                  areaSqft: null,
+                });
+              }}
             >
               {ELEMENT_TYPE_OPTIONS.map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>

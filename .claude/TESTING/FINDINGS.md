@@ -1694,3 +1694,26 @@ From Phase B + Phase C testing:
 | F-PHC-05 | P3 | C | No default expiry on design links | Default 7-day expiry for `client_design` role |
 | F-PHC-06 | P2 | C | Contractor edits race with client edits | `updated_at` column + optimistic concurrency or contractor lockout |
 | F-PHC-07 | P3 | C | 3D TransformControls gizmo doesn't always re-anchor | Investigate during cleanup |
+
+---
+
+# Cleanup phase — completion log
+
+**P2 batch shipped + verified live (commit `c4241f9`):** F-PHB-02, F-PHB-06,
+F-PHC-04, F-PHC-06. F-PHB-01 closes as a side-effect of F-PHB-06's
+prompt strengthening.
+
+**P3 polish PR (this commit):**
+
+| ID | Phase | Resolution |
+|---|---|---|
+| F-PHB-03 | B | Per-element materials cache key reduced to `elementType` only. Renaming an element no longer triggers a fresh API call. Dimension tweaks already weren't re-prompting. |
+| F-PHB-04 | B | Type-change in the per-element sidebar now clears `notes`. AI's old type-specific text ("16x12 paver patio") doesn't survive into the new type. |
+| F-PHB-05 | B | Type-change clears `areaSqft` to null. Length × width takes precedence again until the contractor enters a fresh override. |
+| F-PHC-01 | C | URL pill bumped 11px → 12px + 0.4px letter-spacing. The 0/8 and 5/a glyphs now read distinctly. |
+| F-PHC-02 | C | "Client viewed but not responded yet" copy gated on `role !== 'client_design'`. For design tokens a distinct "opened the design link but not submitted changes yet" copy fires when applicable. |
+| F-PHC-03 | C | Submission banner gains a green "✓ Accept changes" button. Clicking it revokes the active design token (locks further client edits) — the client's last-submitted geometry stays as the canonical design. Reply / fresh-link reuse the existing Email + Design link buttons. |
+| F-PHC-05 | C | `handleCreateDesignLink` now passes `expiresInDays: 7`. Pill renders an "expires {date}" suffix so the contractor can see the expiry without revoking. Design links grant write access; sensible default. |
+| F-PHC-07 | C | TransformControls in PlanView3D now keyed on `tc-{selectedId}-{x}-{z}-{rot}-{w}-{d}` so a fresh remount happens when the selected element's resolved geometry changes (e.g. external Phase C client edit lands while contractor has the same element selected). |
+
+**13/13 cleanup findings closed.**

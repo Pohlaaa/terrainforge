@@ -120,6 +120,9 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   // Phase C v0: issue a client-editable design link. Same flow as the
   // view-only link, but `role: 'client_design'` unlocks the
   // client_update_element_geometry RPC for the holder.
+  // F-PHC-05: default 7-day expiry on design links. They grant write
+  // access, so a sensible cap matters more than for read-only links.
+  // Contractors can still revoke earlier, or send a fresh link after.
   async function handleCreateDesignLink() {
     const orgId = useOrgStore.getState().org?.id;
     if (!orgId) {
@@ -127,7 +130,10 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
       return;
     }
     setCreatingShare(true);
-    const created = await createShareToken(project.id, orgId, { role: 'client_design' });
+    const created = await createShareToken(project.id, orgId, {
+      role: 'client_design',
+      expiresInDays: 7,
+    });
     setCreatingShare(false);
     if (!created) {
       toast.error('Could not create design link. Check that migration 031 is applied.');
@@ -136,10 +142,27 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
     setShareTokens((prev) => [created, ...prev]);
     try {
       await navigator.clipboard.writeText(buildShareUrl(created.token));
-      toast.success('Design link copied to clipboard.');
+      toast.success('Design link copied (expires in 7 days).');
     } catch {
-      toast.success('Design link created.');
+      toast.success('Design link created (expires in 7 days).');
     }
+  }
+
+  // F-PHC-03: contractor accepts the client's submitted design and locks
+  // further edits by revoking the active design token. The client's
+  // last-submitted geometry stays as the canonical design (it was
+  // already persisted via client_update_element_geometry RPCs). After
+  // revoke, the Edit layout button unlocks for the contractor.
+  async function handleAcceptDesignChanges() {
+    if (!activeDesignToken) return;
+    const ok = await revokeShareToken(activeDesignToken.id);
+    if (!ok) {
+      toast.error('Could not finalize. Try again or revoke manually.');
+      return;
+    }
+    const refreshed = await fetchShareTokensForProject(project.id);
+    setShareTokens(refreshed);
+    toast.success('Design changes accepted. Edit layout is unlocked.');
   }
 
   async function handleCopyShareLink() {
@@ -449,14 +472,23 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
           </div>
           {activeToken && (
             <>
+              {/* F-PHC-01: bumped from 11px → 12px + 0.4px letter-spacing
+                  for better legibility of the long hex token, especially
+                  the 0/8 and 5/a glyphs which can blur together at the
+                  smaller size. */}
               <div
-                className="mb-[8px] px-[10px] py-[8px] rounded-[6px] text-[11px] font-mono break-all"
-                style={{ backgroundColor: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--border)' }}
+                className="mb-[8px] px-[10px] py-[8px] rounded-[6px] text-[12px] font-mono break-all"
+                style={{
+                  backgroundColor: 'var(--surface)',
+                  color: 'var(--text-3)',
+                  border: '1px solid var(--border)',
+                  letterSpacing: '0.4px',
+                }}
               >
                 {activeToken.role === 'client_design' && (
                   <span
                     className="mr-[8px] px-[6px] py-[1px] rounded-[3px] text-[10px] font-[600] font-sans"
-                    style={{ backgroundColor: 'rgba(16,185,129,0.15)', color: 'var(--green-l)' }}
+                    style={{ backgroundColor: 'rgba(16,185,129,0.15)', color: 'var(--green-l)', letterSpacing: 0 }}
                   >
                     ✎ EDIT
                   </span>
@@ -465,6 +497,11 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                 {activeToken.viewCount > 0 && (
                   <span className="ml-[8px]" style={{ color: 'var(--green-l)' }}>
                     · viewed {activeToken.viewCount}×
+                  </span>
+                )}
+                {activeToken.role === 'client_design' && activeToken.expiresAt && (
+                  <span className="ml-[8px]" style={{ color: 'var(--text-4)' }}>
+                    · expires {new Date(activeToken.expiresAt).toLocaleDateString()}
                   </span>
                 )}
               </div>
@@ -490,7 +527,24 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                     </div>
                   )}
                   <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6 }}>
-                    Their edits are reflected on the plan above. Review and revoke or send a follow-up link.
+                    Their edits are reflected on the plan above.
+                  </div>
+                  {/* F-PHC-03: Accept changes button. Revokes the design
+                      token so the contractor regains edit access; the
+                      client's last-submitted geometry stays as the
+                      canonical design (it was already persisted via the
+                      RPCs). The other follow-up flows (reply, send a
+                      fresh link) reuse the existing "Email to client"
+                      and "✎ Design link" buttons. */}
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={handleAcceptDesignChanges}
+                      className="px-[10px] py-[5px] rounded-[6px] text-[11px] font-[500] cursor-pointer border-none"
+                      style={{ backgroundColor: '#10B981', color: '#fff' }}
+                    >
+                      ✓ Accept changes
+                    </button>
                   </div>
                 </div>
               )}
@@ -568,12 +622,31 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   )}
                 </div>
               )}
-              {!activeToken.clientResponse && activeToken.viewCount > 0 && (
+              {/* F-PHC-02: this Phase B copy applies to view/approve
+                  tokens only. For client_design tokens the right
+                  semantic is "submitted yet?" not "responded yet?",
+                  and it's shown in the green submission banner above
+                  when present. Skip when role === 'client_design'. */}
+              {activeToken.role !== 'client_design'
+                && !activeToken.clientResponse
+                && activeToken.viewCount > 0 && (
                 <div
                   className="mb-[12px] text-[11px]"
                   style={{ color: 'var(--text-4)' }}
                 >
                   Client has viewed the link but not responded yet.
+                </div>
+              )}
+              {/* Same idea but for design tokens: distinct copy when
+                  the client has opened the link without submitting. */}
+              {activeToken.role === 'client_design'
+                && !activeToken.clientChangesSubmittedAt
+                && activeToken.viewCount > 0 && (
+                <div
+                  className="mb-[12px] text-[11px]"
+                  style={{ color: 'var(--text-4)' }}
+                >
+                  Client has opened the design link but not submitted changes yet.
                 </div>
               )}
             </>

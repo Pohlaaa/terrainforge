@@ -459,9 +459,17 @@ function ElementsLayer({
         )
       })}
       {/* Drag gizmo on the selected element. TransformControls auto-handles
-          the pointer capture + raycast math. We only care about commit. */}
-      {editable && selectedGroup && (
+          the pointer capture + raycast math. We only care about commit.
+          F-PHC-07: when the boxes array recomputes (parent state mutated
+          via onElementGeometryChange or external Phase C client edit),
+          the underlying group ref is a fresh three.js object and the
+          gizmo can stay attached to the stale instance. Keying on
+          selectedId + position/rotation/size signature forces a clean
+          remount whenever the selected element's resolved geometry
+          changes — the gizmo always re-anchors to the live object. */}
+      {editable && selectedGroup && selectedBox && (
         <TransformControls
+          key={`tc-${selectedId}-${selectedBox.x}-${selectedBox.z}-${selectedBox.rot}-${selectedBox.width}-${selectedBox.depth}`}
           object={selectedGroup}
           mode={transformMode}
           // translate: X + Z (ground plane); no Y (elements don't move up).
