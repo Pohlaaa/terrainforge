@@ -18,7 +18,7 @@ import { generateProjectRecommendations } from '@/services/aiRecommendations';
 import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, Material, Zone, SiteConditionType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
 import { normalizeCategory } from '@/lib/categories';
-import { getElementTypesForCategory } from '@/lib/elements';
+import { getElementTypesForMaterial } from '@/lib/elements';
 import { computeQty } from '@/lib/manifest';
 
 // ── Wizard data shape (local state until project is created) ────────────────
@@ -850,7 +850,13 @@ export default function ProjectWizard() {
 
         for (const mat of data.materialSelections) {
           const category = normalizeCategory(mat.category);
-          const targetElementTypes = getElementTypesForCategory(category);
+          // F-CW-LIVE-09: use category mapping with name-keyword fallback so
+          // category='misc' items (drain pipe, hydrangea shrubs, topsoil,
+          // landscape fabric — common AI defaults) still find matching
+          // elements via their name. Pre-fix, ~6 of 8 typical materials
+          // were skipped because they came back with category='misc' which
+          // had no element-type mapping.
+          const targetElementTypes = getElementTypesForMaterial(category, mat.materialName);
 
           // Find which saved elements this material should attach to
           // Only assign to elements whose types match this material's category

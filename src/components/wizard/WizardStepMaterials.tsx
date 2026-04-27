@@ -4,7 +4,7 @@ import type { SuggestionItem } from '@/components/shared/SuggestionPanel';
 import type { WizardData, WizardMaterial } from '@/pages/ProjectWizard';
 import type { AIRecommendationSet } from '@/types';
 import { getCategoryLabel, normalizeCategory } from '@/lib/categories';
-import { getElementTypesForCategory, ELEMENT_TYPE_LABELS } from '@/lib/elements';
+import { getElementTypesForMaterial, ELEMENT_TYPE_LABELS } from '@/lib/elements';
 
 interface Props {
   data: WizardData;
@@ -140,7 +140,10 @@ export const WizardStepMaterials: React.FC<Props> = ({
   // Compute element assignments for each material (preview of auto-assignment)
   const getElementAssignments = (mat: WizardMaterial) => {
     const category = normalizeCategory(mat.category);
-    const targetTypes = getElementTypesForCategory(category);
+    // F-CW-LIVE-09: same logic as the wizard's auto-link loop — fall back
+    // to name-keyword matching when category yields no element types so the
+    // preview doesn't lie ("category=misc → no assignment" was misleading).
+    const targetTypes = getElementTypesForMaterial(category, mat.materialName);
     if (!data.elements || data.elements.length === 0 || targetTypes.length === 0) return [];
     const matching = data.elements.filter(el => targetTypes.includes(el.elementType));
     if (matching.length === 0) return [];

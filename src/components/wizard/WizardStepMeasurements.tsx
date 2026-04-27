@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ELEMENT_TYPE_LABELS, getElementTypesForCategory } from '@/lib/elements';
+import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
 import type { WizardData, WizardElement } from '@/pages/ProjectWizard';
 import type { ElementType } from '@/types';
 import { normalizeCategory } from '@/lib/categories';

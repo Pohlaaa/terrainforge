@@ -9,7 +9,7 @@ import { useOrgStore } from '@/stores/orgStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { computeElementMaterial } from '@/materials-engine/engine';
 import { applyWaste, roundToPurchaseUnit } from '@/materials-engine/unit-conversions';
-import { getElementTypesForCategory } from '@/lib/elements';
+import { getElementTypesForMaterial } from '@/lib/elements';
 import { getCategoryLabel } from '@/lib/categories';
 import { normalizeCategory } from '@/lib/categories';
 import type { ProjectElement, ProjectElementMaterial, Material } from '@/types';
@@ -36,9 +36,12 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
       if (mat.isActive === false) return false;
       // Search filter
       if (searchLower && !mat.name.toLowerCase().includes(searchLower) && !mat.category.toLowerCase().includes(searchLower)) return false;
-      // If no search, filter by element type compatibility
+      // If no search, filter by element type compatibility.
+      // F-CW-LIVE-09: same name-keyword fallback as the wizard's auto-
+      // link loop, so misc-category materials still get filtered into
+      // the right element types.
       if (!searchLower) {
-        const targetTypes = getElementTypesForCategory(normalizeCategory(mat.category));
+        const targetTypes = getElementTypesForMaterial(normalizeCategory(mat.category), mat.name);
         if (targetTypes.length > 0 && !targetTypes.includes(element.elementType)) return false;
       }
       return true;
