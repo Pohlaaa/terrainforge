@@ -259,11 +259,18 @@ export const WizardStepMeasurements: React.FC<Props> = ({ data, onChange }) => {
           if (i >= 0 && (kwIdx < 0 || i < kwIdx)) kwIdx = i;
         }
         if (kwIdx < 0) return false;
-        // Keyword must come AFTER the verb (verb-object order) and not be
-        // preceded by a positional preposition phrase ("around the X").
-        if (kwIdx <= verbIdx) return false;
-        const between = clause.slice(verbIdx, kwIdx);
-        if (POSITIONAL_PREPS.test(between)) return false;
+        // Keyword should come AT or AFTER the verb. Equal positions are
+        // legit when the verb IS the install action for the material's
+        // category (e.g. "Mulch the planting beds" — verb "Mulch" is also
+        // the Mulch keyword). Strictly-before would skip those.
+        if (kwIdx < verbIdx) return false;
+        // Reject when keyword is preceded by a positional preposition
+        // phrase ("around the X", "next to the X") within the verb→keyword
+        // span — those mean X is a location, not the install target.
+        if (kwIdx > verbIdx) {
+          const between = clause.slice(verbIdx, kwIdx);
+          if (POSITIONAL_PREPS.test(between)) return false;
+        }
         return true;
       });
       if (matchedInClause) {
