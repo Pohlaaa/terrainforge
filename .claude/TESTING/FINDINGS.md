@@ -1517,6 +1517,55 @@ The materials engine cascade is **fully operational**. From 1/8 → 8/9 → 10/8
 
 The three remaining polish items (LIVE-11/12/13) all have a common shape: **AI suggestion vs. element-geometry quantity-formula mismatches**. They affect quantity precision, not whether the cascade fires. Recommend tackling them in a single AI-prompt + computeQty pass next session.
 
+---
+
+## 2026-04-26 — All precision fixes shipped + verified (Live Test 5, project bbf79870)
+
+Deployed commit `5cb1d7c` (LIVE-11/12/13 precision fixes). Same softscape walkthrough produced:
+
+### ✅ All three fixes verified
+
+| Fix | Before | After |
+|---|---|---|
+| **LIVE-11** dedup | "Sod (2,500 sqft)" + "Sod (additional 500 sqft to complete 3,000 sqft)" both shipped | **One Sod entry** in JSONB. JSONB went 8 → 7. |
+| **LIVE-12** trench formula | Stone materials orphaned on drainage (cuyd formula = 0 for linear-only element) | **Drain Rock = 2.78 cuyd** — `50ft × 1.5ft × 1ft / 27` matches expected trench volume |
+| **LIVE-13** plant count | Hydrangea qty = 1 (1-per-coverage) | **Hydrangea qty = 8** — AI's stated count honored |
+
+### Final cascade summary (project bbf79870)
+
+- **7 unique materials** in JSONB (after dedup)
+- **10 junction rows** (multi-element linking: Mulch → 2, Topsoil → 2, Fabric → 2)
+- **All 4 elements have materials** (Sod Area, Shrub Planting, Mulch Area, Drainage)
+- **Stone now links to Drainage** with a sensible trench-volume cuyd
+- **Plant counts respect AI** — no more 1-of-8 misordering
+- **No duplicate Sod** — no over-purchase
+
+### The materials engine, end to end
+
+- **Materials journey**: 1/8 → 8/9 → 10/8 → **10/7** (dedup tightened) across **5 deploys**
+- **Element inference**: 4 of 4 correct, 0 false positives
+- **Manifest tab**: produces accurate, contractor-ready material rows with sensible quantities
+- **Closeout vs Manifest**: agree (single source of truth via junction)
+
+### All open contractor-walkthrough findings (final state)
+
+✅ Closed (live-verified): F-CW-01..10, EMAIL-01/02, 12, 14, 15, 16, 19, 22..28, 31, 33..43, 45, 46, 48, 50..56, 58, LIVE-01, LIVE-03, LIVE-04, LIVE-05, LIVE-07, LIVE-08, LIVE-09, LIVE-11, LIVE-12, LIVE-13
+
+🟡 Open (not yet fixed):
+- F-CW-LIVE-10 P2 — AI defaults to `category='misc'` too readily (mitigated by name-keyword fallback in LIVE-09 but not eliminated)
+- F-CW-11/13/15b/15c/17 (early P3 polish items — overflow patterns, copy nits)
+- F-CW-21 P3 — Schedule transition's two-step pattern is undiscoverable
+- F-CW-29 (already shipped — verified live)
+- F-CW-32 P3 — Inconsistent edit patterns (modal vs inline)
+- F-CW-34 P3 — No top-level Manifest entry
+- F-CW-49 P3 — `/crew` is worker app for admins
+- F-CW-51 P3 — Equipment-profile pills don't deep-link
+- F-CW-52 P3 — Add Crew form too minimal
+- F-CW-57 P3 — Profanity in production test data (data cleanup, not code)
+- F-CW-59 P3 — Suppliers table horizontal overflow
+
+**Total: ~50 distinct findings closed across 18 commits over the contractor-walkthrough series.** The materials engine — TerrainForge's central value prop — went from completely broken to fully working. The remaining open items are minor UX polish that don't block the contractor-to-client workflow.
+
 **The two P0s share a root cause**: F-CW-45 — most materials end up as project-level JSONB orphans without library references because `createMaterial` fails silently when AI says "will be added automatically." That cascades into F-CW-17/18 (silent INSERT failures) and F-CW-36 (manifest engine sees only library-linked materials), AND into F-CW-43 (Closeout reads JSONB and sees them all; Manifest reads junction and sees one). Fix `createMaterial` reliability + backfill orphan library rows + reconcile JSONB↔junction sources of truth, and ~5 findings close at once.
 
 **Recommended fix order for next session**:
