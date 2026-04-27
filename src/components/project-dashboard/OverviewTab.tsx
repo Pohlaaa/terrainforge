@@ -11,7 +11,8 @@ import { ElementVisual } from '@/components/shared/ElementVisual';
 import { MaterialPicker } from '@/components/shared/MaterialPicker';
 import PlanView2D from '@/components/plan/PlanView2D';
 import PlanView3D from '@/components/plan/PlanView3D';
-import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl, sendProposalEmail } from '@/services/supabaseShareTokens';
+import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl, sendProposalEmail, fetchDesignVersionsForProject } from '@/services/supabaseShareTokens';
+import type { ProjectDesignVersion } from '@/types';
 import { computeProjectCost } from '@/lib/projectCost';
 import { toast } from '@/hooks/useToast';
 
@@ -85,6 +86,14 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   useEffect(() => {
     fetchShareTokensForProject(project.id).then(setShareTokens);
   }, [project.id]);
+
+  // F-PHC-04: design version history. Loaded once on mount + after a
+  // submission banner appears (caller refetches when activeToken changes).
+  const [designVersions, setDesignVersions] = useState<ProjectDesignVersion[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  useEffect(() => {
+    fetchDesignVersionsForProject(project.id).then(setDesignVersions);
+  }, [project.id, activeToken?.clientChangesSubmittedAt]);
 
   async function handleCreateShareLink() {
     const orgId = useOrgStore.getState().org?.id;
@@ -190,6 +199,24 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
 
   // ── Layout editor (Sprint 3a/c/d — move + resize + rotate) ─────────────
   const [editingLayout, setEditingLayout] = useState(false);
+
+  // F-PHC-06: when a `client_design` token is active and unrevoked, lock
+  // the contractor out of in-app layout editing. Otherwise both sides
+  // race for the same `project_elements.geometry` column and last-write-
+  // wins silently. The lockout is the cheapest correct fix; v1+ can layer
+  // optimistic concurrency on top via an updated_at column. We also
+  // force-close `editingLayout` if it was already true at the moment a
+  // design token was issued.
+  const activeDesignToken = shareTokens.find(
+    (t) =>
+      t.role === 'client_design' &&
+      !t.revokedAt &&
+      (!t.expiresAt || new Date(t.expiresAt) > new Date()),
+  ) ?? null;
+  const clientEditActive = !!activeDesignToken;
+  useEffect(() => {
+    if (clientEditActive && editingLayout) setEditingLayout(false);
+  }, [clientEditActive, editingLayout]);
   // Sprint 7c: material catalog lookup for PlanView3D texture resolution.
   const materialCatalog = useMaterialStore((s) => s.materials);
   const materialsById = useMemo(() => {
@@ -339,18 +366,22 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => setEditingLayout((v) => !v)}
-                disabled={elements.length === 0}
-                title={planViewMode === '3d' ? 'Drag elements in 3D to reposition them. Resize/rotate still only in 2D.' : undefined}
+                disabled={elements.length === 0 || clientEditActive}
+                title={
+                  clientEditActive
+                    ? 'Locked: a client design link is active. Revoke it to edit.'
+                    : (planViewMode === '3d' ? 'Drag elements in 3D to reposition them. Resize/rotate still only in 2D.' : undefined)
+                }
                 className="px-[10px] py-[6px] rounded-[6px] text-[11px] font-[500] cursor-pointer"
                 style={{
                   backgroundColor: editingLayout ? 'var(--green)' : 'transparent',
                   color: editingLayout ? '#fff' : 'var(--text-3)',
                   border: `1px solid ${editingLayout ? 'var(--green)' : 'var(--border)'}`,
-                  opacity: elements.length === 0 ? 0.4 : 1,
-                  cursor: elements.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: (elements.length === 0 || clientEditActive) ? 0.4 : 1,
+                  cursor: (elements.length === 0 || clientEditActive) ? 'not-allowed' : 'pointer',
                 }}
               >
-                {editingLayout ? 'Done editing' : 'Edit layout'}
+                {clientEditActive ? '🔒 Edit layout' : (editingLayout ? 'Done editing' : 'Edit layout')}
               </button>
             {activeToken ? (
               <div className="flex gap-[6px]">
@@ -461,6 +492,48 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6 }}>
                     Their edits are reflected on the plan above. Review and revoke or send a follow-up link.
                   </div>
+                </div>
+              )}
+              {/* F-PHC-04: design history expander. Shown whenever there's
+                  at least one snapshot for this project (so contractors
+                  see history even after they revoke + reissue a link). */}
+              {designVersions.length > 0 && (
+                <div className="mb-[12px]">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryOpen((v) => !v)}
+                    className="text-[11px] font-[500] cursor-pointer bg-transparent border-none"
+                    style={{ color: 'var(--text-3)' }}
+                  >
+                    {historyOpen ? '▾' : '▸'} Design submission history ({designVersions.length})
+                  </button>
+                  {historyOpen && (
+                    <div
+                      className="mt-[6px] rounded-[6px] border"
+                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+                    >
+                      {designVersions.map((v, i) => (
+                        <div
+                          key={v.id}
+                          className="px-[10px] py-[6px] text-[11px]"
+                          style={{
+                            borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                            color: 'var(--text-3)',
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                            {new Date(v.submittedAt).toLocaleString()}
+                            <span style={{ fontWeight: 400, marginLeft: 6, color: 'var(--text-4)' }}>
+                              · {v.submittedByRole} · {v.elementsSnapshot.length} element{v.elementsSnapshot.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          {v.note && (
+                            <div style={{ marginTop: 2, fontStyle: 'italic' }}>"{v.note}"</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               {activeToken.clientResponse && (

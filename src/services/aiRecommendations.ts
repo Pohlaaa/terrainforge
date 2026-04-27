@@ -759,6 +759,10 @@ function relevantCategoriesForType(type: ElementType): string[] {
     return ['soil', 'mulch', 'plant', 'shrub', 'edging', 'irrigation'];
   }
   if (type === 'sod_area') {
+    // F-PHB-02: explicitly exclude `gravel` and `stone` here. Sod sits on
+    // prepared topsoil, not a crushed-stone base — including gravel in the
+    // catalog hint led Claude to recommend ~15 cuyd of base gravel for an
+    // 800 sqft sod patch (the patio formula leaking into softscape).
     return ['sod', 'seed', 'soil', 'irrigation'];
   }
   if (type === 'tree_planting') {
@@ -838,8 +842,14 @@ ${JSON.stringify(catalogHint, null, 2)}
 - Return 3-7 materials directly required for THIS element. No project-level overhead (e.g. don't list trash bags or general PPE).
 - For materials NOT in the org library, set materialId:null and inLibrary:false. Use realistic unit costs from current US market prices.
 - Compute estimatedQuantity from the element's dimensions using industry formulas. Apply 5-10% waste factor.
+- For sqft-unit underlayment (landscape fabric, weed barrier, geotextile): estimatedQuantity = element_area_sqft × (1 + waste). Never return 1 sqft when the element is a 100+ sqft area.
 - Include all dependent materials (e.g. a paver patio needs pavers + base gravel + bedding sand + polymeric sand + edge restraint).
-- Do not suggest materials inappropriate for this element type (no fertilizer on a patio, no rebar in a garden bed).
+- Do not suggest materials inappropriate for this element type:
+  * Sod / Turf area: NO crushed stone or gravel base. Sod sits on prepared topsoil. Return topsoil + soil amendments + the sod itself + optional fertilizer.
+  * Garden bed / planting bed: NO gravel base, NO concrete. Return topsoil + amendments + mulch + the plants.
+  * Patio / walkway / hardscape: NO fertilizer, NO sod, NO topsoil.
+  * Drainage trench: NO topsoil, NO sod.
+- Never invent the org library. Set inLibrary:true only if you matched a real id from the hint above.
 
 Return JSON ONLY (no markdown fencing) matching:
 {
@@ -892,10 +902,20 @@ function safeParsePerElementMaterials(raw: string): { materials?: AIMaterialReco
 function validatePerElementMaterials(
   raw: { materials?: AIMaterialRecommendation[] } | null,
   orgMaterials: Material[],
+  el: ElementMaterialInferenceContext,
 ): AIMaterialRecommendation[] {
   if (!raw?.materials || !Array.isArray(raw.materials)) return [];
   const materialMap = new Map(orgMaterials.map((m) => [m.id, m]));
   const materialNameMap = new Map(orgMaterials.map((m) => [m.name.toLowerCase(), m]));
+
+  // F-PHB-06: derive the element's coverable area for sanity-checking
+  // sqft-unit materials. Used below to clamp absurdly-low quantities
+  // (Claude occasionally returns 1 sqft of landscape fabric for a 200
+  // sqft patio — a unit confusion that we silently correct here).
+  const elementArea: number =
+    (el.areaSqft ?? 0) > 0
+      ? el.areaSqft!
+      : (el.lengthFt ?? 0) * (el.widthFt ?? 0);
 
   const BAGGED_UNIT_COERCIONS: Array<{ keywords: string[]; unit: string; defaultCoverage: number }> = [
     { keywords: ['polymeric sand', 'poly sand'], unit: 'bag', defaultCoverage: 65 },
@@ -924,6 +944,23 @@ function validatePerElementMaterials(
         }
         break;
       }
+    }
+
+    // F-PHB-06: clamp absurdly-low sqft quantities. Claude occasionally
+    // returns "1 sqft" of landscape fabric or geotextile for a 200 sqft
+    // element — a pure unit-confusion bug. If the unit is sqft AND the
+    // element has a real area AND the quantity is wildly under that
+    // area, replace with element_area × 1.05 (5% waste).
+    if (
+      coercedUnit === 'sqft' &&
+      elementArea > 50 &&
+      coercedQuantity > 0 &&
+      coercedQuantity < elementArea * 0.5
+    ) {
+      console.warn(
+        `[per-element validator] Clamping low sqft quantity for "${m.materialName}": ${coercedQuantity} → ${Math.ceil(elementArea * 1.05)} (element area ${elementArea} sqft)`,
+      );
+      coercedQuantity = Math.ceil(elementArea * 1.05);
     }
 
     // Match against org library by ID first, then name
@@ -971,7 +1008,7 @@ export async function inferMaterialsForElement(
     // Tight prompt → tight budget. 1024 fits ~5-7 materials with reasons.
     const raw = await callClaude(prompt, DEFAULT_MODEL, 1024);
     const parsed = safeParsePerElementMaterials(raw);
-    return validatePerElementMaterials(parsed, orgMaterials);
+    return validatePerElementMaterials(parsed, orgMaterials, el);
   } catch (err) {
     console.error('inferMaterialsForElement failed:', err);
     return [];

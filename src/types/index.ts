@@ -70,6 +70,33 @@ export interface ProjectElement {
 }
 
 /**
+ * F-PHC-04: append-only history of design submissions. Each row snapshots
+ * all elements at the moment a client clicked Submit on a `client_design`
+ * share-token link. Lets the contractor compare submissions across time.
+ */
+export interface ProjectDesignVersion {
+  id: string;
+  projectId: string;
+  orgId: string;
+  shareTokenId: string | null;
+  submittedByRole: 'client' | 'contractor';
+  submittedAt: string;
+  elementsSnapshot: Array<{
+    id: string;
+    name: string;
+    element_type: string;
+    length_ft: number | null;
+    width_ft: number | null;
+    area_sqft: number | null;
+    linear_ft: number | null;
+    height_ft: number | null;
+    depth_in: number | null;
+    geometry: ElementGeometry | null;
+  }>;
+  note: string | null;
+}
+
+/**
  * Geometry for a ProjectElement in the design app. Shape discriminator
  * lets us extend to circles / polygons / L-shapes without schema churn.
  */

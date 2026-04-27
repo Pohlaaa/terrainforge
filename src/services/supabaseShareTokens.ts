@@ -1,6 +1,14 @@
 import { supabase } from './supabase'
 import { toCamelCase } from './supabaseCore'
-import type { ShareToken, Project, ProjectElement, ProjectElementMaterial, Material, ElementGeometry } from '@/types'
+import type {
+  ShareToken,
+  Project,
+  ProjectElement,
+  ProjectElementMaterial,
+  Material,
+  ElementGeometry,
+  ProjectDesignVersion,
+} from '@/types'
 
 // ===== SHARE TOKENS (migration 028) =====
 //
@@ -354,6 +362,28 @@ export async function clientUpdateElementGeometry(
     return { ok: false, error: error.message }
   }
   return { ok: true }
+}
+
+/**
+ * F-PHC-04. Fetches all design version snapshots for a project. Org members
+ * read via RLS (org_full_access policy from migration 032). Anon clients
+ * see only versions tied to a token they hold (not used yet, but the
+ * policy is in place for future "your previous submissions" UI).
+ */
+export async function fetchDesignVersionsForProject(
+  projectId: string,
+): Promise<ProjectDesignVersion[]> {
+  const { data, error } = await supabase
+    .from('project_design_versions')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('submitted_at', { ascending: false })
+
+  if (error) {
+    console.error('fetchDesignVersionsForProject error:', error)
+    return []
+  }
+  return (data || []).map((r) => toCamelCase(r) as unknown as ProjectDesignVersion)
 }
 
 /**
