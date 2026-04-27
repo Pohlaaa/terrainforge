@@ -708,15 +708,32 @@ export default function ProjectWizard() {
         }
       }
 
-      // F-CW-LIVE-05: case-insensitive dedup before BOTH the JSONB save
-      // and the element-material auto-link loops below. AI sometimes
-      // suggests slight case variants of the same material
-      // (e.g. "Landscape Fabric (Weed Barrier)" + "Landscape fabric
-      // (weed barrier)") which used to ship as two JSONB rows AND two
-      // junction inserts.
+      // F-CW-LIVE-05 + F-CW-LIVE-11: dedup before BOTH the JSONB save and
+      // the element-material auto-link loops below. AI suggests:
+      //   (a) case variants of the same material (LIVE-05) — e.g.
+      //       "Landscape Fabric (Weed Barrier)" + "Landscape fabric
+      //       (weed barrier)"
+      //   (b) conceptual duplicates with different names (LIVE-11) — e.g.
+      //       "Sod (2,500 sqft)" + "Sod (additional 500 sqft to complete
+      //       3,000 sqft)" — both intended for the same Sod Area
+      // Without this, both rows ship with the SAME computed quantity from
+      // the element's geometry, doubling the order. Dedup key: category +
+      // first significant word of name (lowercased, parentheticals stripped).
+      // Dedup key: category + cleaned name (lowercase, parentheticals stripped,
+      // whitespace collapsed). Catches case variants AND name-variant
+      // duplicates that share the same root noun phrase, while keeping
+      // genuinely different materials (Drain Pipe vs Drain Rock) separate.
+      const dedupKey = (mat: { materialName?: string; category?: string }) => {
+        const cleanName = (mat.materialName || '')
+          .toLowerCase()
+          .replace(/\([^)]*\)/g, '')   // strip "(2,500 sqft)" / "(weed barrier)"
+          .replace(/\s+/g, ' ')         // collapse whitespace
+          .trim();
+        return `${(mat.category || '').toLowerCase().trim()}|${cleanName}`;
+      };
       const dedupSeen = new Set<string>();
       data.materialSelections = data.materialSelections.filter(mat => {
-        const key = `${(mat.materialName || '').toLowerCase().trim()}|${(mat.category || '').toLowerCase().trim()}`;
+        const key = dedupKey(mat);
         if (dedupSeen.has(key)) return false;
         dedupSeen.add(key);
         return true;
@@ -894,7 +911,36 @@ export default function ProjectWizard() {
                 lastRestocked: '',
               };
 
-              const quantity = computeQty(matAdapter, syntheticZone);
+              let quantity = computeQty(matAdapter, syntheticZone);
+
+              // F-CW-LIVE-13: honor AI's stated count for point/each materials
+              // (plants, lights, fixtures). computeQty's coverage-based 1-per-
+              // area formula gives qty=1 for a Shrub Planting that the user
+              // said had 8 hydrangeas. The AI provides the right count in
+              // mat.quantity — use it when the unit is 'each' and the AI
+              // value is sensible (positive integer).
+              if (mat.unit === 'each' && typeof mat.quantity === 'number' && mat.quantity > 0) {
+                quantity = mat.quantity;
+              }
+
+              // F-CW-LIVE-12: stone/gravel/sand on a drainage element. Drainage
+              // has linear_ft + depth_in but no area_sqft, so the cuyd formula
+              // (area × depth/27) returns 0 and the material gets orphaned.
+              // For drainage, treat the element as a trench: cuyd =
+              // linear_ft × bed_width_ft × depth_ft / 27. Default bed width
+              // is 1.5 ft (typical French drain trench width).
+              if (
+                quantity <= 0 &&
+                el.elementType === 'drainage' &&
+                (mat.unit === 'cuyd' || mat.unit === 'ton') &&
+                perimeter > 0
+              ) {
+                const depthFt = (el.depthIn ?? 12) / 12;
+                const bedWidthFt = 1.5;
+                const cuyd = (perimeter * bedWidthFt * depthFt) / 27;
+                quantity = mat.unit === 'ton' ? cuyd * (matAdapter.coverage || 1.5) : cuyd;
+              }
+
               if (quantity <= 0) continue;
 
               await projectStore.addElementMaterial(el.id, {
