@@ -1631,3 +1631,66 @@ Live verification of per-element AI material calls:
 - Phase A test project: `/projects/53e745f6-394f-43b2-bff9-d8643ae03d83` ("Thompson Backyard Patio + Stairs")
 - Phase B test project: not created (test was driven through Step 2 only to count network calls; no project saved)
 - Network requests verified via Chrome MCP `read_network_requests({ urlPattern: 'anthropic' })`
+
+---
+
+# 3D-in-Wizard Phase C v0 (2026-04-26, commit `5ccec06`)
+
+## Phase C v0 walkthrough — client design edit mode
+
+Live verification on `terrainforge-staging.netlify.app` against the Thompson Backyard Patio + Stairs project. Token: `098c946c6bc2221a30209a5f52bd7c865fc4c416cfb41a61210d854137f06bc7` (role=`client_design`).
+
+### Happy path (all checks passed)
+
+| Check | Result |
+|---|---|
+| Contractor `✎ Design link` button creates `client_design` token | ✅ |
+| `EDIT` badge renders in URL pill so contractor can tell tokens apart | ✅ |
+| `/share/:token` for design role mounts editable canvas (PlanView2D) | ✅ |
+| Resize handles + rotation handles visible per element | ✅ |
+| Drag persists via `client_update_element_geometry` RPC | ✅ — Stone Stairs moved from `{x:-7,y:53}` to `{x:15,y:49}`; verified via `SELECT geometry FROM project_elements` |
+| Submit panel renders with optional note textarea | ✅ |
+| `submit_design_changes` RPC stamps `client_changes_submitted_at` + note | ✅ |
+| Submitted-state confirmation shows timestamp + note + Resubmit affordance | ✅ |
+| Contractor OverviewTab shows green "Client submitted design changes" banner with timestamp + note | ✅ |
+| Contractor 2D canvas reflects the moved element | ✅ |
+| `view_count` increments on token (URL pill shows `viewed 1×`) | ✅ |
+
+### Negative tests (all rejected with correct error codes)
+
+| Test | Expected error | Actual |
+|---|---|---|
+| Invalid token | `token_not_found_or_inactive` | ✅ |
+| Wrong role (`client_view`) | `token_not_a_design_token` | ✅ |
+| Cross-project element edit | `element_not_in_token_project` | ✅ |
+| Malformed geometry payload | `invalid_geometry` | ✅ |
+
+### Findings logged
+
+- **F-PHC-01** — P3 — **Token URL was misread from screenshot** during Chrome MCP testing (`098c946c6bc2221a30...` vs `098c946c6bc2221a38...`, `0`/`8` and `5`/`a` confusion in the small monospace font). Not a bug — the contractor would copy via the Copy link button or the toast clipboard write — but a slightly larger font or letter-spacing on the URL pill would help in the rare case a contractor reads the URL aloud or transcribes it.
+- **F-PHC-02** — P3 — **"Client has viewed the link but not responded yet" copy fires for `client_design` tokens** even after the client has already submitted design changes. The Phase B response check `!activeToken.clientResponse && activeToken.viewCount > 0` doesn't know that design tokens have a different "responded" semantic (`clientChangesSubmittedAt`). Fix: skip that copy when `role === 'client_design'`, or rewrite to read "Client has viewed but not submitted yet" for design tokens.
+- **F-PHC-03** — P3 — **No follow-up flow yet on contractor side**. After a client submits design changes, the contractor has no in-app affordance to (a) accept the changes as-is, (b) revoke the design link and send a fresh one, (c) reply to the client with their own note, or (d) lock further edits. Today the only follow-up actions are the existing "Email to client / Copy link / Revoke" buttons. Phase C+ should add a dedicated "Accept changes" / "Continue editing yourself" / "Send a reply" trio.
+- **F-PHC-04** — P2 — **No version history**. Each client edit is a direct mutation on `project_elements.geometry`. If a client moves the patio, then moves it again, the contractor sees only the latest — no audit trail and no way to rewind. Phase C+ work item: `project_design_versions` table with snapshots.
+- **F-PHC-05** — P3 — **No expiry on design links** (same as Phase A view links). Contractors should be nudged to set short expiries on `client_design` tokens specifically since they grant write access. Default to e.g. 7 days when role is `client_design`.
+- **F-PHC-06** — P2 — **Contractor's `editingLayout` flag and the client's edits race**. If the contractor has the layout editor open at the same time the client is dragging, both clients write to `project_elements.geometry` and last-write-wins. With low traffic this is rarely hit; with shared design link sent to multiple clients on the same project it's a real concern. Phase C+ fix: add an `updated_at` column + optimistic concurrency check, or lock the contractor out of edit mode while a client_design token is active and unrevoked.
+- **F-PHC-07** — P3 — **The 3D viewer's TransformControls do not always re-anchor** after a geometry change (observed during Phase A but worth re-noting in Phase C since the surface now has more contention). When an element moves via the RPC and the elements array re-renders, the gizmo can briefly attach to the wrong element. Workaround: clicking another element re-resolves it. Investigation deferred to the cleanup phase.
+
+## Cleanup phase backlog (consolidated)
+
+From Phase B + Phase C testing:
+
+| ID | Sev | Phase | Description | Suggested fix |
+|---|---|---|---|---|
+| F-PHB-01 | P3 | B | Landscape Fabric returns 1 sqft for a 16×12 walkway | Tighten prompt formula for sqft underlayment |
+| F-PHB-02 | P2 | B | Sod returns 14.8 cuyd of crushed stone base | Drop `gravel` from sod's relevant categories + negative example in prompt |
+| F-PHB-03 | P3 | B | Cache key includes element name → rename triggers fresh API call | Drop name from cache key |
+| F-PHB-04 | P3 | B | Notes field stale after type change | Either auto-clear notes on type change, or AI-rewrite |
+| F-PHB-05 | P3 | B | `areaSqft` override survives type change | Clear on type change |
+| F-PHB-06 | P2 | B | Validator allows `quantity: 1` for sqft material | Add per-unit minimum sanity checks |
+| F-PHC-01 | P3 | C | Token URL hard to read at small font | Larger font or letter-spacing on URL pill |
+| F-PHC-02 | P3 | C | "Client viewed but not responded" copy fires for design tokens | Skip when role==='client_design' |
+| F-PHC-03 | P3 | C | No follow-up affordance after client submission | Accept / Continue / Reply trio |
+| F-PHC-04 | P2 | C | No design-version history | Add `project_design_versions` table |
+| F-PHC-05 | P3 | C | No default expiry on design links | Default 7-day expiry for `client_design` role |
+| F-PHC-06 | P2 | C | Contractor edits race with client edits | `updated_at` column + optimistic concurrency or contractor lockout |
+| F-PHC-07 | P3 | C | 3D TransformControls gizmo doesn't always re-anchor | Investigate during cleanup |
