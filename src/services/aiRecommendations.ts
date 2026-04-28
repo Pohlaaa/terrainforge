@@ -83,7 +83,7 @@ function buildPrompt(ctx: RecommendationContext): string {
   return `You are an experienced landscaping project estimator and crew scheduler.
 
 INDUSTRY MATERIAL RULES (non-negotiable — follow these exactly):
-- Base material (gravel, crushed stone, sand for base) MINIMUM depth is 6 inches. Never suggest less than 6".
+- Base material (gravel, crushed stone, sand for base) MINIMUM depth is 6 inches. Never suggest less than 6". Do NOT say "4 inch base", "4 to 6 inch base", or any range with a low end below 6 — always state "6 inch base" for gravel/sand under hardscape.
 - Polymeric sand is priced per 50lb BAG, not per pound. Coverage: 65 sqft per bag. Unit must be "bag".
 - Topsoil minimum depth: 3 inches for garden beds.
 - Mulch minimum depth: 2 inches for weed suppression.
@@ -222,7 +222,11 @@ function validateAndEnrich(
   // priced per bag, not per pound. AI has been instructed in the prompt but
   // sometimes ignores it; this is the belt-and-suspenders correction.
   const BAGGED_UNIT_COERCIONS: Array<{ keywords: string[]; unit: string; defaultCoverage: number }> = [
-    { keywords: ['polymeric sand', 'poly sand'], unit: 'bag', defaultCoverage: 65 },
+    // X-9: extended aliases for the polymeric / joint-stabilising sand
+    // family. AI sometimes uses "joint sand" or "jointing sand" as the
+    // primary noun when talking about polymeric — those still need to
+    // come out priced per 50lb bag, not per pound.
+    { keywords: ['polymeric sand', 'poly sand', 'jointing sand', 'joint sand', 'paver joint sand', 'polymeric joint'], unit: 'bag', defaultCoverage: 65 },
   ];
 
   // F-046 guard: if AI mentions a sub-minimum depth for a base category in
@@ -241,9 +245,26 @@ function validateAndEnrich(
     const cat = category.toLowerCase();
     const min = BASE_DEPTH_MINIMUMS[cat];
     if (!min) return reason;
-    // Match "<n>"" or "<n>-inch" or "<n> inch" / "<n>in" patterns where n < min.
-    // Uses a replacer so we can compute the corrected number per-match.
-    return reason.replace(
+    // X-2: First catch range patterns ("4-6 inch", "4 to 6 inches",
+    // "4 to 6 in"). The bare-number rewriter below would only catch the
+    // upper bound (which is usually fine) and leave the low end as-is,
+    // making "4-6 inch base" still ship as a sub-minimum mention.
+    let scrubbed = reason.replace(
+      /(\d+(?:\.\d+)?)\s*(?:to|-|–)\s*(\d+(?:\.\d+)?)(\s?(?:in(?:ch(?:es)?)?|"))/gi,
+      (whole, lowStr, _highStr, unitTail) => {
+        const low = parseFloat(lowStr);
+        const high = parseFloat(_highStr);
+        if (!Number.isFinite(low) || !Number.isFinite(high)) return whole;
+        // If the entire range is below minimum (e.g. "3-5 inch base") OR
+        // the low end is below minimum, replace with the minimum value.
+        if (low < min) return `${min}${unitTail}`;
+        return whole;
+      },
+    );
+    // Standard "<n>"" / "<n> inch" / "<n>-inch" replacer for single
+    // sub-minimum mentions. Uses a replacer so we can compute the
+    // corrected number per-match.
+    scrubbed = scrubbed.replace(
       /(\d+(?:\.\d+)?)(?:"|\s?(?:-)?\s?(?:in(?:ch(?:es)?)?))/gi,
       (whole, numStr) => {
         const n = parseFloat(numStr);
@@ -252,6 +273,7 @@ function validateAndEnrich(
         return `${min}${unitLiteral}`;
       },
     );
+    return scrubbed;
   };
 
   const materials: AIMaterialRecommendation[] = (raw.materials || []).map((m) => {
@@ -945,7 +967,11 @@ export function validatePerElementMaterials(
       : (el.lengthFt ?? 0) * (el.widthFt ?? 0);
 
   const BAGGED_UNIT_COERCIONS: Array<{ keywords: string[]; unit: string; defaultCoverage: number }> = [
-    { keywords: ['polymeric sand', 'poly sand'], unit: 'bag', defaultCoverage: 65 },
+    // X-9: extended aliases for the polymeric / joint-stabilising sand
+    // family. AI sometimes uses "joint sand" or "jointing sand" as the
+    // primary noun when talking about polymeric — those still need to
+    // come out priced per 50lb bag, not per pound.
+    { keywords: ['polymeric sand', 'poly sand', 'jointing sand', 'joint sand', 'paver joint sand', 'polymeric joint'], unit: 'bag', defaultCoverage: 65 },
   ];
 
   const out: AIMaterialRecommendation[] = [];

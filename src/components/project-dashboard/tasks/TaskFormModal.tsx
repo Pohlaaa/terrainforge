@@ -78,6 +78,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, onSave, onCa
           style={{ borderColor: 'var(--border)', width: '80px' }}
           value={hours}
           onChange={(e) => setHours(e.target.value)}
+          onFocus={(e) => e.currentTarget.select()}
           onKeyDown={handleKeyDown}
           placeholder="Man hrs"
           min={0}

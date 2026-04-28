@@ -117,7 +117,7 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
         <div className="rounded-[8px] border p-[14px]" style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}>
           <div className="text-[10px] font-[600] uppercase text-[var(--text-4)] mb-[4px]">Client Quote</div>
           {editing ? (
-            <input type="number" className={inputClass} style={{ borderColor: 'var(--border)' }} value={editValues.clientQuote || ''} onChange={(e) => setField('clientQuote', e.target.value)} placeholder="0" />
+            <input type="number" className={inputClass} style={{ borderColor: 'var(--border)' }} value={editValues.clientQuote || ''} onChange={(e) => setField('clientQuote', e.target.value)} onFocus={(e) => e.currentTarget.select()} placeholder="0" />
           ) : (
             <div className="text-[20px] font-[700] text-[var(--text)]">{fmtShort(financials.quote)}</div>
           )}

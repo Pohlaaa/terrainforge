@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Project, ScheduleEntry } from '@/types';
+import { useEquipmentStore } from '@/stores/equipmentStore';
 
 const cardClass = 'rounded-[10px] border p-[16px]';
 const cardHead = 'text-[12px] font-[700] uppercase text-[var(--text-3)] mb-[14px]';
@@ -108,6 +109,12 @@ export const EquipmentAssignmentPanel: React.FC<EquipmentAssignmentPanelProps> =
   scheduleEntries,
   onEquipmentNotesSave,
 }) => {
+  // X-11: read the org equipment catalog so schedule-referenced equipment
+  // can be displayed by its actual name instead of a UUID fragment.
+  // Pre-fix the fallback was `Equipment <8-char-uuid>` which the partner
+  // (correctly) flagged as nonsense.
+  const orgEquipment = useEquipmentStore((s) => s.equipment);
+
   // Dedupe equipment across all zones
   const equipMap = new Map<string, { name: string; zones: string[] }>();
   for (const zone of project.zones) {
@@ -121,7 +128,11 @@ export const EquipmentAssignmentPanel: React.FC<EquipmentAssignmentPanelProps> =
   // Also include equipment referenced in schedule entries
   for (const entry of scheduleEntries) {
     if (entry.equipmentId && !equipMap.has(entry.equipmentId)) {
-      equipMap.set(entry.equipmentId, { name: `Equipment ${entry.equipmentId.slice(0, 8)}`, zones: [] });
+      // X-11: prefer the org-catalog name; fall back only if the
+      // equipment is genuinely missing from the org's inventory.
+      const found = orgEquipment.find((e) => e.id === entry.equipmentId);
+      const displayName = found?.name ?? `Unknown equipment (${entry.equipmentId.slice(0, 8)})`;
+      equipMap.set(entry.equipmentId, { name: displayName, zones: [] });
     }
   }
   const equipList = [...equipMap.values()];

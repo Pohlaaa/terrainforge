@@ -124,6 +124,7 @@ serve(async (req) => {
       // Skip if it's clearly not a business (residential, parks, etc.)
       const type = item.type || ''
       const cls = item.class || ''
+      const extratags0 = item.extratags || {}
       const skipTypes = ['residential', 'suburb', 'city', 'town', 'village', 'county',
         'state', 'country', 'postcode', 'neighbourhood', 'house', 'apartments',
         'school', 'university', 'college', 'kindergarten', 'hospital', 'clinic',
@@ -133,6 +134,25 @@ serve(async (req) => {
         'museum', 'government', 'fire_station', 'police', 'post_office',
         'bus_stop', 'station', 'parking']
       if (skipTypes.includes(type)) continue
+      // X-10: also check the extratags' building/amenity hints. Some
+      // institutions (especially schools) tag as `class: 'building',
+      // type: 'yes', extratags.amenity: 'school'` and would otherwise
+      // sneak through the top-level type filter.
+      if (skipTypes.includes(extratags0.amenity || '')) continue
+      if (skipTypes.includes(extratags0.building || '')) continue
+      // Also catch by name keyword — Nominatim tags can be wildly
+      // inconsistent, but a name containing "School" or "Elementary"
+      // is almost always not a landscaping supplier.
+      const nameLc = name.toLowerCase()
+      const nameKeywordBlocklist = [
+        'school', 'elementary', 'middle school', 'high school',
+        'university', 'college', 'academy', 'kindergarten', 'preschool',
+        'church', 'mosque', 'temple', 'synagogue',
+        'hospital', 'clinic', 'medical center', 'urgent care',
+        'fire department', 'fire station', 'police department',
+        'post office', 'library', 'cemetery', 'memorial', 'museum',
+      ]
+      if (nameKeywordBlocklist.some((kw) => nameLc.includes(kw))) continue
       if (cls === 'boundary' || cls === 'place' || cls === 'waterway' || cls === 'amenity' && skipTypes.includes(type)) continue
 
       const addr = item.address || {}

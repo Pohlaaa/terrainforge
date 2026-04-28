@@ -131,6 +131,26 @@ export const TaskTimeline: React.FC<TaskTimelineProps> = ({
         {totalTimelineDays} weekdays · {startDate} to {targetDate}
         {crewSize > 1 && ` · ${crewSize} crew`}
       </p>
+      {/* X-12: surface schedule overrun explicitly. The algorithm packs
+          tasks within their sequence + phase rules and reports the
+          required day count; if it exceeds the target window the bars
+          extend off-screen via overflow-x-auto. Without this banner the
+          contractor sees a visually long timeline with no explanation
+          ("13 working days" when they only set 5). */}
+      {exceedsTarget && (
+        <div
+          className="text-[11px] mb-[8px] px-[10px] py-[6px] rounded-[6px]"
+          style={{
+            backgroundColor: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.4)',
+            color: '#F59E0B',
+          }}
+        >
+          ⚠ Schedule needs {totalScheduledDays} working days but you've allotted{' '}
+          {totalTimelineDays}. Extend the target date or add crew to fit the
+          window.
+        </div>
+      )}
 
       <div
         className="rounded-[8px] border overflow-x-auto"
