@@ -200,19 +200,27 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
       return;
     }
     setEmailSending(true);
+    // Sprint D Inc 3: pick mode based on the active token's role. A
+    // client_design token gets the "design your project" framing; the
+    // standard view/approve tokens get the original "review my proposal"
+    // framing. The share-link mechanism is identical either way.
+    const mode: 'proposal' | 'design_invite' =
+      activeToken.role === 'client_design' ? 'design_invite' : 'proposal';
     const result = await sendProposalEmail({
       token: activeToken.token,
       clientEmail: emailTo.trim(),
       message: emailMessage.trim() || undefined,
       shareUrl: buildShareUrl(activeToken.token),
+      mode,
     });
     setEmailSending(false);
     if (!result.ok) {
       toast.error(`Could not send email: ${result.error}`);
       return;
     }
+    const successNoun = mode === 'design_invite' ? 'Design invite' : 'Proposal';
     if (result.emailed) {
-      toast.success(`Proposal emailed to ${emailTo.trim()}.`);
+      toast.success(`${successNoun} emailed to ${emailTo.trim()}.`);
     } else {
       toast.success(`Share link prepared. Email delivery is not configured (${result.reason ?? 'backend off'}) — copy the link and send manually.`);
     }
@@ -879,9 +887,15 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               padding: 24,
             }}
           >
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Email proposal to client</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
+              {activeToken?.role === 'client_design'
+                ? 'Email design invite to client'
+                : 'Email proposal to client'}
+            </h2>
             <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 18 }}>
-              Sends them the shareable link + optional note. They click it to preview + approve.
+              {activeToken?.role === 'client_design'
+                ? 'Sends them the editable design link + optional note. They click it to lay out the project and submit for your review.'
+                : 'Sends them the shareable link + optional note. They click it to preview + approve.'}
             </p>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Client email
@@ -949,7 +963,11 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   opacity: emailSending ? 0.6 : 1,
                 }}
               >
-                {emailSending ? 'Sending…' : 'Send proposal'}
+                {emailSending
+                  ? 'Sending…'
+                  : activeToken?.role === 'client_design'
+                  ? 'Send design invite'
+                  : 'Send proposal'}
               </button>
             </div>
           </div>

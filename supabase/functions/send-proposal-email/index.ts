@@ -33,6 +33,13 @@ interface RequestBody {
   client_email?: string
   message?: string
   share_url?: string
+  /**
+   * Sprint D Inc 3. 'proposal' (default, back-compat) sends the original
+   * "Your design proposal" email. 'design_invite' sends "Help us design
+   * your project" copy — same share token mechanism, different framing
+   * for the contractor-initiated client-design flow.
+   */
+  mode?: 'proposal' | 'design_invite'
 }
 
 interface ShareTokenRow {
@@ -219,25 +226,47 @@ Deno.serve(async (req: Request): Promise<Response> => {
     ? `<p style="background:#f8fafc;border-left:3px solid #10B981;padding:10px 14px;color:#334155;white-space:pre-wrap;">${escapeHtml(body.message.trim())}</p>`
     : ''
 
+  // Sprint D Inc 3: pick copy based on mode. Both modes use the same share-
+  // link mechanism — only the framing changes.
+  const mode = body.mode === 'design_invite' ? 'design_invite' : 'proposal'
+
+  const subject =
+    mode === 'design_invite'
+      ? `Help us design ${projectName}`
+      : `Your design proposal: ${projectName}`
+
+  const headline =
+    mode === 'design_invite' ? 'Design your project' : 'Your design proposal'
+
+  const introLine =
+    mode === 'design_invite'
+      ? `${contractorName ? contractorName + ' from ' : ''}${companyName} would like your input on the design for <strong>${escapeHtml(projectName)}</strong>${projectRow?.address ? ` at ${escapeHtml(projectRow.address)}` : ''}.`
+      : `${contractorName ? contractorName + ' from ' : ''}${companyName} has prepared a design for <strong>${escapeHtml(projectName)}</strong>${projectRow?.address ? ` at ${escapeHtml(projectRow.address)}` : ''}.`
+
+  const ctaCopy =
+    mode === 'design_invite'
+      ? 'Click the link below to lay out the project in 2D or 3D — drag elements onto the satellite view, resize, swap materials. Submit when you\'re happy and your contractor will review.'
+      : 'Click the link below to preview the design in 2D or 3D. You can approve it or request changes right from the browser — no account or install needed.'
+
+  const ctaLabel = mode === 'design_invite' ? 'Start designing' : 'View your design'
+
   const html = `
     <!DOCTYPE html>
     <html>
       <body style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;">
-        <h1 style="color:#10B981;font-size:20px;margin:0 0 20px 0;">Your design proposal</h1>
+        <h1 style="color:#10B981;font-size:20px;margin:0 0 20px 0;">${headline}</h1>
         <p>${clientGreeting},</p>
-        <p>${contractorName ? contractorName + ' from ' : ''}${companyName} has prepared a design for <strong>${escapeHtml(projectName)}</strong>${projectRow?.address ? ` at ${escapeHtml(projectRow.address)}` : ''}.</p>
+        <p>${introLine}</p>
         ${customBlock}
-        <p>Click the link below to preview the design in 2D or 3D. You can approve it or request changes right from the browser — no account or install needed.</p>
+        <p>${ctaCopy}</p>
         <p style="margin:28px 0;">
-          <a href="${body.share_url}" style="background:#10B981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">View your design</a>
+          <a href="${body.share_url}" style="background:#10B981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">${ctaLabel}</a>
         </p>
         <p style="font-size:12px;color:#64748b;word-break:break-all;">Direct link: <a href="${body.share_url}" style="color:#10B981;">${body.share_url}</a></p>
         <p style="margin-top:32px;font-size:12px;color:#64748b;">This email was sent by ${escapeHtml(companyName)} via TerrainForge.</p>
       </body>
     </html>
   `
-
-  const subject = `Your design proposal: ${projectName}`
 
   const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',

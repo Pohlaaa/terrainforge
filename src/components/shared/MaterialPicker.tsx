@@ -23,9 +23,12 @@ interface Props {
 export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) => {
   const { materials: catalog } = useMaterialStore();
   const orgId = useOrgStore((s) => s.org?.id);
-  const { addElementMaterial, removeElementMaterial } = useProjectStore();
+  const { addElementMaterial, updateElementMaterial, removeElementMaterial } = useProjectStore();
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
+  // Element-level override UI: which assigned-row's "Advanced" panel is open.
+  // Only one open at a time keeps the modal compact.
+  const [advancedOpen, setAdvancedOpen] = useState<string | null>(null);
 
   const assignedIds = new Set((element.materials || []).map(m => m.materialId));
 
@@ -108,13 +111,15 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
             <div className="text-[10px] font-[600] uppercase text-[var(--text-4)] mb-[6px]">Assigned ({element.materials.length})</div>
             <div className="space-y-[4px]">
               {element.materials.map(m => (
-                <div key={m.id} className="flex items-center gap-[6px] rounded-[6px] border px-[10px] py-[6px] text-[12px]" style={{ borderColor: 'var(--green)', backgroundColor: 'rgba(45,106,79,0.06)' }}>
-                  <span className="text-[var(--green-l)]">✓</span>
-                  <span className="text-[var(--text)] font-[500] flex-1">{m.name}</span>
-                  <span className="text-[var(--text-3)]">{m.quantity} {m.unit}</span>
-                  <span className="text-[var(--text-4)]">${(m.quantity * m.unitCost).toFixed(0)}</span>
-                  <button type="button" onClick={() => handleRemove(m)} className="text-[var(--text-4)] hover:text-[var(--status-red)] bg-transparent border-none cursor-pointer">✕</button>
-                </div>
+                <AssignedRow
+                  key={m.id}
+                  elementId={element.id}
+                  m={m}
+                  open={advancedOpen === m.id}
+                  onToggleAdvanced={() => setAdvancedOpen(advancedOpen === m.id ? null : m.id)}
+                  onUpdate={(updates) => updateElementMaterial(element.id, m.id, updates)}
+                  onRemove={() => handleRemove(m)}
+                />
               ))}
             </div>
           </div>
@@ -163,5 +168,202 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
         </div>
       </div>
     </Modal>
+  );
+};
+
+// ── Assigned row + Advanced overrides panel ──────────────────────────────────
+//
+// Surfaces the override fields the schema has supported since migration 026
+// but the UI never exposed: spacingOverrideInches, manualCount, wallLengthFt,
+// wallHeightFt, wasteFactorOverride. Only fields relevant to the material's
+// computation model are shown — a paver doesn't need a wall-height field.
+
+interface AssignedRowProps {
+  elementId: string;
+  m: ProjectElementMaterial;
+  open: boolean;
+  onToggleAdvanced: () => void;
+  onUpdate: (updates: Partial<ProjectElementMaterial>) => Promise<ProjectElementMaterial | null>;
+  onRemove: () => Promise<void> | void;
+}
+
+const AssignedRow: React.FC<AssignedRowProps> = ({ m, open, onToggleAdvanced, onUpdate, onRemove }) => {
+  const model = m.computationModel ?? '';
+  // Local draft state — flushed to the store on blur so we don't write a row
+  // for every keystroke. Empty string means "no override" (null).
+  const [waste, setWaste] = useState<string>(
+    m.wasteFactorOverride != null ? String(m.wasteFactorOverride * 100) : '',
+  );
+  const [spacing, setSpacing] = useState<string>(
+    m.spacingOverrideInches != null ? String(m.spacingOverrideInches) : '',
+  );
+  const [manualCount, setManualCount] = useState<string>(
+    m.manualCount != null ? String(m.manualCount) : '',
+  );
+  const [wallLen, setWallLen] = useState<string>(
+    m.wallLengthFt != null ? String(m.wallLengthFt) : '',
+  );
+  const [wallH, setWallH] = useState<string>(
+    m.wallHeightFt != null ? String(m.wallHeightFt) : '',
+  );
+
+  const numOrNull = (s: string): number | null => {
+    const trimmed = s.trim();
+    if (!trimmed) return null;
+    const n = parseFloat(trimmed);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const flush = (field: keyof ProjectElementMaterial, value: number | null) => {
+    onUpdate({ [field]: value } as Partial<ProjectElementMaterial>);
+  };
+
+  const showSpacing = model === 'POINT_SPACING';
+  const showWall = model === 'LINEAR_DEPTH';
+  // Waste factor + computation model are universal.
+
+  return (
+    <div className="rounded-[6px] border" style={{ borderColor: 'var(--green)', backgroundColor: 'rgba(45,106,79,0.06)' }}>
+      <div className="flex items-center gap-[6px] px-[10px] py-[6px] text-[12px]">
+        <span className="text-[var(--green-l)]">✓</span>
+        <span className="text-[var(--text)] font-[500] flex-1">{m.name}</span>
+        <span className="text-[var(--text-3)]">{m.quantity} {m.unit}</span>
+        <span className="text-[var(--text-4)]">${(m.quantity * m.unitCost).toFixed(0)}</span>
+        <button
+          type="button"
+          onClick={onToggleAdvanced}
+          className="text-[10px] text-[var(--text-3)] hover:text-[var(--text)] bg-transparent border border-[var(--border)] rounded-[4px] px-[6px] py-[2px] cursor-pointer"
+          aria-expanded={open}
+        >
+          {open ? 'Hide' : 'Adjust'}
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove()}
+          className="text-[var(--text-4)] hover:text-[var(--status-red)] bg-transparent border-none cursor-pointer"
+          aria-label="Remove material"
+        >
+          ✕
+        </button>
+      </div>
+
+      {open && (
+        <div
+          className="px-[10px] pb-[10px] pt-[2px] grid gap-[8px] text-[11px]"
+          style={{ gridTemplateColumns: '1fr 1fr', borderTop: '1px solid rgba(45,106,79,0.2)' }}
+        >
+          {/* Waste factor — universal */}
+          <label className="flex flex-col gap-[2px]">
+            <span className="uppercase text-[10px] text-[var(--text-4)] tracking-wide">
+              Waste % override
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="1"
+              min="0"
+              max="100"
+              placeholder="default"
+              value={waste}
+              onChange={(e) => setWaste(e.target.value)}
+              onBlur={() => {
+                const pct = numOrNull(waste);
+                flush('wasteFactorOverride', pct == null ? null : pct / 100);
+              }}
+              className="rounded-[4px] border bg-transparent px-[6px] py-[3px] text-[var(--text)] focus:outline-none focus:border-[var(--green)]"
+              style={{ borderColor: 'var(--border)' }}
+            />
+          </label>
+
+          {/* POINT_SPACING fields */}
+          {showSpacing && (
+            <>
+              <label className="flex flex-col gap-[2px]">
+                <span className="uppercase text-[10px] text-[var(--text-4)] tracking-wide">
+                  Spacing (in)
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="1"
+                  min="0"
+                  placeholder="default"
+                  value={spacing}
+                  onChange={(e) => setSpacing(e.target.value)}
+                  onBlur={() => flush('spacingOverrideInches', numOrNull(spacing))}
+                  className="rounded-[4px] border bg-transparent px-[6px] py-[3px] text-[var(--text)] focus:outline-none focus:border-[var(--green)]"
+                  style={{ borderColor: 'var(--border)' }}
+                />
+              </label>
+              <label className="flex flex-col gap-[2px]">
+                <span className="uppercase text-[10px] text-[var(--text-4)] tracking-wide">
+                  Manual count
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step="1"
+                  min="0"
+                  placeholder="auto"
+                  value={manualCount}
+                  onChange={(e) => setManualCount(e.target.value)}
+                  onBlur={() => flush('manualCount', numOrNull(manualCount))}
+                  className="rounded-[4px] border bg-transparent px-[6px] py-[3px] text-[var(--text)] focus:outline-none focus:border-[var(--green)]"
+                  style={{ borderColor: 'var(--border)' }}
+                />
+              </label>
+            </>
+          )}
+
+          {/* LINEAR_DEPTH fields (retaining wall) */}
+          {showWall && (
+            <>
+              <label className="flex flex-col gap-[2px]">
+                <span className="uppercase text-[10px] text-[var(--text-4)] tracking-wide">
+                  Wall length (ft)
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  min="0"
+                  placeholder="from element"
+                  value={wallLen}
+                  onChange={(e) => setWallLen(e.target.value)}
+                  onBlur={() => flush('wallLengthFt', numOrNull(wallLen))}
+                  className="rounded-[4px] border bg-transparent px-[6px] py-[3px] text-[var(--text)] focus:outline-none focus:border-[var(--green)]"
+                  style={{ borderColor: 'var(--border)' }}
+                />
+              </label>
+              <label className="flex flex-col gap-[2px]">
+                <span className="uppercase text-[10px] text-[var(--text-4)] tracking-wide">
+                  Wall height (ft)
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  min="0"
+                  placeholder="2"
+                  value={wallH}
+                  onChange={(e) => setWallH(e.target.value)}
+                  onBlur={() => flush('wallHeightFt', numOrNull(wallH))}
+                  className="rounded-[4px] border bg-transparent px-[6px] py-[3px] text-[var(--text)] focus:outline-none focus:border-[var(--green)]"
+                  style={{ borderColor: 'var(--border)' }}
+                />
+              </label>
+            </>
+          )}
+
+          <p
+            className="col-span-2 text-[10px] text-[var(--text-4)] leading-[1.4]"
+            style={{ marginTop: 4 }}
+          >
+            Leave blank to use the catalog default. Quantity recalculates on the
+            next manifest run.
+          </p>
+        </div>
+      )}
+    </div>
   );
 };

@@ -11,6 +11,7 @@ import { useMaterialStore } from './materialStore'
 import { useOrgStore } from './orgStore'
 import * as db from '@/services/supabaseData'
 import { toast } from '@/hooks/useToast'
+import { snapshotManifestForProject } from '@/services/supabaseManifests'
 
 // Wire up Supabase error reporter — shows toasts and structured console logs
 db.setSupabaseErrorReporter((operation, table, error) => {
@@ -59,6 +60,7 @@ interface ProjectStore {
 
   // Element-material CRUD (connects materials to elements for measurement-driven quantities)
   addElementMaterial: (elementId: string, material: Omit<ProjectElementMaterial, 'id' | 'createdAt'>, orgId: string) => Promise<ProjectElementMaterial | null>
+  updateElementMaterial: (elementId: string, materialId: string, updates: Partial<ProjectElementMaterial>) => Promise<ProjectElementMaterial | null>
   removeElementMaterial: (elementId: string, materialId: string) => Promise<boolean>
   /** Update materials for project materials JSONB (store action for wizard) */
   updateProjectMaterials: (projectId: string, materials: ProjectMaterial[]) => Promise<void>
@@ -191,6 +193,9 @@ export const useProjectStore = create<ProjectStore>()(
 
     updateProject: async (id, updates) => {
       const previous = get().projects.find((p) => p.id === id)
+      // Capture pre-update status so we can detect approved → scheduled
+      // transitions and snapshot a manifest at exactly that moment.
+      const prevStatus = previous?.status
       // Optimistic update on list
       set((state) => ({
         projects: state.projects.map((p) =>
@@ -212,6 +217,37 @@ export const useProjectStore = create<ProjectStore>()(
           }
           return
         }
+
+        // Manifests: when a project crosses approved → scheduled, freeze the
+        // current materials engine output as a versioned snapshot. This is
+        // the audit trail of "what we ordered when we ordered it." Failure
+        // here is non-fatal — the status update already landed.
+        if (
+          prevStatus === 'approved' &&
+          updates.status === 'scheduled'
+        ) {
+          const active = get().activeProject
+          const orgId = useOrgStore.getState().org?.id
+          // Only snapshot if we have the full project loaded; the wizard
+          // and dashboard both call updateProject after fetchProjectFull,
+          // so this is the common case.
+          if (active && active.id === id && orgId) {
+            const catalog = useMaterialStore.getState().materials
+            snapshotManifestForProject({
+              projectId: id,
+              orgId,
+              elements: active.elements ?? [],
+              catalog,
+            })
+              .then((mid) => {
+                if (mid) console.log(`[manifests] snapshot ${mid} created for project ${id}`)
+              })
+              .catch((err) => {
+                console.warn('[manifests] snapshot failed:', err)
+              })
+          }
+        }
+
         // Refresh project list to get accurate summaries
         const orgId = useOrgStore.getState().org?.id
         if (orgId) await get().fetchProjects(orgId)
@@ -627,6 +663,32 @@ export const useProjectStore = create<ProjectStore>()(
         return result
       } catch (err: unknown) {
         console.error('addElementMaterial error:', err instanceof Error ? err.message : err)
+        return null
+      }
+    },
+
+    updateElementMaterial: async (elementId, materialId, updates) => {
+      try {
+        const result = await db.updateElementMaterial(materialId, updates)
+        if (!result) return null
+        // Replace the row in activeProject.elements[].materials in place.
+        set((state) => {
+          if (!state.activeProject) return state
+          const elements = (state.activeProject.elements || []).map((el) =>
+            el.id === elementId
+              ? {
+                  ...el,
+                  materials: el.materials.map((m) =>
+                    m.id === materialId ? { ...m, ...result } : m,
+                  ),
+                }
+              : el,
+          )
+          return { activeProject: { ...state.activeProject, elements } }
+        })
+        return result
+      } catch (err: unknown) {
+        console.error('updateElementMaterial error:', err instanceof Error ? err.message : err)
         return null
       }
     },

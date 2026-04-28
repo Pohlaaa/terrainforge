@@ -246,6 +246,14 @@ export async function sendProposalEmail(params: {
   clientEmail: string
   message?: string
   shareUrl: string
+  /**
+   * Sprint D Inc 3. Differentiates a "review my design" email (default,
+   * back-compat) from a "design your project" client-driven invite. The
+   * Edge Function uses this to pick subject + body copy. The contractor's
+   * existing client_design token works for either; only the email shell
+   * changes.
+   */
+  mode?: 'proposal' | 'design_invite'
 }): Promise<{ ok: true; emailed: boolean; reason?: string } | { ok: false; error: string }> {
   const { data: session } = await supabase.auth.getSession()
   const jwt = session.session?.access_token
@@ -269,6 +277,7 @@ export async function sendProposalEmail(params: {
         client_email: params.clientEmail,
         message: params.message,
         share_url: params.shareUrl,
+        mode: params.mode ?? 'proposal',
       }),
     })
     const data = (await res.json()) as {
