@@ -16,7 +16,8 @@
     "e2e:install": "playwright install chromium",
     "materials:score": "dotenv -e .env.e2e -- playwright test --project=materials-accuracy",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "perf:check": "node scripts/check-perf-budget.mjs"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.2",

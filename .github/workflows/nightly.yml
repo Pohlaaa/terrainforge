@@ -1,0 +1,75 @@
+# Nightly (P0 #1)
+#
+# Runs the slow / expensive checks on a 24-hour cadence so they don't block
+# PR turnaround. Uploads the materials-accuracy scorecard as an artifact
+# and posts a summary to the run output.
+#
+# Costs: ~15 minutes of runner time + ~$1/night of Anthropic credits.
+# Disable by deleting this file or by setting the schedule to a far-future
+# cron expression.
+
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # 02:00 America/New_York-ish (07:00 UTC), every day
+  workflow_dispatch: {}
+
+jobs:
+  accuracy:
+    name: Materials accuracy harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ secrets.E2E_ANTHROPIC_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run materials-accuracy harness
+        env:
+          E2E_BASE_URL: ${{ vars.E2E_BASE_URL || 'https://terrainforge-staging.netlify.app' }}
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+        run: npm run materials:score
+
+      - name: Upload scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: materials-accuracy-scorecard
+          path: |
+            .claude/TESTING/MATERIALS_ACCURACY.md
+            .claude/TESTING/scorecard-*.json
+          retention-days: 30
+
+  bundle-trend:
+    name: Bundle size trend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Perf budget check (informational)
+        run: npm run perf:check

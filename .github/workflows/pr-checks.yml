@@ -1,0 +1,107 @@
+# PR Checks (P0 #1)
+#
+# Runs the fast checks on every PR and the E2E walkthrough on the staging
+# deploy. Designed to be promoted to a required-status check later if you
+# want it to gate merges; right now it's "warn-only" — failures are visible
+# but don't block.
+#
+# Wall-clock target: ~10 minutes total (2 min fast + 8 min e2e, parallel).
+#
+# Costs: GitHub Actions free tier covers public repos at no cost. For private
+# repos the Linux runner is $0.008/min ≈ $0.08 per run. Anthropic credits are
+# NOT consumed here — the materials-accuracy harness is excluded from the
+# default `npm run e2e` command and runs only via `nightly.yml` /
+# `pre-deploy.yml` / manual `npm run materials:score`.
+
+name: PR Checks
+
+on:
+  pull_request:
+    branches: ['**']
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Cancel in-progress runs of the same PR when a new commit is pushed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: Fast checks (tsc + vitest + lint + perf)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Vitest (unit tests)
+        run: npm test
+
+      - name: ESLint
+        run: npm run lint
+        # Lint failures are common during refactors — don't fail the job on
+        # them, just surface them in the run log. Promote to a hard fail
+        # later if the codebase quiets down.
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+
+      - name: Perf budget check
+        run: npm run perf:check
+
+  e2e:
+    name: E2E (walkthrough + rpc-negative against staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: fast
+    # E2E hits the live staging Netlify deploy — skip if the secrets are
+    # not configured (e.g. on a fork). The job will be marked skipped, not
+    # failed, in that case.
+    if: ${{ vars.E2E_BASE_URL != '' || secrets.E2E_EMAIL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E (walkthrough + rpc-negative)
+        env:
+          E2E_BASE_URL: ${{ vars.E2E_BASE_URL || 'https://terrainforge-staging.netlify.app' }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        run: npm run e2e
+
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

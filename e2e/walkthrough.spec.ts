@@ -229,6 +229,24 @@ test('contractor walkthrough — Phase A/B/C end-to-end', async ({ page }) => {
   await page.getByRole('button', { name: /Design submission history/i }).click()
   await expect(page.getByText(/client.*\d+ element/i)).toBeVisible()
 
+  // ── 19a. Cross-project review queue (Sprint D Inc 1) ──────────────────
+  // The contractor's More dropdown should show a count badge for the
+  // pending submission, the Review Queue page should list this project
+  // by name, and the submission note should be visible there too.
+  await page.goto('/queue')
+  await expect(page.getByRole('heading', { name: /Review Queue/i })).toBeVisible({
+    timeout: 10_000,
+  })
+  await expect(page.getByText(projectName)).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText('E2E test submission — please ignore.')).toBeVisible()
+  // "Open project →" button takes us back to the project dashboard.
+  await page.getByRole('button', { name: /Open project/i }).first().click()
+  await page.waitForURL(/\/projects\/[a-f0-9-]{36}$/, { timeout: 10_000 })
+  // Banner is still here on the project page (we haven't accepted yet).
+  await expect(page.getByText(/Client submitted design changes/i)).toBeVisible({
+    timeout: 10_000,
+  })
+
   // ── 20. Accept changes (F-PHC-03) ─────────────────────────────────────
   await page.getByRole('button', { name: /Accept changes/i }).click()
   // After revoke, the URL pill + submission banner disappear and the
@@ -239,6 +257,16 @@ test('contractor walkthrough — Phase A/B/C end-to-end', async ({ page }) => {
   // Edit layout button no longer shows 🔒
   await expect(editLayoutBtn).not.toContainText(/🔒/)
   await expect(editLayoutBtn).not.toBeDisabled()
+
+  // ── 20a. Review Queue is empty after Accept ───────────────────────────
+  // Accepting revokes the token, which drops the row out of
+  // fetchPendingDesignSubmissions. Verify the queue empty state shows
+  // and the project no longer appears.
+  await page.goto('/queue')
+  await expect(page.getByText(/Nothing waiting/i)).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText(projectName)).not.toBeVisible()
+  // Navigate back to the project to keep the cleanup step happy.
+  await page.goto(`/projects/${projectId}`)
 
   // ── 21. Cleanup: delete the test project ──────────────────────────────
   // Confirm dialog handler — Delete shows a window.confirm prompt

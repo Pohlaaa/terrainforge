@@ -1,0 +1,73 @@
+# Pre-deploy (P0 #1)
+#
+# Manual-trigger workflow used as a final gate before promoting
+# claude/quirky-ishizaka → main. Runs everything pr-checks runs, plus the
+# materials-accuracy harness, plus a fresh Supabase advisor scan.
+#
+# Triggered via: GitHub UI → Actions → "Pre-deploy" → "Run workflow"
+# Or via gh CLI:  gh workflow run pre-deploy.yml
+
+name: Pre-deploy
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  full:
+    name: Full pre-deploy gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Vitest
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Perf budget
+        run: npm run perf:check
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E (walkthrough + rpc-negative)
+        env:
+          E2E_BASE_URL: ${{ vars.E2E_BASE_URL || 'https://terrainforge-staging.netlify.app' }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        run: npm run e2e
+
+      - name: Materials accuracy harness
+        if: ${{ secrets.E2E_ANTHROPIC_KEY != '' }}
+        env:
+          E2E_BASE_URL: ${{ vars.E2E_BASE_URL || 'https://terrainforge-staging.netlify.app' }}
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+        run: npm run materials:score
+
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-deploy-artifacts
+          path: |
+            test-results/
+            playwright-report/
+            .claude/TESTING/MATERIALS_ACCURACY.md
+            .claude/TESTING/scorecard-*.json
+          retention-days: 14
