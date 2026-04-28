@@ -6,23 +6,28 @@ import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import AppLayout from '@/components/layout/AppLayout'
 import CrewLayout from '@/components/layout/CrewLayout'
 
+// Sprint P: every secondary page now lazy-loaded. Net effect on first-paint
+// JS: only Dashboard + the auth pages (Login, Signup, etc.) ship in the
+// initial chunk; everything else streams on demand. Auth pages stay eager
+// because they're first-paint on a fresh visit; lazy-ing them would just
+// add a flicker.
 const CrewDashboard = React.lazy(() => import('@/pages/crew/CrewDashboard'))
 const CrewJobDetail = React.lazy(() => import('@/pages/crew/CrewJobDetail'))
 import Dashboard from '@/pages/Dashboard'
 const ProjectWizard = React.lazy(() => import('@/pages/ProjectWizard'))
 const ProjectDashboard = React.lazy(() => import('@/pages/ProjectDashboard'))
-import MaterialLibrary from '@/pages/MaterialLibrary'
-import WorkOrders from '@/pages/WorkOrders'
-import PriceResearch from '@/pages/PriceResearch'
-import Billing from '@/pages/Billing'
-import Settings from '@/pages/Settings'
+const MaterialLibrary = React.lazy(() => import('@/pages/MaterialLibrary'))
+const WorkOrders = React.lazy(() => import('@/pages/WorkOrders'))
+const PriceResearch = React.lazy(() => import('@/pages/PriceResearch'))
+const Billing = React.lazy(() => import('@/pages/Billing'))
+const Settings = React.lazy(() => import('@/pages/Settings'))
 const Debug = import.meta.env.DEV
   ? React.lazy(() => import('@/pages/Debug'))
   : () => null;
 const DesignSandbox = import.meta.env.DEV
   ? React.lazy(() => import('@/pages/DesignSandbox'))
   : () => null;
-import Onboarding from '@/pages/Onboarding'
+const Onboarding = React.lazy(() => import('@/pages/Onboarding'))
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
 import ForgotPassword from '@/pages/ForgotPassword'
@@ -121,7 +126,9 @@ function App() {
           {/* Onboarding — requires auth but no layout */}
           <Route path="/onboarding" element={
             <ProtectedRoute>
-              <Onboarding />
+              <React.Suspense fallback={<div style={{ background: '#0B1A14', minHeight: '100vh' }} />}>
+                <Onboarding />
+              </React.Suspense>
             </ProtectedRoute>
           } />
 
@@ -155,7 +162,13 @@ function App() {
                         </React.Suspense>
                       </ErrorBoundary>
                     } />
-                    <Route path="/materials" element={<ErrorBoundary><MaterialLibrary /></ErrorBoundary>} />
+                    <Route path="/materials" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
+                          <MaterialLibrary />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
                     <Route path="/crew-hub" element={
                       <ErrorBoundary>
                         <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
@@ -183,10 +196,34 @@ function App() {
                     {/* Secondary pages (More dropdown) */}
                     {/* Redirect old manifest URL to projects */}
                     <Route path="/manifest" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/work-orders" element={<ErrorBoundary><WorkOrders /></ErrorBoundary>} />
-                    <Route path="/price-research" element={<ErrorBoundary><PriceResearch /></ErrorBoundary>} />
-                    <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
-                    <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+                    <Route path="/work-orders" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
+                          <WorkOrders />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/price-research" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
+                          <PriceResearch />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/billing" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
+                          <Billing />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/settings" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
+                          <Settings />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
 
                     {import.meta.env.DEV && (
                       <Route path="/debug" element={
