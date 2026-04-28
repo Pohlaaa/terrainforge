@@ -406,7 +406,27 @@ initial bundle is real time off the contractor's day.
 
 ---
 
-### 🆕 Sprint V — 3D primitives + texture maps (visual fidelity)
+### ✅ Sprint V — 3D primitives + camera framing (closed 2026-04-28)
+
+**Status**: shipped. 6 new primitives in PlanView3D (wall / retaining_wall,
+fence, pergola, steps_stairs, garden_bed, outdoor_kitchen) replacing
+generic box extrusions. Camera framing factored to include property
+footprint (was: snap to element bbox; now: max of element span,
+property half-span, 30 ft minimum, with weighted lookAt). Bundle delta:
++4 KB. E2E suite still 6/6 green. Texture pipeline (Sprint 7c)
+preserved on the BoxGeometry primitives that route through `BoxMaterial`.
+
+What was deferred:
+- CC0 texture seed catalogue (paver / sod / mulch / gravel / concrete
+  CC0 maps hosted on Supabase Storage). The contractor URL-paste path
+  via MaterialFormModal still works; seeding is a polish sprint.
+- Per-primitive `react-test-renderer` unit tests. Add when drift
+  becomes a problem.
+
+See `.claude/TESTING/3D_VISUAL_REGRESSION.md` for per-primitive
+geometry intent + bundle delta + camera-framing math.
+
+### 🆕 Sprint V — 3D primitives + texture maps (visual fidelity) — ORIGINAL BRIEF (preserved for reference)
 
 **Brief**: Replace remaining generic box extrusions in PlanView3D with
 type-specific primitives. Wire the migration 030 texture-URL columns

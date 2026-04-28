@@ -183,6 +183,37 @@ function BoxMaterial(props: {
   return <FlatBoxMaterial color={props.color} roughness={props.roughness} metalness={props.metalness} />
 }
 
+// ===== Sprint V helpers =====
+//
+// Defaults extracted as constants so per-primitive geometry stays
+// readable. All values in feet. Tuned against the Thompson Backyard
+// scenario (24x18 patio, 12x4 stair, 60 LF edging, 6 LF fence-style
+// elements) so common element sizes look proportional in 3D.
+
+const FENCE_POST_HEIGHT_FT = 6
+const FENCE_POST_RADIUS_FT = 0.25
+const FENCE_POST_SPACING_FT = 8
+const FENCE_RAIL_THICKNESS_FT = 0.15
+
+const PERGOLA_DEFAULT_HEIGHT_FT = 8
+const PERGOLA_POST_THICKNESS_FT = 0.5
+const PERGOLA_BEAM_THICKNESS_FT = 0.4
+const PERGOLA_RAFTERS = 6
+
+const WALL_COURSE_THICKNESS_FT = 0.5
+const WALL_DEFAULT_HEIGHT_FT = 4
+
+const STAIR_RISE_FT = 0.6
+const STAIR_MIN_STEPS = 2
+const STAIR_MAX_STEPS = 8
+
+const GARDEN_BED_EDGING_HEIGHT_FT = 0.8
+const GARDEN_BED_EDGING_THICKNESS_FT = 0.4
+const GARDEN_BED_SOIL_DEPTH_FT = 0.3
+
+const KITCHEN_COUNTER_HEIGHT_FT = 3
+const KITCHEN_COUNTER_DEPTH_FT = 2.5
+
 function ElementPrimitive({ b }: { b: ExtrudedBox }) {
   const { elementType, width, depth, height, color, roughness, metalness, textureAlbedoUrl } = b
 
@@ -230,6 +261,293 @@ function ElementPrimitive({ b }: { b: ExtrudedBox }) {
           <cylinderGeometry args={[r * 0.8, r * 0.8, 0.1, 24]} />
           <meshStandardMaterial color="#f97316" emissive="#dc2626" emissiveIntensity={0.6} />
         </mesh>
+      </>
+    )
+  }
+
+  // ===== Sprint V — type-specific primitives =====
+  //
+  // Each branch returns a mesh group sized to the element's measured
+  // dimensions. Geometry tells the story (a fence reads as posts + rails,
+  // a stair reads as multiple steps) so the contractor can recognize
+  // what they're looking at without colour codes. Box-geometry primitives
+  // route through `BoxMaterial` so Sprint 7c albedo textures still apply.
+
+  // Wall / retaining_wall — stacked horizontal courses (visible mortar
+  // lines via tiny gaps between layers). The texture, if any, applies
+  // to each course individually so paver/stone albedos render at the
+  // right scale.
+  if (elementType === 'wall' || elementType === 'retaining_wall') {
+    // Walls render along the longer axis. We treat width as the run
+    // length and depth as the wall thickness. Height comes from
+    // elementHeightFt → b.height (already factored heightFt / depthIn
+    // overrides).
+    const wallHeight = height > 0 ? height : WALL_DEFAULT_HEIGHT_FT
+    const courseCount = Math.max(2, Math.floor(wallHeight / WALL_COURSE_THICKNESS_FT))
+    const courseHeight = wallHeight / courseCount
+    const tileUnits = Math.max(width, depth)
+    return (
+      <>
+        {Array.from({ length: courseCount }).map((_, i) => (
+          <mesh
+            key={i}
+            position={[0, (i + 0.5) * courseHeight, 0]}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[width, courseHeight * 0.92, depth]} />
+            <BoxMaterial
+              textureAlbedoUrl={textureAlbedoUrl}
+              color={color}
+              roughness={roughness}
+              metalness={metalness}
+              tileUnits={tileUnits}
+            />
+          </mesh>
+        ))}
+      </>
+    )
+  }
+
+  // Fence — posts every ~8 ft along the longer axis, two horizontal
+  // rails between them. Posts are cylinders so they're visually distinct
+  // from solid walls. No texture map (geometry tells the story).
+  if (elementType === 'fence') {
+    const fenceHeight = height > 0 ? height : FENCE_POST_HEIGHT_FT
+    const runLength = Math.max(width, depth)
+    const isRunAlongX = width >= depth
+    const postCount = Math.max(2, Math.ceil(runLength / FENCE_POST_SPACING_FT) + 1)
+    const postSpacing = runLength / (postCount - 1)
+    const railOffsets = [fenceHeight * 0.3, fenceHeight * 0.7]
+    return (
+      <>
+        {/* Posts */}
+        {Array.from({ length: postCount }).map((_, i) => {
+          const along = -runLength / 2 + i * postSpacing
+          const px = isRunAlongX ? along : 0
+          const pz = isRunAlongX ? 0 : along
+          return (
+            <mesh key={`post-${i}`} position={[px, fenceHeight / 2, pz]} castShadow>
+              <cylinderGeometry args={[FENCE_POST_RADIUS_FT, FENCE_POST_RADIUS_FT, fenceHeight, 8]} />
+              <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+            </mesh>
+          )
+        })}
+        {/* Two horizontal rails */}
+        {railOffsets.map((y, i) => (
+          <mesh
+            key={`rail-${i}`}
+            position={[0, y, 0]}
+            castShadow
+          >
+            <boxGeometry
+              args={
+                isRunAlongX
+                  ? [runLength, FENCE_RAIL_THICKNESS_FT, FENCE_RAIL_THICKNESS_FT * 1.5]
+                  : [FENCE_RAIL_THICKNESS_FT * 1.5, FENCE_RAIL_THICKNESS_FT, runLength]
+              }
+            />
+            <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+          </mesh>
+        ))}
+      </>
+    )
+  }
+
+  // Pergola — 4 corner posts + perimeter beams + a rafter grid. The
+  // rafter grid is a series of evenly-spaced thin beams crossing the
+  // roof — gives a recognizable pergola silhouette without authoring
+  // detailed wood grain.
+  if (elementType === 'pergola') {
+    const pergolaHeight = height > 0 ? height : PERGOLA_DEFAULT_HEIGHT_FT
+    const halfW = width / 2
+    const halfD = depth / 2
+    const postSize = PERGOLA_POST_THICKNESS_FT
+    return (
+      <>
+        {/* 4 corner posts */}
+        {[
+          [-halfW + postSize / 2, halfD - postSize / 2],
+          [halfW - postSize / 2, halfD - postSize / 2],
+          [-halfW + postSize / 2, -halfD + postSize / 2],
+          [halfW - postSize / 2, -halfD + postSize / 2],
+        ].map(([px, pz], i) => (
+          <mesh key={`p-${i}`} position={[px, pergolaHeight / 2, pz]} castShadow>
+            <boxGeometry args={[postSize, pergolaHeight, postSize]} />
+            <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+          </mesh>
+        ))}
+        {/* Two long beams (along width) */}
+        {[halfD - postSize / 2, -halfD + postSize / 2].map((pz, i) => (
+          <mesh
+            key={`beam-w-${i}`}
+            position={[0, pergolaHeight - PERGOLA_BEAM_THICKNESS_FT / 2, pz]}
+            castShadow
+          >
+            <boxGeometry args={[width, PERGOLA_BEAM_THICKNESS_FT, postSize]} />
+            <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+          </mesh>
+        ))}
+        {/* Rafter grid spanning depth */}
+        {Array.from({ length: PERGOLA_RAFTERS }).map((_, i) => {
+          const t = (i + 0.5) / PERGOLA_RAFTERS
+          const px = -halfW + t * width
+          return (
+            <mesh
+              key={`rafter-${i}`}
+              position={[px, pergolaHeight + PERGOLA_BEAM_THICKNESS_FT / 4, 0]}
+              castShadow
+            >
+              <boxGeometry args={[PERGOLA_BEAM_THICKNESS_FT * 0.6, PERGOLA_BEAM_THICKNESS_FT * 0.6, depth]} />
+              <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+            </mesh>
+          )
+        })}
+      </>
+    )
+  }
+
+  // Steps / stairs — multi-step extrusion. Number of steps scales with
+  // the longer axis (runs at 1 step per ~1.5 ft). Each step rises
+  // STAIR_RISE_FT (≈ 7"). Stack along the longer axis, climbing in Y.
+  if (elementType === 'steps_stairs') {
+    const runLength = Math.max(width, depth)
+    const treadDepth = Math.min(depth, width)
+    const isRunAlongX = width >= depth
+    const stepCount = Math.min(
+      STAIR_MAX_STEPS,
+      Math.max(STAIR_MIN_STEPS, Math.round(runLength / 1.5)),
+    )
+    const stepLen = runLength / stepCount
+    const tileUnits = Math.max(stepLen, treadDepth)
+    return (
+      <>
+        {Array.from({ length: stepCount }).map((_, i) => {
+          // Each step's top sits at (i+1)*rise; box height = (i+1)*rise.
+          // This produces the classic staircase silhouette where the back
+          // of step i is taller than step i-1.
+          const stepHeight = (i + 1) * STAIR_RISE_FT
+          const along = -runLength / 2 + (i + 0.5) * stepLen
+          const px = isRunAlongX ? along : 0
+          const pz = isRunAlongX ? 0 : along
+          return (
+            <mesh key={i} position={[px, stepHeight / 2, pz]} castShadow receiveShadow>
+              <boxGeometry
+                args={
+                  isRunAlongX
+                    ? [stepLen, stepHeight, treadDepth]
+                    : [treadDepth, stepHeight, stepLen]
+                }
+              />
+              <BoxMaterial
+                textureAlbedoUrl={textureAlbedoUrl}
+                color={color}
+                roughness={roughness}
+                metalness={metalness}
+                tileUnits={tileUnits}
+              />
+            </mesh>
+          )
+        })}
+      </>
+    )
+  }
+
+  // Garden bed — low edging frame around the perimeter + a recessed
+  // soil fill in the interior. Edging is 4 thin boxes (one per side);
+  // soil fill is a single shorter box inset slightly. Soil colour is
+  // a warm brown overriding the AI-suggested colour for visual clarity.
+  if (elementType === 'garden_bed') {
+    const edgingT = GARDEN_BED_EDGING_THICKNESS_FT
+    const edgingH = GARDEN_BED_EDGING_HEIGHT_FT
+    const halfW = width / 2
+    const halfD = depth / 2
+    const edgingColor = color
+    const soilColor = '#5b3a1d' // warm brown — readable as soil regardless of mulch tint
+    return (
+      <>
+        {/* 4 edging strips */}
+        {/* Top (positive Z) */}
+        <mesh position={[0, edgingH / 2, halfD - edgingT / 2]} castShadow receiveShadow>
+          <boxGeometry args={[width, edgingH, edgingT]} />
+          <meshStandardMaterial color={edgingColor} roughness={roughness} metalness={metalness} />
+        </mesh>
+        {/* Bottom (negative Z) */}
+        <mesh position={[0, edgingH / 2, -halfD + edgingT / 2]} castShadow receiveShadow>
+          <boxGeometry args={[width, edgingH, edgingT]} />
+          <meshStandardMaterial color={edgingColor} roughness={roughness} metalness={metalness} />
+        </mesh>
+        {/* Left (negative X) */}
+        <mesh position={[-halfW + edgingT / 2, edgingH / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[edgingT, edgingH, depth - 2 * edgingT]} />
+          <meshStandardMaterial color={edgingColor} roughness={roughness} metalness={metalness} />
+        </mesh>
+        {/* Right (positive X) */}
+        <mesh position={[halfW - edgingT / 2, edgingH / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[edgingT, edgingH, depth - 2 * edgingT]} />
+          <meshStandardMaterial color={edgingColor} roughness={roughness} metalness={metalness} />
+        </mesh>
+        {/* Soil fill — slightly recessed inside the edging frame */}
+        <mesh position={[0, GARDEN_BED_SOIL_DEPTH_FT / 2, 0]} receiveShadow>
+          <boxGeometry
+            args={[
+              Math.max(width - 2 * edgingT, 1),
+              GARDEN_BED_SOIL_DEPTH_FT,
+              Math.max(depth - 2 * edgingT, 1),
+            ]}
+          />
+          <meshStandardMaterial color={soilColor} roughness={1} metalness={0} />
+        </mesh>
+      </>
+    )
+  }
+
+  // Outdoor kitchen — a counter (low box, ~2.5 ft deep) along the
+  // longer side + a few appliance silhouettes (slightly raised boxes
+  // representing grill/sink/burner). Counter routes through BoxMaterial
+  // so stone-counter albedo textures (Sprint 7c) read at correct scale.
+  if (elementType === 'outdoor_kitchen') {
+    const counterDepth = Math.min(KITCHEN_COUNTER_DEPTH_FT, depth)
+    const counterHeight = KITCHEN_COUNTER_HEIGHT_FT
+    const counterRunLength = width
+    const tileUnits = Math.max(counterRunLength, counterDepth)
+    return (
+      <>
+        {/* Counter slab */}
+        <mesh
+          position={[0, counterHeight / 2, -depth / 2 + counterDepth / 2]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[counterRunLength, counterHeight, counterDepth]} />
+          <BoxMaterial
+            textureAlbedoUrl={textureAlbedoUrl}
+            color={color}
+            roughness={roughness}
+            metalness={metalness}
+            tileUnits={tileUnits}
+          />
+        </mesh>
+        {/* Appliances: 3 silhouettes spaced along the counter, stainless tone */}
+        {[-1, 0, 1].map((slot, i) => {
+          const slotX = (slot * counterRunLength) / 3
+          // Skip end slots if counter is short
+          if (counterRunLength < 6 && Math.abs(slot) === 1) return null
+          return (
+            <mesh
+              key={i}
+              position={[
+                slotX,
+                counterHeight + 0.4,
+                -depth / 2 + counterDepth / 2,
+              ]}
+              castShadow
+            >
+              <boxGeometry args={[1.6, 0.8, 1.6]} />
+              <meshStandardMaterial color="#a3a3a3" roughness={0.4} metalness={0.7} />
+            </mesh>
+          )
+        })}
       </>
     )
   }
@@ -567,13 +885,27 @@ export const PlanView3D: React.FC<Props> = ({
     return backdropFootprintFt(backdrop.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX)
   }, [backdrop])
 
-  // Camera framing: snap tight to the element bbox so the design is the
-  // focal point, not the neighborhood. The satellite sits behind at
-  // whatever real-world footprint it has — users orbit/zoom outward if
-  // they want more context. Minimum 30 ft so solo elements still frame well.
-  const frameSpan = Math.max(spanX, spanZ, 30)
-  const cameraDist = frameSpan * 1.6
-  const cameraY = frameSpan * 1.2
+  // Camera framing (Sprint V): factor in BOTH the element bbox AND the
+  // property footprint so the contractor sees the elements in context.
+  // Pre-Sprint V the camera snapped tight to the element bbox; on a
+  // 30-ft set of elements that meant the 150-ft satellite was almost
+  // entirely off-screen.
+  //
+  // Now: span = max(elementSpan, propertyHalfFootprint, 30 ft minimum).
+  // The 0.55 multiplier on the property keeps a healthy margin of
+  // satellite around the elements without feeling like the elements
+  // are tiny dots in a big yard. Tight 1.4× distance multiplier (was
+  // 1.6×) since we're already padding via the property factor.
+  const propertyHalfSpan = backdropFootprint ? backdropFootprint * 0.55 : 0
+  const frameSpan = Math.max(spanX, spanZ, propertyHalfSpan, 30)
+  const cameraDist = frameSpan * 1.4
+  const cameraY = frameSpan * 1.0
+  // Camera lookAt: average of element center and property center (origin)
+  // when both are present. Keeps the elements toward bottom-third of
+  // the frame and the house (visible in satellite at origin) toward the
+  // top-third — natural reading order for a yard layout.
+  const lookAtX = backdropFootprint ? centerX * 0.5 : centerX
+  const lookAtPlanY = backdropFootprint ? centerPlanY * 0.5 : centerPlanY
 
   return (
     <div
@@ -652,7 +984,12 @@ export const PlanView3D: React.FC<Props> = ({
       <Canvas
         shadows
         camera={{
-          position: [centerX + cameraDist * 0.7, cameraY, -centerPlanY + cameraDist * 0.7],
+          // Sprint V: position relative to the element/property weighted
+          // lookAt point (lookAtX/lookAtPlanY) instead of the raw
+          // element center. Keeps the property visible behind the
+          // elements without zooming so far out that the elements get
+          // tiny.
+          position: [lookAtX + cameraDist * 0.7, cameraY, -lookAtPlanY + cameraDist * 0.7],
           fov: 45,
         }}
         style={{ width: '100%', height: '100%' }}
@@ -737,7 +1074,9 @@ export const PlanView3D: React.FC<Props> = ({
           enablePan
           enableZoom
           enableRotate
-          target={[centerX, 0, -centerPlanY]}
+          // Sprint V: target the weighted lookAt so orbit pivots around
+          // the same focal point the camera was framed against.
+          target={[lookAtX, 0, -lookAtPlanY]}
           minDistance={frameSpan * 0.4}
           // Zoom-out cap: wider of (5x frame) OR (the satellite footprint)
           // so the client can pan out to see the whole property context.
