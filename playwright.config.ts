@@ -73,5 +73,18 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
     },
+    {
+      // Sprint M — materials accuracy harness. Long-running (~15 min for
+      // 30 scenarios). Excluded from `npm run e2e` default; invoke via
+      // `npm run materials:score`. No auth dependency — calls Anthropic
+      // directly with the production prompt + validator.
+      name: 'materials-accuracy',
+      testMatch: /materials-accuracy\/harness\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      timeout: 15 * 60_000,
+      retries: 0,
+    },
   ],
 })

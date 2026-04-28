@@ -7,12 +7,14 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
-    "e2e": "dotenv -e .env.e2e -- playwright test",
-    "e2e:headed": "dotenv -e .env.e2e -- playwright test --headed",
-    "e2e:debug": "dotenv -e .env.e2e -- playwright test --debug",
-    "e2e:walkthrough": "dotenv -e .env.e2e -- playwright test --project=contractor-walkthrough",
+    "analyze": "npm run build && node -e \"const fs=require('fs');const p=require('path');const dir=p.resolve('dist/assets');const files=fs.readdirSync(dir).filter(f=>f.endsWith('.js')).map(f=>({f,size:fs.statSync(p.join(dir,f)).size})).sort((a,b)=>b.size-a.size);console.log('\\nChunk sizes (bytes, sorted desc):');for(const{f,size}of files)console.log('  '+(size/1024).toFixed(1).padStart(8)+' KB  '+f);console.log('\\nSee .claude/TESTING/PERF_BUDGET.md for budgets.');\"",
+    "e2e": "dotenv -e .env.e2e -- playwright test --project=setup --project=rpc-negative --project=contractor-walkthrough",
+    "e2e:headed": "dotenv -e .env.e2e -- playwright test --project=setup --project=rpc-negative --project=contractor-walkthrough --headed",
+    "e2e:debug": "dotenv -e .env.e2e -- playwright test --project=setup --project=rpc-negative --project=contractor-walkthrough --debug",
+    "e2e:walkthrough": "dotenv -e .env.e2e -- playwright test --project=setup --project=contractor-walkthrough",
     "e2e:rpc": "dotenv -e .env.e2e -- playwright test --project=rpc-negative",
-    "e2e:install": "playwright install chromium"
+    "e2e:install": "playwright install chromium",
+    "materials:score": "dotenv -e .env.e2e -- playwright test --project=materials-accuracy"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.2",

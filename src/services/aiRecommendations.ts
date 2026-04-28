@@ -792,7 +792,7 @@ function relevantCategoriesForType(type: ElementType): string[] {
   return []; // 'other' — let Claude decide, no filter
 }
 
-function buildPerElementMaterialPrompt(
+export function buildPerElementMaterialPrompt(
   el: ElementMaterialInferenceContext,
   orgMaterials: Material[],
 ): string {
@@ -821,14 +821,39 @@ function buildPerElementMaterialPrompt(
   return `You are an experienced landscaping estimator. List the materials needed for ONE element on a project, with realistic quantities scoped to its dimensions.
 
 INDUSTRY RULES (non-negotiable):
-- Base material (gravel, crushed stone, sand for base) MINIMUM 6 inches deep. Never less.
+- Base material (gravel, crushed stone, sand for base) MINIMUM 6 inches deep. Maximum 6 inches for residential patio/walkway/sod (don't double-stack).
 - Polymeric sand sold per 50lb BAG, ~65 sqft per bag. Unit must be "bag".
-- Topsoil minimum 3" for garden beds. Mulch minimum 2" for weed suppression.
+- Topsoil minimum 3" for garden beds. Mulch minimum 2", typical 3" for weed suppression. Never specify mulch at 12" or deeper — that's a bedding base, not mulch.
 - Concrete slab minimum 4" thick.
-- Bulk material formula: sqft / 324 × depth_inches = cubic yards.
+- Bulk material formula: sqft × depth_inches / 324 = cubic yards. ALWAYS use this exact formula. Verify your output by checking: cuyd = (area × depth_in) / 324, NOT (area × depth_in) / 27 or any other denominator.
+
+WORKED EXAMPLES (apply these patterns; do not deviate):
+- 100 sqft mulch at 3" depth: 100 × 3 / 324 = 0.93 cuyd. Add 10% waste = 1.0 cuyd.
+- 200 sqft topsoil at 6" depth: 200 × 6 / 324 = 3.7 cuyd. Add 10% waste = 4.1 cuyd.
+- 192 sqft patio base at 6" depth: 192 × 6 / 324 = 3.56 cuyd.
+- 20 lnft drainage trench × 1.5 ft wide × 1 ft deep = 30 cuft / 27 = 1.1 cuyd of drain rock.
 
 UNIT VOCAB (use these EXACT strings; CHECK constraint enforces):
 sqft, lnft, bag, cuyd, ton, each, gallon, lb, pallet, roll, box, piece, bundle.
+
+CATEGORY VOCAB (use these EXACT strings; downstream library lookups depend on them):
+paver, stone, tile, brick, concrete, sod, seed, mulch, gravel, sand, soil,
+edging, plant, shrub, tree, lighting, irrigation, lumber, misc.
+
+When a material doesn't fit cleanly: pick the closest by primary purpose
+of the material, NOT by where it's used. Examples:
+  - "Crushed stone base" → category: gravel  (NOT "base_material")
+  - "Concrete pavers" → category: paver       (NOT "hardscape")
+  - "Polymeric jointing sand" → category: sand (NOT "jointing")
+  - "Pressure-treated 4×4 fence post" → category: lumber (NOT "structural")
+  - "Retaining-wall block" → category: stone  (NOT "structure")
+  - "Bagged concrete for post footings" → category: concrete (NOT "foundation")
+  - "Landscape geotextile fabric" → category: misc (closest is fabric;
+    use misc when nothing fits)
+  - "Galvanized screws / fasteners" → category: misc
+  - "Sod (Kentucky Bluegrass blend)" → category: sod
+  - "Topsoil" → category: soil
+  - "Steel edging" → category: edging
 
 ## Element
 - Name: "${el.name}"
@@ -849,7 +874,9 @@ ${JSON.stringify(catalogHint, null, 2)}
   * Garden bed / planting bed: NO gravel base, NO concrete. Return topsoil + amendments + mulch + the plants.
   * Patio / walkway / hardscape: NO fertilizer, NO sod, NO topsoil.
   * Drainage trench: NO topsoil, NO sod.
+  * Edging / border (linear strip): the edging strip itself + fasteners (stakes, spikes) + optional underlayment. NO topsoil, NO mulch, NO sod, NO base material — that's the work of the elements the edging borders, not the edging itself.
 - Never invent the org library. Set inLibrary:true only if you matched a real id from the hint above.
+- Stay in scope. Each call describes ONE element. Don't include neighbouring scope (e.g., on a "stair" element don't include the patio it leads to; on an "edging" element don't include the bed it borders).
 
 Return JSON ONLY (no markdown fencing) matching:
 {
@@ -868,7 +895,7 @@ Return JSON ONLY (no markdown fencing) matching:
 }`;
 }
 
-function safeParsePerElementMaterials(raw: string): { materials?: AIMaterialRecommendation[] } | null {
+export function safeParsePerElementMaterials(raw: string): { materials?: AIMaterialRecommendation[] } | null {
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   try {
     return JSON.parse(cleaned) as { materials?: AIMaterialRecommendation[] };
@@ -899,7 +926,7 @@ function safeParsePerElementMaterials(raw: string): { materials?: AIMaterialReco
  * idiosyncrasies (cubic_yards / linear_feet / pieces / "lb of polymeric")
  * never make it to createMaterial().
  */
-function validatePerElementMaterials(
+export function validatePerElementMaterials(
   raw: { materials?: AIMaterialRecommendation[] } | null,
   orgMaterials: Material[],
   el: ElementMaterialInferenceContext,
@@ -1005,8 +1032,12 @@ export async function inferMaterialsForElement(
 
   try {
     const prompt = buildPerElementMaterialPrompt(el, orgMaterials);
-    // Tight prompt → tight budget. 1024 fits ~5-7 materials with reasons.
-    const raw = await callClaude(prompt, DEFAULT_MODEL, 1024);
+    // 1500 tokens covers the strengthened prompt (worked examples +
+    // category vocab + per-type negative rules) without truncating
+    // mid-response. Sprint M baseline saw empty responses on
+    // retaining-wall + drainage scenarios that the prior 1024-token
+    // budget couldn't fit.
+    const raw = await callClaude(prompt, DEFAULT_MODEL, 1500);
     const parsed = safeParsePerElementMaterials(raw);
     return validatePerElementMaterials(parsed, orgMaterials, el);
   } catch (err) {
