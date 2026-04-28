@@ -545,9 +545,8 @@ function safeParseRecommendations(raw: string): AIRecommendationSet | null {
 export async function generateProjectRecommendations(
   ctx: RecommendationContext
 ): Promise<AIRecommendationSet | null> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-  if (!apiKey) return null;
-
+  // Sprint S: AI requests now go through proxy-claude (server-side key).
+  // No client-side key check needed — auth is enforced by the Edge Function.
   try {
     const prompt = buildPrompt(ctx);
     // F-CW-16: bumped from 4096 → 8192 because the original failure was a
@@ -713,8 +712,7 @@ function validateElements(raw: { elements?: AIElementRecommendation[] } | null):
  * (not null) on failure so the wizard renders gracefully.
  */
 export async function inferElements(ctx: RecommendationContext): Promise<AIElementRecommendation[]> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-  if (!apiKey) return [];
+  // Sprint S: proxy-claude handles auth/rate limit; no client-side key check.
   if (!ctx.description || !ctx.description.trim()) return [];
 
   try {
@@ -1053,9 +1051,7 @@ export async function inferMaterialsForElement(
   el: ElementMaterialInferenceContext,
   orgMaterials: Material[],
 ): Promise<AIMaterialRecommendation[]> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-  if (!apiKey) return [];
-
+  // Sprint S: proxy-claude handles auth; no client-side key check.
   try {
     const prompt = buildPerElementMaterialPrompt(el, orgMaterials);
     // 1500 tokens covers the strengthened prompt (worked examples +

@@ -1,82 +1,83 @@
 /**
  * Anthropic / Claude API client
  *
- * Calls the Claude API directly from the browser using VITE_ANTHROPIC_API_KEY.
+ * Sprint S: Calls go through the `proxy-claude` Supabase Edge Function so the
+ * Anthropic API key stays server-side. The function authenticates the caller
+ * via Supabase JWT and rate-limits per org.
  *
- * Phase 1 MVP note: Direct browser access is acceptable here because usage is
- * low and controlled. For production scale, proxy through a Supabase Edge
- * Function to keep the key server-side and add per-org rate limiting.
+ * Pre-Sprint-S behavior (direct fetch with VITE_ANTHROPIC_API_KEY) has been
+ * removed — that key was being shipped to every browser. Rotate it after
+ * deploy: https://console.anthropic.com/settings/keys
+ *
  * See .claude/AI_PRODUCT.md for model selection guidelines and cost targets.
  */
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+import { supabase } from '@/services/supabase';
 
 export const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
-interface AnthropicErrorBody {
-  error?: { message?: string };
-}
-
-interface AnthropicSuccessBody {
-  content: Array<{ type: string; text: string }>;
+interface ProxyResponseBody {
+  content?: Array<{ type: string; text: string }>;
+  error?: string;
 }
 
 /**
- * Send a single-turn prompt to Claude and return the text response.
+ * Send a single-turn prompt to Claude (via the proxy-claude Edge Function)
+ * and return the text response.
  *
- * @param prompt  The user message.
- * @param model   Model ID — defaults to claude-haiku-4-5-20251001 (fast, ~$0.001/req).
- * @returns       The assistant's text response.
- * @throws        Error on missing API key, network failure, or non-2xx response.
+ * @param prompt    The user message.
+ * @param model     Model ID — defaults to claude-haiku-4-5-20251001.
+ * @param maxTokens Max output tokens. Capped at 8192 by the proxy.
+ * @returns         The assistant's text response.
+ * @throws          Error on auth failure, rate limit, or upstream failure.
  */
 export async function callClaude(
   prompt: string,
   model: string = DEFAULT_MODEL,
   maxTokens: number = 1024
 ): Promise<string> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-
-  if (!apiKey) {
-    throw new Error(
-      'VITE_ANTHROPIC_API_KEY is not set. Add it to your .env.local file to enable AI features.'
-    );
-  }
-
-  const response = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      // Required for direct browser access — see Anthropic CORS docs
-      'anthropic-dangerous-direct-browser-access': 'true',
-      'content-type': 'application/json',
+  const { data, error } = await supabase.functions.invoke<ProxyResponseBody>(
+    'proxy-claude',
+    {
+      body: { prompt, model, max_tokens: maxTokens },
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
+  );
 
-  if (!response.ok) {
-    let message = `Anthropic API error ${response.status}`;
-    try {
-      const body = (await response.json()) as AnthropicErrorBody;
-      if (body.error?.message) message = body.error.message;
-    } catch {
-      // ignore JSON parse failure — use status code message
+  if (error) {
+    // FunctionsHttpError carries an upstream response body — try to surface it.
+    let message = error.message || 'AI request failed';
+    const ctx = (error as unknown as { context?: Response }).context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const body = (await ctx.json()) as ProxyResponseBody;
+        if (body?.error) message = body.error;
+      } catch {
+        /* ignore */
+      }
     }
     throw new Error(message);
   }
 
-  const data = (await response.json()) as AnthropicSuccessBody;
-  const textBlock = data.content.find((b) => b.type === 'text');
+  if (!data?.content) {
+    throw new Error('No content in proxy response');
+  }
 
+  const textBlock = data.content.find((b) => b.type === 'text');
   if (!textBlock) {
     throw new Error('No text content in Claude response');
   }
-
   return textBlock.text;
+}
+
+/**
+ * Sprint S: lightweight feature-flag helper. The proxy needs an authenticated
+ * Supabase session, so AI features should hide when no user is signed in.
+ * Replaces the prior `import.meta.env.VITE_ANTHROPIC_API_KEY` truthy checks
+ * scattered across services.
+ */
+export async function isAIAvailable(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return Boolean(data.session);
 }
 
 // ── AI Wizard: Task Generation ────────────────────────────────────────────────
@@ -98,9 +99,6 @@ export async function generateTasksFromDescription(opts: {
   scopeSize: string | null;
   propertyType: string | null;
 }): Promise<AIGeneratedTask[] | null> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-  if (!apiKey) return null;
-
   const prompt = `You are an experienced landscaping project estimator. Given a project description, generate a detailed task breakdown.
 
 Project description: "${opts.description}"
@@ -122,7 +120,7 @@ Rules:
 - Always return valid JSON array with no markdown fencing`;
 
   try {
-    const raw = await callClaude(prompt, 'claude-haiku-4-5-20251001');
+    const raw = await callClaude(prompt, DEFAULT_MODEL);
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     return JSON.parse(cleaned) as AIGeneratedTask[];
   } catch {
@@ -149,9 +147,6 @@ export async function inferSiteConditions(opts: {
   lng: number;
   existingConditions?: string;
 }): Promise<AISiteInference | null> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-  if (!apiKey) return null;
-
   const prompt = `You are a landscaping site analyst. Given a project address and coordinates, infer likely site conditions.
 
 Address: "${opts.address}"
@@ -176,11 +171,10 @@ Rules:
 - Always return valid JSON with no markdown fencing`;
 
   try {
-    const raw = await callClaude(prompt, 'claude-haiku-4-5-20251001');
+    const raw = await callClaude(prompt, DEFAULT_MODEL);
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     return JSON.parse(cleaned) as AISiteInference;
   } catch {
     return null;
   }
 }
-
