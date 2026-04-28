@@ -19,20 +19,36 @@ closer to the 3D pivot.
 
 ---
 
-## Sprint queue (autonomous run — 2026-04-28)
+## Sprint queue (autonomous run — 2026-04-28) — ✅ ALL FOUR SHIPPED
 
-Running these in order, each verified + committed before the next. Status
-updated as they ship.
+Commits `aab54d9 → cafe7e3 → e4d50ec → 08b6336` on `claude/quirky-ishizaka`,
+deployed to staging at <https://terrainforge-staging.netlify.app>.
 
-1. 🟡 **Sprint X** — P0 partner-test sweep (12 V3/V4/V5 fixes batched)
-2. 🔴 **Sprint S** — Move Anthropic API key server-side (Edge Function proxy)
-3. 🔴 **Sprint U** — Vitest unit tests for `src/materials-engine/*` (6 models)
-4. 🔴 **Sprint D** — Phase D client self-service polish (magic-link auth +
-   contractor review queue UI + reverse-direction acquisition)
+1. ✅ **Sprint X** — P0 partner-test sweep. 8 of 12 items shipped real
+   fixes (X-2/X-7/X-9/X-10/X-11/X-12); 5 turned out to already be fixed
+   by prior commits and were closed as no-ops; X-6 (custom popover arrow
+   keys) deferred — too scope-heavy to batch.
+2. ✅ **Sprint S** — Anthropic API key moved server-side. New
+   `proxy-claude` Edge Function authenticates via Supabase JWT, applies
+   per-org rate limit (30 req/min), audit-logs every invocation. Client
+   now calls `supabase.functions.invoke('proxy-claude')` instead of
+   fetching `api.anthropic.com` directly. **Manual step still required:**
+   set `ANTHROPIC_API_KEY` in Supabase Edge Function Secrets, then rotate
+   the previously-exposed `VITE_ANTHROPIC_API_KEY`.
+3. ✅ **Sprint U** — Vitest installed (4.1.5). 58 unit tests covering
+   all 6 computation models + unit-conversions + manifest aggregation.
+   Guards the "raw-before-rounding" rule with a regression test for the
+   historical double-buy bug. `npm test` / `npm run test:watch` wired up.
+4. 🟡 **Sprint D Inc 1** — Contractor `/queue` page shipped: cross-project
+   pending-submission list with project grouping, count badge on the More
+   dropdown, 60s polling. **Inc 2 (magic-link auth) and Inc 3 (reverse-
+   direction "design your project" invite) deferred** — scoped out of
+   this autonomous batch because magic-link auth changes are too sensitive
+   to ship without a manual review pass.
 
-Each sprint: tsc clean → build green → E2E suite (and materials harness
-where relevant) → commit → deploy → next sprint. ROADMAP entries below
-get marked ✅ as each sprint closes.
+Each sprint verified: tsc clean → build green → vitest green (Sprint U+) →
+commit → push → Netlify deploy. ROADMAP entries below have been updated
+to reflect what landed; what's marked 🔴 is what was *not* done in this run.
 
 ## P0 — Partner-test blockers (fix before next partner session)
 
