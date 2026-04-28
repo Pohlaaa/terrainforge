@@ -19,6 +19,21 @@ closer to the 3D pivot.
 
 ---
 
+## Sprint queue (autonomous run — 2026-04-28)
+
+Running these in order, each verified + committed before the next. Status
+updated as they ship.
+
+1. 🟡 **Sprint X** — P0 partner-test sweep (12 V3/V4/V5 fixes batched)
+2. 🔴 **Sprint S** — Move Anthropic API key server-side (Edge Function proxy)
+3. 🔴 **Sprint U** — Vitest unit tests for `src/materials-engine/*` (6 models)
+4. 🔴 **Sprint D** — Phase D client self-service polish (magic-link auth +
+   contractor review queue UI + reverse-direction acquisition)
+
+Each sprint: tsc clean → build green → E2E suite (and materials harness
+where relevant) → commit → deploy → next sprint. ROADMAP entries below
+get marked ✅ as each sprint closes.
+
 ## P0 — Partner-test blockers (fix before next partner session)
 
 These are actively breaking Charlie's partner's ability to use the app.
