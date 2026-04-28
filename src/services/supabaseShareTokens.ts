@@ -387,6 +387,74 @@ export async function fetchDesignVersionsForProject(
 }
 
 /**
+ * Sprint D Inc 1. Aggregates pending client_design submissions across all
+ * org projects, sorted newest first. Powers the contractor's `/queue` page
+ * so they don't have to click into each project to find what needs review.
+ *
+ * "Pending" = role='client_design' AND client_changes_submitted_at IS NOT NULL
+ * AND revoked_at IS NULL. Once the contractor clicks Accept (which revokes
+ * the token), the row drops out of the queue.
+ */
+export interface PendingDesignSubmission {
+  tokenId: string;
+  token: string;
+  projectId: string;
+  projectName: string;
+  clientName: string | null;
+  clientChangesSubmittedAt: string;
+  clientChangesNote: string | null;
+}
+
+export async function fetchPendingDesignSubmissions(
+  orgId: string,
+): Promise<PendingDesignSubmission[]> {
+  // Inner-join projects so we can show the contractor what they're looking at
+  // without a second round-trip per row.
+  const { data, error } = await supabase
+    .from('project_share_tokens')
+    .select(
+      `id,
+       token,
+       project_id,
+       client_changes_submitted_at,
+       client_changes_note,
+       projects:project_id (name, client_name)`,
+    )
+    .eq('org_id', orgId)
+    .eq('role', 'client_design')
+    .is('revoked_at', null)
+    .not('client_changes_submitted_at', 'is', null)
+    .order('client_changes_submitted_at', { ascending: false })
+
+  if (error) {
+    console.error('fetchPendingDesignSubmissions error:', error)
+    return []
+  }
+
+  return (data ?? []).map((row) => {
+    // Supabase typings for embedded selects vary; coerce defensively.
+    const r = row as unknown as {
+      id: string;
+      token: string;
+      project_id: string;
+      client_changes_submitted_at: string;
+      client_changes_note: string | null;
+      projects: { name: string; client_name: string | null } | { name: string; client_name: string | null }[] | null;
+    };
+    const proj = Array.isArray(r.projects) ? r.projects[0] : r.projects;
+    return {
+      tokenId: r.id,
+      token: r.token,
+      projectId: r.project_id,
+      projectName: proj?.name ?? 'Untitled project',
+      clientName: proj?.client_name ?? null,
+      clientChangesSubmittedAt: r.client_changes_submitted_at,
+      clientChangesNote: r.client_changes_note,
+    };
+  });
+}
+
+/**
  * Phase C v0. Records that the client clicked "Submit design changes".
  * Stamps `client_changes_submitted_at = now()` and stores the optional
  * note. The contractor's OverviewTab surfaces both fields in the share-

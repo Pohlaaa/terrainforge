@@ -21,6 +21,7 @@ export const primaryTabs: NavTab[] = [
 
 /** Secondary pages — shown in "More" dropdown */
 export const secondaryPages: NavSecondary[] = [
+  { path: '/queue', label: 'Review Queue', icon: 'check-square' },
   { path: '/work-orders', label: 'Work Orders', icon: 'check-square' },
   { path: '/price-research', label: 'Price Research', icon: 'search' },
   { path: '/settings', label: 'Settings', icon: 'settings' },

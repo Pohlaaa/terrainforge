@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavIcon } from '@/components/layout/NavIcon';
 import { primaryTabs, secondaryPages, isActiveTab, isSecondaryPage } from '@/components/layout/navConfig';
+import { usePendingDesignCount } from '@/hooks/usePendingDesignCount';
 
 interface TopNavProps {
   onMobileMenuToggle?: () => void;
@@ -71,6 +72,9 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
 
   const userInitial = user?.email ? user.email[0].toUpperCase() : '?';
   const moreIsActive = isSecondaryPage(location.pathname);
+  // Sprint D: surface pending client_design submissions on the More dropdown
+  // so contractors notice the queue without having to remember it.
+  const pendingDesignCount = usePendingDesignCount();
 
   return (
     <header
@@ -177,6 +181,21 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
               }}
             >
               More
+              {pendingDesignCount > 0 && (
+                <span
+                  className="ml-1 inline-flex items-center justify-center text-[10px] font-bold leading-none rounded-full"
+                  style={{
+                    minWidth: '16px',
+                    height: '16px',
+                    padding: '0 4px',
+                    backgroundColor: 'var(--status-green, #22c55e)',
+                    color: '#fff',
+                  }}
+                  aria-label={`${pendingDesignCount} pending design submissions`}
+                >
+                  {pendingDesignCount > 9 ? '9+' : pendingDesignCount}
+                </span>
+              )}
               <NavIcon name="chevron-down" size={14} />
             </button>
 
@@ -192,6 +211,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
               >
                 {secondaryPages.map((page) => {
                   const active = location.pathname === page.path;
+                  const showQueueBadge = page.path === '/queue' && pendingDesignCount > 0;
                   return (
                     <button
                       key={page.path}
@@ -208,7 +228,21 @@ export const TopNav: React.FC<TopNavProps> = ({ onMobileMenuToggle }) => {
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       <NavIcon name={page.icon} size={16} />
-                      {page.label}
+                      <span className="flex-1">{page.label}</span>
+                      {showQueueBadge && (
+                        <span
+                          className="inline-flex items-center justify-center text-[10px] font-bold leading-none rounded-full"
+                          style={{
+                            minWidth: '16px',
+                            height: '16px',
+                            padding: '0 4px',
+                            backgroundColor: 'var(--status-green, #22c55e)',
+                            color: '#fff',
+                          }}
+                        >
+                          {pendingDesignCount > 9 ? '9+' : pendingDesignCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

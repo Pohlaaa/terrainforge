@@ -21,6 +21,7 @@ const WorkOrders = React.lazy(() => import('@/pages/WorkOrders'))
 const PriceResearch = React.lazy(() => import('@/pages/PriceResearch'))
 const Billing = React.lazy(() => import('@/pages/Billing'))
 const Settings = React.lazy(() => import('@/pages/Settings'))
+const ReviewQueue = React.lazy(() => import('@/pages/ReviewQueue'))
 const Debug = import.meta.env.DEV
   ? React.lazy(() => import('@/pages/Debug'))
   : () => null;
@@ -221,6 +222,13 @@ function App() {
                       <ErrorBoundary>
                         <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
                           <Settings />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/queue" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
+                          <ReviewQueue />
                         </React.Suspense>
                       </ErrorBoundary>
                     } />
