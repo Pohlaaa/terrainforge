@@ -297,6 +297,199 @@ elements visible on the lawn area until the contractor positions them.
 
 ---
 
+## P4 — Next sprints (overnight-runnable)
+
+Three discrete, well-scoped sprints that I (Claude) can run autonomously
+overnight against the staging deployment. Each is self-verifying — no
+human eyes in the loop required to know whether it landed correctly.
+Logged here after Phase C v0 + polish wrapped (commits `5ccec06` →
+`8fa113a`). Pick one and assign explicitly; do not run multiple in
+parallel — they touch overlapping files (PlanView3D, OverviewTab,
+aiRecommendations).
+
+### 🆕 Sprint M — Materials engine accuracy harness
+
+**Brief**: Build a synthetic test harness that runs ~30 scenarios (10
+element types × 3 dimension variations) through `inferMaterialsForElement`,
+scores Claude's quantity outputs against industry-standard expectations
+(F-PHB-02 sod-base / F-PHB-06 sqft-clamp etc. flag false positives), and
+generates a calibration scorecard. Iterate the prompt + validators until
+the scorecard passes a configurable threshold (default ≥ 80% accuracy
+per scenario).
+
+**Why this is overnight-runnable**: tight inner loop. Run harness → see
+deltas → tweak prompt → re-run. Costs ~$0.50 per full pass × 20–30
+iterations = ~$10–15 of API budget.
+
+**Deliverables**:
+- `src/services/aiRecommendations.harness.ts` — pure scorer module
+- `e2e-or-script/materials-accuracy.ts` — runs N scenarios, writes
+  scorecard JSON to `.claude/TESTING/materials-scorecard-<date>.json`
+  + a markdown summary to `.claude/TESTING/MATERIALS_ACCURACY.md`
+- Prompt iterations to `aiRecommendations.ts` (negative examples,
+  sharper formula directives, unit-vocab clarifications)
+- Validator hardening — extend the F-PHB-06 sqft clamp to other units
+  (lnft on linear elements, cuyd on bulk materials, etc.)
+- npm script `npm run materials:score` to re-run on demand
+
+**Self-verifying**: scorecard score is the success metric. Snapshot
+the scenarios + expected outputs; harness diff fails if accuracy
+regresses.
+
+**Risks**:
+- Anthropic API flakiness (rate limits / transient 5xx) — handle with
+  exponential backoff + per-scenario retry
+- Scenario expected-output authorship is opinionated; document
+  explicitly in `MATERIALS_ACCURACY.md` so reviewers can argue with
+  the harness, not the score
+
+**Critical files**:
+- `src/services/aiRecommendations.ts` — `inferMaterialsForElement`,
+  `validatePerElementMaterials`, `relevantCategoriesForType`
+- `src/types/index.ts` — `AIMaterialRecommendation`,
+  `ElementMaterialInferenceContext`
+- `.claude/TESTING/FINDINGS.md` — F-PHB-01/02/06 (existing observed bugs)
+
+---
+
+### 🆕 Sprint P — Performance pass (bundle + first paint)
+
+**Brief**: Build flags 2.6 MB `index.js` + 1.7 MB `mapbox-gl` chunk +
+893 KB `PlanView3D` chunk. Audit and code-split: lazy-load three.js /
+mapbox-gl until the canvas mounts, move Settings/Billing/MaterialLibrary
+into their own chunks, audit images for next-gen formats, evaluate CSS
+for unused selectors. Target: 50% smaller initial JS, sub-1s first
+paint on simulated 4G.
+
+**Why this matters**: contractors load this on phones in the field.
+Today's first-paint on a cold cache is in the 3–5s range on a fast
+connection; field LTE is 2–5× slower. Every 100 KB shaved off the
+initial bundle is real time off the contractor's day.
+
+**Deliverables**:
+- `vite.config.ts` `manualChunks` strategy for the heavy libs
+- `React.lazy` + `<Suspense>` boundaries for Settings, Billing,
+  MaterialLibrary, PriceResearch, WorkOrders, CrewDashboard, CrewJobDetail
+- Defer `PlanView3D` import behind a "load 3D" intent (e.g. only
+  import when the 3D toggle is clicked the first time, not on
+  OverviewTab mount)
+- Defer Mapbox import similarly — currently it loads even when no
+  satellite backdrop renders
+- Audit `dist/` chunks and document expected sizes in
+  `.claude/TESTING/PERF_BUDGET.md`
+- Add `npm run analyze` (Rollup visualizer or similar) for ongoing
+  monitoring
+
+**Self-verifying**:
+- `npm run build` chunk sizes (read from stdout, assert against
+  budgets in `PERF_BUDGET.md`)
+- Lighthouse via Chrome MCP on staging deploy — assert performance
+  score ≥ 75 on mobile-emulated cold load
+- Existing E2E walkthrough (Sprint E once shipped) catches functional
+  regressions from any dynamic-import shuffle
+
+**Risks**:
+- Dynamic imports break circular dependencies; if Vite catches them
+  the dev server fails fast but prod-build can hide them. Run a full
+  walkthrough (manual or automated) before landing.
+- Lazy-loaded routes need a Suspense fallback that's not jarring;
+  match the existing dark green panel.
+
+**Critical files**:
+- `vite.config.ts` — chunking config
+- `src/App.tsx` — Route declarations + existing `React.lazy` pattern
+  (already used for SharedProjectView, Landing, etc.)
+- `src/components/project-dashboard/OverviewTab.tsx` — Mapbox /
+  PlanView3D import sites
+- `src/components/plan/PlanView2D.tsx` + `PlanView3D.tsx` — Mapbox
+  TextureLoader call sites
+
+---
+
+### 🆕 Sprint V — 3D primitives + texture maps (visual fidelity)
+
+**Brief**: Replace remaining generic box extrusions in PlanView3D with
+type-specific primitives. Wire the migration 030 texture-URL columns
+to actually load albedo maps for paver / sod / mulch / gravel /
+concrete via the existing `BoxMaterial`. Tighten camera framing
+defaults so the elements + house both fit in view on first paint.
+
+**Why this matters**: visual scaffolding is the wizard's whole pitch
+("AI suggestions become falsifiable when rendered on the contractor's
+real property"). Each new primitive makes AI suggestions more legible
+and trust-building. Texture maps push the demo from "abstract gray
+blocks" to "this looks like the actual job."
+
+**Deliverables**:
+- New primitives in `PlanView3D.tsx` `ElementPrimitive`:
+  - `wall` / `retaining_wall`: stacked-block visual (3-4 cylinder
+    layers or BoxGeometry rows)
+  - `fence`: posts every 6–8 ft + horizontal rails (per panel
+    geometry)
+  - `pergola`: 4 corner posts + crossbeam roof grid
+  - `steps_stairs`: multi-step extrusion (one box per step at
+    incrementing Y)
+  - `garden_bed`: low edging frame + soil fill (slightly recessed
+    interior box)
+  - `outdoor_kitchen`: counter + appliance silhouettes
+- Texture pipeline:
+  - Seed catalogue: 5 high-quality CC0 textures hosted on Supabase
+    Storage (paver, concrete, sod, mulch, gravel) — 1024×1024 JPG,
+    seamless tile
+  - Update `MaterialLibrary` seed-catalogue migration to populate
+    `texture_albedo_url` for default materials
+  - Verify `BoxMaterial` SRGB + RepeatWrapping renders correctly on
+    new primitives that use BoxGeometry
+- Camera framing helper: compute the bounding box of `elements +
+  property satellite footprint`, set initial camera distance + lookAt
+  so both fit comfortably (~1.4× span). Replace the current "snap to
+  element bbox" default that ignores the property.
+- Visual regression: snapshot Chrome MCP screenshots of the Thompson
+  test project before/after, save to
+  `.claude/TESTING/3D_VISUAL_REGRESSION.md`
+
+**Self-verifying**:
+- Build doesn't crash + tsc clean (functional)
+- Each primitive's render path has a named export so a unit test can
+  smoke-render it via react-test-renderer (no full WebGL needed)
+- Chrome MCP screenshots before + after side-by-side; visual sanity
+  check — primitives render distinct from boxes, textures load
+  without obvious artifacts (stretched, pixelated, wrong-color)
+
+**Risks** (highest of the three):
+- three.js / r3f rabbit-hole potential — multi-mesh group ordering,
+  shadow-casting on complex geometry, texture loading async failure
+  states. Set hard 2-hour cutoff per primitive; revert any that
+  exceed
+- Texture asset hosting: Supabase Storage works but bandwidth costs
+  scale. Document expected MB/material in PERF_BUDGET.md
+- Seamless-tile texture authoring is a craft skill; CC0 sources from
+  ambientCG / cc0textures.com are the safe path. Don't generate
+  textures in this sprint
+
+**Critical files**:
+- `src/components/plan/PlanView3D.tsx` — `ElementPrimitive`,
+  `BoxMaterial`, `TexturedBoxMaterial`
+- `src/lib/planLayout.ts` — `elementHeightFt`, `elementMaterial`,
+  `elementColor` (color fallback for primitives without textures)
+- `supabase/migrations/030_material_textures.sql` — schema for
+  texture URLs
+- `src/components/library/MaterialFormModal.tsx` — texture URL inputs
+  (already wired)
+
+---
+
+### Coordination notes
+
+- Each sprint is self-contained. Pick exactly one per overnight run.
+- All three benefit from Sprint E (E2E walkthrough automation, currently
+  in flight) being complete first — Sprint E becomes the regression
+  gate that catches functional breakage in any of these sprints.
+- After each sprint completes, archive its plan section here ("Done
+  recently") and let me know whether to start the next.
+
+---
+
 ## Done recently (last 2 weeks)
 
 - ✅ Contractor-walkthrough verification (Apr 24): full fresh-contractor persona walked through wizard → share link → email proposal. 10 findings logged (F-CW-01..10), 9 shipped + 1 false positive. 2 emergent email-side bugs found + fixed during live verification (F-CW-EMAIL-01 operator typo, F-CW-EMAIL-02 wrong projects column). Commits `c219d80`, `4c6bd84`, `e4e5c06`, `8c6d5b4`.

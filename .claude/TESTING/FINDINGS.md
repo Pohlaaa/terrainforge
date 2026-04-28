@@ -1717,3 +1717,78 @@ prompt strengthening.
 | F-PHC-07 | C | TransformControls in PlanView3D now keyed on `tc-{selectedId}-{x}-{z}-{rot}-{w}-{d}` so a fresh remount happens when the selected element's resolved geometry changes (e.g. external Phase C client edit lands while contractor has the same element selected). |
 
 **13/13 cleanup findings closed.**
+
+---
+
+# Sprint E — E2E walkthrough automation (2026-04-28)
+
+**Goal**: Build a single-command Playwright regression gate for the
+3D-in-Wizard / Phase A-C / cleanup arc, runnable as `npm run e2e`,
+covering the contractor flow end-to-end with assertions at every
+checkpoint. Designed as the regression gate that future overnight
+sprints (M / P / V from ROADMAP.md) can lean on.
+
+## Result
+
+✅ **6/6 tests green, 28s total runtime, stable across 2 consecutive runs.**
+
+```
+[setup]                  authenticate as contractor                   3s
+[rpc-negative]           4 RPC reject-path tests                      ~1s combined
+[contractor-walkthrough] 21-checkpoint full flow                      22s
+                                                                    ─────
+                                                                     28s
+```
+
+## Files added
+
+- `playwright.config.ts` — 3 projects (setup / negative / walkthrough)
+- `e2e/auth.setup.ts` — sign-in once, persist storage state
+- `e2e/helpers.ts` — selectors, waiters, env validation, unique-name
+  generator, `waitForStep2AICalls`, `waitForPerElementMaterialCall`
+- `e2e/walkthrough.spec.ts` — full flow with 21 documented checkpoints
+- `e2e/rpc-negative.spec.ts` — direct REST tests for the Phase C v0
+  SECURITY DEFINER RPCs
+- `.env.e2e.example` — env template
+- `.gitignore` — added `.env.e2e`, `e2e/.auth/`, `playwright-report/`,
+  `test-results/`, `playwright/.cache/`
+- `package.json` — 6 e2e scripts (`e2e`, `e2e:headed`, `e2e:debug`,
+  `e2e:walkthrough`, `e2e:rpc`, `e2e:install`)
+- `.claude/TESTING/E2E.md` — operator docs (setup, run modes, cost,
+  CI snippet, failure triage, maintenance)
+
+## Findings surfaced + fixed during the build-out
+
+None caught a real product regression — all four iteration cycles
+were spec-side fixes (selectors that turned out to be stale or too
+greedy). Logged here for the future-Claude reading the spec:
+
+- **F-E2E-01** Wizard Type select isn't `htmlFor`-linked, so
+  `getByLabel('Type')` doesn't find it. Fix: scope to the `<aside>`
+  via `getByRole('complementary')` and pick its single `combobox`.
+- **F-E2E-02** Project Elements section has the count in parens
+  ("Project Elements (2)") which collides with the "Top-down plan
+  from your project elements." copy in the same view in strict
+  mode. Fix: regex on `/Project Elements \(\d+\)/i`.
+- **F-E2E-03** Button accessible names come from visible text, NOT
+  the `title` attribute. The "✎ Design link" button has a longer
+  tooltip via `title` — `getByRole('button', { name: /Editable
+  link/ })` fails. Fix: match by visible text "/Design link/i".
+- **F-E2E-04** After project Delete, the route briefly hits a 404
+  before settling — `waitForURL(/\/projects$/)` times out. Fix:
+  navigate to `/projects` ourselves and assert the project name no
+  longer appears in the list.
+- **F-E2E-05** Toggle buttons render lowercase `'2d'`/`'3d'` text
+  with CSS `text-transform: uppercase`. Playwright's accessible-name
+  match is case-sensitive without normalization. Fix: regex
+  `/^2d$/i`.
+- **F-E2E-06** ESM gotcha: `__dirname` doesn't exist in
+  `"type": "module"` packages. Fix: derive via
+  `fileURLToPath(import.meta.url)`.
+
+## Cost + cadence
+
+- ~$0.50 of Anthropic budget per full run
+- 1 staging-DB test project per run, deleted on teardown
+- Recommended cadence: pre-merge gate locally, daily check on CI,
+  manual `npm run e2e:headed` before each Sprint M/P/V starts

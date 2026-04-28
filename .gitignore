@@ -33,3 +33,10 @@ $null
 
 # Local Netlify folder
 .netlify
+
+# E2E (Playwright) — never commit auth state, env secrets, or test artefacts
+.env.e2e
+e2e/.auth/
+playwright-report/
+test-results/
+playwright/.cache/
