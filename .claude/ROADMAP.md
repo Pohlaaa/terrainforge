@@ -126,12 +126,17 @@ Single migration adds the column; wizard step gets a shape picker that writes th
 geometry blob; engine reads both `length_ft × width_ft` (rectangular fallback) and
 `geometry.area` (computed from the blob).
 
-### 🔴 Materials engine accuracy *(V4)*
+### 🟡 Materials engine accuracy *(V4)* — mostly closed by Sprint M
 > "Some pricing on materials still isn't dialed in yet but that will change once
-the materials engine is completed." Ongoing. Review engine against a known
-project manually — use a real material catalog (STARTER_CATALOG) and verify the 6
-computation models produce contractor-expected quantities. Write vitest suite
-alongside (currently zero tests).
+the materials engine is completed." Sprint M (commit 7cba8cf) shipped a
+30-scenario harness scoring `inferMaterialsForElement` against expected
+categories + quantity ranges. **87.0% mean / 0 forbidden hits** — both
+threshold goals met. Two real production prompt bugs caught + fixed
+(category-label drift, mulch quantity 6.6× over-spec). Run via
+`npm run materials:score` (~3 min, ~$0.45). Remaining gap: `vitest` unit
+tests for the pure compute models in `src/materials-engine/*` — those are
+deterministic so they're a different surface from the AI harness. See P2
+"Vitest + test suite for materials-engine".
 
 ### 🔴 Wire the `manifests` table
 Snapshots feature scaffolded by mig 026 but no code writes to it. Add a hook on
@@ -159,9 +164,13 @@ Zero tests currently. Engine functions are pure — highest ROI for unit tests.
 Install vitest, add `src/materials-engine/*.test.ts`, cover all 6 computation models.
 Also cover `src/lib/manifest.ts` adapters.
 
-### 🔴 Bundle splitting
-`index.js` is 2.65 MB. `React.lazy` the "More" dropdown pages: MaterialLibrary,
-PriceResearch, Billing, Settings, WorkOrders. Expect ~400 kB drop to initial bundle.
+### ✅ Bundle splitting (closed by Sprint P, commit d751bd8)
+~~`index.js` is 2.65 MB. `React.lazy` the "More" dropdown pages.~~
+**Done**: Sprint P shipped `manualChunks` (vendor-react, vendor-supabase,
+vendor-stripe, vendor-pdf) + `React.lazy` for MaterialLibrary,
+PriceResearch, Billing, Settings, WorkOrders, Onboarding. Eager bundle
+2,681 KB → 519 KB; total eager 876 KB. Gzip 830 KB → 252 KB. Per-chunk
+budgets in `.claude/TESTING/PERF_BUDGET.md`.
 
 ### 🔴 Centralize localStorage keys
 21 scattered `tf-*` localStorage reads across 10+ files. Move all into `uiStore` +
