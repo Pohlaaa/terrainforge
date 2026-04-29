@@ -2,24 +2,72 @@
 
 > **Purpose**: The north star for all development. Every code session reads this file. Every decision about where data lives, how it flows, and how pages consume it is answered here.
 > **Created**: 2026-04-03 (data layer refactor)
-> **Updated**: 2026-04-28 (3D-in-Wizard, Sprint X/S/U/D run, curved shapes, manifests wiring, /queue page, proxy-claude Edge Function)
+> **Updated**: 2026-04-29 (batches 15-26: zundo undo/redo, polygon shapes via mig 034, polygon vertex-edit + click-to-draw redraw, Cmd-K quick-switcher, recently-used material chips, element copy/paste, lifecycle confirms, dimension presets, override hints, manifest PDF export)
 > **Owner**: Charlie + Cowork
 
 ---
 
-## TL;DR of post-2026-04-28 state
+## TL;DR of post-2026-04-29 state
 
-- **Wizard**: 5 steps now (3D-in-Wizard pivot). Step 1 = Job → Step 2 = Measurements + 3D canvas → Step 3 = Plan/Crew → Step 4 = Numbers → Step 5 = Review. The old "Step 4 Materials" got folded into Step 2 (per-element material picker on the canvas) + a Step 3 review panel.
-- **Measurements are king**: `project_elements` (24 types, dimensions, **shape + radius** as of mig 033) + `project_element_materials` (junction with computation + spacing + manual_count + wall_length/height + waste overrides). The override UI is now wired (MaterialPicker `Adjust` panel).
-- **Curved shapes (mig 033)**: shape='circle' uses π × r² for area, 2πr for circumference. Renders as cylinder in 3D, circle in 2D, circle in ElementVisual.
-- **Manifest engine**: `src/materials-engine/` — 6 computation models (AREA_COVERAGE | UNIT_COVERAGE | LINEAR | POINT_SPACING | LINEAR_DEPTH | SUBSTRATE). 58 vitest tests as of Sprint U. **Snapshots fire on `approved → scheduled`** transition (Batch 1) — versioned rows in `manifests` table; OverviewTab has a history expander.
-- **AI is server-side (Sprint S)**: every Claude call goes through the `proxy-claude` Edge Function (auth via Supabase JWT, 30 req/min per-org rate limit, audit-logged). The browser never sees the API key. Operator must set `ANTHROPIC_API_KEY` secret on Supabase for AI to work.
-- **Lifecycle**: 7-state status enum `estimate → quoted → approved → scheduled → in_progress → completed (+ on_hold)`.
-- **Share-link surface (Phase A/B/C v0)**: `/share/:token` viewer with role discriminator `client_view | client_approve | client_design`. Phase D Inc 1 added contractor `/queue` page for cross-project pending submissions; Inc 3 added "design invite" email mode (still uses send-proposal-email Edge Function with mode=design_invite).
-- **RLS**: as of mig 027 every `auth.*()` call wraps in `(select auth.*())`. New policies MUST follow this pattern. Mig 028+ added share-token-scoped anon policies on projects/elements/materials/share_tokens.
-- **Edge Functions** (7 deployed): `proxy-claude` (Sprint S), `send-proposal-email` (proposal + design_invite modes), `notify-client-response`, `search-local-suppliers`, `create-checkout-session`, `create-portal-session`, `stripe-webhook` (refactored to handlers.ts for unit testing in P0).
-- **Testing (A-level)**: 88 vitest unit tests; Playwright walkthrough + rpc-negative + materials-accuracy harness. CI workflows (`pr-checks`, `nightly`, `pre-deploy`) added in P0 — warn-only by default. See `.claude/TESTING/PLAN.md` for the strategy doc.
-- **Pages to NOT touch**: Schedule, CrewManager, EquipmentManager no longer exist — their UI lives in CrewEquipmentHub + project-dashboard tabs.
+### Wizard / measurement layer
+- **5-step wizard** (3D-in-Wizard pivot): Job → Measurements + 3D canvas → Plan/Crew → Numbers → Review.
+- **Measurements are king**: `project_elements` (24 types, dimensions, **shape + radius** mig 033, **+ polygon** mig 034) + `project_element_materials` (junction with computation + spacing + manual_count + wall_length/height + waste overrides). MaterialPicker exposes the override panel as **Adjust** with category-aware hints (typical 5-10% paver waste, 24-36" shrub spacing, etc.).
+- **Three shape kinds (mig 033/034)**:
+  - `rectangle` (default) — `length_ft × width_ft`
+  - `circle` (mig 033) — π × radius² area, 2πr circumference, renders as cylinder in 3D
+  - `polygon` (mig 034) — Shoelace area + segment-sum perimeter, renders via `THREE.Shape` + `ExtrudeGeometry` in 3D
+- **Polygon UI surface**:
+  - Shape pill row (Rectangle / Circle / Polygon) in the wizard sidebar
+  - Polygon presets (L-shape, octagon, kidney bean, trapezoidal flare) via element-type-keyed `ELEMENT_PRESETS`
+  - Vertex textarea (`x,y` per line, live area + perimeter readout)
+  - Vertex drag handles in PlanView2D when editable
+  - Right-click vertex to remove (when 4+ remain)
+  - "Redraw on canvas" button enters click-to-draw mode (canvas overlay, Esc cancel, Enter / Done commit)
+- **Element dimension presets** (`ELEMENT_PRESETS` in `src/lib/elements.ts`): one-click defaults for 17 element types (12×12 patio, 4×40 walkway, 3-ft fire pit, etc.).
+- **Element copy/paste**: Cmd-D duplicates the selected element with +(4,4) ft offset. Cmd-C / Cmd-V via clipboard ref. Skipped inside text inputs so native browser copy still works.
+
+### Engine / data
+- **Manifest engine** (`src/materials-engine/`): 6 computation models (AREA_COVERAGE | UNIT_COVERAGE | LINEAR | POINT_SPACING | LINEAR_DEPTH | SUBSTRATE). 100 vitest tests covering engine + Stripe handlers + supabaseManifests + unit-conversions including polygon Shoelace + perimeter.
+- **Manifest snapshots**: fire automatically on `approved → scheduled` status transition; manual "Snapshot now" button on OverviewTab as well. Each snapshot freezes line items + purchase list + summary as JSONB. PDF export per snapshot via `@react-pdf/renderer` (lazy-loaded chunk).
+- **Manifest detail expander**: each snapshot row in the OverviewTab history opens inline to show purchase list (BOM) + per-element breakdown.
+- **Project lifecycle**: 7-state status enum `estimate → quoted → approved → scheduled → in_progress → completed (+ on_hold)`. **Status pill row** on OverviewTab gives one-click forward progression; backwards moves prompt confirm. Lifecycle timestamps (`approvedAt`, `startedAt`, `completedAt`) auto-stamped on forward moves.
+
+### Undo/redo
+- **`zundo` temporal middleware** wraps `projectStore`, tracking `activeProject` only (list/loading state excluded). 50-step history.
+- Cmd-Z / Cmd-Shift-Z (Ctrl-Z / Ctrl-Y elsewhere) global handler in `AppLayout`. Skipped inside inputs so browser native input-undo still works.
+- Local-only — undo reverts the in-memory `activeProject` instantly but does NOT roll back DB writes. Toasts say "Refresh to reload from server."
+
+### AI
+- **Server-side** (Sprint S): every Claude call goes through `proxy-claude` Edge Function (auth via Supabase JWT, 30 req/min per-org rate limit, audit-logged via `audit_log` action='view' entity_type='proxy-claude'). Browser never sees the API key.
+- **Per-element material inference cache**: keyed by `tempId + elementType` — type changes invalidate, dimension tweaks don't.
+- **Accuracy harness**: 89.6% mean across 30 scenarios as of post-Sprint-X re-baseline. 0 forbidden hits. Run via `npm run materials:score` or nightly CI.
+- **Operator action required**: `ANTHROPIC_API_KEY` secret in Supabase Edge Function Secrets. Falls back to gracefully-degraded null returns when unset.
+
+### Sharing surface (Phase A/B/C v0)
+- `/share/:token` viewer with role discriminator `client_view | client_approve | client_design`. Phase D Inc 1 added contractor **`/queue` page** for cross-project pending design submissions (count badge in TopNav). Inc 3 added **design-invite email mode** (`send-proposal-email` Edge Function takes `mode: 'proposal' | 'design_invite'`, switches subject + body copy).
+
+### Navigation / global UX
+- **Cmd-K / Cmd-P quick-switcher** (`ProjectQuickSwitcher` in `AppLayout`): global modal that searches projects + every primary/secondary page. Arrow keys navigate, Enter opens, Esc closes. Same kbd-nav pattern as MaterialPicker (X-6).
+- **MaterialPicker enhancements**: arrow-key navigation through filtered list (X-6), recently-used chips at top (last 6 materials assigned to OTHER elements on the project), Adjust panel for per-element overrides with category-aware hints, autoFocus on search input.
+- **SuggestionPanel keyboard nav** (X-6): Arrow up/down through pending cards, Enter to accept, Delete to dismiss.
+- **Empty states**: Dashboard project list + others use the shared `EmptyState` component with friendly CTA.
+
+### Schema + RLS
+- **34 migrations applied** (001-034). Mig 027 wrapped every `auth.*()` in `(select auth.*())`. Mig 028+ added share-token-scoped anon policies. Mig 033 added `shape` + `radius_ft`. Mig 034 extended shape CHECK to include `polygon`.
+- New policies MUST wrap auth calls in subselects per mig 027.
+
+### Edge Functions (7 deployed)
+`proxy-claude` (Sprint S), `send-proposal-email` (proposal + design_invite modes), `notify-client-response`, `search-local-suppliers`, `create-checkout-session`, `create-portal-session`, `stripe-webhook` (refactored to handlers.ts for unit testing in P0).
+
+### Testing (A-level)
+- **100 vitest** unit tests (engine + stripe-webhook + supabaseManifests + unit-conversions including polygon Shoelace + perimeter). `npm test` / `npm run test:watch`.
+- **Playwright suite** — 23/23 pass: setup + walkthrough (covers wizard happy path + share-link round-trip + status pills + Cmd-Z + Cmd-K + polygon shape + preset + Redraw mode + queue + accept + delete) + rpc-negative (Phase C v0 RPCs + RLS sweep across strict-deny tables and share-token surfaces).
+- **CI workflows** (warn-only): `pr-checks.yml`, `nightly.yml`, `pre-deploy.yml`. Operator can promote any to required-status.
+- **Perf budget** enforced via `scripts/check-perf-budget.mjs` against `PERF_BUDGET.md` targets.
+
+### What NOT to touch
+- Schedule, CrewManager, EquipmentManager — these no longer exist; their UI lives in CrewEquipmentHub + project-dashboard tabs.
+- React 18 / R3F v8 / drei v9 / three.js 0.162 / Zustand v4 — sticking with current stack until there's a concrete reason (Pascal slab system adoption, etc.). Sprint Z2 stack-upgrade has been scoped + deferred. See `.claude/TESTING/PLAN.md` for the rationale.
 
 ---
 
