@@ -632,6 +632,13 @@ function ElementPrimitive({ b }: { b: ExtrudedBox }) {
 }
 
 // Inner component so useLoader's Suspense can fallback cleanly.
+// F-3D-MESH-01 (2026-04-29): drop ground 0.05 ft below world-zero so
+// element meshes (which sit with bottom at y=0) don't z-fight the
+// satellite at long camera distances. 0.05 ft = 0.6 inch — invisible
+// to the contractor but enough depth-buffer separation at 200+ ft
+// camera ranges where the depth precision tightens.
+const GROUND_Y_OFFSET_FT = -0.05
+
 function SatelliteGround({
   url,
   centerX,
@@ -648,7 +655,11 @@ function SatelliteGround({
   // PBR lighting. Vanilla three defaults to linear which darkens color maps.
   texture.colorSpace = SRGBColorSpace
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, 0, centerZ]} receiveShadow>
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[centerX, GROUND_Y_OFFSET_FT, centerZ]}
+      receiveShadow
+    >
       <planeGeometry args={[size, size]} />
       <meshStandardMaterial map={texture} roughness={0.95} metalness={0} />
     </mesh>
@@ -1023,19 +1034,22 @@ export const PlanView3D: React.FC<Props> = ({
     return backdropFootprintFt(backdrop.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX)
   }, [backdrop])
 
-  // Camera framing (Sprint V): factor in BOTH the element bbox AND the
-  // property footprint so the contractor sees the elements in context.
-  // Pre-Sprint V the camera snapped tight to the element bbox; on a
-  // 30-ft set of elements that meant the 150-ft satellite was almost
-  // entirely off-screen.
+  // Camera framing (F-3D-MESH-01 fix, 2026-04-29): element-priority
+  // framing. Sprint V's property-priority math pulled the camera back
+  // to the parcel scale (e.g. 955 ft at zoom-19 / Asheville lat), which
+  // made small elements (a 16×12 ft patio extruded 0.1 ft tall) sub-
+  // pixel and effectively invisible against a backdrop the size of a
+  // city block.
   //
-  // Now: span = max(elementSpan, propertyHalfFootprint, 30 ft minimum).
-  // The 0.55 multiplier on the property keeps a healthy margin of
-  // satellite around the elements without feeling like the elements
-  // are tiny dots in a big yard. Tight 1.4× distance multiplier (was
-  // 1.6×) since we're already padding via the property factor.
-  const propertyHalfSpan = backdropFootprint ? backdropFootprint * 0.55 : 0
-  const frameSpan = Math.max(spanX, spanZ, propertyHalfSpan, 30)
+  // New rule: frame the elements first, with 1.5× margin for context.
+  // Cap at half the property footprint so we never exceed the satellite
+  // tile, but never expand beyond elements just because the parcel is
+  // big. 50 ft floor so single-element projects don't have a degenerate
+  // <10 ft frame.
+  const elementSpan = Math.max(spanX, spanZ, 10)
+  const elementContextSpan = Math.max(elementSpan * 1.5, 50)
+  const propertyHalfSpan = backdropFootprint ? backdropFootprint * 0.5 : Infinity
+  const frameSpan = Math.min(elementContextSpan, propertyHalfSpan)
   const cameraDist = frameSpan * 1.4
   const cameraY = frameSpan * 1.0
   // Camera lookAt: average of element center and property center (origin)
@@ -1159,7 +1173,11 @@ export const PlanView3D: React.FC<Props> = ({
         {backdropUrl && backdropFootprint ? (
           <Suspense
             fallback={
-              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+              <mesh
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, GROUND_Y_OFFSET_FT, 0]}
+                receiveShadow
+              >
                 <planeGeometry args={[backdropFootprint, backdropFootprint]} />
                 <meshStandardMaterial color="#1b241c" roughness={0.95} />
               </mesh>
@@ -1173,7 +1191,11 @@ export const PlanView3D: React.FC<Props> = ({
             />
           </Suspense>
         ) : (
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, 0, -centerPlanY]} receiveShadow>
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[centerX, GROUND_Y_OFFSET_FT, -centerPlanY]}
+            receiveShadow
+          >
             <planeGeometry args={[spanX * 4, spanZ * 4]} />
             <meshStandardMaterial color="#1b241c" roughness={0.95} />
           </mesh>

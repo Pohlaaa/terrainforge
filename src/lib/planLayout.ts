@@ -210,15 +210,22 @@ export function elementColor(type: ElementType): string {
 // still reads as a surface. Walls and fences get real human-scale
 // heights.
 
+// F-3D-MESH-01 (2026-04-29): hardscape and ground-cover defaults
+// raised to physically-accurate ranges. Pre-fix values (patio 0.1 ft,
+// edging 0.2 ft) rendered as sub-pixel slabs at parcel-scale camera
+// distances and were effectively invisible in 3D. New floors match
+// real-world depth-of-finish (paver + sand base ~4 in, mulch bed
+// 2-3 in, sod thatch ~1 in). Walls/fences/pergolas unchanged — they
+// already had sensible heights.
 const ELEMENT_HEIGHTS_FT: Record<ElementType, number> = {
-  patio: 0.1,
-  walkway: 0.1,
-  driveway: 0.1,
-  pool_deck: 0.15,
-  parking_lot: 0.1,
+  patio: 0.4,
+  walkway: 0.3,
+  driveway: 0.3,
+  pool_deck: 0.3,
+  parking_lot: 0.4,
   steps_stairs: 0.8,
-  concrete_slab: 0.1,
-  curbing: 0.3,
+  concrete_slab: 0.4,
+  curbing: 0.4,
 
   wall: 4,
   retaining_wall: 3,
@@ -228,9 +235,9 @@ const ELEMENT_HEIGHTS_FT: Record<ElementType, number> = {
   garden_bed: 0.8,
   mulch_area: 0.3,
   gravel_area: 0.3,
-  sod_area: 0.1,
+  sod_area: 0.2,
 
-  edging: 0.2,
+  edging: 0.3,
 
   tree_planting: 15,
   shrub_planting: 4,
