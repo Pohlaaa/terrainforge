@@ -363,11 +363,30 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
     <div className="space-y-[16px]">
         {/* Status pill row — one-click lifecycle progression. Triggers
             projectStore.updateProject which fires the manifest snapshot
-            on approved → scheduled. Clicking the active pill is a no-op. */}
+            on approved → scheduled. Clicking the active pill is a no-op.
+            Backwards moves (e.g. completed → in_progress) prompt for
+            confirmation since they can undo lifecycle timestamps and
+            invalidate downstream tooling assumptions. */}
         <ProjectStatusPills
           status={project.status ?? 'estimate'}
           onChange={async (next) => {
             if (next === project.status) return;
+            const order: ProjectStatus[] = ['estimate', 'quoted', 'approved', 'scheduled', 'in_progress', 'completed'];
+            const current = project.status ?? 'estimate';
+            const fromIdx = order.indexOf(current);
+            const toIdx = order.indexOf(next);
+            // Going backwards in the chain (toIdx < fromIdx, both indices
+            // valid) or moving back from on_hold without going forward
+            // both deserve a confirm. on_hold itself is a no-confirm
+            // sideways move from anything in the main chain.
+            const isBackward =
+              fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx;
+            if (isBackward) {
+              const proceed = window.confirm(
+                `Move project back to "${next.replace(/_/g, ' ')}"? Lifecycle timestamps from later stages will stay on the record but the active stage will move backwards.`,
+              );
+              if (!proceed) return;
+            }
             await projectStoreRef.updateProject(project.id, { status: next });
             // Stamp lifecycle timestamps when the contractor moves forward.
             // updateProject applies optimistic state, so the secondary write

@@ -8,6 +8,7 @@ import { useMaterialStore } from '@/stores/materialStore';
 import { KPICard } from '@/components/shared/KPICard';
 import { HubHeader } from '@/components/shared/HubHeader';
 import { Badge } from '@/components/shared/Badge';
+import { EmptyState, ProjectsIcon } from '@/components/shared/EmptyState';
 import { MapWidget } from '@/components/dashboard/widgets/MapWidget';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import type { ProjectListItem } from '@/types';
@@ -370,8 +371,20 @@ const Dashboard: React.FC = () => {
             <tbody>
               {filteredProjects.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-[var(--text-tertiary)]">
-                    {projects.length === 0 ? 'No projects yet. Create your first project to get started.' : 'No projects match your search.'}
+                  <td colSpan={6}>
+                    {projects.length === 0 ? (
+                      <EmptyState
+                        icon={<ProjectsIcon />}
+                        title="No projects yet"
+                        description="Create your first project — the wizard will guide you through measurements, materials, and a quote in five steps."
+                        actionLabel="+ New Project"
+                        onAction={() => navigate('/projects/wizard')}
+                      />
+                    ) : (
+                      <div className="px-3 py-8 text-center text-sm text-[var(--text-tertiary)]">
+                        No projects match your search.
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
