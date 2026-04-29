@@ -275,6 +275,60 @@ export const WizardStepMeasurements: React.FC<Props> = ({
     setSelectedTempId(tempId);
   };
 
+  /**
+   * Batch 27: Add a new polygon element AND immediately drop the
+   * contractor into draw mode for it. The new element is type 'patio'
+   * by default (most common polygon use-case); the contractor can
+   * change the type after the polygon is drawn. Seeds a 4-vertex
+   * placeholder so the click-to-draw exit path always has a valid
+   * starting geometry to commit against.
+   */
+  const addPolygonElement = (type: ElementType = 'patio') => {
+    const tempId = crypto.randomUUID();
+    const stackIdx = elements.length;
+    // Seed with a 10×10 polygon at (0,0) — 4 vertices that form a valid
+    // polygon for the engine to work against immediately. The first
+    // canvas click in draw mode will replace these once committed.
+    const seedPoints = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    const dims = fallbackDimensions({
+      ...({} as ProjectElement),
+      lengthFt: 10,
+      widthFt: 10,
+      computedAreaSqft: 100,
+    });
+    const pos = placementBucket('unknown', dims, stackIdx);
+    const stub: WizardElement = {
+      tempId,
+      name: ELEMENT_TYPE_LABELS[type],
+      elementType: type,
+      shape: 'polygon',
+      radiusFt: null,
+      lengthFt: null,
+      widthFt: null,
+      areaSqft: null,
+      linearFt: null,
+      heightFt: null,
+      depthIn: null,
+      notes: '',
+      geometry: {
+        position: pos,
+        rotation: 0,
+        shape: { kind: 'polygon', points: seedPoints },
+      },
+    };
+    onChange({ elements: [...elements, stub] });
+    setSelectedTempId(tempId);
+    // Defer entering draw mode by a tick so the new element renders
+    // first; otherwise the canvas's drawingPolygonForElementId points
+    // at an element that hasn't yet appeared in `laid`.
+    setTimeout(() => setDrawingPolygonForTempId(tempId), 0);
+  };
+
   const removeElement = (tempId: string) => {
     onChange({ elements: elements.filter((el) => el.tempId !== tempId) });
   };
@@ -561,6 +615,19 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                 style={{ borderColor: 'var(--border)', color: 'var(--text-3)', backgroundColor: 'transparent' }}
               >
                 + Element
+              </button>
+              <button
+                type="button"
+                onClick={() => addPolygonElement(selected?.elementType ?? 'patio')}
+                className="rounded-[6px] border-2 border-dashed px-[10px] py-[5px] text-[11px] cursor-pointer flex items-center gap-[4px]"
+                style={{ borderColor: 'var(--green)', color: 'var(--green-l)', backgroundColor: 'transparent' }}
+                title="Add a polygon element and start drawing it on the canvas. Esc cancels."
+              >
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 2l3 3-9 9H2v-3l9-9z" />
+                  <path d="M10 3l3 3" />
+                </svg>
+                Draw polygon
               </button>
             </div>
           </div>

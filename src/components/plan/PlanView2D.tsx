@@ -745,7 +745,84 @@ export const PlanView2D: React.FC<Props> = ({
                   fillOpacity={0.85}
                   stroke={color}
                   strokeWidth={ftPerPx * 1.5}
-                />
+                  onContextMenu={
+                    editable && !drawingPolygonForElementId
+                      ? (ev) => {
+                          ev.preventDefault()
+                          ev.stopPropagation()
+                          // Batch 28: right-click polygon → insert vertex at
+                          // click point, between the two existing vertices
+                          // bounding the closest edge. Handles inverse-rotate
+                          // around element center so the inserted vertex
+                          // lands where the contractor clicked even when
+                          // the element is rotated.
+                          const cursorWorld = clientToFeet(ev.clientX, ev.clientY)
+                          if (!cursorWorld) return
+                          const points = shape.points
+                          if (points.length < 2) return
+                          // World → element-local. Same math as the vertex
+                          // drag onPointerMove path.
+                          const p = geometry.position
+                          const tx = cursorWorld.x - p.x
+                          const ty = cursorWorld.y - p.y
+                          let localX = tx
+                          let localY = ty
+                          if (geometry.rotation !== 0) {
+                            const center = elementCenter(geometry)
+                            const cx = center.x - p.x
+                            const cy = center.y - p.y
+                            const offX = tx - cx
+                            const offY = ty - cy
+                            const undone = rotate2d(offX, offY, -geometry.rotation)
+                            localX = cx + undone.x
+                            localY = cy + undone.y
+                          }
+                          const click = { x: snapFt(localX), y: snapFt(localY) }
+                          // Find closest edge by point-to-segment distance.
+                          let bestIdx = 0
+                          let bestDist = Infinity
+                          const n = points.length
+                          for (let i = 0; i < n; i++) {
+                            const a = points[i]
+                            const b = points[(i + 1) % n]
+                            const abx = b.x - a.x
+                            const aby = b.y - a.y
+                            const lenSq = abx * abx + aby * aby
+                            let t = 0
+                            if (lenSq > 0) {
+                              t = ((click.x - a.x) * abx + (click.y - a.y) * aby) / lenSq
+                              t = Math.max(0, Math.min(1, t))
+                            }
+                            const projX = a.x + t * abx
+                            const projY = a.y + t * aby
+                            const dx = click.x - projX
+                            const dy = click.y - projY
+                            const dist = dx * dx + dy * dy
+                            if (dist < bestDist) {
+                              bestDist = dist
+                              bestIdx = i
+                            }
+                          }
+                          // Insert click point between bestIdx and bestIdx+1.
+                          const next = [
+                            ...points.slice(0, bestIdx + 1),
+                            click,
+                            ...points.slice(bestIdx + 1),
+                          ]
+                          onElementGeometryChange?.(element.id, {
+                            ...geometry,
+                            shape: { kind: 'polygon', points: next },
+                          })
+                        }
+                      : undefined
+                  }
+                >
+                  <title>
+                    {editable && !drawingPolygonForElementId
+                      ? 'Right-click to insert a vertex on this edge'
+                      : ''}
+                  </title>
+                </polygon>
               )
             }
 
