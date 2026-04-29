@@ -19,7 +19,7 @@
  * rows by element-type/category mapping (unchanged from the legacy
  * flow).
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ELEMENT_TYPE_LABELS, getElementTypesForMaterial, ELEMENT_PRESETS, applyElementPreset } from '@/lib/elements';
 import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
 import { normalizeCategory, getCategoryLabel } from '@/lib/categories';
@@ -271,6 +271,101 @@ export const WizardStepMeasurements: React.FC<Props> = ({
     onChange({ elements: elements.filter((el) => el.tempId !== tempId) });
   };
 
+  /**
+   * Duplicate the selected element with an offset position so the copy
+   * doesn't sit on top of the original. Returns the new tempId so the
+   * caller can move selection to the duplicate (better feel than
+   * leaving the contractor to click into it).
+   */
+  const duplicateElement = useCallback((tempId: string): string | null => {
+    const source = elements.find((e) => e.tempId === tempId);
+    if (!source) return null;
+    const newTempId = crypto.randomUUID();
+    // Offset the copy by 4 ft in plan space so it's visible alongside
+    // the original on the canvas.
+    const sourceGeom = source.geometry;
+    const newGeom: ElementGeometry | null = sourceGeom
+      ? {
+          ...sourceGeom,
+          position: {
+            x: sourceGeom.position.x + 4,
+            y: sourceGeom.position.y + 4,
+          },
+        }
+      : null;
+    const copy: WizardElement = {
+      ...source,
+      tempId: newTempId,
+      // Append a "(copy)" suffix when the contractor named it, so they
+      // can tell the duplicate apart in the sidebar list.
+      name: source.name ? `${source.name} (copy)` : source.name,
+      geometry: newGeom,
+    };
+    onChange({ elements: [...elements, copy] });
+    return newTempId;
+  }, [elements, onChange]);
+
+  // ── Cmd-D / Cmd-C+V keyboard handler for the wizard step ─────────────
+  // Cmd-D = duplicate selected (shorter, single-keystroke).
+  // Cmd-C copies into a ref; Cmd-V pastes from the ref. Both skip when
+  // focus is on a text input so the browser's native copy/paste keeps
+  // working in the dimension fields and notes textarea.
+  const clipboardRef = useRef<WizardElement | null>(null);
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const isEditable =
+        tag === 'input' ||
+        tag === 'textarea' ||
+        tag === 'select' ||
+        target?.isContentEditable === true;
+      if (isEditable) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 'd' && !e.shiftKey) {
+        if (!selectedTempId) return;
+        e.preventDefault();
+        const newId = duplicateElement(selectedTempId);
+        if (newId) setSelectedTempId(newId);
+      } else if (key === 'c' && !e.shiftKey && selectedTempId) {
+        const src = elements.find((el) => el.tempId === selectedTempId);
+        if (src) {
+          e.preventDefault();
+          clipboardRef.current = src;
+        }
+      } else if (key === 'v' && !e.shiftKey && clipboardRef.current) {
+        e.preventDefault();
+        const src = clipboardRef.current;
+        // Paste even if the original element has been deleted in the
+        // meantime — the clipboard is independent of the live list.
+        const newTempId = crypto.randomUUID();
+        const sourceGeom = src.geometry;
+        const newGeom: ElementGeometry | null = sourceGeom
+          ? {
+              ...sourceGeom,
+              position: {
+                x: sourceGeom.position.x + 4,
+                y: sourceGeom.position.y + 4,
+              },
+            }
+          : null;
+        const copy: WizardElement = {
+          ...src,
+          tempId: newTempId,
+          name: src.name ? `${src.name} (paste)` : src.name,
+          geometry: newGeom,
+        };
+        onChange({ elements: [...elements, copy] });
+        setSelectedTempId(newTempId);
+      }
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [selectedTempId, elements, duplicateElement, onChange]);
+
   // ── Geometry callback from PlanView2D/3D ────────────────────────────────
   const handleElementGeometryChange = (id: string, geometry: ElementGeometry) => {
     // The canvas may also have changed the rectangle dimensions (resize
@@ -468,6 +563,10 @@ export const WizardStepMeasurements: React.FC<Props> = ({
               onChange={onChange}
               onUpdate={(updates) => updateElement(selected.tempId, updates)}
               onRemove={() => removeElement(selected.tempId)}
+              onDuplicate={() => {
+                const newId = duplicateElement(selected.tempId);
+                if (newId) setSelectedTempId(newId);
+              }}
               recommendations={recommendations}
               materialAccepted={materialAccepted}
               materialDismissed={materialDismissed}
@@ -509,6 +608,7 @@ interface SidebarProps {
   onChange: (updates: Partial<WizardData>) => void;
   onUpdate: (updates: Partial<WizardElement>) => void;
   onRemove: () => void;
+  onDuplicate: () => void;
   recommendations: AIRecommendationSet | null;
   materialAccepted: Set<string>;
   materialDismissed: Set<string>;
@@ -524,6 +624,7 @@ const ElementSidebar: React.FC<SidebarProps> = ({
   onChange,
   onUpdate,
   onRemove,
+  onDuplicate,
   recommendations,
   materialAccepted,
   materialDismissed,
@@ -690,6 +791,19 @@ const ElementSidebar: React.FC<SidebarProps> = ({
             </select>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={onDuplicate}
+          className="w-[26px] h-[26px] rounded-[6px] flex items-center justify-center text-[var(--text-4)] hover:text-[var(--green-l)] hover:bg-[var(--surface)] cursor-pointer bg-transparent border-none mt-[16px] shrink-0"
+          title="Duplicate this element (Cmd-D)"
+          aria-label="Duplicate element"
+        >
+          {/* Two overlapping squares = duplicate icon */}
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="9" height="9" rx="1.5" />
+            <rect x="6" y="6" width="9" height="9" rx="1.5" />
+          </svg>
+        </button>
         <button
           type="button"
           onClick={onRemove}
