@@ -196,3 +196,134 @@ export function getMaterialsForPhase(
   if (cats.length === 0) return [];
   return projectMaterials.filter(m => cats.includes(m.category.toLowerCase() as MaterialCategory));
 }
+
+// ── Element dimension presets ────────────────────────────────────────────────
+//
+// One-click defaults for common element sizes. Each preset clears the
+// dimension fields it doesn't set, so picking a circular preset on a
+// rectangular element wipes lengthFt/widthFt and vice versa. Numbers are
+// from real partner-test projects + standard contractor estimating
+// references — small/medium/large covers the 80% case for most types.
+
+export interface ElementPreset {
+  label: string;
+  shape?: 'rectangle' | 'circle';
+  lengthFt?: number | null;
+  widthFt?: number | null;
+  radiusFt?: number | null;
+  linearFt?: number | null;
+  heightFt?: number | null;
+  depthIn?: number | null;
+  /** Manual area override — used for irregular shapes the contractor measures by area. */
+  areaSqft?: number | null;
+}
+
+export const ELEMENT_PRESETS: Partial<Record<ElementType, ElementPreset[]>> = {
+  patio: [
+    { label: '12×12 (small)', shape: 'rectangle', lengthFt: 12, widthFt: 12 },
+    { label: '16×20 (medium)', shape: 'rectangle', lengthFt: 20, widthFt: 16 },
+    { label: '24×18 (large)', shape: 'rectangle', lengthFt: 24, widthFt: 18 },
+    { label: '14-ft round', shape: 'circle', radiusFt: 7 },
+  ],
+  walkway: [
+    { label: '4×20 ft', shape: 'rectangle', lengthFt: 20, widthFt: 4, linearFt: 20 },
+    { label: '4×40 ft', shape: 'rectangle', lengthFt: 40, widthFt: 4, linearFt: 40 },
+    { label: '5×30 ft', shape: 'rectangle', lengthFt: 30, widthFt: 5, linearFt: 30 },
+  ],
+  driveway: [
+    { label: '12×40 (single)', shape: 'rectangle', lengthFt: 40, widthFt: 12 },
+    { label: '20×40 (double)', shape: 'rectangle', lengthFt: 40, widthFt: 20 },
+  ],
+  garden_bed: [
+    { label: '4×8 (small)', shape: 'rectangle', lengthFt: 8, widthFt: 4 },
+    { label: '6×12 (medium)', shape: 'rectangle', lengthFt: 12, widthFt: 6 },
+    { label: '6-ft round', shape: 'circle', radiusFt: 3 },
+  ],
+  sod_area: [
+    { label: '200 sqft', areaSqft: 200 },
+    { label: '500 sqft', areaSqft: 500 },
+    { label: '1,000 sqft', areaSqft: 1000 },
+    { label: '2,500 sqft', areaSqft: 2500 },
+  ],
+  mulch_area: [
+    { label: '100 sqft @ 3"', areaSqft: 100, depthIn: 3 },
+    { label: '250 sqft @ 3"', areaSqft: 250, depthIn: 3 },
+    { label: '500 sqft @ 3"', areaSqft: 500, depthIn: 3 },
+  ],
+  gravel_area: [
+    { label: '200 sqft @ 4"', areaSqft: 200, depthIn: 4 },
+    { label: '400 sqft @ 4"', areaSqft: 400, depthIn: 4 },
+  ],
+  fire_pit: [
+    { label: '3-ft radius', shape: 'circle', radiusFt: 3 },
+    { label: '4-ft radius', shape: 'circle', radiusFt: 4 },
+    { label: '5-ft radius', shape: 'circle', radiusFt: 5 },
+  ],
+  retaining_wall: [
+    { label: '20 ft × 3 ft', linearFt: 20, heightFt: 3 },
+    { label: '30 ft × 4 ft', linearFt: 30, heightFt: 4 },
+    { label: '50 ft × 4 ft', linearFt: 50, heightFt: 4 },
+  ],
+  wall: [
+    { label: '12 ft × 18"', linearFt: 12, heightFt: 1.5 },
+    { label: '20 ft × 18"', linearFt: 20, heightFt: 1.5 },
+  ],
+  edging: [
+    { label: '50 ft', linearFt: 50 },
+    { label: '100 ft', linearFt: 100 },
+    { label: '200 ft', linearFt: 200 },
+  ],
+  curbing: [
+    { label: '50 ft', linearFt: 50 },
+    { label: '100 ft', linearFt: 100 },
+  ],
+  fence: [
+    { label: '50 ft × 6 ft', linearFt: 50, heightFt: 6 },
+    { label: '100 ft × 6 ft', linearFt: 100, heightFt: 6 },
+  ],
+  drainage: [
+    { label: '50 ft french drain', linearFt: 50, depthIn: 18 },
+    { label: '100 ft french drain', linearFt: 100, depthIn: 18 },
+  ],
+  pool_deck: [
+    { label: '12-ft surround', shape: 'rectangle', lengthFt: 24, widthFt: 24 },
+    { label: '15×30 lap', shape: 'rectangle', lengthFt: 30, widthFt: 15 },
+  ],
+  steps_stairs: [
+    { label: '4 ft × 3 step', linearFt: 4, heightFt: 1.5 },
+    { label: '6 ft × 5 step', linearFt: 6, heightFt: 2.5 },
+  ],
+  pergola: [
+    { label: '10×10', shape: 'rectangle', lengthFt: 10, widthFt: 10, heightFt: 8 },
+    { label: '12×16', shape: 'rectangle', lengthFt: 16, widthFt: 12, heightFt: 8 },
+  ],
+};
+
+/**
+ * Apply a preset by returning the field deltas. Caller merges them into
+ * the existing element. Fields the preset doesn't touch are explicitly
+ * cleared (set to null) so picking a 'circle' preset on a rectangle
+ * element wipes lengthFt/widthFt instead of layering inconsistent state.
+ */
+export function applyElementPreset(preset: ElementPreset): {
+  shape: 'rectangle' | 'circle';
+  lengthFt: number | null;
+  widthFt: number | null;
+  radiusFt: number | null;
+  linearFt: number | null;
+  heightFt: number | null;
+  depthIn: number | null;
+  areaSqft: number | null;
+} {
+  const shape = preset.shape ?? 'rectangle';
+  return {
+    shape,
+    lengthFt: preset.lengthFt ?? null,
+    widthFt: preset.widthFt ?? null,
+    radiusFt: preset.radiusFt ?? null,
+    linearFt: preset.linearFt ?? null,
+    heightFt: preset.heightFt ?? null,
+    depthIn: preset.depthIn ?? null,
+    areaSqft: preset.areaSqft ?? null,
+  };
+}

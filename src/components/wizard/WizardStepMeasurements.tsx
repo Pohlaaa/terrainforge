@@ -20,7 +20,7 @@
  * flow).
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ELEMENT_TYPE_LABELS, getElementTypesForMaterial } from '@/lib/elements';
+import { ELEMENT_TYPE_LABELS, getElementTypesForMaterial, ELEMENT_PRESETS, applyElementPreset } from '@/lib/elements';
 import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
 import { normalizeCategory, getCategoryLabel } from '@/lib/categories';
 import { useMaterialStore } from '@/stores/materialStore';
@@ -692,6 +692,73 @@ const ElementSidebar: React.FC<SidebarProps> = ({
           ✕
         </button>
       </div>
+
+      {/* Element dimension presets — quick-pick common sizes per element
+          type. Only renders when the type has presets defined; rare
+          types fall through to the manual dimension inputs below. */}
+      {(() => {
+        const presets = ELEMENT_PRESETS[element.elementType];
+        if (!presets || presets.length === 0) return null;
+        return (
+          <div>
+            <label className={labelClass}>Quick presets</label>
+            <div className="flex gap-[4px] mt-[4px] flex-wrap">
+              {presets.map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => {
+                    const deltas = applyElementPreset(p);
+                    // Mirror geometry.shape if the preset specifies one and
+                    // the element has existing geometry (so the canvas
+                    // re-renders the right primitive). When circle, derive
+                    // radius; when rectangle with len/width, set width/height.
+                    const updates: Partial<WizardElement> = { ...deltas };
+                    const existingGeom = element.geometry;
+                    if (existingGeom) {
+                      if (deltas.shape === 'circle' && deltas.radiusFt) {
+                        updates.geometry = {
+                          ...existingGeom,
+                          shape: { kind: 'circle', radius: deltas.radiusFt },
+                        };
+                      } else if (
+                        deltas.shape === 'rectangle' &&
+                        deltas.lengthFt &&
+                        deltas.widthFt
+                      ) {
+                        updates.geometry = {
+                          ...existingGeom,
+                          shape: {
+                            kind: 'rectangle',
+                            width: deltas.lengthFt,
+                            height: deltas.widthFt,
+                          },
+                        };
+                      }
+                    }
+                    onUpdate(updates);
+                  }}
+                  className="px-[8px] py-[4px] rounded-[5px] border text-[11px] cursor-pointer bg-transparent transition-colors"
+                  style={{
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-3)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--green)';
+                    e.currentTarget.style.color = 'var(--green-l)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.color = 'var(--text-3)';
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Shape selector — V4 partner ask: round patios, garden beds, edging
           curves. Only meaningful for elements that have a length/width or
