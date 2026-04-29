@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ScheduleEntry, CrewMember, Equipment, ProjectElement, ProjectSiteCondition, ShareToken } from '@/types';
+import type { Project, ProjectTask, ProjectSubcontractor, ProjectPermit, ScheduleEntry, CrewMember, Equipment, ProjectElement, ProjectSiteCondition, ShareToken, ProjectStatus } from '@/types';
 import { useProjectStore } from '@/stores/projectStore';
 import { useOrgStore } from '@/stores/orgStore';
 import { useMaterialStore } from '@/stores/materialStore';
@@ -333,6 +333,29 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
 
   return (
     <div className="space-y-[16px]">
+        {/* Status pill row — one-click lifecycle progression. Triggers
+            projectStore.updateProject which fires the manifest snapshot
+            on approved → scheduled. Clicking the active pill is a no-op. */}
+        <ProjectStatusPills
+          status={project.status ?? 'estimate'}
+          onChange={async (next) => {
+            if (next === project.status) return;
+            await projectStoreRef.updateProject(project.id, { status: next });
+            // Stamp lifecycle timestamps when the contractor moves forward.
+            // updateProject applies optimistic state, so the secondary write
+            // doesn't add latency to the UI flip.
+            const now = new Date().toISOString();
+            const stamp: Partial<Project> = {};
+            if (next === 'approved') stamp.approvedAt = now;
+            if (next === 'in_progress') stamp.startedAt = now;
+            if (next === 'completed') stamp.completedAt = now;
+            if (Object.keys(stamp).length > 0) {
+              await projectStoreRef.updateProject(project.id, stamp);
+            }
+            onProjectUpdated?.({ status: next, ...stamp });
+          }}
+        />
+
         {/* KPI Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-[10px]">
           {[
@@ -1027,6 +1050,114 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// ── ProjectStatusPills ──────────────────────────────────────────────────────
+//
+// One-click lifecycle progression. Renders the 6-state primary chain
+// (estimate → quoted → approved → scheduled → in_progress → completed)
+// with on_hold offset to the right. The active pill is highlighted with
+// the lifecycle color; clicked pills fire the onChange callback which
+// the parent uses to call updateProject() — that in turn fires the
+// manifest snapshot on the approved → scheduled transition.
+
+const STATUS_ORDER: ProjectStatus[] = [
+  'estimate', 'quoted', 'approved', 'scheduled', 'in_progress', 'completed',
+];
+
+const STATUS_LABEL: Record<ProjectStatus, string> = {
+  estimate: 'Estimate',
+  quoted: 'Quoted',
+  approved: 'Approved',
+  scheduled: 'Scheduled',
+  in_progress: 'In Progress',
+  completed: 'Completed',
+  on_hold: 'On Hold',
+};
+
+const STATUS_COLOR: Record<ProjectStatus, string> = {
+  estimate: '#9CA3AF',      // gray
+  quoted: '#3B82F6',        // blue
+  approved: '#0EA5E9',      // sky
+  scheduled: '#F59E0B',     // amber
+  in_progress: '#22C55E',   // green
+  completed: '#16A34A',     // dark green
+  on_hold: '#EAB308',       // yellow
+};
+
+interface StatusPillsProps {
+  status: ProjectStatus;
+  onChange: (next: ProjectStatus) => Promise<void> | void;
+}
+
+const ProjectStatusPills: React.FC<StatusPillsProps> = ({ status, onChange }) => {
+  const activeIdx = STATUS_ORDER.indexOf(status);
+  const isOnHold = status === 'on_hold';
+
+  return (
+    <div
+      className="rounded-[10px] border p-[10px]"
+      style={{ backgroundColor: 'var(--surface2)', borderColor: 'var(--border)' }}
+    >
+      <div className="flex items-center gap-[6px] flex-wrap">
+        {STATUS_ORDER.map((s, i) => {
+          const isActive = !isOnHold && s === status;
+          const isPast = !isOnHold && i < activeIdx;
+          const color = STATUS_COLOR[s];
+          return (
+            <React.Fragment key={s}>
+              <button
+                type="button"
+                onClick={() => onChange(s)}
+                className="px-[10px] py-[5px] rounded-full text-[11px] font-[600] cursor-pointer transition-colors"
+                style={{
+                  backgroundColor: isActive
+                    ? color
+                    : isPast
+                    ? `${color}22`
+                    : 'transparent',
+                  color: isActive ? '#fff' : isPast ? color : 'var(--text-3)',
+                  border: `1px solid ${isActive ? color : isPast ? `${color}55` : 'var(--border)'}`,
+                }}
+                aria-pressed={isActive}
+                aria-label={`Set status to ${STATUS_LABEL[s]}`}
+              >
+                {STATUS_LABEL[s]}
+              </button>
+              {i < STATUS_ORDER.length - 1 && (
+                <span
+                  className="text-[10px]"
+                  style={{ color: i < activeIdx ? color : 'var(--text-4)' }}
+                  aria-hidden
+                >
+                  ›
+                </span>
+              )}
+            </React.Fragment>
+          );
+        })}
+        <span
+          className="ml-auto text-[10px] uppercase tracking-wide"
+          style={{ color: 'var(--text-4)' }}
+        >
+          or
+        </span>
+        <button
+          type="button"
+          onClick={() => onChange('on_hold')}
+          className="px-[10px] py-[5px] rounded-full text-[11px] font-[600] cursor-pointer transition-colors"
+          style={{
+            backgroundColor: isOnHold ? STATUS_COLOR.on_hold : 'transparent',
+            color: isOnHold ? '#000' : 'var(--text-3)',
+            border: `1px solid ${isOnHold ? STATUS_COLOR.on_hold : 'var(--border)'}`,
+          }}
+          aria-pressed={isOnHold}
+        >
+          {STATUS_LABEL.on_hold}
+        </button>
+      </div>
     </div>
   );
 };
