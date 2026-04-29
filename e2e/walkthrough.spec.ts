@@ -110,6 +110,62 @@ test('contractor walkthrough — Phase A/B/C end-to-end', async ({ page }) => {
   // Area override should be empty/null after type change (F-PHB-05).
   // The Area input is a number input rendering null as empty string.
 
+  // ── 7a. Polygon shape pick + preset (Batches 16, 17) ──────────────────
+  // Force the element to a polygon-supporting type, then test the
+  // shape selector + preset quick-pick. Patio has polygon presets
+  // (L-shape, octagon); other types like walkway do not.
+  await typeSelect.selectOption('patio')
+  // Capture the rectangle dims before flipping to polygon — flipping
+  // shape clears lengthFt/widthFt, and downstream cost assertions need
+  // the AI-seeded dimensions back to compute non-zero quantities.
+  const lengthInput = sidebar.locator('input[type="number"]').first()
+  const widthInput = sidebar.locator('input[type="number"]').nth(1)
+  const savedLength = await lengthInput.inputValue()
+  const savedWidth = await widthInput.inputValue()
+
+  // Shape pill row — 3 buttons (Rectangle / Circle / Polygon).
+  await sidebar.getByRole('button', { name: 'Polygon', exact: true }).click()
+  const vertexTextarea = sidebar.locator('textarea[placeholder*="0,0"]')
+  await expect(vertexTextarea).toBeVisible({ timeout: 5_000 })
+  // Live area/perimeter summary renders below the textarea.
+  await expect(sidebar.getByText(/sqft.*perimeter.*ft.*\d+ vertices/i)).toBeVisible()
+  // Polygon presets are visible in the Quick presets row.
+  const lShapePreset = sidebar.getByRole('button', { name: /L-shape 16×16/i })
+  await expect(lShapePreset).toBeVisible()
+  await lShapePreset.click()
+  // After picking L-shape preset, the textarea should contain 6 vertices.
+  await expect(sidebar.getByText(/6 vertices/i)).toBeVisible({ timeout: 5_000 })
+
+  // ── 7b. Redraw button + Cancel via Esc (Batch 24) ─────────────────────
+  // Click "Redraw on canvas" to enter draw mode. The floating overlay
+  // should appear. Esc cancels — we don't actually draw, since canvas
+  // pixel coordinates are brittle.
+  await sidebar.getByRole('button', { name: /Redraw on canvas/i }).click()
+  await expect(page.getByText(/Click on the canvas to start drawing/i)).toBeVisible({
+    timeout: 5_000,
+  })
+  await page.keyboard.press('Escape')
+  await expect(page.getByText(/Click on the canvas to start drawing/i)).not.toBeVisible({
+    timeout: 5_000,
+  })
+  // Polygon textarea is still visible (Esc cancels without committing).
+  await expect(vertexTextarea).toBeVisible()
+
+  // Reset back to rectangle and restore original dims so downstream
+  // steps (Numbers, materials, project create) work with non-zero
+  // dimensions. Polygon's create-time path is exhaustively covered by
+  // the engine vitest suite (engine.test.ts polygon block) — re-running
+  // it through the wizard would require AI to also re-recommend
+  // materials, which the AI doesn't reliably do for null-dimension
+  // elements.
+  await sidebar.getByRole('button', { name: 'Rectangle', exact: true }).click()
+  if (savedLength) {
+    await lengthInput.fill(savedLength)
+  }
+  if (savedWidth) {
+    await widthInput.fill(savedWidth)
+  }
+
   // ── 8. Advance to Step 3 (Plan) ────────────────────────────────────────
   await page.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByRole('heading', { name: /The Plan/ })).toBeVisible({
