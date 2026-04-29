@@ -15,6 +15,7 @@ import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildSh
 import type { ProjectDesignVersion } from '@/types';
 import { computeProjectCost } from '@/lib/projectCost';
 import { toast } from '@/hooks/useToast';
+import { fetchManifestsForProject, type ManifestRow } from '@/services/supabaseManifests';
 
 interface Props {
   project: Project;
@@ -94,6 +95,14 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   useEffect(() => {
     fetchDesignVersionsForProject(project.id).then(setDesignVersions);
   }, [project.id, activeToken?.clientChangesSubmittedAt]);
+
+  // Manifest snapshot history. New rows appear automatically when a project
+  // crosses approved → scheduled (see projectStore.updateProject).
+  const [manifests, setManifests] = useState<ManifestRow[]>([]);
+  const [manifestsOpen, setManifestsOpen] = useState(false);
+  useEffect(() => {
+    fetchManifestsForProject(project.id).then(setManifests);
+  }, [project.id, project.status]);
 
   async function handleCreateShareLink() {
     const orgId = useOrgStore.getState().org?.id;
@@ -594,6 +603,51 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Manifest snapshot history. Rows added automatically when
+                  approved → scheduled. Each row freezes line items + purchase
+                  list at that moment so contractors have the audit trail of
+                  what they ordered. */}
+              {manifests.length > 0 && (
+                <div className="mb-[12px]">
+                  <button
+                    type="button"
+                    onClick={() => setManifestsOpen((v) => !v)}
+                    className="text-[11px] font-[500] cursor-pointer bg-transparent border-none"
+                    style={{ color: 'var(--text-3)' }}
+                  >
+                    {manifestsOpen ? '▾' : '▸'} Manifest snapshots ({manifests.length})
+                  </button>
+                  {manifestsOpen && (
+                    <div
+                      className="mt-[6px] rounded-[6px] border"
+                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+                    >
+                      {manifests.map((mf, i) => {
+                        const lineCount = mf.summary?.lineCount ?? mf.lineItems.length;
+                        const totalCost = mf.summary?.totalCost ?? 0;
+                        return (
+                          <div
+                            key={mf.id}
+                            className="px-[10px] py-[6px] text-[11px]"
+                            style={{
+                              borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                              color: 'var(--text-3)',
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                              v{mf.version} · {new Date(mf.generatedAt).toLocaleString()}
+                              <span style={{ fontWeight: 400, marginLeft: 6, color: 'var(--text-4)' }}>
+                                · {lineCount} line item{lineCount !== 1 ? 's' : ''}
+                                · {fmt(totalCost)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

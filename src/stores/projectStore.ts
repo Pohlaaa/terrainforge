@@ -240,7 +240,10 @@ export const useProjectStore = create<ProjectStore>()(
               catalog,
             })
               .then((mid) => {
-                if (mid) console.log(`[manifests] snapshot ${mid} created for project ${id}`)
+                if (mid) {
+                  console.log(`[manifests] snapshot ${mid} created for project ${id}`)
+                  toast.success('Manifest snapshot saved.')
+                }
               })
               .catch((err) => {
                 console.warn('[manifests] snapshot failed:', err)

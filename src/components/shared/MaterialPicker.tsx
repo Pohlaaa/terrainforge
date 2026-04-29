@@ -113,8 +113,9 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
               {element.materials.map(m => (
                 <AssignedRow
                   key={m.id}
-                  elementId={element.id}
+                  element={element}
                   m={m}
+                  catalogMat={catalog.find((c) => c.id === m.materialId)}
                   open={advancedOpen === m.id}
                   onToggleAdvanced={() => setAdvancedOpen(advancedOpen === m.id ? null : m.id)}
                   onUpdate={(updates) => updateElementMaterial(element.id, m.id, updates)}
@@ -179,16 +180,20 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
 // computation model are shown — a paver doesn't need a wall-height field.
 
 interface AssignedRowProps {
-  elementId: string;
+  element: ProjectElement;
   m: ProjectElementMaterial;
+  /** The original catalog row, if the assigned material is library-linked. */
+  catalogMat: Material | undefined;
   open: boolean;
   onToggleAdvanced: () => void;
   onUpdate: (updates: Partial<ProjectElementMaterial>) => Promise<ProjectElementMaterial | null>;
   onRemove: () => Promise<void> | void;
 }
 
-const AssignedRow: React.FC<AssignedRowProps> = ({ m, open, onToggleAdvanced, onUpdate, onRemove }) => {
-  const model = m.computationModel ?? '';
+const AssignedRow: React.FC<AssignedRowProps> = ({
+  element, m, catalogMat, open, onToggleAdvanced, onUpdate, onRemove,
+}) => {
+  const model = m.computationModel ?? catalogMat?.computationModel ?? '';
   // Local draft state — flushed to the store on blur so we don't write a row
   // for every keystroke. Empty string means "no override" (null).
   const [waste, setWaste] = useState<string>(
@@ -214,8 +219,38 @@ const AssignedRow: React.FC<AssignedRowProps> = ({ m, open, onToggleAdvanced, on
     return Number.isFinite(n) ? n : null;
   };
 
+  /**
+   * Save an override field AND recompute the resulting quantity in the same
+   * write so the row's displayed quantity updates immediately. The engine
+   * runs against a synthetic ProjectElementMaterial that includes the
+   * pending override, then we package the recomputed quantity alongside
+   * the field change.
+   */
   const flush = (field: keyof ProjectElementMaterial, value: number | null) => {
-    onUpdate({ [field]: value } as Partial<ProjectElementMaterial>);
+    const updates: Partial<ProjectElementMaterial> = {
+      [field]: value,
+    } as Partial<ProjectElementMaterial>;
+
+    // Build the override-applied ElMat the engine should evaluate.
+    const projection: ProjectElementMaterial = { ...m, ...updates };
+    const raw = computeElementMaterial(element, projection, catalogMat);
+    const wasteFactor =
+      projection.wasteFactorOverride ??
+      catalogMat?.defaultWasteFactor ??
+      catalogMat?.reserveOverride ??
+      0.05;
+    const adjusted = applyWaste(raw, wasteFactor);
+    const purchaseUnit = catalogMat?.purchaseUnit ?? m.unit;
+    const quantity = roundToPurchaseUnit(adjusted, purchaseUnit);
+
+    // Only include quantity in the write if the engine produced a real number;
+    // otherwise the row is ad-hoc with no compute model and we shouldn't
+    // overwrite the contractor's manually-typed quantity.
+    if (Number.isFinite(quantity) && quantity > 0) {
+      updates.quantity = quantity;
+    }
+
+    onUpdate(updates);
   };
 
   const showSpacing = model === 'POINT_SPACING';
