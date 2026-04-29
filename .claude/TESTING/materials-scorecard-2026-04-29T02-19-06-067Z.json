@@ -1,0 +1,3400 @@
+{
+  "generatedAt": "2026-04-29T02:19:06.066Z",
+  "scenarioCount": 30,
+  "meanScore": 0.8961111111111111,
+  "minScore": 0.5,
+  "maxScore": 1,
+  "forbiddenHitTotal": 0,
+  "scenarios": [
+    {
+      "id": "patio_small",
+      "tier": "small",
+      "notes": "Smallest hardscape. Should NOT include softscape/organic materials.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Concrete Pavers (12×12\", 60mm, standard gray)",
+          "category": "paver",
+          "estimatedQuantity": 65,
+          "unit": "each",
+          "unitCost": 3.5,
+          "reason": "8 ft × 8 ft patio = 64 sqft. 12×12\" pavers = 1 sqft each. Add 2% waste = 65 pavers.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone Base (¾\"-0\")",
+          "category": "gravel",
+          "estimatedQuantity": 1.2,
+          "unit": "cuyd",
+          "unitCost": 42,
+          "reason": "Patio base 6\" depth. 64 sqft × 6 in / 324 = 1.19 cuyd. Add 5% waste = 1.2 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Paver Bedding Sand (masonry/polymeric)",
+          "category": "sand",
+          "estimatedQuantity": 0.6,
+          "unit": "cuyd",
+          "unitCost": 48,
+          "reason": "Bedding layer ~1\" under pavers. 64 sqft × 1 in / 324 = 0.20 cuyd. Increase to 0.6 cuyd for handling/settling.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Jointing Sand (gray, all-weather)",
+          "category": "sand",
+          "estimatedQuantity": 2,
+          "unit": "bag",
+          "unitCost": 18,
+          "reason": "Joint width ~⅜\". 64 sqft ÷ 65 sqft per bag = ~1 bag. Add 1 extra for waste/settling = 2 bags.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Steel Paver Edge Restraint (8 ft sections, 5.5\" height)",
+          "category": "edging",
+          "estimatedQuantity": 4,
+          "unit": "piece",
+          "unitCost": 22,
+          "reason": "8 ft × 8 ft patio perimeter = 32 lnft. 4 × 8 ft sections cover the 4 sides.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Galvanized Landscape Spikes (10\") for edging",
+          "category": "misc",
+          "estimatedQuantity": 16,
+          "unit": "each",
+          "unitCost": 0.85,
+          "reason": "Secure edge restraint. 32 lnft perimeter ÷ 2 ft spacing = 16 spikes.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (3 oz, weed barrier)",
+          "category": "misc",
+          "estimatedQuantity": 70,
+          "unit": "sqft",
+          "unitCost": 0.28,
+          "reason": "Underlayment under base gravel to suppress weeds. 64 sqft + 10% waste = 70 sqft.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "paver",
+          "material": {
+            "materialId": null,
+            "materialName": "Concrete Pavers (12×12\", 60mm, standard gray)",
+            "category": "paver",
+            "estimatedQuantity": 65,
+            "unit": "each",
+            "unitCost": 3.5,
+            "reason": "8 ft × 8 ft patio = 64 sqft. 12×12\" pavers = 1 sqft each. Add 2% waste = 65 pavers.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (¾\"-0\")",
+            "category": "gravel",
+            "estimatedQuantity": 1.2,
+            "unit": "cuyd",
+            "unitCost": 42,
+            "reason": "Patio base 6\" depth. 64 sqft × 6 in / 324 = 1.19 cuyd. Add 5% waste = 1.2 cuyd.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "sand",
+          "material": {
+            "materialId": null,
+            "materialName": "Paver Bedding Sand (masonry/polymeric)",
+            "category": "sand",
+            "estimatedQuantity": 0.6,
+            "unit": "cuyd",
+            "unitCost": 48,
+            "reason": "Bedding layer ~1\" under pavers. 64 sqft × 1 in / 324 = 0.20 cuyd. Increase to 0.6 cuyd for handling/settling.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "paver",
+            "unit": "each",
+            "min": 64,
+            "max": 384,
+            "rationale": "64 sqft × 2.2 pavers/sqft ≈ 140; band 64–384"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Concrete Pavers (12×12\", 60mm, standard gray)",
+            "category": "paver",
+            "estimatedQuantity": 65,
+            "unit": "each",
+            "unitCost": 3.5,
+            "reason": "8 ft × 8 ft patio = 64 sqft. 12×12\" pavers = 1 sqft each. Add 2% waste = 65 pavers.",
+            "inLibrary": false
+          },
+          "inRange": true
+        },
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 0.711111111111111,
+            "max": 2.0444444444444443,
+            "rationale": "64 sqft × 6\" base ≈ 1.2 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (¾\"-0\")",
+            "category": "gravel",
+            "estimatedQuantity": 1.2,
+            "unit": "cuyd",
+            "unitCost": 42,
+            "reason": "Patio base 6\" depth. 64 sqft × 6 in / 324 = 1.19 cuyd. Add 5% waste = 1.2 cuyd.",
+            "inLibrary": false
+          },
+          "inRange": true
+        },
+        {
+          "check": {
+            "category": "sand",
+            "unit": "bag",
+            "min": 1,
+            "max": 3,
+            "rationale": "polymeric: 64 / 65 ≈ 1 bag"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Paver Bedding Sand (masonry/polymeric)",
+            "category": "sand",
+            "estimatedQuantity": 0.6,
+            "unit": "cuyd",
+            "unitCost": 48,
+            "reason": "Bedding layer ~1\" under pavers. 64 sqft × 1 in / 324 = 0.20 cuyd. Increase to 0.6 cuyd for handling/settling.",
+            "inLibrary": false
+          },
+          "inRange": false
+        }
+      ],
+      "positivePoints": 5,
+      "forbiddenHitCount": 0,
+      "maxPositive": 6,
+      "rawScore": 0.8333333333333334,
+      "clampedScore": 0.8333333333333334,
+      "reasons": [
+        "QTY out-of-range: Paver Bedding Sand (masonry/polymeric) returned 0.6 cuyd; expected [1.00, 3.00] bag (polymeric: 64 / 65 ≈ 1 bag)"
+      ]
+    },
+    {
+      "id": "patio_medium",
+      "tier": "medium",
+      "notes": "Median patio size from contractor walkthroughs.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone Base (3/4\" minus)",
+          "category": "gravel",
+          "estimatedQuantity": 3.6,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "6-inch minimum depth compacted base for patio stability. 192 sqft × 6 in / 324 = 3.56 cuyd; +10% waste = 3.92 cuyd, rounded to 3.6 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete Pavers (2.375\" thick, 6×9 in nominal)",
+          "category": "paver",
+          "estimatedQuantity": 192,
+          "unit": "sqft",
+          "unitCost": 8.5,
+          "reason": "Primary paver surface covering full 192 sqft patio. Standard residential thickness 2.375 in.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Joint Sand (50 lb bags)",
+          "category": "sand",
+          "estimatedQuantity": 3,
+          "unit": "bag",
+          "unitCost": 28,
+          "reason": "Jointing material for paver gaps. 192 sqft / 65 sqft per bag = 2.95 bags; round to 3 bags.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Bedding Sand (coarse, washed)",
+          "category": "sand",
+          "estimatedQuantity": 1.2,
+          "unit": "cuyd",
+          "unitCost": 55,
+          "reason": "1-inch bedding layer between base and pavers for leveling and setting. 192 sqft × 1 in / 324 = 0.59 cuyd; +10% waste = 0.65 cuyd, rounded to 1.2 cuyd for adequate supply.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete Edge Restraint (aluminum, 4\" height)",
+          "category": "edging",
+          "estimatedQuantity": 56,
+          "unit": "lnft",
+          "unitCost": 6.5,
+          "reason": "Perimeter retention for 192 sqft patio. Perimeter = 2(16 + 12) = 56 lnft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Fabric (6 oz non-woven geotextile)",
+          "category": "misc",
+          "estimatedQuantity": 211,
+          "unit": "sqft",
+          "unitCost": 0.15,
+          "reason": "Separation layer between crushed stone and bedding sand to prevent migration. 192 sqft + 10% waste = 211 sqft.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "paver",
+          "material": {
+            "materialId": null,
+            "materialName": "Concrete Pavers (2.375\" thick, 6×9 in nominal)",
+            "category": "paver",
+            "estimatedQuantity": 192,
+            "unit": "sqft",
+            "unitCost": 8.5,
+            "reason": "Primary paver surface covering full 192 sqft patio. Standard residential thickness 2.375 in.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (3/4\" minus)",
+            "category": "gravel",
+            "estimatedQuantity": 3.6,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6-inch minimum depth compacted base for patio stability. 192 sqft × 6 in / 324 = 3.56 cuyd; +10% waste = 3.92 cuyd, rounded to 3.6 cuyd.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "sand",
+          "material": {
+            "materialId": null,
+            "materialName": "Polymeric Joint Sand (50 lb bags)",
+            "category": "sand",
+            "estimatedQuantity": 3,
+            "unit": "bag",
+            "unitCost": 28,
+            "reason": "Jointing material for paver gaps. 192 sqft / 65 sqft per bag = 2.95 bags; round to 3 bags.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "paver",
+            "unit": "each",
+            "min": 192,
+            "max": 1152,
+            "rationale": "192 sqft × 2.2 ≈ 422; band 192–1152"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Concrete Pavers (2.375\" thick, 6×9 in nominal)",
+            "category": "paver",
+            "estimatedQuantity": 192,
+            "unit": "sqft",
+            "unitCost": 8.5,
+            "reason": "Primary paver surface covering full 192 sqft patio. Standard residential thickness 2.375 in.",
+            "inLibrary": false
+          },
+          "inRange": true
+        },
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 2.1333333333333333,
+            "max": 6.133333333333333,
+            "rationale": "192 sqft × 6\" base ≈ 3.6 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (3/4\" minus)",
+            "category": "gravel",
+            "estimatedQuantity": 3.6,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6-inch minimum depth compacted base for patio stability. 192 sqft × 6 in / 324 = 3.56 cuyd; +10% waste = 3.92 cuyd, rounded to 3.6 cuyd.",
+            "inLibrary": false
+          },
+          "inRange": true
+        },
+        {
+          "check": {
+            "category": "sand",
+            "unit": "bag",
+            "min": 1,
+            "max": 5,
+            "rationale": "192 / 65 ≈ 3 bags"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Polymeric Joint Sand (50 lb bags)",
+            "category": "sand",
+            "estimatedQuantity": 3,
+            "unit": "bag",
+            "unitCost": 28,
+            "reason": "Jointing material for paver gaps. 192 sqft / 65 sqft per bag = 2.95 bags; round to 3 bags.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 6,
+      "forbiddenHitCount": 0,
+      "maxPositive": 6,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "patio_large",
+      "tier": "large",
+      "notes": "Thompson-scale patio.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Crushed stone base (1.5\" nominal)",
+          "category": "gravel",
+          "estimatedQuantity": 3.97,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "6\" depth compacted base for 432 sqft patio. Formula: 432 × 6 / 324 = 8.0 cuyd raw; split into two lifts (3\" each) for proper compaction. First lift: 432 × 3 / 324 = 4.0 cuyd; second lift: 4.0 cuyd. Using conservative 4.0 cuyd per lift = 4.0 total after consolidation. 10% waste factor applied.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric jointing sand (polymeric, all-weather)",
+          "category": "sand",
+          "estimatedQuantity": 7,
+          "unit": "bag",
+          "unitCost": 16,
+          "reason": "Joint filling for concrete pavers. Typical 2–3mm joints on 432 sqft patio. Approx. 65 sqft coverage per 50lb bag. 432 / 65 = 6.65 bags; 10% waste = 7.3 bags → 7 bags.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete pavers (6\"×6\", gray, residential-grade)",
+          "category": "paver",
+          "estimatedQuantity": 1728,
+          "unit": "each",
+          "unitCost": 1.85,
+          "reason": "432 sqft patio at 6×6\" pavers = 1 paver per 0.25 sqft. 432 / 0.25 = 1,728 pavers. No waste factor needed (pavers are counted units, cuts accounted in labor).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Bedding sand (construction-grade, washed)",
+          "category": "sand",
+          "estimatedQuantity": 1.33,
+          "unit": "cuyd",
+          "unitCost": 42,
+          "reason": "1\" bedding layer under pavers for 432 sqft. Formula: 432 × 1 / 324 = 1.33 cuyd. No additional waste (bedding is thin and waste is minimal).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape edging (steel, galvanized, 4\" face height)",
+          "category": "edging",
+          "estimatedQuantity": 84,
+          "unit": "lnft",
+          "unitCost": 3.5,
+          "reason": "Perimeter restraint for 24 ft × 18 ft patio. Perimeter = 2(24 + 18) = 84 lnft. Steel edging holds pavers and base during freeze–thaw cycles.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Edging stakes (galvanized steel, 8\" length, 3/8\" diameter)",
+          "category": "misc",
+          "estimatedQuantity": 84,
+          "unit": "each",
+          "unitCost": 0.65,
+          "reason": "Fasteners for steel edging. 1 stake per linear foot = 84 stakes for 84 lnft perimeter.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape fabric (non-woven, 3 oz, weed barrier)",
+          "category": "misc",
+          "estimatedQuantity": 475,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Underlayment over prepared base to suppress weeds and stabilize bedding sand. 432 sqft element × 1.10 waste = 475 sqft.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "paver",
+          "material": {
+            "materialId": null,
+            "materialName": "Concrete pavers (6\"×6\", gray, residential-grade)",
+            "category": "paver",
+            "estimatedQuantity": 1728,
+            "unit": "each",
+            "unitCost": 1.85,
+            "reason": "432 sqft patio at 6×6\" pavers = 1 paver per 0.25 sqft. 432 / 0.25 = 1,728 pavers. No waste factor needed (pavers are counted units, cuts accounted in labor).",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed stone base (1.5\" nominal)",
+            "category": "gravel",
+            "estimatedQuantity": 3.97,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6\" depth compacted base for 432 sqft patio. Formula: 432 × 6 / 324 = 8.0 cuyd raw; split into two lifts (3\" each) for proper compaction. First lift: 432 × 3 / 324 = 4.0 cuyd; second lift: 4.0 cuyd. Using conservative 4.0 cuyd per lift = 4.0 total after consolidation. 10% waste factor applied.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "sand",
+          "material": {
+            "materialId": null,
+            "materialName": "Polymeric jointing sand (polymeric, all-weather)",
+            "category": "sand",
+            "estimatedQuantity": 7,
+            "unit": "bag",
+            "unitCost": 16,
+            "reason": "Joint filling for concrete pavers. Typical 2–3mm joints on 432 sqft patio. Approx. 65 sqft coverage per 50lb bag. 432 / 65 = 6.65 bags; 10% waste = 7.3 bags → 7 bags.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 4.8,
+            "max": 13.799999999999999,
+            "rationale": "432 sqft × 6\" ≈ 8 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed stone base (1.5\" nominal)",
+            "category": "gravel",
+            "estimatedQuantity": 3.97,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6\" depth compacted base for 432 sqft patio. Formula: 432 × 6 / 324 = 8.0 cuyd raw; split into two lifts (3\" each) for proper compaction. First lift: 432 × 3 / 324 = 4.0 cuyd; second lift: 4.0 cuyd. Using conservative 4.0 cuyd per lift = 4.0 total after consolidation. 10% waste factor applied.",
+            "inLibrary": false
+          },
+          "inRange": false
+        },
+        {
+          "check": {
+            "category": "sand",
+            "unit": "bag",
+            "min": 5,
+            "max": 9,
+            "rationale": "432 / 65 ≈ 7 bags"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Polymeric jointing sand (polymeric, all-weather)",
+            "category": "sand",
+            "estimatedQuantity": 7,
+            "unit": "bag",
+            "unitCost": 16,
+            "reason": "Joint filling for concrete pavers. Typical 2–3mm joints on 432 sqft patio. Approx. 65 sqft coverage per 50lb bag. 432 / 65 = 6.65 bags; 10% waste = 7.3 bags → 7 bags.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 4,
+      "forbiddenHitCount": 0,
+      "maxPositive": 5,
+      "rawScore": 0.8,
+      "clampedScore": 0.8,
+      "reasons": [
+        "QTY out-of-range: Crushed stone base (1.5\" nominal) returned 3.97 cuyd; expected [4.80, 13.80] cuyd (432 sqft × 6\" ≈ 8 cuyd)"
+      ]
+    },
+    {
+      "id": "walkway_small",
+      "tier": "small",
+      "notes": "Long narrow walkway. Edging optional but base + paver required.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone Base (¾\" minus)",
+          "category": "gravel",
+          "estimatedQuantity": 3.3,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "6\" minimum depth base for walkway stability and drainage. 60 sqft × 6 in / 324 = 1.11 cuyd. Add 10% waste = 3.3 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete Pavers (2¼\" × 4¾\", grey)",
+          "category": "paver",
+          "estimatedQuantity": 60,
+          "unit": "sqft",
+          "unitCost": 8.5,
+          "reason": "Walking surface for 60 sqft path. Sold by coverage area. Add 5% waste for cuts/breakage.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Sand (joint fill, 50lb bag)",
+          "category": "sand",
+          "estimatedQuantity": 1,
+          "unit": "bag",
+          "unitCost": 28,
+          "reason": "Joint fill between pavers. 60 sqft ÷ 65 sqft per bag = 0.92 bag; round up to 1 bag for full coverage.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Fabric (3 oz, polypropylene)",
+          "category": "misc",
+          "estimatedQuantity": 66,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Weed barrier between base and pavers. 60 sqft × 1.10 waste factor = 66 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Plastic Edge Restraint (8\" height, 20 lnft)",
+          "category": "edging",
+          "estimatedQuantity": 20,
+          "unit": "lnft",
+          "unitCost": 2.5,
+          "reason": "Perimeter retention for paver walkway. Path is 20 ft long; edges run full length on both sides = 40 lnft total; standard install uses single-run on outer edge = 20 lnft.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "paver",
+          "material": {
+            "materialId": null,
+            "materialName": "Concrete Pavers (2¼\" × 4¾\", grey)",
+            "category": "paver",
+            "estimatedQuantity": 60,
+            "unit": "sqft",
+            "unitCost": 8.5,
+            "reason": "Walking surface for 60 sqft path. Sold by coverage area. Add 5% waste for cuts/breakage.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (¾\" minus)",
+            "category": "gravel",
+            "estimatedQuantity": 3.3,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6\" minimum depth base for walkway stability and drainage. 60 sqft × 6 in / 324 = 1.11 cuyd. Add 10% waste = 3.3 cuyd.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 0.6666666666666666,
+            "max": 1.9166666666666665,
+            "rationale": "60 sqft × 6\" ≈ 1.1 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (¾\" minus)",
+            "category": "gravel",
+            "estimatedQuantity": 3.3,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6\" minimum depth base for walkway stability and drainage. 60 sqft × 6 in / 324 = 1.11 cuyd. Add 10% waste = 3.3 cuyd.",
+            "inLibrary": false
+          },
+          "inRange": false
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 3,
+      "rawScore": 0.6666666666666666,
+      "clampedScore": 0.6666666666666666,
+      "reasons": [
+        "QTY out-of-range: Crushed Stone Base (¾\" minus) returned 3.3 cuyd; expected [0.67, 1.92] cuyd (60 sqft × 6\" ≈ 1.1 cuyd)"
+      ]
+    },
+    {
+      "id": "walkway_medium",
+      "tier": "medium",
+      "notes": "Medium walkway.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone Base (⅜–¾ in.)",
+          "category": "gravel",
+          "estimatedQuantity": 2.2,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "6 in. deep compacted base for walkway stability and drainage. 120 sqft × 6 in. / 324 = 2.22 cuyd; +10% waste = 2.2 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Jointing Sand",
+          "category": "sand",
+          "estimatedQuantity": 2,
+          "unit": "bag",
+          "unitCost": 15,
+          "reason": "Joint fill for concrete pavers. ~65 sqft per 50 lb bag; 120 sqft / 65 = 1.85 bags, rounded to 2 bags.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete Pavers (2.375 in. × 4.75 in., standard gray)",
+          "category": "paver",
+          "estimatedQuantity": 128,
+          "unit": "each",
+          "unitCost": 3.5,
+          "reason": "Walking surface. Approximately 10 pavers per sqft; 120 sqft × 10 = 1,200 pavers nominal, but actual modular count is ~128 pavers/sqft at standard 2.375 × 4.75 in. spacing. Supplied as 120 sqft of coverage.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (weed barrier)",
+          "category": "misc",
+          "estimatedQuantity": 132,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Weed suppression and separation between base and bedding sand. 120 sqft element + 10% waste = 132 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Sand for Bedding (polymeric-modified bedding sand)",
+          "category": "sand",
+          "estimatedQuantity": 1.1,
+          "unit": "bag",
+          "unitCost": 85,
+          "reason": "1 in. bedding layer between base and pavers for leveling and minor adjustment. 120 sqft × 1 in. / 324 = 0.37 cuyd; 2 in. typical = 0.74 cuyd + 10% waste = 0.82 cuyd. Using 1.1 cuyd for conservative coverage.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Aluminum Edge Restraint (commercial-grade, 4 in. height)",
+          "category": "edging",
+          "estimatedQuantity": 68,
+          "unit": "lnft",
+          "unitCost": 8,
+          "reason": "Perimeter edge containment. 30 ft + 30 ft + 4 ft + 4 ft = 68 lnft of linear edging (three sides; one side typically borders existing structure or landscape).",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "paver",
+          "material": {
+            "materialId": null,
+            "materialName": "Concrete Pavers (2.375 in. × 4.75 in., standard gray)",
+            "category": "paver",
+            "estimatedQuantity": 128,
+            "unit": "each",
+            "unitCost": 3.5,
+            "reason": "Walking surface. Approximately 10 pavers per sqft; 120 sqft × 10 = 1,200 pavers nominal, but actual modular count is ~128 pavers/sqft at standard 2.375 × 4.75 in. spacing. Supplied as 120 sqft of coverage.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (⅜–¾ in.)",
+            "category": "gravel",
+            "estimatedQuantity": 2.2,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6 in. deep compacted base for walkway stability and drainage. 120 sqft × 6 in. / 324 = 2.22 cuyd; +10% waste = 2.2 cuyd.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 1.3333333333333333,
+            "max": 3.833333333333333,
+            "rationale": "120 sqft × 6\" ≈ 2.2 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (⅜–¾ in.)",
+            "category": "gravel",
+            "estimatedQuantity": 2.2,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6 in. deep compacted base for walkway stability and drainage. 120 sqft × 6 in. / 324 = 2.22 cuyd; +10% waste = 2.2 cuyd.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 3,
+      "forbiddenHitCount": 0,
+      "maxPositive": 3,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "walkway_large",
+      "tier": "large",
+      "notes": "Large walkway loop.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone Base (3/4\" minus)",
+          "category": "gravel",
+          "estimatedQuantity": 4.4,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "6\" minimum depth for walkway base stabilization. 240 sqft × 6 in / 324 = 4.44 cuyd. Add 10% waste = 4.88 cuyd, rounded to 4.4 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete Pavers (2.25\" thick, 6×9 nominal)",
+          "category": "paver",
+          "estimatedQuantity": 240,
+          "unit": "sqft",
+          "unitCost": 8.5,
+          "reason": "Surface material for 240 sqft walkway. Pavers priced and ordered by coverage area.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Sand (Jointing, 50 lb bag)",
+          "category": "sand",
+          "estimatedQuantity": 4,
+          "unit": "bag",
+          "unitCost": 18,
+          "reason": "Joint fill for paver walkway. 240 sqft / 65 sqft per bag = 3.69 bags. Round to 4 bags with waste factor.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (3 oz non-woven)",
+          "category": "misc",
+          "estimatedQuantity": 264,
+          "unit": "sqft",
+          "unitCost": 0.12,
+          "reason": "Weed barrier between base and pavers. 240 sqft × 1.10 waste factor = 264 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Steel Edge Restraint (4\" tall, galvanized)",
+          "category": "edging",
+          "estimatedQuantity": 128,
+          "unit": "lnft",
+          "unitCost": 2.75,
+          "reason": "Perimeter edge containment for 60 ft × 4 ft loop. Perimeter = 2(60 + 4) = 128 lnft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Galvanized Spikes (6\" landscape, for edging)",
+          "category": "misc",
+          "estimatedQuantity": 26,
+          "unit": "piece",
+          "unitCost": 0.55,
+          "reason": "Secure edge restraint. Approximately 1 spike per 5 lnft. 128 / 5 = 25.6, round to 26.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "paver",
+          "material": {
+            "materialId": null,
+            "materialName": "Concrete Pavers (2.25\" thick, 6×9 nominal)",
+            "category": "paver",
+            "estimatedQuantity": 240,
+            "unit": "sqft",
+            "unitCost": 8.5,
+            "reason": "Surface material for 240 sqft walkway. Pavers priced and ordered by coverage area.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (3/4\" minus)",
+            "category": "gravel",
+            "estimatedQuantity": 4.4,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6\" minimum depth for walkway base stabilization. 240 sqft × 6 in / 324 = 4.44 cuyd. Add 10% waste = 4.88 cuyd, rounded to 4.4 cuyd.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 2.6666666666666665,
+            "max": 7.666666666666666,
+            "rationale": "240 sqft × 6\" ≈ 4.4 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed Stone Base (3/4\" minus)",
+            "category": "gravel",
+            "estimatedQuantity": 4.4,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "6\" minimum depth for walkway base stabilization. 240 sqft × 6 in / 324 = 4.44 cuyd. Add 10% waste = 4.88 cuyd, rounded to 4.4 cuyd.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 3,
+      "forbiddenHitCount": 0,
+      "maxPositive": 3,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "sod_small",
+      "tier": "small",
+      "notes": "F-PHB-02 regression: must NOT include gravel/crushed-stone base.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Topsoil (prepared base for sod)",
+          "category": "soil",
+          "estimatedQuantity": 1.2,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Sod requires 3–4 inches of prepared topsoil base for root establishment. 200 sqft × 3.5 in / 324 = 2.16 cuyd. Applied 10% waste = 2.4 cuyd; conservative estimate scaled to 1.2 cuyd assumes partial site prep or topsoil already present.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Sod (Kentucky Bluegrass or regional blend, 1 pallet = 450 sqft)",
+          "category": "sod",
+          "estimatedQuantity": 0.5,
+          "unit": "pallet",
+          "unitCost": 130,
+          "reason": "200 sqft lawn requires 200 sqft of sod. 1 pallet covers 450 sqft; half pallet covers this element (0.5 pallet, or ~100 rolls/strips per pallet = 100 rolls).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Soil conditioner / organic amendment (compost blend)",
+          "category": "soil",
+          "estimatedQuantity": 0.3,
+          "unit": "cuyd",
+          "unitCost": 55,
+          "reason": "2–3 inches of compost or soil amendment mixed into top 2 inches of prepared topsoil improves drainage and rooting. 200 sqft × 2.5 in / 324 = 1.54 cuyd; conservatively 0.3 cuyd as soil amendment additive to topsoil base.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Starter fertilizer (turf establishment blend)",
+          "category": "misc",
+          "estimatedQuantity": 1,
+          "unit": "bag",
+          "unitCost": 35,
+          "reason": "High-phosphorus starter fertilizer (e.g., 10-20-10) applied at sod installation to promote root development and establishment. 1 bag typical per 2,000–5,000 sqft; 200 sqft requires 1 bag.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape fabric / weed barrier (sod underlay, optional)",
+          "category": "misc",
+          "estimatedQuantity": 220,
+          "unit": "sqft",
+          "unitCost": 0.12,
+          "reason": "Light geotextile (2–4 oz) laid under sod to prevent weed pressure and stabilize topsoil during establishment. 200 sqft area + 10% overlap = 220 sqft.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "sod",
+          "material": {
+            "materialId": null,
+            "materialName": "Sod (Kentucky Bluegrass or regional blend, 1 pallet = 450 sqft)",
+            "category": "sod",
+            "estimatedQuantity": 0.5,
+            "unit": "pallet",
+            "unitCost": 130,
+            "reason": "200 sqft lawn requires 200 sqft of sod. 1 pallet covers 450 sqft; half pallet covers this element (0.5 pallet, or ~100 rolls/strips per pallet = 100 rolls).",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "soil",
+          "material": {
+            "materialId": null,
+            "materialName": "Topsoil (prepared base for sod)",
+            "category": "soil",
+            "estimatedQuantity": 1.2,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Sod requires 3–4 inches of prepared topsoil base for root establishment. 200 sqft × 3.5 in / 324 = 2.16 cuyd. Applied 10% waste = 2.4 cuyd; conservative estimate scaled to 1.2 cuyd assumes partial site prep or topsoil already present.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "sod",
+            "unit": "sqft",
+            "min": 170,
+            "max": 344.99999999999994,
+            "rationale": "200 sqft × waste ≈ 200–230"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Sod (Kentucky Bluegrass or regional blend, 1 pallet = 450 sqft)",
+            "category": "sod",
+            "estimatedQuantity": 0.5,
+            "unit": "pallet",
+            "unitCost": 130,
+            "reason": "200 sqft lawn requires 200 sqft of sod. 1 pallet covers 450 sqft; half pallet covers this element (0.5 pallet, or ~100 rolls/strips per pallet = 100 rolls).",
+            "inLibrary": false
+          },
+          "inRange": false
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 3,
+      "rawScore": 0.6666666666666666,
+      "clampedScore": 0.6666666666666666,
+      "reasons": [
+        "QTY out-of-range: Sod (Kentucky Bluegrass or regional blend, 1 pallet = 450 sqft) returned 0.5 pallet; expected [170.00, 345.00] sqft (200 sqft × waste ≈ 200–230)"
+      ]
+    },
+    {
+      "id": "sod_medium",
+      "tier": "medium",
+      "notes": "Medium sod patch. F-PHB-02 regression check.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Topsoil (prepared lawn base)",
+          "category": "soil",
+          "estimatedQuantity": 18.5,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Sod requires minimum 3–4 inches of quality topsoil for root establishment and drainage. 1000 sqft × 3.5 inches / 324 = 10.8 cuyd base + 10% waste = 11.9 cuyd. Adding 6 additional cuyd for grade prep and settling.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Sod (Kentucky Bluegrass / Perennial Rye blend, 2×10 ft rolls)",
+          "category": "sod",
+          "estimatedQuantity": 1050,
+          "unit": "sqft",
+          "unitCost": 0.35,
+          "reason": "1000 sqft coverage area + 5% waste and seaming overlap = 1050 sqft. Sod sold in 20 sqft rolls (2×10 ft); equals ~52.5 rolls or expressed as total coverage sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape geotextile fabric (weed barrier, 3 oz non-woven)",
+          "category": "misc",
+          "estimatedQuantity": 1050,
+          "unit": "sqft",
+          "unitCost": 0.12,
+          "reason": "Laid beneath topsoil to suppress existing weeds and prevent erosion. 1000 sqft + 5% overlap/waste = 1050 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Lawn fertilizer (slow-release, NPK 10-10-10, bagged)",
+          "category": "misc",
+          "estimatedQuantity": 3,
+          "unit": "bag",
+          "unitCost": 28,
+          "reason": "Applied at installation to support new sod establishment. Typical rate: 1 bag per 300–400 sqft. 1000 sqft / 350 = 2.9 bags, round to 3 bags.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Soil amendments (peat moss or compost blend, 3 cuft bags)",
+          "category": "soil",
+          "estimatedQuantity": 12,
+          "unit": "bag",
+          "unitCost": 22,
+          "reason": "Mixed into top 2–3 inches of prepared topsoil to improve water retention and nutrient content. 1000 sqft area; approx. 1 bag per 85–90 sqft. 1000 / 85 = 11.8, round to 12 bags.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "sod",
+          "material": {
+            "materialId": null,
+            "materialName": "Sod (Kentucky Bluegrass / Perennial Rye blend, 2×10 ft rolls)",
+            "category": "sod",
+            "estimatedQuantity": 1050,
+            "unit": "sqft",
+            "unitCost": 0.35,
+            "reason": "1000 sqft coverage area + 5% waste and seaming overlap = 1050 sqft. Sod sold in 20 sqft rolls (2×10 ft); equals ~52.5 rolls or expressed as total coverage sqft.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "soil",
+          "material": {
+            "materialId": null,
+            "materialName": "Topsoil (prepared lawn base)",
+            "category": "soil",
+            "estimatedQuantity": 18.5,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Sod requires minimum 3–4 inches of quality topsoil for root establishment and drainage. 1000 sqft × 3.5 inches / 324 = 10.8 cuyd base + 10% waste = 11.9 cuyd. Adding 6 additional cuyd for grade prep and settling.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "sod",
+            "unit": "sqft",
+            "min": 850,
+            "max": 1725,
+            "rationale": "1000 sqft × waste ≈ 1000–1500"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Sod (Kentucky Bluegrass / Perennial Rye blend, 2×10 ft rolls)",
+            "category": "sod",
+            "estimatedQuantity": 1050,
+            "unit": "sqft",
+            "unitCost": 0.35,
+            "reason": "1000 sqft coverage area + 5% waste and seaming overlap = 1050 sqft. Sod sold in 20 sqft rolls (2×10 ft); equals ~52.5 rolls or expressed as total coverage sqft.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 3,
+      "forbiddenHitCount": 0,
+      "maxPositive": 3,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "sod_large",
+      "tier": "large",
+      "notes": "Large sod install. F-PHB-02 regression check.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Topsoil (screened, general-purpose)",
+          "category": "soil",
+          "estimatedQuantity": 46.3,
+          "unit": "cuyd",
+          "unitCost": 32,
+          "reason": "Sod requires minimum 3–4 inches of prepared topsoil for root establishment and drainage. 2500 sqft × 3.5 in / 324 = 26.9 cuyd base; add 10% waste = 29.6 cuyd. Additional 16.7 cuyd for site prep and leveling across uneven existing grade.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Sod (Kentucky Bluegrass or regional blend, 1 pallet = 50 sqft)",
+          "category": "sod",
+          "estimatedQuantity": 50,
+          "unit": "pallet",
+          "unitCost": 135,
+          "reason": "Full yard coverage: 2500 sqft ÷ 50 sqft per pallet = 50 pallets. Standard sod pallet dimensions ~500 lb, 50 sqft coverage.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Soil conditioner / organic amendment (compost blend)",
+          "category": "soil",
+          "estimatedQuantity": 9.3,
+          "unit": "cuyd",
+          "unitCost": 48,
+          "reason": "Top-dress incorporation (1 inch) to improve soil structure and water retention before laying sod. 2500 sqft × 1 in / 324 = 7.7 cuyd; add 10% waste = 8.5 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Starter fertilizer (turf, NPK 10-26-26, 50 lb bag)",
+          "category": "misc",
+          "estimatedQuantity": 10,
+          "unit": "bag",
+          "unitCost": 28,
+          "reason": "Applied at sod installation to promote root knitting and early establishment. ~1 bag per 500 sqft for 2500 sqft = 5 bags minimum; recommend 10 bags to cover two applications over 6 weeks.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape fabric (non-woven, 3 oz, 4 ft wide roll)",
+          "category": "misc",
+          "estimatedQuantity": 2.6,
+          "unit": "roll",
+          "unitCost": 42,
+          "reason": "Optional underlayment on prepared soil to suppress existing weeds and reduce establishment labor. 2500 sqft coverage; 4 ft wide rolls = ~625 lnft ÷ 250 lnft per roll = 2.5 rolls; add 5% waste = 2.6 rolls.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "sod",
+          "material": {
+            "materialId": null,
+            "materialName": "Sod (Kentucky Bluegrass or regional blend, 1 pallet = 50 sqft)",
+            "category": "sod",
+            "estimatedQuantity": 50,
+            "unit": "pallet",
+            "unitCost": 135,
+            "reason": "Full yard coverage: 2500 sqft ÷ 50 sqft per pallet = 50 pallets. Standard sod pallet dimensions ~500 lb, 50 sqft coverage.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "soil",
+          "material": {
+            "materialId": null,
+            "materialName": "Topsoil (screened, general-purpose)",
+            "category": "soil",
+            "estimatedQuantity": 46.3,
+            "unit": "cuyd",
+            "unitCost": 32,
+            "reason": "Sod requires minimum 3–4 inches of prepared topsoil for root establishment and drainage. 2500 sqft × 3.5 in / 324 = 26.9 cuyd base; add 10% waste = 29.6 cuyd. Additional 16.7 cuyd for site prep and leveling across uneven existing grade.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "sod",
+            "unit": "sqft",
+            "min": 2125,
+            "max": 4312.5,
+            "rationale": "2500 sqft × waste ≈ 2500–3750"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Sod (Kentucky Bluegrass or regional blend, 1 pallet = 50 sqft)",
+            "category": "sod",
+            "estimatedQuantity": 50,
+            "unit": "pallet",
+            "unitCost": 135,
+            "reason": "Full yard coverage: 2500 sqft ÷ 50 sqft per pallet = 50 pallets. Standard sod pallet dimensions ~500 lb, 50 sqft coverage.",
+            "inLibrary": false
+          },
+          "inRange": false
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 3,
+      "rawScore": 0.6666666666666666,
+      "clampedScore": 0.6666666666666666,
+      "reasons": [
+        "QTY out-of-range: Sod (Kentucky Bluegrass or regional blend, 1 pallet = 50 sqft) returned 50 pallet; expected [2125.00, 4312.50] sqft (2500 sqft × waste ≈ 2500–3750)"
+      ]
+    },
+    {
+      "id": "garden_bed_small",
+      "tier": "small",
+      "notes": "Small garden bed. No gravel/concrete.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Topsoil",
+          "category": "soil",
+          "estimatedQuantity": 0.67,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Garden bed requires minimum 3\" topsoil base. 24 sqft × 3\" / 324 = 0.22 cuyd base + 10% waste = 0.24 cuyd. Rounded to practical delivery: 0.67 cuyd covers shallow planting with amendments.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Fabric (weed barrier)",
+          "category": "misc",
+          "estimatedQuantity": 26.4,
+          "unit": "sqft",
+          "unitCost": 0.35,
+          "reason": "Underlayment to suppress weeds beneath mulch. 24 sqft bed × 1.1 (10% waste for overlap and trimming) = 26.4 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Mulch (wood chips, 3\" depth)",
+          "category": "mulch",
+          "estimatedQuantity": 0.74,
+          "unit": "cuyd",
+          "unitCost": 55,
+          "reason": "Standard 3\" mulch depth for weed suppression and moisture retention. 24 sqft × 3\" / 324 = 0.22 cuyd base + 10% waste = 0.24 cuyd. Rounded to practical delivery: 0.74 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Soil Amendment (compost/aged manure)",
+          "category": "soil",
+          "estimatedQuantity": 0.44,
+          "unit": "cuyd",
+          "unitCost": 65,
+          "reason": "Improve bed soil structure and drainage. Typical 1.5\" incorporation into top 3\" of topsoil. 24 sqft × 1.5\" / 324 = 0.11 cuyd base + 10% waste = 0.12 cuyd. Rounded to practical mix: 0.44 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Perennials / Shrubs (assorted, qty 6–8)",
+          "category": "plant",
+          "estimatedQuantity": 7,
+          "unit": "each",
+          "unitCost": 18,
+          "reason": "Typical planting density for 24 sqft bed is 1 plant per 3–4 sqft. Estimate 6–8 small to medium perennials or compact shrubs.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Garden Edging (steel or plastic, 16 lnft)",
+          "category": "edging",
+          "estimatedQuantity": 16,
+          "unit": "lnft",
+          "unitCost": 4.5,
+          "reason": "Perimeter containment for 6 ft × 4 ft bed = 20 lnft, minus one side (assumes bed borders hardscape or property line). 16 lnft of edging.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "soil",
+          "material": {
+            "materialId": null,
+            "materialName": "Topsoil",
+            "category": "soil",
+            "estimatedQuantity": 0.67,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Garden bed requires minimum 3\" topsoil base. 24 sqft × 3\" / 324 = 0.22 cuyd base + 10% waste = 0.24 cuyd. Rounded to practical delivery: 0.67 cuyd covers shallow planting with amendments.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "mulch",
+          "material": {
+            "materialId": null,
+            "materialName": "Mulch (wood chips, 3\" depth)",
+            "category": "mulch",
+            "estimatedQuantity": 0.74,
+            "unit": "cuyd",
+            "unitCost": 55,
+            "reason": "Standard 3\" mulch depth for weed suppression and moisture retention. 24 sqft × 3\" / 324 = 0.22 cuyd base + 10% waste = 0.24 cuyd. Rounded to practical delivery: 0.74 cuyd.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "soil",
+            "unit": "cuyd",
+            "min": 0.26666666666666666,
+            "max": 0.7666666666666666,
+            "rationale": "24 sqft × 6\" topsoil ≈ 0.45 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Topsoil",
+            "category": "soil",
+            "estimatedQuantity": 0.67,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Garden bed requires minimum 3\" topsoil base. 24 sqft × 3\" / 324 = 0.22 cuyd base + 10% waste = 0.24 cuyd. Rounded to practical delivery: 0.67 cuyd covers shallow planting with amendments.",
+            "inLibrary": false
+          },
+          "inRange": true
+        },
+        {
+          "check": {
+            "category": "mulch",
+            "unit": "cuyd",
+            "min": 0.13333333333333333,
+            "max": 0.3833333333333333,
+            "rationale": "24 sqft × 3\" mulch ≈ 0.22 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Mulch (wood chips, 3\" depth)",
+            "category": "mulch",
+            "estimatedQuantity": 0.74,
+            "unit": "cuyd",
+            "unitCost": 55,
+            "reason": "Standard 3\" mulch depth for weed suppression and moisture retention. 24 sqft × 3\" / 324 = 0.22 cuyd base + 10% waste = 0.24 cuyd. Rounded to practical delivery: 0.74 cuyd.",
+            "inLibrary": false
+          },
+          "inRange": false
+        }
+      ],
+      "positivePoints": 3,
+      "forbiddenHitCount": 0,
+      "maxPositive": 4,
+      "rawScore": 0.75,
+      "clampedScore": 0.75,
+      "reasons": [
+        "QTY out-of-range: Mulch (wood chips, 3\" depth) returned 0.74 cuyd; expected [0.13, 0.38] cuyd (24 sqft × 3\" mulch ≈ 0.22 cuyd)"
+      ]
+    },
+    {
+      "id": "garden_bed_medium",
+      "tier": "medium",
+      "notes": "Medium garden bed run.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Topsoil (garden-grade)",
+          "category": "soil",
+          "estimatedQuantity": 1.9,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Garden bed base layer, minimum 3\" depth for planting. 100 sqft × 3\" / 324 = 0.93 cuyd; +10% waste = 1.0 cuyd. Rounded to 1.9 cuyd for a loose, workable planting medium.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Mulch (hardwood, shredded)",
+          "category": "mulch",
+          "estimatedQuantity": 0.95,
+          "unit": "cuyd",
+          "unitCost": 48,
+          "reason": "Top dressing for weed suppression and moisture retention. 100 sqft × 3\" / 324 = 0.93 cuyd. Rounded to 0.95 cuyd with 5% waste factor included.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape fabric (3 oz non-woven)",
+          "category": "misc",
+          "estimatedQuantity": 110,
+          "unit": "sqft",
+          "unitCost": 0.22,
+          "reason": "Weed barrier underlayment beneath mulch. Element area 100 sqft × 1.1 (10% waste) = 110 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Compost (finished, bagged blend)",
+          "category": "soil",
+          "estimatedQuantity": 0.5,
+          "unit": "cuyd",
+          "unitCost": 65,
+          "reason": "Soil amendment to improve drainage and nutrient content in garden bed. Typical 50% blend with topsoil for planting beds.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Steel landscape edging (4\" height, galvanized)",
+          "category": "edging",
+          "estimatedQuantity": 50,
+          "unit": "lnft",
+          "unitCost": 3.5,
+          "reason": "Perimeter containment for 20 ft × 5 ft bed. Linear feet = 2(20 + 5) = 50 lnft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape edging spikes (steel, 8\" length)",
+          "category": "misc",
+          "estimatedQuantity": 25,
+          "unit": "each",
+          "unitCost": 1.2,
+          "reason": "Fasteners to secure edging. Typically 1 spike per 2 lnft; 50 lnft ÷ 2 = 25 spikes.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "soil",
+          "material": {
+            "materialId": null,
+            "materialName": "Topsoil (garden-grade)",
+            "category": "soil",
+            "estimatedQuantity": 1.9,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Garden bed base layer, minimum 3\" depth for planting. 100 sqft × 3\" / 324 = 0.93 cuyd; +10% waste = 1.0 cuyd. Rounded to 1.9 cuyd for a loose, workable planting medium.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "mulch",
+          "material": {
+            "materialId": null,
+            "materialName": "Mulch (hardwood, shredded)",
+            "category": "mulch",
+            "estimatedQuantity": 0.95,
+            "unit": "cuyd",
+            "unitCost": 48,
+            "reason": "Top dressing for weed suppression and moisture retention. 100 sqft × 3\" / 324 = 0.93 cuyd. Rounded to 0.95 cuyd with 5% waste factor included.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "soil",
+            "unit": "cuyd",
+            "min": 1.111111111111111,
+            "max": 3.1944444444444438,
+            "rationale": "100 sqft × 6\" topsoil ≈ 1.85 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Topsoil (garden-grade)",
+            "category": "soil",
+            "estimatedQuantity": 1.9,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Garden bed base layer, minimum 3\" depth for planting. 100 sqft × 3\" / 324 = 0.93 cuyd; +10% waste = 1.0 cuyd. Rounded to 1.9 cuyd for a loose, workable planting medium.",
+            "inLibrary": false
+          },
+          "inRange": true
+        },
+        {
+          "check": {
+            "category": "mulch",
+            "unit": "cuyd",
+            "min": 0.5555555555555555,
+            "max": 1.5972222222222219,
+            "rationale": "100 sqft × 3\" mulch ≈ 0.93 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Mulch (hardwood, shredded)",
+            "category": "mulch",
+            "estimatedQuantity": 0.95,
+            "unit": "cuyd",
+            "unitCost": 48,
+            "reason": "Top dressing for weed suppression and moisture retention. 100 sqft × 3\" / 324 = 0.93 cuyd. Rounded to 0.95 cuyd with 5% waste factor included.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 4,
+      "forbiddenHitCount": 0,
+      "maxPositive": 4,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "garden_bed_large",
+      "tier": "large",
+      "notes": "Large garden bed.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Topsoil (garden bed base)",
+          "category": "soil",
+          "estimatedQuantity": 4.4,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Garden beds require minimum 3\" topsoil depth for plant root establishment. 240 sqft × 3\" / 324 = 2.22 cuyd base + 4\" additional depth for amendments and settling = 240 × 7 / 324 = 5.19 cuyd. Applied 10% waste factor: 5.19 × 0.85 efficiency adjustment = 4.4 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Mulch (hardwood blend, 3\" depth)",
+          "category": "mulch",
+          "estimatedQuantity": 2.2,
+          "unit": "cuyd",
+          "unitCost": 38,
+          "reason": "Minimum 3\" mulch depth for weed suppression and moisture retention in planting beds. 240 sqft × 3\" / 324 = 2.22 cuyd. Rounded to 2.2 cuyd with 10% waste factor applied.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape fabric (weed barrier, non-woven)",
+          "category": "misc",
+          "estimatedQuantity": 264,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Underlayment installed beneath mulch to suppress weeds and prevent soil migration. Coverage = 240 sqft element × 1.1 overlap factor = 264 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Soil amendment (compost blend)",
+          "category": "soil",
+          "estimatedQuantity": 1.5,
+          "unit": "cuyd",
+          "unitCost": 55,
+          "reason": "Organic matter incorporation for soil structure, water retention, and nutrient availability. Typical application 2\" mixed into top layer of garden bed. 240 sqft × 2\" / 324 = 1.48 cuyd, rounded to 1.5 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Perennials and shrubs (assorted, 2–3 ft spacing)",
+          "category": "plant",
+          "estimatedQuantity": 32,
+          "unit": "each",
+          "unitCost": 28,
+          "reason": "Typical 40' × 6' garden bed planted at 2–3 ft on-center spacing yields ~32 plants. Scoped as mixed perennials and small shrubs for sustainable bed composition.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "soil",
+          "material": {
+            "materialId": null,
+            "materialName": "Topsoil (garden bed base)",
+            "category": "soil",
+            "estimatedQuantity": 4.4,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Garden beds require minimum 3\" topsoil depth for plant root establishment. 240 sqft × 3\" / 324 = 2.22 cuyd base + 4\" additional depth for amendments and settling = 240 × 7 / 324 = 5.19 cuyd. Applied 10% waste factor: 5.19 × 0.85 efficiency adjustment = 4.4 cuyd.",
+            "inLibrary": false
+          }
+        },
+        {
+          "category": "mulch",
+          "material": {
+            "materialId": null,
+            "materialName": "Mulch (hardwood blend, 3\" depth)",
+            "category": "mulch",
+            "estimatedQuantity": 2.2,
+            "unit": "cuyd",
+            "unitCost": 38,
+            "reason": "Minimum 3\" mulch depth for weed suppression and moisture retention in planting beds. 240 sqft × 3\" / 324 = 2.22 cuyd. Rounded to 2.2 cuyd with 10% waste factor applied.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "soil",
+            "unit": "cuyd",
+            "min": 2.6666666666666665,
+            "max": 7.666666666666666,
+            "rationale": "240 sqft × 6\" topsoil ≈ 4.4 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Topsoil (garden bed base)",
+            "category": "soil",
+            "estimatedQuantity": 4.4,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Garden beds require minimum 3\" topsoil depth for plant root establishment. 240 sqft × 3\" / 324 = 2.22 cuyd base + 4\" additional depth for amendments and settling = 240 × 7 / 324 = 5.19 cuyd. Applied 10% waste factor: 5.19 × 0.85 efficiency adjustment = 4.4 cuyd.",
+            "inLibrary": false
+          },
+          "inRange": true
+        },
+        {
+          "check": {
+            "category": "mulch",
+            "unit": "cuyd",
+            "min": 1.3333333333333333,
+            "max": 3.833333333333333,
+            "rationale": "240 sqft × 3\" mulch ≈ 2.2 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Mulch (hardwood blend, 3\" depth)",
+            "category": "mulch",
+            "estimatedQuantity": 2.2,
+            "unit": "cuyd",
+            "unitCost": 38,
+            "reason": "Minimum 3\" mulch depth for weed suppression and moisture retention in planting beds. 240 sqft × 3\" / 324 = 2.22 cuyd. Rounded to 2.2 cuyd with 10% waste factor applied.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 4,
+      "forbiddenHitCount": 0,
+      "maxPositive": 4,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "mulch_small",
+      "tier": "small",
+      "notes": "Pure mulch refresh, small.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Landscape Fabric / Weed Barrier",
+          "category": "misc",
+          "estimatedQuantity": 33,
+          "unit": "sqft",
+          "unitCost": 0.35,
+          "reason": "Underlayment to suppress weeds beneath mulch. 30 sqft area × 1.1 waste factor = 33 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Mulch (Hardwood, 3\" depth)",
+          "category": "mulch",
+          "estimatedQuantity": 0.28,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Primary mulch layer for weed suppression and moisture retention. 30 sqft × 3 in / 324 = 0.28 cuyd. No waste factor applied (mulch volume is end-use; settling is normal).",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "mulch",
+          "material": {
+            "materialId": null,
+            "materialName": "Mulch (Hardwood, 3\" depth)",
+            "category": "mulch",
+            "estimatedQuantity": 0.28,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary mulch layer for weed suppression and moisture retention. 30 sqft × 3 in / 324 = 0.28 cuyd. No waste factor applied (mulch volume is end-use; settling is normal).",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "mulch",
+            "unit": "cuyd",
+            "min": 0.16666666666666666,
+            "max": 0.47916666666666663,
+            "rationale": "30 sqft × 3\" mulch ≈ 0.28 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Mulch (Hardwood, 3\" depth)",
+            "category": "mulch",
+            "estimatedQuantity": 0.28,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary mulch layer for weed suppression and moisture retention. 30 sqft × 3 in / 324 = 0.28 cuyd. No waste factor applied (mulch volume is end-use; settling is normal).",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "mulch_medium",
+      "tier": "medium",
+      "notes": "Medium mulch refresh.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Landscape Weed Barrier Fabric (3 oz nonwoven)",
+          "category": "misc",
+          "estimatedQuantity": 220,
+          "unit": "sqft",
+          "unitCost": 0.12,
+          "reason": "Underlayment to suppress weeds and extend mulch life. 200 sqft area + 10% waste = 220 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Mulch (hardwood, shredded, dyed dark brown)",
+          "category": "mulch",
+          "estimatedQuantity": 2,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Primary mulch material at 3\" depth for weed suppression and moisture retention. 200 sqft × 3 in / 324 = 1.85 cuyd + 10% waste = 2.0 cuyd.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "mulch",
+          "material": {
+            "materialId": null,
+            "materialName": "Mulch (hardwood, shredded, dyed dark brown)",
+            "category": "mulch",
+            "estimatedQuantity": 2,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary mulch material at 3\" depth for weed suppression and moisture retention. 200 sqft × 3 in / 324 = 1.85 cuyd + 10% waste = 2.0 cuyd.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "mulch",
+            "unit": "cuyd",
+            "min": 1.111111111111111,
+            "max": 3.1944444444444438,
+            "rationale": "200 sqft × 3\" mulch ≈ 1.85 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Mulch (hardwood, shredded, dyed dark brown)",
+            "category": "mulch",
+            "estimatedQuantity": 2,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary mulch material at 3\" depth for weed suppression and moisture retention. 200 sqft × 3 in / 324 = 1.85 cuyd + 10% waste = 2.0 cuyd.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "mulch_large",
+      "tier": "large",
+      "notes": "Large mulch refresh.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Landscape Weed Barrier Fabric",
+          "category": "misc",
+          "estimatedQuantity": 880,
+          "unit": "sqft",
+          "unitCost": 0.12,
+          "reason": "Underlayment to suppress weeds beneath mulch. 800 sqft + 10% waste = 880 sqft. Standard 3 oz non-woven geotextile.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Hardwood Mulch (Shredded)",
+          "category": "mulch",
+          "estimatedQuantity": 7.4,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Primary mulch layer at 3 inches deep for weed suppression and soil moisture retention. 800 sqft × 3 in / 324 = 7.41 cuyd. Add 10% waste = 8.15 cuyd. Reduced to conservative 7.4 cuyd (density variation in delivery).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Mulch Installation Stakes (Landscape Fabric Pins)",
+          "category": "misc",
+          "estimatedQuantity": 80,
+          "unit": "each",
+          "unitCost": 0.18,
+          "reason": "Fasteners to hold weed barrier in place during mulch application. Approximately 1 pin per 10 sqft for large areas. 800 sqft / 10 = 80 pins.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "mulch",
+          "material": {
+            "materialId": null,
+            "materialName": "Hardwood Mulch (Shredded)",
+            "category": "mulch",
+            "estimatedQuantity": 7.4,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary mulch layer at 3 inches deep for weed suppression and soil moisture retention. 800 sqft × 3 in / 324 = 7.41 cuyd. Add 10% waste = 8.15 cuyd. Reduced to conservative 7.4 cuyd (density variation in delivery).",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "mulch",
+            "unit": "cuyd",
+            "min": 4.444444444444444,
+            "max": 12.777777777777775,
+            "rationale": "800 sqft × 3\" mulch ≈ 7.4 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Hardwood Mulch (Shredded)",
+            "category": "mulch",
+            "estimatedQuantity": 7.4,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary mulch layer at 3 inches deep for weed suppression and soil moisture retention. 800 sqft × 3 in / 324 = 7.41 cuyd. Add 10% waste = 8.15 cuyd. Reduced to conservative 7.4 cuyd (density variation in delivery).",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "gravel_small",
+      "tier": "small",
+      "notes": "Small gravel area.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Landscape Fabric / Weed Barrier",
+          "category": "misc",
+          "estimatedQuantity": 50,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Underlayment to suppress weeds beneath gravel path. 45 sqft × 1.10 waste factor = 50 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone / Gravel (3/4\" minus)",
+          "category": "gravel",
+          "estimatedQuantity": 0.83,
+          "unit": "cuyd",
+          "unitCost": 38,
+          "reason": "Base gravel for side path, 6\" minimum depth. 45 sqft × 6 in / 324 = 0.83 cuyd (no waste added; bulk material already accounts for settling).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Edging (aluminum or steel, 4\" height)",
+          "category": "edging",
+          "estimatedQuantity": 36,
+          "unit": "lnft",
+          "unitCost": 4.5,
+          "reason": "Linear edge restraint to contain gravel and define path perimeter. 15 ft long side + 3 ft + 15 ft + 3 ft = 36 lnft total.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Edging Spikes / Stakes (galvanized, 6\")",
+          "category": "misc",
+          "estimatedQuantity": 24,
+          "unit": "each",
+          "unitCost": 0.75,
+          "reason": "Fasteners to secure edging to ground. Spacing ~18\" apart on 36 lnft perimeter ≈ 24 spikes.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed Stone / Gravel (3/4\" minus)",
+            "category": "gravel",
+            "estimatedQuantity": 0.83,
+            "unit": "cuyd",
+            "unitCost": 38,
+            "reason": "Base gravel for side path, 6\" minimum depth. 45 sqft × 6 in / 324 = 0.83 cuyd (no waste added; bulk material already accounts for settling).",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 0.3333333333333333,
+            "max": 0.9583333333333333,
+            "rationale": "45 sqft × 4\" gravel ≈ 0.55 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed Stone / Gravel (3/4\" minus)",
+            "category": "gravel",
+            "estimatedQuantity": 0.83,
+            "unit": "cuyd",
+            "unitCost": 38,
+            "reason": "Base gravel for side path, 6\" minimum depth. 45 sqft × 6 in / 324 = 0.83 cuyd (no waste added; bulk material already accounts for settling).",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "gravel_medium",
+      "tier": "medium",
+      "notes": "Medium gravel pad.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (3 oz nonwoven)",
+          "category": "misc",
+          "estimatedQuantity": 158,
+          "unit": "sqft",
+          "unitCost": 0.12,
+          "reason": "Weed barrier underlayment for gravel pad. Prevents soil migration and weed growth. 144 sqft element × 1.10 waste factor = 158 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone / Gravel (3/4 inch minus)",
+          "category": "gravel",
+          "estimatedQuantity": 2.67,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Primary gravel fill for pad at industry-standard 6 inch depth. 144 sqft × 6 in / 324 = 2.67 cuyd (no additional waste; bulk material formula includes natural settling).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Steel Landscape Edging (4 inch height, galvanized)",
+          "category": "edging",
+          "estimatedQuantity": 48,
+          "unit": "lnft",
+          "unitCost": 2.5,
+          "reason": "Perimeter containment for gravel pad. 12 ft × 4 sides = 48 lnft to contain gravel and define border.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Steel Landscape Edging Stakes (6 inch galvanized spikes)",
+          "category": "misc",
+          "estimatedQuantity": 48,
+          "unit": "each",
+          "unitCost": 0.75,
+          "reason": "Fasteners for edging installation. One spike per linear foot of edging (48 lnft ÷ 1 ft spacing = 48 stakes).",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed Stone / Gravel (3/4 inch minus)",
+            "category": "gravel",
+            "estimatedQuantity": 2.67,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary gravel fill for pad at industry-standard 6 inch depth. 144 sqft × 6 in / 324 = 2.67 cuyd (no additional waste; bulk material formula includes natural settling).",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 1.0666666666666667,
+            "max": 3.0666666666666664,
+            "rationale": "144 sqft × 4\" gravel ≈ 1.78 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed Stone / Gravel (3/4 inch minus)",
+            "category": "gravel",
+            "estimatedQuantity": 2.67,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary gravel fill for pad at industry-standard 6 inch depth. 144 sqft × 6 in / 324 = 2.67 cuyd (no additional waste; bulk material formula includes natural settling).",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "gravel_large",
+      "tier": "large",
+      "notes": "Large gravel install.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (Non-Woven, 3oz)",
+          "category": "misc",
+          "estimatedQuantity": 423,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Weed barrier underlayment for equipment pad; prevents soil migration and weed growth beneath gravel. Area 384 sqft + 10% waste = 422.4 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone (3/4\") Base Material",
+          "category": "gravel",
+          "estimatedQuantity": 2.4,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Primary base layer for equipment pad, 6 inches deep minimum. Calculation: 384 sqft × 6 in / 324 = 7.11 cuyd at 4 in depth. Adjusted to 6 in: 384 × 6 / 324 = 7.11 cuyd. Using standard 4-inch compacted depth for equipment support: 384 × 4 / 324 = 4.74 cuyd. Reduced to 2.4 cuyd for stabilized subgrade with fabric. Add 5% compaction loss.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Crusher Run / Quarry Process (Dense Grade Aggregate)",
+          "category": "gravel",
+          "estimatedQuantity": 2.4,
+          "unit": "cuyd",
+          "unitCost": 42,
+          "reason": "Secondary compacted base layer, 4 inches deep, for equipment support and load distribution. Calculation: 384 sqft × 4 in / 324 = 4.74 cuyd. Add 5% waste = 5.0 cuyd. Refined to 2.4 cuyd for practical two-layer stack.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Pea Gravel (Decorative Top Layer)",
+          "category": "gravel",
+          "estimatedQuantity": 1.2,
+          "unit": "cuyd",
+          "unitCost": 55,
+          "reason": "Finished surface layer, 2 inches deep, for equipment pad aesthetic and minimal dust. Calculation: 384 sqft × 2 in / 324 = 2.37 cuyd. Add 5% waste = 2.5 cuyd. Refined to 1.2 cuyd for top finish only.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Crushed Stone (3/4\") Base Material",
+            "category": "gravel",
+            "estimatedQuantity": 2.4,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary base layer for equipment pad, 6 inches deep minimum. Calculation: 384 sqft × 6 in / 324 = 7.11 cuyd at 4 in depth. Adjusted to 6 in: 384 × 6 / 324 = 7.11 cuyd. Using standard 4-inch compacted depth for equipment support: 384 × 4 / 324 = 4.74 cuyd. Reduced to 2.4 cuyd for stabilized subgrade with fabric. Add 5% compaction loss.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 2.844444444444444,
+            "max": 8.177777777777777,
+            "rationale": "384 sqft × 4\" gravel ≈ 4.7 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Crushed Stone (3/4\") Base Material",
+            "category": "gravel",
+            "estimatedQuantity": 2.4,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Primary base layer for equipment pad, 6 inches deep minimum. Calculation: 384 sqft × 6 in / 324 = 7.11 cuyd at 4 in depth. Adjusted to 6 in: 384 × 6 / 324 = 7.11 cuyd. Using standard 4-inch compacted depth for equipment support: 384 × 4 / 324 = 4.74 cuyd. Reduced to 2.4 cuyd for stabilized subgrade with fabric. Add 5% compaction loss.",
+            "inLibrary": false
+          },
+          "inRange": false
+        }
+      ],
+      "positivePoints": 1,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 0.5,
+      "clampedScore": 0.5,
+      "reasons": [
+        "QTY out-of-range: Crushed Stone (3/4\") Base Material returned 2.4 cuyd; expected [2.84, 8.18] cuyd (384 sqft × 4\" gravel ≈ 4.7 cuyd)"
+      ]
+    },
+    {
+      "id": "fence_small",
+      "tier": "small",
+      "notes": "Short fence run. Should call out posts and boards.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Pressure-treated 4×4 fence post",
+          "category": "lumber",
+          "estimatedQuantity": 7,
+          "unit": "each",
+          "unitCost": 18.5,
+          "reason": "Posts set 6 ft on center for 30 lnft fence = 6 posts + 1 end post. Standard spacing prevents sagging on 6 ft tall fence.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Pressure-treated 2×6 horizontal rails",
+          "category": "lumber",
+          "estimatedQuantity": 60,
+          "unit": "lnft",
+          "unitCost": 1.85,
+          "reason": "Two horizontal rails (top and middle) × 30 lnft fence face = 60 lnft total. Prevents racking and provides structure for pickets or panels.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Pressure-treated 1×6 pickets",
+          "category": "lumber",
+          "estimatedQuantity": 180,
+          "unit": "lnft",
+          "unitCost": 0.95,
+          "reason": "Picket coverage: 30 lnft × 6 ft tall = 180 sqft face. At 5.5\" face width per picket, ~180 lnft picket stock needed for full coverage with standard spacing.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete (80 lb bags) for post footings",
+          "category": "concrete",
+          "estimatedQuantity": 21,
+          "unit": "bag",
+          "unitCost": 5.25,
+          "reason": "7 posts × 3 bags per 12\" deep, 12\" diameter hole = 21 bags. Standard practice for 6 ft tall fence on residential soil.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Galvanized 2.5\" exterior wood screws",
+          "category": "misc",
+          "estimatedQuantity": 5,
+          "unit": "lb",
+          "unitCost": 12,
+          "reason": "Fastening pickets to rails (2–3 screws per picket at 2 rail lines) + rail-to-post connections. ~5 lb covers 180 pickets with waste.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Post level and string line (labor use)",
+          "category": "misc",
+          "estimatedQuantity": 0,
+          "unit": "each",
+          "unitCost": 0,
+          "reason": "Not a material purchase; listed for completeness. Included in labor scope for plumb installation.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "lumber",
+          "material": {
+            "materialId": null,
+            "materialName": "Pressure-treated 4×4 fence post",
+            "category": "lumber",
+            "estimatedQuantity": 7,
+            "unit": "each",
+            "unitCost": 18.5,
+            "reason": "Posts set 6 ft on center for 30 lnft fence = 6 posts + 1 end post. Standard spacing prevents sagging on 6 ft tall fence.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "lumber",
+            "unit": "each",
+            "min": 4,
+            "max": 200,
+            "rationale": "posts + boards count"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Pressure-treated 4×4 fence post",
+            "category": "lumber",
+            "estimatedQuantity": 7,
+            "unit": "each",
+            "unitCost": 18.5,
+            "reason": "Posts set 6 ft on center for 30 lnft fence = 6 posts + 1 end post. Standard spacing prevents sagging on 6 ft tall fence.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "fence_medium",
+      "tier": "medium",
+      "notes": "Standard backyard perimeter fence.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Pressure-treated 2×6 lumber (fence boards)",
+          "category": "lumber",
+          "estimatedQuantity": 960,
+          "unit": "lnft",
+          "unitCost": 1.25,
+          "reason": "80 lnft fence × 6 ft tall = 480 sqft face area. Typical 1×6 boards cover 6 sqft per lnft; double-sided fence requires 2 passes. 80 × 6 × 2 = 960 lnft of boards.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Pressure-treated 4×4 fence posts",
+          "category": "lumber",
+          "estimatedQuantity": 12,
+          "unit": "piece",
+          "unitCost": 28,
+          "reason": "80 lnft fence spaced at 6 ft on center = 80 / 6 + 1 = 14.3 posts. Round to 14 posts; subtract 2 for corner/end assumptions = 12 posts @ 8 ft length.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete (for post footings)",
+          "category": "concrete",
+          "estimatedQuantity": 1.5,
+          "unit": "cuyd",
+          "unitCost": 165,
+          "reason": "12 posts × 1.5 cuft per 2 ft deep hole (4×4 post, 2 ft below grade) = 18 cuft / 27 = 0.67 cuyd. Add 10% waste = 0.74 cuyd, round to 1.5 cuyd ready-mix for contingency and ease of ordering.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "2.5-inch galvanized deck screws",
+          "category": "misc",
+          "estimatedQuantity": 5,
+          "unit": "lb",
+          "unitCost": 12.5,
+          "reason": "960 lnft of boards fastened with 2 screws per stud @ 16 in spacing ≈ 1,440 screws. Approximately 5 lb box of 2.5-inch galvanized screws (typical 300–350 ct per lb).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape geotextile fabric (optional silt barrier)",
+          "category": "misc",
+          "estimatedQuantity": 490,
+          "unit": "sqft",
+          "unitCost": 0.35,
+          "reason": "80 lnft × 6 ft height = 480 sqft; add 2% waste = 490 sqft. Optional weed barrier behind fence to suppress ground vegetation.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "3-inch exterior wood stain or sealant",
+          "category": "misc",
+          "estimatedQuantity": 3,
+          "unit": "gallon",
+          "unitCost": 45,
+          "reason": "480 sqft face area (both sides) = 960 sqft total. Typical coverage ≈ 300–350 sqft/gal; 960 / 350 ≈ 2.7 gal, round to 3 gal for two coats.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "lumber",
+          "material": {
+            "materialId": null,
+            "materialName": "Pressure-treated 2×6 lumber (fence boards)",
+            "category": "lumber",
+            "estimatedQuantity": 960,
+            "unit": "lnft",
+            "unitCost": 1.25,
+            "reason": "80 lnft fence × 6 ft tall = 480 sqft face area. Typical 1×6 boards cover 6 sqft per lnft; double-sided fence requires 2 passes. 80 × 6 × 2 = 960 lnft of boards.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "lumber",
+            "unit": "each",
+            "min": 10,
+            "max": 600,
+            "rationale": "medium fence material count"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Pressure-treated 2×6 lumber (fence boards)",
+            "category": "lumber",
+            "estimatedQuantity": 960,
+            "unit": "lnft",
+            "unitCost": 1.25,
+            "reason": "80 lnft fence × 6 ft tall = 480 sqft face area. Typical 1×6 boards cover 6 sqft per lnft; double-sided fence requires 2 passes. 80 × 6 × 2 = 960 lnft of boards.",
+            "inLibrary": false
+          },
+          "inRange": false
+        }
+      ],
+      "positivePoints": 1,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 0.5,
+      "clampedScore": 0.5,
+      "reasons": [
+        "QTY out-of-range: Pressure-treated 2×6 lumber (fence boards) returned 960 lnft; expected [10.00, 600.00] each (medium fence material count)"
+      ]
+    },
+    {
+      "id": "fence_large",
+      "tier": "large",
+      "notes": "Full property perimeter.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Pressure-treated 4×4 fence post",
+          "category": "lumber",
+          "estimatedQuantity": 14,
+          "unit": "each",
+          "unitCost": 18.5,
+          "reason": "200 lnft fence at 6 ft spacing = 33 posts; add 5% waste and corner/end reinforcement = 14 posts for initial layout and repairs",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Pressure-treated 2×6 horizontal fence rails",
+          "category": "lumber",
+          "estimatedQuantity": 26,
+          "unit": "piece",
+          "unitCost": 12,
+          "reason": "200 lnft × 2 rails per bay (top and middle) = 26 × 8-ft sections at 6 ft spacing; 5% waste included",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Pressure-treated 1×6 fence boards (vertical pickets)",
+          "category": "lumber",
+          "estimatedQuantity": 407,
+          "unit": "piece",
+          "unitCost": 4.5,
+          "reason": "200 lnft ÷ 6 in board spacing (with 1 in gap) = ~370 boards × 6 ft tall; add 10% waste = 407 pieces",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "3-inch galvanized exterior wood screws",
+          "category": "misc",
+          "estimatedQuantity": 12,
+          "unit": "lb",
+          "unitCost": 8.5,
+          "reason": "~3 screws per picket × 407 boards + 2 per rail connection × 26 rails = ~1,350 screws ≈ 12 lb box",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete for post footings (80 lb bags)",
+          "category": "concrete",
+          "estimatedQuantity": 21,
+          "unit": "bag",
+          "unitCost": 6,
+          "reason": "14 posts × 12-inch holes at 24 inches deep = 168 cuft / 27 ÷ 0.59 cuft per bag = 21 bags (standard 3-bag per hole for 24-inch depth)",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Post caps (wood or composite, 4×4)",
+          "category": "misc",
+          "estimatedQuantity": 14,
+          "unit": "each",
+          "unitCost": 7.5,
+          "reason": "One cap per post (14 total) for weather protection and finish",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape geotextile fabric (underlayment at base)",
+          "category": "misc",
+          "estimatedQuantity": 420,
+          "unit": "sqft",
+          "unitCost": 0.12,
+          "reason": "Optional weed suppression fabric at fence line; prevents grass/weed encroachment at post bases",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "lumber",
+          "material": {
+            "materialId": null,
+            "materialName": "Pressure-treated 4×4 fence post",
+            "category": "lumber",
+            "estimatedQuantity": 14,
+            "unit": "each",
+            "unitCost": 18.5,
+            "reason": "200 lnft fence at 6 ft spacing = 33 posts; add 5% waste and corner/end reinforcement = 14 posts for initial layout and repairs",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "lumber",
+            "unit": "each",
+            "min": 25,
+            "max": 1500,
+            "rationale": "large fence material count"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Pressure-treated 4×4 fence post",
+            "category": "lumber",
+            "estimatedQuantity": 14,
+            "unit": "each",
+            "unitCost": 18.5,
+            "reason": "200 lnft fence at 6 ft spacing = 33 posts; add 5% waste and corner/end reinforcement = 14 posts for initial layout and repairs",
+            "inLibrary": false
+          },
+          "inRange": false
+        }
+      ],
+      "positivePoints": 1,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 0.5,
+      "clampedScore": 0.5,
+      "reasons": [
+        "QTY out-of-range: Pressure-treated 4×4 fence post returned 14 each; expected [25.00, 1500.00] each (large fence material count)"
+      ]
+    },
+    {
+      "id": "retaining_wall_small",
+      "tier": "small",
+      "notes": "Short retaining wall. Block + base + drainage stone all reasonable.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Retaining Wall Block (concrete, 12\" × 6\" × 6\")",
+          "category": "stone",
+          "estimatedQuantity": 48,
+          "unit": "each",
+          "unitCost": 8.5,
+          "reason": "12 lnft wall × 2 ft tall = 24 sqft face. Standard 12×6 block covers ~0.5 sqft per piece. 24 / 0.5 = 48 blocks. Add 5% waste = 50 blocks (rounded).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone Base (¾\" minus, compacted)",
+          "category": "gravel",
+          "estimatedQuantity": 1.33,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Retaining wall footing: 12 lnft × 1.5 ft wide × 6 in deep = 90 cuft / 27 = 3.33 cuft. Converted: 90 / 27 = 3.33 cuft ≈ 0.12 cuyd. Recalculating per formula: assume 18 sqft trench footprint × 6 in / 324 = 0.33 cuyd. Add trench backfill (12 lnft × 1 ft wide × 1.5 ft deep behind wall = 18 cuft = 0.67 cuyd). Total ≈ 1.0 cuyd + 10% waste = 1.1 cuyd. Rounded to 1.33 cuyd for compacted base and drainage.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (4 oz nonwoven, 3 ft wide roll)",
+          "category": "misc",
+          "estimatedQuantity": 48,
+          "unit": "lnft",
+          "unitCost": 0.35,
+          "reason": "Backfill separation and drainage: 12 lnft wall × 4 ft height (includes 2 ft above grade for safety margin) = 48 lnft of 3 ft wide fabric. No waste applied for linear roll goods cut to length.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Drain Rock (½\" crushed stone, perforated drain placement)",
+          "category": "gravel",
+          "estimatedQuantity": 1.85,
+          "unit": "cuyd",
+          "unitCost": 52,
+          "reason": "Drainage layer behind wall: 12 lnft × 1 ft wide × 2 ft tall = 24 cuft = 0.89 cuyd. Add 10% waste + safety margin for full drainage zone = 1.85 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Joint Sand (50 lb bag)",
+          "category": "sand",
+          "estimatedQuantity": 4,
+          "unit": "bag",
+          "unitCost": 22,
+          "reason": "Joint fill for 48 blocks with ½\" joints: 50 lb bag covers ~65 sqft horizontal area. Retaining wall blocks stacked vertically; estimate ~3.5 bags for full perimeter jointing. Round to 4 bags.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Concrete Leveling Pad (for footing)",
+          "category": "concrete",
+          "estimatedQuantity": 0.28,
+          "unit": "cuyd",
+          "unitCost": 165,
+          "reason": "4 in thick concrete base under footing: 12 lnft × 1.5 ft wide × 4 in deep = 18 sqft × 4 in / 324 = 0.22 cuyd. Add 10% waste = 0.24 cuyd. Rounded to 0.28 cuyd for on-site flexibility.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "stone",
+          "material": {
+            "materialId": null,
+            "materialName": "Retaining Wall Block (concrete, 12\" × 6\" × 6\")",
+            "category": "stone",
+            "estimatedQuantity": 48,
+            "unit": "each",
+            "unitCost": 8.5,
+            "reason": "12 lnft wall × 2 ft tall = 24 sqft face. Standard 12×6 block covers ~0.5 sqft per piece. 24 / 0.5 = 48 blocks. Add 5% waste = 50 blocks (rounded).",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [],
+      "positivePoints": 1,
+      "forbiddenHitCount": 0,
+      "maxPositive": 1,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "retaining_wall_medium",
+      "tier": "medium",
+      "notes": "Standard retaining wall scope.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Retaining Wall Block (concrete, 12\" × 6\" × 6\")",
+          "category": "stone",
+          "estimatedQuantity": 180,
+          "unit": "each",
+          "unitCost": 8.5,
+          "reason": "30 lnft × 3 ft tall = 90 sqft face area. At 0.5 sqft per block (12\"×6\" face), 180 blocks required.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone Base (4–6 in. compacted)",
+          "category": "gravel",
+          "estimatedQuantity": 4.7,
+          "unit": "cuyd",
+          "unitCost": 42,
+          "reason": "Foundation trench behind wall: 30 lnft × 2 ft deep (behind base) × 2 ft wide drainage zone = 120 cuft / 27 = 4.44 cuyd. Add 6% waste = 4.7 cuyd.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (non-woven, 4–6 oz)",
+          "category": "misc",
+          "estimatedQuantity": 100,
+          "unit": "sqft",
+          "unitCost": 0.32,
+          "reason": "Separation layer between base and backfill behind wall. 30 lnft × 3 ft tall + 2 ft behind = ~150 sqft. With 10% overlap/waste factor = 100 sqft conservative (overlaps and vertical runs).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Perforated Drain Pipe (4 in. diameter HDPE, 30 lnft)",
+          "category": "misc",
+          "estimatedQuantity": 30,
+          "unit": "lnft",
+          "unitCost": 2.75,
+          "reason": "Toe drain along base of retaining wall to manage groundwater and hydrostatic pressure. Runs full 30 lnft length.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Gravel Backfill (coarse drainage rock, 1–2 in.)",
+          "category": "gravel",
+          "estimatedQuantity": 5.6,
+          "unit": "cuyd",
+          "unitCost": 48,
+          "reason": "Backfill zone behind wall and around drain pipe: 30 lnft × 3 ft tall × 2 ft deep behind wall = 180 cuft / 27 = 6.67 cuyd. With 10% waste factor = 7.3 cuyd total. Conservative estimate accounts for compaction and settling; 5.6 cuyd is installed loose-fill volume.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Jointing Sand (50 lb bag, for block seams)",
+          "category": "sand",
+          "estimatedQuantity": 3,
+          "unit": "bag",
+          "unitCost": 18,
+          "reason": "Jointing sand for block seams. Retaining wall blocks typically use sand/polymeric sand in 3/8–1/2 in. mortar-less joints. ~3 bags sufficient for 180-block wall (65 sqft coverage per bag; wall face ~90 sqft).",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "stone",
+          "material": {
+            "materialId": null,
+            "materialName": "Retaining Wall Block (concrete, 12\" × 6\" × 6\")",
+            "category": "stone",
+            "estimatedQuantity": 180,
+            "unit": "each",
+            "unitCost": 8.5,
+            "reason": "30 lnft × 3 ft tall = 90 sqft face area. At 0.5 sqft per block (12\"×6\" face), 180 blocks required.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [],
+      "positivePoints": 1,
+      "forbiddenHitCount": 0,
+      "maxPositive": 1,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "retaining_wall_large",
+      "tier": "large",
+      "notes": "Tall retaining wall — drainage materials critical.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Retaining Wall Block (segmental, 12\" face × 6\" height)",
+          "category": "stone",
+          "estimatedQuantity": 320,
+          "unit": "piece",
+          "unitCost": 8.5,
+          "reason": "60 lnft × 4 ft tall = 240 sqft face area. At 12\" × 6\" per block (0.5 sqft), 240 / 0.5 = 480 blocks for single-wythe wall. Multi-wythe typical design = ~320 blocks (reduced for stacked bond / actual material efficiency). Standard estimate.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Crushed Stone Base (4–6\" washed, compactable)",
+          "category": "gravel",
+          "estimatedQuantity": 5.6,
+          "unit": "cuyd",
+          "unitCost": 32,
+          "reason": "Retaining wall foundation: 60 lnft × 2 ft wide × 6 in deep (standard footing beneath wall) = 120 × 6 / 324 = 2.22 cuyd. Add 10% waste buffer and soil prep depth variation = 5.6 cuyd total for stable, well-draining base.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (4 oz non-woven, drainage grade)",
+          "category": "misc",
+          "estimatedQuantity": 270,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Placed behind block face to prevent soil migration into drain rock zone. Standard practice for 4 ft tall gravity wall. Allows water permeation while retaining fines.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Drainage Rock (½–¾\" clean crushed stone, per ASTM D2419)",
+          "category": "gravel",
+          "estimatedQuantity": 8.2,
+          "unit": "cuyd",
+          "unitCost": 38,
+          "reason": "Backfill zone behind wall: 60 lnft × 2 ft depth (typical drainage zone) × 3 ft height (average, accounting for wedge shape) = ~120 cuft = 4.44 cuyd. Add 10% waste and settling = 8.2 cuyd for complete drainage system.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Perforated Drain Pipe (4\" HDPE, French drain)",
+          "category": "misc",
+          "estimatedQuantity": 60,
+          "unit": "lnft",
+          "unitCost": 2.75,
+          "reason": "Runs full length of wall base (60 lnft) within drainage rock, 1–2 ft below finished grade. Collects and channels hydrostatic pressure and seepage to outlet.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Polymeric Jointing Sand (50 lb bag, for block face joints)",
+          "category": "sand",
+          "estimatedQuantity": 4,
+          "unit": "bag",
+          "unitCost": 28,
+          "reason": "Block-face mortar joints typically 1–1.5\" thick. 320 blocks × ~10 lnft jointing per block (top + sides) ÷ 65 sqft per bag ≈ 50 sqft jointing area. Conservative: 4 bags cover typical residential-grade filled jointing.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Spikes / Wall Anchors (8–10\" steel, galvanized)",
+          "category": "misc",
+          "estimatedQuantity": 240,
+          "unit": "piece",
+          "unitCost": 0.85,
+          "reason": "Deadman anchors or tie-back pins: ~4 anchors per 60 lnft segment (one every 15 lnft) × 10 courses high for tall wall = ~40 anchors minimum. 240 accounts for robust multi-wythe construction and redundancy (industry standard 4–6 per 10 lnft per course).",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "stone",
+          "material": {
+            "materialId": null,
+            "materialName": "Retaining Wall Block (segmental, 12\" face × 6\" height)",
+            "category": "stone",
+            "estimatedQuantity": 320,
+            "unit": "piece",
+            "unitCost": 8.5,
+            "reason": "60 lnft × 4 ft tall = 240 sqft face area. At 12\" × 6\" per block (0.5 sqft), 240 / 0.5 = 480 blocks for single-wythe wall. Multi-wythe typical design = ~320 blocks (reduced for stacked bond / actual material efficiency). Standard estimate.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [],
+      "positivePoints": 1,
+      "forbiddenHitCount": 0,
+      "maxPositive": 1,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "drainage_small",
+      "tier": "small",
+      "notes": "Short trench. Drain rock + pipe required.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Perforated Drainage Pipe (4\" diameter)",
+          "category": "misc",
+          "estimatedQuantity": 20,
+          "unit": "lnft",
+          "unitCost": 2.5,
+          "reason": "Core drainage conduit for French drain system. 20 linear feet at 4\" diameter is standard residential sizing.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Drain Rock (crushed stone, 3/4\"-1.5\")",
+          "category": "gravel",
+          "estimatedQuantity": 1.9,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "Surrounds perforated pipe to allow water infiltration. Trench 20 lnft × 1.5 ft wide × 1 ft deep = 30 cuft = 1.11 cuyd; 1.5 ft width accounts for pipe surround + backfill margin. Add 10% waste = 1.22 cuyd; round to 1.9 cuyd to ensure full coverage with buffer.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (non-woven, 4 oz)",
+          "category": "misc",
+          "estimatedQuantity": 40,
+          "unit": "sqft",
+          "unitCost": 0.35,
+          "reason": "Separates drain rock from native soil to prevent silting of drainage stone. Sized at 20 lnft × 2 ft width (to wrap around pipe assembly) = 40 sqft; includes 5% waste buffer.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Topsoil (native finish grade)",
+          "category": "soil",
+          "estimatedQuantity": 1.1,
+          "unit": "cuyd",
+          "unitCost": 32,
+          "reason": "Final backfill and surface restoration over drain trench. Trench area 20 lnft × 1.5 ft wide × 0.5 ft depth (top 6\") = 15 cuft = 0.56 cuyd. Add 10% waste = 0.62 cuyd; round to 1.1 cuyd for site settling and compaction allowance.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Drain Outlet / Daylight Fitting (4\" PVC)",
+          "category": "misc",
+          "estimatedQuantity": 1,
+          "unit": "each",
+          "unitCost": 18,
+          "reason": "End outlet where perforated pipe terminates or transitions to outlet location. One per drain system.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Drain Rock (crushed stone, 3/4\"-1.5\")",
+            "category": "gravel",
+            "estimatedQuantity": 1.9,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Surrounds perforated pipe to allow water infiltration. Trench 20 lnft × 1.5 ft wide × 1 ft deep = 30 cuft = 1.11 cuyd; 1.5 ft width accounts for pipe surround + backfill margin. Add 10% waste = 1.22 cuyd; round to 1.9 cuyd to ensure full coverage with buffer.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 0.5,
+            "max": 4,
+            "rationale": "20 ft trench × 1.5×1 ft / 27 ≈ 1.1 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Drain Rock (crushed stone, 3/4\"-1.5\")",
+            "category": "gravel",
+            "estimatedQuantity": 1.9,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "Surrounds perforated pipe to allow water infiltration. Trench 20 lnft × 1.5 ft wide × 1 ft deep = 30 cuft = 1.11 cuyd; 1.5 ft width accounts for pipe surround + backfill margin. Add 10% waste = 1.22 cuyd; round to 1.9 cuyd to ensure full coverage with buffer.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "drainage_medium",
+      "tier": "medium",
+      "notes": "Medium drainage run.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Drain rock (perforated pipe underbelly)",
+          "category": "gravel",
+          "estimatedQuantity": 2.2,
+          "unit": "cuyd",
+          "unitCost": 45,
+          "reason": "60 lnft trench × 1.5 ft wide × 1 ft deep = 90 cuft / 27 = 3.33 cuyd base; reduced to 2.2 cuyd accounting for perforated pipe displacement and typical 30% void fill around pipe. Industry standard for drainage trenches.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Perforated drain pipe (4\" diameter, HDPE)",
+          "category": "misc",
+          "estimatedQuantity": 60,
+          "unit": "lnft",
+          "unitCost": 2.5,
+          "reason": "60 linear feet of 4-inch perforated HDPE pipe, the primary conveyance element for the yard drain run.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape geotextile fabric (non-woven, drain-grade)",
+          "category": "misc",
+          "estimatedQuantity": 900,
+          "unit": "sqft",
+          "unitCost": 0.12,
+          "reason": "Wraps drain rock and pipe to prevent sediment infiltration. 60 lnft × 15 ft width coverage (both sides of 1.5 ft wide trench plus top) = ~900 sqft with 10% waste factor.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Drain pipe catch basin / inlet (4\", plastic)",
+          "category": "misc",
+          "estimatedQuantity": 1,
+          "unit": "each",
+          "unitCost": 85,
+          "reason": "Entry point for yard drain system; allows surface water collection and directs flow into perforated pipe network.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Drain pipe outlet / daylight fitting (4\", HDPE)",
+          "category": "misc",
+          "estimatedQuantity": 1,
+          "unit": "each",
+          "unitCost": 35,
+          "reason": "Terminus fitting at drainage outfall; discharges collected water away from yard.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Topsoil (backfill and surface restoration)",
+          "category": "soil",
+          "estimatedQuantity": 1.1,
+          "unit": "cuyd",
+          "unitCost": 32,
+          "reason": "60 lnft × 1.5 ft wide × 0.5 ft depth (6\") for trench backfill and finish grade restoration. 60 × 1.5 × 6 / 324 = 1.67 cuyd raw; reduced to 1.1 cuyd after accounting for settled drain rock zone. Includes 5% waste.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Drain rock (perforated pipe underbelly)",
+            "category": "gravel",
+            "estimatedQuantity": 2.2,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "60 lnft trench × 1.5 ft wide × 1 ft deep = 90 cuft / 27 = 3.33 cuyd base; reduced to 2.2 cuyd accounting for perforated pipe displacement and typical 30% void fill around pipe. Industry standard for drainage trenches.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 1.5,
+            "max": 12,
+            "rationale": "60 ft trench × 1.5×1 ft / 27 ≈ 3.3 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Drain rock (perforated pipe underbelly)",
+            "category": "gravel",
+            "estimatedQuantity": 2.2,
+            "unit": "cuyd",
+            "unitCost": 45,
+            "reason": "60 lnft trench × 1.5 ft wide × 1 ft deep = 90 cuft / 27 = 3.33 cuyd base; reduced to 2.2 cuyd accounting for perforated pipe displacement and typical 30% void fill around pipe. Industry standard for drainage trenches.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "drainage_large",
+      "tier": "large",
+      "notes": "Large multi-zone drainage.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Perforated Drain Pipe (4\" HDPE)",
+          "category": "misc",
+          "estimatedQuantity": 150,
+          "unit": "lnft",
+          "unitCost": 1.85,
+          "reason": "Primary drainage conduit for whole yard system. 150 linear feet at 12\" depth requires continuous pipe run.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Drain Rock (½\" – ¾\" Crushed Stone)",
+          "category": "gravel",
+          "estimatedQuantity": 16.7,
+          "unit": "cuyd",
+          "unitCost": 42,
+          "reason": "Backfill around perforated pipe. Trench = 150 lnft × 2 ft wide × 1 ft deep = 300 cuft ÷ 27 = 11.1 cuyd base. With 6\" additional stone above pipe for drainage envelope: 150 × 2 × 0.5 ÷ 27 = 5.6 cuyd. Total 16.7 cuyd with 10% waste factor.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (Non-Woven)",
+          "category": "misc",
+          "estimatedQuantity": 330,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Separation layer between drain rock and native soil to prevent sediment infiltration. Trench opening (150 lnft × 2 ft width) = 300 sqft + 10% waste = 330 sqft.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Schedule 40 PVC Coupling & Fittings Kit (4\")",
+          "category": "misc",
+          "estimatedQuantity": 1,
+          "unit": "each",
+          "unitCost": 65,
+          "reason": "Tee, elbows, and end caps for 150 lnft drainage line. One kit per system covers typical branch connections and terminations.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Drain Cleanout Access Port (4\" with cover)",
+          "category": "misc",
+          "estimatedQuantity": 2,
+          "unit": "each",
+          "unitCost": 38,
+          "reason": "Access points for system maintenance. Recommended minimum 2 per 150 lnft run (one mid-line, one at terminus).",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Edging / Silt Fence (12\" height)",
+          "category": "edging",
+          "estimatedQuantity": 150,
+          "unit": "lnft",
+          "unitCost": 0.89,
+          "reason": "Temporary or permanent erosion control edging above trench zone to define drainage corridor and prevent surface sediment migration into excavation.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "gravel",
+          "material": {
+            "materialId": null,
+            "materialName": "Drain Rock (½\" – ¾\" Crushed Stone)",
+            "category": "gravel",
+            "estimatedQuantity": 16.7,
+            "unit": "cuyd",
+            "unitCost": 42,
+            "reason": "Backfill around perforated pipe. Trench = 150 lnft × 2 ft wide × 1 ft deep = 300 cuft ÷ 27 = 11.1 cuyd base. With 6\" additional stone above pipe for drainage envelope: 150 × 2 × 0.5 ÷ 27 = 5.6 cuyd. Total 16.7 cuyd with 10% waste factor.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "gravel",
+            "unit": "cuyd",
+            "min": 4,
+            "max": 30,
+            "rationale": "150 ft trench × 1.5×1 ft / 27 ≈ 8.3 cuyd"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Drain Rock (½\" – ¾\" Crushed Stone)",
+            "category": "gravel",
+            "estimatedQuantity": 16.7,
+            "unit": "cuyd",
+            "unitCost": 42,
+            "reason": "Backfill around perforated pipe. Trench = 150 lnft × 2 ft wide × 1 ft deep = 300 cuft ÷ 27 = 11.1 cuyd base. With 6\" additional stone above pipe for drainage envelope: 150 × 2 × 0.5 ÷ 27 = 5.6 cuyd. Total 16.7 cuyd with 10% waste factor.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "edging_small",
+      "tier": "small",
+      "notes": "Short edging run.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Steel Landscape Edging, 4\" height",
+          "category": "edging",
+          "estimatedQuantity": 30,
+          "unit": "lnft",
+          "unitCost": 3.5,
+          "reason": "Primary edging material for 30 linear feet of bed border. Standard 4\" steel provides clean line and root barrier.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Edging Stakes / Spikes, galvanized steel",
+          "category": "misc",
+          "estimatedQuantity": 20,
+          "unit": "each",
+          "unitCost": 1.25,
+          "reason": "Fasteners to secure edging to ground. Typical spacing 18\" on center for 30 lnft = ~20 stakes required.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Fabric (4 oz, weed barrier)",
+          "category": "misc",
+          "estimatedQuantity": 40,
+          "unit": "sqft",
+          "unitCost": 0.18,
+          "reason": "Optional underlayment behind edging to suppress weeds and prevent soil migration. Assume 18\" width × 30 lnft = 45 sqft + 10% waste overage = 40 sqft conservative underestimate.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "edging",
+          "material": {
+            "materialId": null,
+            "materialName": "Steel Landscape Edging, 4\" height",
+            "category": "edging",
+            "estimatedQuantity": 30,
+            "unit": "lnft",
+            "unitCost": 3.5,
+            "reason": "Primary edging material for 30 linear feet of bed border. Standard 4\" steel provides clean line and root barrier.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "edging",
+            "unit": "lnft",
+            "min": 25.5,
+            "max": 48.3,
+            "rationale": "30 lnft + waste"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Steel Landscape Edging, 4\" height",
+            "category": "edging",
+            "estimatedQuantity": 30,
+            "unit": "lnft",
+            "unitCost": 3.5,
+            "reason": "Primary edging material for 30 linear feet of bed border. Standard 4\" steel provides clean line and root barrier.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "edging_medium",
+      "tier": "medium",
+      "notes": "Medium edging.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Steel Landscape Edging, 4\" height",
+          "category": "edging",
+          "estimatedQuantity": 80,
+          "unit": "lnft",
+          "unitCost": 3.5,
+          "reason": "Primary material for 80 linear feet of garden border. Provides clean separation and containment.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Edging Stakes / Spikes, 6\" galvanized steel",
+          "category": "misc",
+          "estimatedQuantity": 27,
+          "unit": "each",
+          "unitCost": 1.2,
+          "reason": "Fastening hardware for edging. Standard spacing ~3 lnft per stake; 80 lnft ÷ 3 = 26.7, rounded to 27 with 5% waste.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric, 3 oz",
+          "category": "misc",
+          "estimatedQuantity": 80,
+          "unit": "sqft",
+          "unitCost": 0.35,
+          "reason": "Weed barrier and soil stabilization along the edging strip. Typical width 18–24\"; calculated as 80 lnft × 1.5 ft width = 120 sqft base; reduced to 80 sqft for linear installation + 5% waste allowance.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "edging",
+          "material": {
+            "materialId": null,
+            "materialName": "Steel Landscape Edging, 4\" height",
+            "category": "edging",
+            "estimatedQuantity": 80,
+            "unit": "lnft",
+            "unitCost": 3.5,
+            "reason": "Primary material for 80 linear feet of garden border. Provides clean separation and containment.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "edging",
+            "unit": "lnft",
+            "min": 68,
+            "max": 128.79999999999998,
+            "rationale": "80 lnft + waste"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Steel Landscape Edging, 4\" height",
+            "category": "edging",
+            "estimatedQuantity": 80,
+            "unit": "lnft",
+            "unitCost": 3.5,
+            "reason": "Primary material for 80 linear feet of garden border. Provides clean separation and containment.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    },
+    {
+      "id": "edging_large",
+      "tier": "large",
+      "notes": "Large edging.",
+      "recs": [
+        {
+          "materialId": null,
+          "materialName": "Steel Landscape Edging (Corten or Galvanized, 4\" height)",
+          "category": "edging",
+          "estimatedQuantity": 200,
+          "unit": "lnft",
+          "unitCost": 2.5,
+          "reason": "Primary edging material for 200 linear feet of yard perimeter. Standard 4\" height provides effective soil and mulch retention.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Steel Edging Stakes / Spikes (6\" length, galvanized)",
+          "category": "misc",
+          "estimatedQuantity": 80,
+          "unit": "each",
+          "unitCost": 0.65,
+          "reason": "Fastening stakes to secure edging to ground. Typical spacing 2.5 linear feet per stake; 200 lnft ÷ 2.5 = 80 stakes, plus 10% waste buffer.",
+          "inLibrary": false
+        },
+        {
+          "materialId": null,
+          "materialName": "Landscape Geotextile Fabric (4 oz non-woven, 3 ft width)",
+          "category": "misc",
+          "estimatedQuantity": 200,
+          "unit": "lnft",
+          "unitCost": 0.35,
+          "reason": "Optional underlayment placed beneath edging to suppress weeds and stabilize soil interface. 200 lnft × 3 ft width = 600 sqft, sold as 200 lnft roll of 3 ft width.",
+          "inLibrary": false
+        }
+      ],
+      "expectedFound": [
+        {
+          "category": "edging",
+          "material": {
+            "materialId": null,
+            "materialName": "Steel Landscape Edging (Corten or Galvanized, 4\" height)",
+            "category": "edging",
+            "estimatedQuantity": 200,
+            "unit": "lnft",
+            "unitCost": 2.5,
+            "reason": "Primary edging material for 200 linear feet of yard perimeter. Standard 4\" height provides effective soil and mulch retention.",
+            "inLibrary": false
+          }
+        }
+      ],
+      "expectedMissing": [],
+      "forbiddenHits": [],
+      "quantityResults": [
+        {
+          "check": {
+            "category": "edging",
+            "unit": "lnft",
+            "min": 170,
+            "max": 321.99999999999994,
+            "rationale": "200 lnft + waste"
+          },
+          "matched": {
+            "materialId": null,
+            "materialName": "Steel Landscape Edging (Corten or Galvanized, 4\" height)",
+            "category": "edging",
+            "estimatedQuantity": 200,
+            "unit": "lnft",
+            "unitCost": 2.5,
+            "reason": "Primary edging material for 200 linear feet of yard perimeter. Standard 4\" height provides effective soil and mulch retention.",
+            "inLibrary": false
+          },
+          "inRange": true
+        }
+      ],
+      "positivePoints": 2,
+      "forbiddenHitCount": 0,
+      "maxPositive": 2,
+      "rawScore": 1,
+      "clampedScore": 1,
+      "reasons": []
+    }
+  ]
+}
