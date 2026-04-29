@@ -1847,3 +1847,95 @@ Verified live on `terrainforge-staging.netlify.app`:
   recommendations land.
 - Sprint Z2 stack upgrade (React 19 / R3F v9 / drei v10) — explicitly
   deferred per `.claude/TESTING/PLAN.md` rationale.
+
+---
+
+# Sprint 3D-Reality — Charlie manual test 2026-04-29
+
+Two real bugs surfaced when Charlie opened existing E2E projects on
+staging and toggled 3D + reviewed 2D placement. Both are **P0**: 3D
+viewer is the demo surface, and placement on the map is the entire
+value prop of the share link.
+
+## F-3D-MESH-01 — 3D viewer renders ground but no element meshes (P0)
+
+**Symptom**: 3D toggle on existing projects (e.g.
+`E2E_TEST_Walkthrough_1777434304286`, Paver Patio 16×12 + Garden Bed
+Edging 60 LF) shows the satellite ground tile rendering at an oblique
+angle but **no element meshes appear in the scene**. The 2D view of
+the same project shows the elements correctly. Issue is not visible
+on the new wizard-flow projects with manual placement (only on
+auto-layout-only projects); needs reproduction confirmation across
+the matrix.
+
+**Hypotheses, in priority order**:
+
+1. **Camera frustum vs element positions**: when the ground plane is
+   sized to the parcel (~200×200 ft at zoom 18), the camera may be
+   pulled back far enough that auto-layout's relative offsets put
+   elements behind / above / outside the frustum. Easy to verify —
+   log `camera.position`, `camera.far`, and each element's
+   `mesh.position` after mount.
+2. **Element `y` (height) below ground plane**: if the default
+   `position.y` resolves to 0 but the ground plane is also at y=0
+   with no offset, the mesh may z-fight or be culled by depth test.
+   Verify: ground plane y, element y, element height-derived box
+   bottom.
+3. **Polygon shape regression on rectangle path**: the recent
+   `THREE.Shape` + `ExtrudeGeometry` work for polygon support keys
+   off `shape === 'polygon'`, but the rectangle branch may rely on
+   `shape === 'rectangle'` being explicit. Existing pre-mig-033
+   projects have `shape` = NULL / undefined which may now drop
+   through to a no-op. Check `ExtrudedBox.shapeKind` resolution path
+   in `PlanView3D.tsx`.
+
+**Investigation order**:
+- Open the failing project in dev with `?debug=3d` (or just attach
+  console logs)
+- Log `scene.children.length` after first paint — if it's only 1–2
+  (ground + light) instead of 1 + N elements, the elements were
+  never added to the scene → check element-list reactivity
+- If the elements ARE in the scene, log their world-position. If the
+  world-position is sane, it's a camera issue (zoom out to see the
+  full scene)
+- If scene has elements at sane positions and the camera is fine,
+  it's a material / depth issue
+
+**Severity**: P0. Demo surface. Blocks Sprint AI-Place validation
+because we can't see the AI's placements until 3D renders meshes.
+
+## F-3D-PLACEMENT-01 — Element placement ignores property structure (P0, architectural)
+
+**Symptom** (from screenshots in chat 2026-04-29):
+- 2D view: 16×12 Paver Patio centered on a building's flat dark roof
+- 2D view: 60 LF Garden Bed Edging stretches as a long horizontal
+  strip across both lanes of a 4-lane road, through parked cars,
+  into the wall of the building, and out the other side
+
+**Root cause**: `autoLayout` offsets elements relative to the
+satellite-tile center using purely geometric heuristics (the 25-ft
+S6c-residual fix). It has zero awareness of what's road / roof /
+lawn / driveway in the actual satellite tile.
+
+**Why this matters more than F-3D-MESH-01**: the share link is what
+goes to the client. A client who sees their patio on top of the
+neighbor's garage and the edging slicing through a road will not
+trust the contractor or the tool. This is brand-damage territory.
+
+**Long-term fix**: **Sprint AI-Place** in `.claude/ROADMAP.md` —
+vision-grounded element placement on the satellite tile. Hard
+requirement: must work for any address the contractor inputs, not
+just E2E test addresses.
+
+**Stop-gap until Sprint AI-Place lands**:
+- The wizard's manual drag-in-Step-2 affordance already exists. Make
+  sure all marketing screenshots / demo recordings come from
+  manually-placed projects, NOT auto-layout E2E fixtures.
+- Optionally: hide the share-link button on projects where every
+  element still has the default auto-layout position (i.e. the
+  contractor never confirmed placement). Surface a "Position
+  elements before sharing" hint instead.
+
+**Severity**: P0 architectural. Logged at the top of the P0 section
+in ROADMAP.md so it's visible to every next-session pick.
+

@@ -54,6 +54,31 @@ to reflect what landed; what's marked 🔴 is what was *not* done in this run.
 
 These are actively breaking Charlie's partner's ability to use the app.
 
+### 🔴 3D viewer doesn't render element meshes (2026-04-29)
+> Charlie's manual test: 3D toggle on existing projects shows the satellite
+> ground tile rendering correctly but **zero element meshes appear in the
+> scene**. The 2D view shows the same elements without issue. Reproduced on
+> `E2E_TEST_Walkthrough_1777434304286` (Paver Patio 16×12 + Garden Bed
+> Edging 60 LF) — both should be a small cube + thin strip on the ground;
+> neither is visible. **Investigation suspects** (priority order):
+> (1) auto-layout positions outside camera frustum at parcel-scale ground;
+> (2) element `y` height defaults below the ground plane;
+> (3) recent polygon `THREE.Shape` work regressed rectangle path when
+>     `shape` is undefined / implicit `'rectangle'`. Drop into PlanView3D
+> with the failing project, log `scene.children` + element `position` /
+> `scale`, identify the actual cause before fixing. See
+> `.claude/TESTING/FINDINGS.md#F-3D-MESH-01` for the bug log.
+
+### 🔴 Element placement on map ignores property structure (2026-04-29)
+> Same manual test as above: a 16×12 paver patio is positioned squarely on
+> a building's roof; a 60 LF garden-bed edging slices through both lanes
+> of a 4-lane road plus the building wall. The current `autoLayout` 25-ft
+> offset is geometric dead-reckoning with no awareness of road / roof /
+> lawn / driveway in the satellite tile. Long-term fix is **Sprint AI-Place**
+> (P4). **Hard requirement**: must work for any address the contractor
+> inputs, not just suburban backyards. Until that ships, the only path
+> to sensible placement is contractor manual drag in Step 2 of the wizard.
+
 ### 🔴 CSV material import fails after ~50 rows *(V3)*
 > "Failed to save Material" error when importing a larger catalog.
 Likely a Supabase rate-limit or batched-insert missing. **Investigation starts at**
@@ -328,24 +353,239 @@ Both Edge Functions deployed and operational against prod Resend. `send-proposal
 - F-CW-EMAIL-02: functions queried `client` instead of `client_name` from projects table — silent query failure produced placeholder-text emails. Commit `e4e5c06`.
 In-app banner on OverviewTab continues to work as a fallback when env vars aren't configured.
 
-### 🟡 Precise element-on-property placement (Sprint 6c — residual closed 2026-04-23)
-S7b delivered the geo-aligned satellite plane. S6c-residual (Apr 23) fixed the
-default auto-layout to offset 25 ft south of origin so un-positioned elements
-don't overlap the house. Full auto-inference ("fit to yard" based on geocoded
-house footprint) remains a UX design problem; the current default keeps
-elements visible on the lawn area until the contractor positions them.
+### 🔴 Precise element-on-property placement (Sprint 6c — RE-OPENED 2026-04-29)
+S7b delivered the geo-aligned satellite plane. S6c-residual (Apr 23) added a
+naïve default offset (25 ft south of origin) so un-positioned elements don't
+overlap the house. **This is insufficient.** Charlie's manual test on
+2026-04-29 confirmed the bug across multiple E2E projects: a 16×12 paver
+patio sits squarely on a building's roof, and a 60-LF garden-bed edging
+runs through both lanes of a 4-lane road. The 25-ft offset is dead-reckoning
+that has no awareness of what's road / roof / lawn / driveway in the
+actual satellite tile. **Hard requirement: this must work for any address
+the contractor inputs**, not just suburban backyards in our test corpus.
+
+Long-term fix replaces the geometric heuristic with vision-AI grounding —
+see **Sprint AI-Place** in P4. Until then, the only path to a sensible
+placement is contractor manual drag in Step 2 of the wizard. E2E fixtures
+that don't simulate the drag will continue to look wrong.
 
 ---
 
 ## P4 — Next sprints (overnight-runnable)
 
-Three discrete, well-scoped sprints that I (Claude) can run autonomously
+Discrete, well-scoped sprints that I (Claude) can run autonomously
 overnight against the staging deployment. Each is self-verifying — no
 human eyes in the loop required to know whether it landed correctly.
-Logged here after Phase C v0 + polish wrapped (commits `5ccec06` →
-`8fa113a`). Pick one and assign explicitly; do not run multiple in
-parallel — they touch overlapping files (PlanView3D, OverviewTab,
-aiRecommendations).
+Pick one and assign explicitly; do not run multiple in parallel —
+they touch overlapping files (PlanView3D, OverviewTab, aiRecommendations).
+
+---
+
+### 🆕 Sprint AI-Place — Vision-grounded element placement on property satellite (highest priority, post-2026-04-29)
+
+**Why this exists**: auto-layout has zero awareness of what's road / roof /
+lawn / driveway in the satellite tile. Charlie verified the failure live
+on 2026-04-29 (multiple E2E projects had patios on roofs, edging across
+roads). Geometric heuristics ("offset N feet from origin") cannot solve
+this — the property's structure is *in the image*, and an image is what
+we already fetch from Mapbox for the wizard. Use a vision LLM to ground
+element placement in the actual property layout.
+
+**Hard constraint**: must work for **any address the contractor inputs**.
+Not just suburban backyards. Not just Asheville. Not just clear-imagery
+addresses. Urban, rural, commercial, recently-built, partially-occluded,
+and faded-imagery addresses are all in scope. The fallback path must be
+graceful — if the vision call fails or returns junk, the contractor must
+not be blocked.
+
+**Architecture**:
+
+1. **Trigger point**: end of Wizard Step 1 (job description + address) →
+   beginning of Step 2 (Design canvas), in parallel with the existing
+   `inferElements` Claude call. The Mapbox satellite is already fetched
+   for display; reuse the same URL.
+2. **Vision call** (extend `proxy-claude` Edge Function or add
+   `proxy-claude-vision` sibling): pass the satellite tile (PNG/WebP) +
+   the inferred element list to Claude Haiku 4.5. Prompt asks it to:
+   - Identify the buildable area (lawn / dirt / open ground / non-paved
+     non-rooftop) as a bounding polygon in normalized tile coords (0–1
+     for both x and y, origin top-left)
+   - Optionally identify obstacle zones (house footprint, road, driveway,
+     pool, large trees) as additional polygons
+   - For each requested element, return a placement point in normalized
+     tile coords + a 1-sentence rationale ("backyard, behind house, away
+     from pool")
+3. **Coordinate mapping**: every Mapbox satellite tile we fetch has known
+   `(centerLat, centerLng, zoom, tileWidthPx, tileHeightPx)`. Web Mercator
+   gives us `feetPerPixel` at that zoom + latitude. Normalized tile coords
+   → pixel offset → feet offset from tile center → element `position` in
+   plan-feet (already the coordinate system used by `geometry`).
+4. **Fallback chain** (each step degrades gracefully):
+   - Vision call succeeds + returns valid coords → use them. Done.
+   - Vision call succeeds but returns coords outside the buildable polygon
+     it identified → re-prompt once; if still invalid, fall to step 3.
+   - Vision call times out (>15 s) or returns malformed JSON → use current
+     `autoLayout` 25-ft-offset heuristic. Show a small "AI placement
+     unavailable — drag to position" hint in Step 2.
+   - Vision call returns "I can't tell where the buildable area is on
+     this image" → same fallback as malformed.
+5. **Contractor override**: drag-place in Step 2 always wins. The vision
+   call seeds positions; the contractor confirms or moves them. AI
+   placement is *suggestion*, not authority — same principle as
+   `inferElements`.
+
+**Why this is overnight-runnable**: tight inner loop. Build a small test
+corpus of ~15 satellite tiles (rural / suburban / urban / commercial /
+recently-built / partially-occluded — see test corpus below), iterate the
+prompt, score against contractor-authored ground-truth placements, repeat.
+Each pass costs ~$0.30 of Anthropic budget (~15 vision calls).
+
+**Test corpus** (deliverable as `e2e/fixtures/ai-place-corpus/`):
+
+| # | Property type | Address (real, public) | Why it's in the corpus |
+|---|---|---|---|
+| 1 | Suburban backyard, large lawn | 100 Tunnel Rd, Asheville NC (existing E2E) | Baseline — should be easy |
+| 2 | Urban rowhouse with tiny yard | TBD Boston/Philly | Tests "buildable area is 200 sqft" edge case |
+| 3 | Rural property, multiple acres | TBD upstate NY/VT | Tests zoomed-out tiles where house is tiny |
+| 4 | Commercial parking lot redesign | TBD strip mall | Tests "no lawn at all, just hardscape decisions" |
+| 5 | Recently-built (sparse imagery) | TBD new development | Tests stale / partial satellite |
+| 6 | Heavily-treed lot | TBD wooded NC/PA | Tests canopy occluding ground |
+| 7 | Corner lot (2 street faces) | TBD any | Tests setback awareness |
+| 8 | House on slope | TBD foothills | Tests imagery-distortion robustness |
+| 9 | Driveway-dominant front yard | TBD suburb | Tests "front yard is mostly paving" |
+| 10 | Lakefront / waterfront | TBD any | Tests water as obstacle |
+| 11 | HOA-style identical lots | TBD any tract | Tests neighbor-property bleed |
+| 12 | Apartment complex | TBD any | Tests scale-confusion |
+| 13 | Townhouse w/ shared driveway | TBD any | Tests parcel-line ambiguity |
+| 14 | Single-family flat suburban | TBD generic | Easiest case, regression baseline |
+| 15 | Address that fails geocoding gracefully | invalid address | Tests fallback path |
+
+For each: contractor authors a "ground truth" placement file
+(`fixture-N.expected.json`) listing element types + expected (x, y) in
+plan-feet within tolerance bands. Harness scores `actual` vs `expected`
+across the corpus with a single accuracy %. Threshold: ≥ 70% mean (vs.
+current ~5% — almost everything geometric ends up on a roof or road).
+
+**Deliverables**:
+- New service `src/services/aiPlacement.ts` exporting
+  `inferElementPlacements({ tileImageUrl, lat, lng, zoom, elements })`
+  returning `{ placements: Map<elementId, { x, y, rationale }>,
+  buildableArea?: PolygonNormalized, obstacles?: PolygonNormalized[] }`.
+- Edge Function: extend `proxy-claude` to handle vision payloads (image
+  URL or base64) — Haiku 4.5 supports vision. Same JWT-auth, same
+  rate-limit pattern. Keep existing text-only path unchanged.
+- `src/lib/mapTileMath.ts` — pure functions for normalized-tile-coord ↔
+  plan-feet conversion. Web Mercator `feetPerPixel(lat, zoom)`. Unit-test
+  with 10+ known-good city/zoom pairs.
+- Wizard wiring: `src/pages/ProjectWizard.tsx` — kick off `inferElementPlacements`
+  in the Step 1 → 2 transition (parallel with `inferElements`).
+  Pre-populate `wizardData.elements[i].geometry.position` from results.
+- `WizardStepMeasurements.tsx` — small "AI placed N elements" banner with
+  a "Recompute" button that re-runs the call (e.g. after the contractor
+  edits the address). Skeleton placeholders during call.
+- `e2e/ai-placement.spec.ts` — runs the corpus through staging proxy,
+  asserts ≥ 70% mean accuracy, regenerates `.claude/TESTING/AI_PLACE_SCORECARD.md`.
+- npm script `npm run placement:score`.
+- Operator doc: `.claude/TESTING/AI_PLACEMENT_NOTES.md` documenting the
+  prompt iterations + known failure modes per corpus entry.
+
+**Self-verifying**: corpus accuracy % is the success metric. CI fails if
+the score regresses below threshold. Snapshot the corpus + expected
+outputs; PR diffs to either move the bar or the test.
+
+**Risks**:
+- **Imagery quality variance** is the biggest one. Mapbox's tiles are
+  3rd-party (DigitalGlobe + others) and quality differs by region + tile
+  age. Mitigate by including imagery-quality probes in the prompt
+  ("rate image clarity 1–5, bail to fallback if ≤ 2").
+- **Hallucination**: Claude inventing structures that aren't in the
+  image. Mitigate with a self-check turn ("for each placement, justify
+  what you can see in the image at that location"). Cheap.
+- **Coordinate-system bugs are silent**: a +/- sign error in feet-per-pixel
+  math will place every element 200 ft off without throwing. Mitigate by
+  unit-testing `mapTileMath.ts` against hand-calculated reference values
+  for known landmarks (Eiffel Tower lat/lng → known meters per pixel at
+  zoom 18, etc.).
+- **Tile vs parcel mismatch**: Mapbox returns a square tile centered on
+  the geocoded point. Parcels are arbitrary shapes. The vision model may
+  put an element in a beautiful patch of grass that happens to be the
+  neighbor's lawn. Phase 2 (Sprint AI-Buildable) ingests parcel polygons
+  from a public dataset (Regrid, OSM, county GIS) to clip placements to
+  the actual lot. Phase 1 ships without this — note in the rationale
+  that the contractor must verify ownership.
+- **Cost**: ~$0.05 per project at Haiku vision rates. Fine at MVP scale;
+  monitor at 1000+ projects/month.
+
+**Critical files to read first**:
+- `src/services/aiRecommendations.ts` — existing Claude integration patterns
+- `supabase/functions/proxy-claude/index.ts` — JWT-auth proxy to extend
+- `src/lib/planLayout.ts` — `autoLayout`, current default offset
+- `src/components/dashboard/MapWidget.tsx` (or wherever `buildMapboxStaticUrl`
+  lives) — tile fetch URL + dimensions
+- `src/components/wizard/WizardStepMeasurements.tsx` — where the result lands
+- `src/pages/ProjectWizard.tsx` — Step 1 → 2 transition kickoff point
+
+**Phasing within this sprint**: ship in two PRs to keep diffs reviewable:
+- **PR 1 — plumbing**: `mapTileMath.ts` + `proxy-claude` vision support +
+  `aiPlacement.ts` service + corpus fixture skeleton. No wizard wiring.
+  Verify via the harness only.
+- **PR 2 — wizard integration**: hook into `ProjectWizard.tsx` Step 1→2
+  transition + `WizardStepMeasurements.tsx` UI affordance + walkthrough
+  E2E adds an "AI placed elements within buildable area" assertion.
+
+---
+
+### 🆕 Sprint AI-Buildable — Buildable-area overlay + parcel clipping (follow-up to Sprint AI-Place)
+
+**Why this exists**: Sprint AI-Place ships with the model identifying
+a buildable polygon but not visualizing it. This sprint surfaces that
+polygon as a soft overlay in 2D + 3D so the contractor sees "AI thinks
+the yard is *here*", and clips manual drag-place to the polygon (with
+override) so accidents are harder. Also pulls in parcel-boundary data
+to prevent placing elements on the neighbor's lawn.
+
+**Architecture**:
+
+1. **Render** the `buildableArea` polygon returned by the vision call as:
+   - In `PlanView2D`: a translucent green fill with a dashed outline +
+     small "AI: buildable area" label
+   - In `PlanView3D`: a slightly raised translucent ground decal (alpha
+     ~0.15, color ~lawn-green) coplanar with the satellite tile, drawn
+     before elements
+2. **Soft clipping** during drag: when the contractor drags an element
+   outside the buildable polygon in 2D or 3D, show the element with a
+   warning halo and a small "outside buildable area" hint. Don't block
+   the drop — contractor authority. (We may know better than the AI.)
+3. **Parcel data**: fetch the lot polygon from a public source per address.
+   Options ranked: (a) Regrid API (paid, accurate), (b) OpenStreetMap
+   `way` tagged with `landuse=residential` near the address (free, hit
+   rate ~70%), (c) county GIS endpoints (free, fragmented). Use parcel
+   polygon to constrain `inferElementPlacements` if available; otherwise
+   fall back to the AI-identified buildable area only.
+4. **Storage**: cache the parcel polygon + AI buildable polygon on the
+   project record (new column `projects.lot_geometry JSONB` via mig 035).
+
+**Deliverables**:
+- mig 035 — `projects.lot_geometry JSONB` (parcel polygon) +
+  `projects.buildable_area_geometry JSONB` (AI polygon)
+- `src/services/parcelLookup.ts` — cascading lookup with provider fallback
+- `PlanView2D.tsx` + `PlanView3D.tsx` — overlay rendering
+- Drag-clip hint behavior in `PlanView2D` drag handler
+- Test corpus regression — buildable-area visualization rendered for
+  the 15 corpus entries; visual snapshot test
+
+**Risks**:
+- Parcel data licensing — Regrid is paid; OSM is free but spotty. Start
+  with OSM-only; promote to Regrid if hit rate < 60%.
+- Overlay clutter at low zoom — render conditional on element selection
+  state if needed.
+
+**Critical files**:
+- `src/components/plan/PlanView2D.tsx`, `PlanView3D.tsx`
+- new `src/services/parcelLookup.ts`
+- `src/services/supabaseProjects.ts` — persist lot_geometry
+
+---
 
 ### ✅ Sprint M — Materials engine accuracy harness (closed 2026-04-28)
 
