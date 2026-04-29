@@ -2,7 +2,7 @@
 
 > **Purpose**: The north star for all development. Every code session reads this file. Every decision about where data lives, how it flows, and how pages consume it is answered here.
 > **Created**: 2026-04-03 (data layer refactor)
-> **Updated**: 2026-04-29 (batches 15-26: zundo undo/redo, polygon shapes via mig 034, polygon vertex-edit + click-to-draw redraw, Cmd-K quick-switcher, recently-used material chips, element copy/paste, lifecycle confirms, dimension presets, override hints, manifest PDF export)
+> **Updated**: 2026-04-29 (batches 15-28: zundo undo/redo, polygon shapes via mig 034, polygon vertex-edit + click-to-draw redraw, **draw-new-polygon shortcut**, **right-click edge inserts vertex**, Cmd-K quick-switcher, recently-used material chips, element copy/paste, lifecycle confirms, dimension presets, override hints, manifest PDF export)
 > **Owner**: Charlie + Cowork
 
 ---
@@ -22,7 +22,9 @@
   - Vertex textarea (`x,y` per line, live area + perimeter readout)
   - Vertex drag handles in PlanView2D when editable
   - Right-click vertex to remove (when 4+ remain)
+  - **Right-click polygon edge** (not vertex) inserts a new vertex at the click point — closest-edge picked via point-to-segment distance, accounts for element rotation via inverse-rotate around center
   - "Redraw on canvas" button enters click-to-draw mode (canvas overlay, Esc cancel, Enter / Done commit)
+  - **"Draw polygon"** thumbnail-strip shortcut (batch 27): creates a 4-vertex 10×10 seed polygon and immediately enters draw mode — one click instead of Add → switch shape → Redraw
 - **Element dimension presets** (`ELEMENT_PRESETS` in `src/lib/elements.ts`): one-click defaults for 17 element types (12×12 patio, 4×40 walkway, 3-ft fire pit, etc.).
 - **Element copy/paste**: Cmd-D duplicates the selected element with +(4,4) ft offset. Cmd-C / Cmd-V via clipboard ref. Skipped inside text inputs so native browser copy still works.
 

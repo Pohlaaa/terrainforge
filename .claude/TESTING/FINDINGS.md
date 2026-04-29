@@ -1792,3 +1792,58 @@ greedy). Logged here for the future-Claude reading the spec:
 - 1 staging-DB test project per run, deleted on teardown
 - Recommended cadence: pre-merge gate locally, daily check on CI,
   manual `npm run e2e:headed` before each Sprint M/P/V starts
+---
+
+# Sprint Z3 — Polygon click-to-draw + vertex insert (2026-04-29, commit `b923902`)
+
+Phase B follow-ups from the polygon series. Two shortcuts that together
+close the loop on "design a polygon from scratch without ever leaving
+the canvas":
+
+| Batch | Shipped |
+|-------|---------|
+| 27 | **Draw-new-polygon thumbnail button**: clicking adds a 4-vertex 10×10 seed and immediately drops the user into draw mode (Esc cancel, Enter commit). Replaces the Add → switch-to-Polygon → Redraw three-step flow with a single click. `WizardStepMeasurements.addPolygonElement()` uses a `setTimeout(0)` deferral so the element renders in `laid` before draw mode flips on. |
+| 28 | **Right-click polygon edge inserts vertex** in `PlanView2D.tsx`. Closest edge picked via point-to-segment distance, click point projected onto that edge, and a new vertex is inserted between the bounding pair. Accounts for `rotationDeg` via inverse-rotate around the element center so it works on rotated polygons. Pairs with the existing right-click-vertex-to-remove (when 4+ vertices remain). |
+
+## Manual Chrome QA on staging (this commit, post-deploy)
+
+Verified live on `terrainforge-staging.netlify.app`:
+
+| Surface | Result |
+|---------|--------|
+| **ProjectStatusPills** on Overview | ✅ All 6 buttons (Estimate / Quoted / Approved / Scheduled / In Progress / Completed) + On Hold render with correct `aria-pressed` state. Earlier `find` query missed them — DOM probe confirmed all present + visible. |
+| **Cmd-K quick-switcher** | ✅ Opens, lists 4 hub pages + 5 secondary pages + projects with status badges (59 results on this account). |
+| **3D viewer on Overview** | ✅ Canvas mounts (924×358) with satellite ground rendered. Tested on `E2E_VISUAL_REGRESSION_SprintV` (7 elements). Did not visually verify each element-mesh on this small project — covered by Sprint V regression suite. |
+| **Wizard at `/projects/wizard`** | ✅ Loads as 5-step Phase-A flow (The Job / Design / The Plan / The Numbers / Review & Create). |
+| **Review Queue `/queue`** | ✅ Loads with empty-state copy. |
+| **Dashboard `/`** | ✅ Lands at `/dashboard`, KPIs render (49 active, 1 completed this month, $635.2k pipeline, 11% avg completion), 4 KPI cards. |
+
+### Minor finding (P3 — not blocking)
+
+- **F-Z3-01** `/projects/new` is interpreted by the `/projects/:id`
+  route as id="new", triggering a `fetchProjectFull('new')` that
+  surfaces transient "Database error syntax for type" toasts before
+  settling into a permanent "Loading project data..." spinner. Anyone
+  pasting `/projects/new` (intuitive guess) hits a dead end. Fix
+  options: (a) add a `<Route path="/projects/new" element={<Navigate to="/projects/wizard" />}>`,
+  or (b) validate the `:id` param as a UUID and redirect to `/projects` on miss.
+  Logged for backlog.
+
+## What's NOT covered by this QA pass
+
+- Full polygon-edit flow on a project that already contains polygon
+  elements — covered by `e2e/walkthrough.spec.ts` batch 25.
+- Materials engine accuracy on polygon shapes — covered by
+  `npm run materials:score` harness (89.6% mean).
+- Cmd-Z undo/redo on a real edit chain — covered by walkthrough
+  batch 21 + zundo unit reflection.
+
+## What was deferred
+
+- Cross-org RLS test on a second tenant — needs operator decision on
+  a second test account.
+- Component tests for wizard `handleCreate` — real day-of-work
+  investment, not justified before Phase B AI material
+  recommendations land.
+- Sprint Z2 stack upgrade (React 19 / R3F v9 / drei v10) — explicitly
+  deferred per `.claude/TESTING/PLAN.md` rationale.

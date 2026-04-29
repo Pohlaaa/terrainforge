@@ -4,7 +4,7 @@
 > contractor feedback (v2-v5), the Apr 5 audit report, Supabase advisor findings, and
 > internal stability work. Status on each item: ✅ done / 🟡 in-progress / 🔴 open.
 >
-> **Last updated:** 2026-04-26 (~50 contractor-walkthrough findings closed across 18 commits; materials engine verified end-to-end on staging; next focus: 3D in wizard).
+> **Last updated:** 2026-04-29 (batches 15-28 shipped: zundo undo/redo, polygon shapes via mig 034, polygon vertex-edit + click-to-draw redraw, draw-new-polygon shortcut, right-click-edge vertex insert, Cmd-K quick-switcher, recently-used material chips, element copy/paste, dimension presets. Manual Chrome QA on staging confirms all surfaces healthy.).
 >
 > **Audience.** Next session's default work picker. Read after `CLAUDE.md` + `CONTEXT.md`.
 
