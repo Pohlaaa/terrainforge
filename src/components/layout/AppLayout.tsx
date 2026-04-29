@@ -25,6 +25,7 @@ import { ToastContainer } from '@/components/shared/Toast';
 import { useUIStore } from '@/stores/uiStore';
 import { fetchUserPreferences, hasCompletedOnboarding } from '@/services/preferences';
 import { KPI_LIBRARY, DEFAULT_SELECTED_KPIS } from '@/lib/kpiCompute';
+import { toast } from '@/hooks/useToast';
 
 // Map onboarding priority labels → KPI library IDs
 const PRIORITY_TO_KPI: Record<string, string> = {
@@ -108,6 +109,58 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const showTrialBanner = isTrial && daysLeft !== null && !isOnBillingPage;
   const showPastDue = isPastDue && !pastDueBannerDismissed && !isOnBillingPage;
   const showExpiredOverlay = isExpiredTrial && !expiredOverlayDismissed;
+
+  // Sprint Z1 Batch 15: global Cmd-Z / Cmd-Shift-Z (Ctrl-Z / Ctrl-Y on
+  // non-Mac) for project edit history. Walks the temporal store on
+  // useProjectStore. Skipped when focus is on a text input/textarea so
+  // typing's native undo (browser-managed in inputs) keeps working.
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const isEditable =
+        tag === 'input' ||
+        tag === 'textarea' ||
+        tag === 'select' ||
+        target?.isContentEditable === true;
+      if (isEditable) return;
+
+      // Cmd-Z (no shift) → undo
+      // Cmd-Shift-Z OR Ctrl-Y → redo
+      const key = e.key.toLowerCase();
+      const isUndo = key === 'z' && !e.shiftKey;
+      const isRedo = (key === 'z' && e.shiftKey) || key === 'y';
+      if (!isUndo && !isRedo) return;
+
+      const temporalState = useProjectStore.temporal.getState();
+      const past = temporalState.pastStates.length;
+      const future = temporalState.futureStates.length;
+
+      if (isUndo) {
+        if (past === 0) {
+          toast.info('Nothing to undo.');
+        } else {
+          e.preventDefault();
+          temporalState.undo();
+          toast.success(
+            `Undone (local). ${past - 1} more in history. Refresh to reload from server.`,
+          );
+        }
+      } else if (isRedo) {
+        if (future === 0) {
+          toast.info('Nothing to redo.');
+        } else {
+          e.preventDefault();
+          temporalState.redo();
+          toast.success(`Redone (local). ${future - 1} steps remaining.`);
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-transparent">

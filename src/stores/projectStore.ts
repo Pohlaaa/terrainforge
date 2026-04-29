@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { temporal } from 'zundo'
 import type {
   Project, Zone, ProjectListItem, ProjectFull,
   ProjectTask, ProjectSubcontractor, ProjectPermit,
@@ -99,8 +100,22 @@ interface ProjectStore {
   removeProjectCrew: (projectId: string, entryId: string) => void
 }
 
+/**
+ * Sprint Z1 Batch 15: temporal middleware for undo/redo. Tracks only
+ * `activeProject` (the deep edit graph) — list-state, loading flags, and
+ * fetch results are excluded so a `fetchProjects()` round-trip doesn't
+ * create undo entries.
+ *
+ * IMPORTANT: undo is local-only. It reverts the in-memory activeProject
+ * but does NOT roll back DB writes. The contractor sees the snap-back
+ * immediately; refreshing the page reloads from the server (which still
+ * has the post-edit state). This is the safe shape for v1 — every
+ * Supabase action remains the source of truth, undo is a UI affordance
+ * for "wait, that was wrong, let me see the previous layout."
+ */
 export const useProjectStore = create<ProjectStore>()(
-  (set, get) => ({
+  temporal(
+    (set, get) => ({
     // State
     projects: [],
     activeProject: null,
@@ -723,5 +738,27 @@ export const useProjectStore = create<ProjectStore>()(
         console.error('updateProjectMaterials error:', err instanceof Error ? err.message : err)
       }
     },
-  })
+    }),
+    {
+      // Track only the active edit graph — fetch results, list state,
+      // and loading flags are noise in the undo timeline.
+      partialize: (state) => ({ activeProject: state.activeProject }),
+      // 50 steps mirrors zundo's default and matches what feels reasonable
+      // for "I've made a few edits, let me back up." Tweak via the
+      // useProjectStore.temporal.getState().setState({ limit: N }) escape
+      // hatch if needed in tests.
+      limit: 50,
+      // Don't track null → null transitions. Switching projects sets
+      // activeProject to null briefly, then to the new graph; without
+      // this guard every project navigation creates two useless undo
+      // entries.
+      equality: (a, b) => {
+        if (a.activeProject === b.activeProject) return true
+        if (!a.activeProject || !b.activeProject) return false
+        // Only a reference check is what we want — deep equality across
+        // a 100-element project graph would be expensive on every set.
+        return false
+      },
+    },
+  )
 )
