@@ -649,28 +649,14 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                       className="mt-[6px] rounded-[6px] border"
                       style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
                     >
-                      {manifests.map((mf, i) => {
-                        const lineCount = mf.summary?.lineCount ?? mf.lineItems.length;
-                        const totalCost = mf.summary?.totalCost ?? 0;
-                        return (
-                          <div
-                            key={mf.id}
-                            className="px-[10px] py-[6px] text-[11px]"
-                            style={{
-                              borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                              color: 'var(--text-3)',
-                            }}
-                          >
-                            <div style={{ fontWeight: 600, color: 'var(--text)' }}>
-                              v{mf.version} · {new Date(mf.generatedAt).toLocaleString()}
-                              <span style={{ fontWeight: 400, marginLeft: 6, color: 'var(--text-4)' }}>
-                                · {lineCount} line item{lineCount !== 1 ? 's' : ''}
-                                · {fmt(totalCost)}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {manifests.map((mf, i) => (
+                        <ManifestRowExpander
+                          key={mf.id}
+                          mf={mf}
+                          isFirst={i === 0}
+                          fmt={fmt}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1047,6 +1033,143 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   : 'Send proposal'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── ManifestRowExpander ─────────────────────────────────────────────────────
+//
+// A single row in the manifest snapshot list. Collapsed by default — shows
+// just version + timestamp + line count + total cost. Click to expand and
+// see the full purchase list (aggregated across elements) and per-element
+// line items. The data is already loaded in the parent's `manifests`
+// state — this component just hides/shows it.
+
+interface ManifestRowExpanderProps {
+  mf: ManifestRow;
+  isFirst: boolean;
+  fmt: (n: number | null | undefined) => string;
+}
+
+const ManifestRowExpander: React.FC<ManifestRowExpanderProps> = ({ mf, isFirst, fmt }) => {
+  const [open, setOpen] = useState(false);
+  const lineCount = mf.summary?.lineCount ?? mf.lineItems.length;
+  const totalCost = mf.summary?.totalCost ?? 0;
+
+  return (
+    <div
+      style={{
+        borderTop: isFirst ? 'none' : '1px solid var(--border)',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full text-left px-[10px] py-[6px] text-[11px] cursor-pointer bg-transparent border-none"
+        style={{ color: 'var(--text-3)' }}
+        aria-expanded={open}
+      >
+        <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+          {open ? '▾' : '▸'} v{mf.version} · {new Date(mf.generatedAt).toLocaleString()}
+        </span>
+        <span style={{ fontWeight: 400, marginLeft: 6, color: 'var(--text-4)' }}>
+          · {lineCount} line item{lineCount !== 1 ? 's' : ''}
+          · {fmt(totalCost)}
+        </span>
+      </button>
+
+      {open && (
+        <div className="px-[10px] pb-[10px] text-[11px]">
+          {/* Purchase list — what to actually order from suppliers */}
+          {mf.purchaseList.length > 0 && (
+            <div className="mb-[10px]">
+              <div
+                className="text-[10px] font-[700] uppercase mb-[4px]"
+                style={{ color: 'var(--text-4)', letterSpacing: '0.04em' }}
+              >
+                Purchase list
+              </div>
+              <div className="rounded-[4px] overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+                <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface2)' }}>
+                      <th className="text-left px-[8px] py-[4px] font-[600]" style={{ color: 'var(--text-3)' }}>Material</th>
+                      <th className="text-right px-[8px] py-[4px] font-[600]" style={{ color: 'var(--text-3)' }}>Qty</th>
+                      <th className="text-right px-[8px] py-[4px] font-[600]" style={{ color: 'var(--text-3)' }}>Unit cost</th>
+                      <th className="text-right px-[8px] py-[4px] font-[600]" style={{ color: 'var(--text-3)' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mf.purchaseList.map((p, i) => (
+                      <tr
+                        key={`${p.materialId}-${i}`}
+                        style={{ borderTop: '1px solid var(--border)' }}
+                      >
+                        <td className="px-[8px] py-[4px]" style={{ color: 'var(--text)' }}>
+                          {p.materialName}
+                          <span style={{ color: 'var(--text-4)', marginLeft: 4 }}>· {p.category}</span>
+                        </td>
+                        <td className="text-right px-[8px] py-[4px] tabular-nums" style={{ color: 'var(--text)' }}>
+                          {p.purchaseQuantity} {p.purchaseUnit}
+                        </td>
+                        <td className="text-right px-[8px] py-[4px] tabular-nums" style={{ color: 'var(--text-3)' }}>
+                          {fmt(p.unitCost)}
+                        </td>
+                        <td className="text-right px-[8px] py-[4px] tabular-nums" style={{ color: 'var(--text)', fontWeight: 600 }}>
+                          {fmt(p.totalCost)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Per-element line items — useful for verifying engine assigned
+              the right materials to the right element. */}
+          {mf.lineItems.length > 0 && (
+            <details>
+              <summary
+                className="cursor-pointer text-[10px] font-[700] uppercase"
+                style={{ color: 'var(--text-4)', letterSpacing: '0.04em' }}
+              >
+                Per-element breakdown ({mf.lineItems.length})
+              </summary>
+              <div className="mt-[4px] space-y-[2px]">
+                {mf.lineItems.map((li, i) => (
+                  <div
+                    key={`${li.elementId}-${li.materialId}-${i}`}
+                    className="flex items-center justify-between px-[6px] py-[2px]"
+                    style={{ color: 'var(--text-3)' }}
+                  >
+                    <span>
+                      <span style={{ color: 'var(--text)', fontWeight: 500 }}>{li.elementName}</span>
+                      <span style={{ color: 'var(--text-4)', marginLeft: 6 }}>{li.materialName}</span>
+                    </span>
+                    <span className="tabular-nums">
+                      {li.purchaseQuantity} {li.purchaseUnit} · {fmt(li.lineCost)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
+          {/* Aggregate footer */}
+          <div
+            className="flex items-center justify-between mt-[8px] px-[8px] py-[4px] rounded-[4px]"
+            style={{ background: 'var(--surface2)' }}
+          >
+            <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-4)' }}>
+              Total
+            </span>
+            <span className="tabular-nums font-[700]" style={{ color: 'var(--text)' }}>
+              {fmt(totalCost)}
+            </span>
           </div>
         </div>
       )}
