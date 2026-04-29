@@ -655,6 +655,8 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                           mf={mf}
                           isFirst={i === 0}
                           fmt={fmt}
+                          project={project}
+                          orgName={useOrgStore.getState().org?.name ?? undefined}
                         />
                       ))}
                     </div>
@@ -1052,12 +1054,45 @@ interface ManifestRowExpanderProps {
   mf: ManifestRow;
   isFirst: boolean;
   fmt: (n: number | null | undefined) => string;
+  project: Project;
+  orgName: string | undefined;
 }
 
-const ManifestRowExpander: React.FC<ManifestRowExpanderProps> = ({ mf, isFirst, fmt }) => {
+const ManifestRowExpander: React.FC<ManifestRowExpanderProps> = ({
+  mf, isFirst, fmt, project, orgName,
+}) => {
   const [open, setOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const lineCount = mf.summary?.lineCount ?? mf.lineItems.length;
   const totalCost = mf.summary?.totalCost ?? 0;
+
+  async function handleExportPDF(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // Lazy-import — keeps the @react-pdf/renderer chunk out of the
+      // OverviewTab eager bundle. The chunk is shared with MaterialsTab,
+      // so a contractor who's already exported a manifest there pays
+      // zero additional load here.
+      const [{ pdf }, { ManifestSnapshotPDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('@/components/pdf/ManifestSnapshotPDF'),
+      ]);
+      const blob = await pdf(
+        <ManifestSnapshotPDF project={project} manifest={mf} orgName={orgName} />,
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      a.download = `${safeName}-manifest-v${mf.version}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div
@@ -1159,17 +1194,33 @@ const ManifestRowExpander: React.FC<ManifestRowExpanderProps> = ({ mf, isFirst, 
             </details>
           )}
 
-          {/* Aggregate footer */}
+          {/* Aggregate footer + export */}
           <div
-            className="flex items-center justify-between mt-[8px] px-[8px] py-[4px] rounded-[4px]"
+            className="flex items-center justify-between mt-[8px] px-[8px] py-[4px] rounded-[4px] gap-[8px]"
             style={{ background: 'var(--surface2)' }}
           >
             <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-4)' }}>
               Total
             </span>
-            <span className="tabular-nums font-[700]" style={{ color: 'var(--text)' }}>
+            <span
+              className="tabular-nums font-[700] flex-1 text-right"
+              style={{ color: 'var(--text)' }}
+            >
               {fmt(totalCost)}
             </span>
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={exporting}
+              className="px-[10px] py-[3px] rounded-[5px] text-[10px] font-[600] cursor-pointer border-none"
+              style={{
+                backgroundColor: 'var(--green)',
+                color: '#fff',
+                opacity: exporting ? 0.6 : 1,
+              }}
+            >
+              {exporting ? 'Generating…' : 'Export PDF'}
+            </button>
           </div>
         </div>
       )}
