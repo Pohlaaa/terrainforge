@@ -9,6 +9,8 @@ import {
   gridCount,
   wallBlockCount,
   getEffectiveDepth,
+  polygonAreaSqft,
+  polygonPerimeterFt,
   DEPTH_MINIMUMS,
   DEFAULT_DEPTH_INCHES,
 } from './unit-conversions';
@@ -133,6 +135,88 @@ describe('wallBlockCount (LINEAR_DEPTH)', () => {
   });
   it('zero face area returns 0 (defensive)', () => {
     expect(wallBlockCount(20, 3, 0)).toBe(0);
+  });
+});
+
+describe('polygonAreaSqft (Shoelace formula, mig 034)', () => {
+  it('10×10 square as a polygon = 100 sqft', () => {
+    expect(polygonAreaSqft([
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ])).toBe(100);
+  });
+
+  it('right triangle (base 6, height 8) = 24 sqft', () => {
+    expect(polygonAreaSqft([
+      { x: 0, y: 0 },
+      { x: 6, y: 0 },
+      { x: 0, y: 8 },
+    ])).toBe(24);
+  });
+
+  it('returns 0 for fewer than 3 points', () => {
+    expect(polygonAreaSqft([])).toBe(0);
+    expect(polygonAreaSqft([{ x: 0, y: 0 }])).toBe(0);
+    expect(polygonAreaSqft([{ x: 0, y: 0 }, { x: 5, y: 5 }])).toBe(0);
+  });
+
+  it('produces the same area regardless of winding order', () => {
+    const cw = [
+      { x: 0, y: 0 },
+      { x: 0, y: 10 },
+      { x: 10, y: 10 },
+      { x: 10, y: 0 },
+    ];
+    const ccw = [...cw].reverse();
+    expect(polygonAreaSqft(cw)).toBe(polygonAreaSqft(ccw));
+    expect(polygonAreaSqft(cw)).toBe(100);
+  });
+
+  it('handles an L-shape patio (6 vertices) correctly', () => {
+    // 12×12 square with a 4×4 notch in the bottom-right corner.
+    // Total = 12*12 - 4*4 = 144 - 16 = 128 sqft.
+    expect(polygonAreaSqft([
+      { x: 0, y: 0 },
+      { x: 8, y: 0 },
+      { x: 8, y: 4 },
+      { x: 12, y: 4 },
+      { x: 12, y: 12 },
+      { x: 0, y: 12 },
+    ])).toBe(128);
+  });
+});
+
+describe('polygonPerimeterFt', () => {
+  it('10×10 square = 40 ft perimeter', () => {
+    expect(polygonPerimeterFt([
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ])).toBe(40);
+  });
+
+  it('returns 0 for fewer than 2 points', () => {
+    expect(polygonPerimeterFt([])).toBe(0);
+    expect(polygonPerimeterFt([{ x: 0, y: 0 }])).toBe(0);
+  });
+
+  it('open path (2 points) returns the closing segment too — full polygon perimeter', () => {
+    // A 2-point segment closes back on itself, so perimeter is 2 × distance.
+    expect(polygonPerimeterFt([
+      { x: 0, y: 0 },
+      { x: 3, y: 4 },
+    ])).toBe(10); // 5 + 5 = 10
+  });
+
+  it('right triangle (3-4-5) = 12 ft', () => {
+    expect(polygonPerimeterFt([
+      { x: 0, y: 0 },
+      { x: 3, y: 0 },
+      { x: 0, y: 4 },
+    ])).toBeCloseTo(12, 5);
   });
 });
 

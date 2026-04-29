@@ -24,7 +24,7 @@ function makeElement(overrides: Partial<ProjectElement> = {}): ProjectElement {
     lengthFt: overrides.lengthFt ?? null,
     widthFt: overrides.widthFt ?? null,
     areaSqft: overrides.areaSqft ?? null,
-    linearFt: overrides.linearFt ?? null,
+    linearFt: 'linearFt' in overrides ? overrides.linearFt! : null,
     heightFt: overrides.heightFt ?? null,
     depthIn: overrides.depthIn ?? null,
     computedAreaSqft: overrides.computedAreaSqft ?? 0,
@@ -32,6 +32,7 @@ function makeElement(overrides: Partial<ProjectElement> = {}): ProjectElement {
     sequence: 0,
     createdAt: '2026-04-28T00:00:00Z',
     materials: overrides.materials ?? [],
+    geometry: overrides.geometry ?? null,
   };
 }
 
@@ -86,6 +87,92 @@ function makeMaterial(overrides: Partial<Material> = {}): Material {
 }
 
 // ── computeElementMaterial: model-by-model ──────────────────────────────────
+
+describe('computeElementMaterial — polygons (migration 034)', () => {
+  it('AREA_COVERAGE on a polygon uses Shoelace area from geometry.shape.points', () => {
+    // L-shape: 12×12 with a 4×4 corner notch → 128 sqft.
+    // × 6" gravel base / 27 = 128 × 0.5 / 27 = 2.370... cuyd
+    const element = makeElement({
+      shape: 'polygon',
+      geometry: {
+        position: { x: 0, y: 0 },
+        rotation: 0,
+        shape: {
+          kind: 'polygon',
+          points: [
+            { x: 0, y: 0 },
+            { x: 8, y: 0 },
+            { x: 8, y: 4 },
+            { x: 12, y: 4 },
+            { x: 12, y: 12 },
+            { x: 0, y: 12 },
+          ],
+        },
+      },
+    });
+    const elMat = makeElMat({ depthIn: 6, category: 'gravel' });
+    const cat = makeMaterial({
+      computationModel: 'AREA_COVERAGE',
+      purchaseUnit: 'cubic_yard',
+      computeParams: {},
+    });
+    expect(computeElementMaterial(element, elMat, cat)).toBeCloseTo(
+      (128 * 0.5) / 27,
+      4,
+    );
+  });
+
+  it('LINEAR on a polygon uses segment-sum perimeter (not 2L+2W)', () => {
+    // 3-4-5 triangle perimeter = 12 ft. 6-ft edging units → 2.
+    const element = makeElement({
+      shape: 'polygon',
+      linearFt: null,
+      geometry: {
+        position: { x: 0, y: 0 },
+        rotation: 0,
+        shape: {
+          kind: 'polygon',
+          points: [
+            { x: 0, y: 0 },
+            { x: 3, y: 0 },
+            { x: 0, y: 4 },
+          ],
+        },
+      },
+    });
+    const elMat = makeElMat({ category: 'edging' });
+    const cat = makeMaterial({
+      computationModel: 'LINEAR',
+      computeParams: { length_per_unit_ft: 6 },
+    });
+    expect(computeElementMaterial(element, elMat, cat)).toBeCloseTo(12 / 6, 5);
+  });
+
+  it('falls back to rectangle math when shape=polygon but geometry has fewer than 3 points', () => {
+    const element = makeElement({
+      shape: 'polygon',
+      lengthFt: 10,
+      widthFt: 10,
+      computedAreaSqft: 100,
+      geometry: {
+        position: { x: 0, y: 0 },
+        rotation: 0,
+        shape: { kind: 'polygon', points: [{ x: 0, y: 0 }, { x: 5, y: 5 }] },
+      },
+    });
+    const elMat = makeElMat({ depthIn: 6, category: 'gravel' });
+    const cat = makeMaterial({
+      computationModel: 'AREA_COVERAGE',
+      purchaseUnit: 'cubic_yard',
+      computeParams: {},
+    });
+    // Rectangle fallback: 100 sqft × 6" / 27 ≈ 1.852
+    expect(computeElementMaterial(element, elMat, cat)).toBeCloseTo(
+      (100 * 0.5) / 27,
+      4,
+    );
+  });
+});
 
 describe('computeElementMaterial — circles (migration 033)', () => {
   it('AREA_COVERAGE on a 10-ft-radius circle uses π × r²', () => {

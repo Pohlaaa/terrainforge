@@ -67,8 +67,8 @@ export interface WizardElement {
   tempId: string;
   name: string;
   elementType: ElementType;
-  /** Migration 033: defaults to 'rectangle' (back-compat). 'circle' uses radiusFt. */
-  shape?: 'rectangle' | 'circle' | 'polyline';
+  /** Migration 033/034: 'rectangle' (default), 'circle' (radius), 'polygon' (geometry points). */
+  shape?: 'rectangle' | 'circle' | 'polygon' | 'polyline';
   /** Radius in feet when shape='circle'. Null otherwise. */
   radiusFt?: number | null;
   lengthFt: number | null;
@@ -895,14 +895,37 @@ export default function ProjectWizard() {
         for (let i = 0; i < data.elements.length; i++) {
           const el = data.elements[i];
           try {
-            // Migration 033: circles compute area from radius. Falls through
-            // to the rectangle path when shape is unset or rectangle.
+            // Migration 033/034: circles use π × r²; polygons use Shoelace
+            // on geometry.shape.points; everything else falls back to
+            // length × width or the manual areaSqft override.
             const isCircle = el.shape === 'circle' && el.radiusFt && el.radiusFt > 0;
-            const computedArea = isCircle
-              ? Math.PI * (el.radiusFt as number) * (el.radiusFt as number)
-              : (el.lengthFt && el.widthFt)
-                ? el.lengthFt * el.widthFt
-                : el.areaSqft ?? 0;
+            const isPolygon =
+              el.shape === 'polygon' &&
+              el.geometry?.shape &&
+              el.geometry.shape.kind === 'polygon' &&
+              el.geometry.shape.points.length >= 3;
+            let computedArea: number;
+            if (isCircle) {
+              computedArea = Math.PI * (el.radiusFt as number) * (el.radiusFt as number);
+            } else if (
+              isPolygon &&
+              el.geometry?.shape &&
+              el.geometry.shape.kind === 'polygon'
+            ) {
+              const pts = el.geometry.shape.points;
+              let sum = 0;
+              const n = pts.length;
+              for (let k = 0; k < n; k++) {
+                const a = pts[k];
+                const b = pts[(k + 1) % n];
+                sum += a.x * b.y - b.x * a.y;
+              }
+              computedArea = Math.abs(sum) / 2;
+            } else if (el.lengthFt && el.widthFt) {
+              computedArea = el.lengthFt * el.widthFt;
+            } else {
+              computedArea = el.areaSqft ?? 0;
+            }
 
             const saved = await projectStore.addElement({
               orgId,

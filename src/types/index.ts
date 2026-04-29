@@ -50,7 +50,7 @@ export type ElementType =
  * dispatch area calculation: 'circle' → π × radius_ft², everything else
  * falls back to length × width or computedAreaSqft.
  */
-export type ElementShape = 'rectangle' | 'circle' | 'polyline';
+export type ElementShape = 'rectangle' | 'circle' | 'polygon' | 'polyline';
 
 export interface ProjectElement {
   id: string;

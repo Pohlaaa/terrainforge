@@ -301,6 +301,13 @@ export const WizardStepMeasurements: React.FC<Props> = ({
       updates.radiusFt = geometry.shape.radius;
       updates.lengthFt = null;
       updates.widthFt = null;
+    } else if (geometry.shape.kind === 'polygon') {
+      // Polygon edited from the canvas → mark the element as polygon-shaped.
+      // Length/width/radius all become irrelevant for area math.
+      updates.shape = 'polygon';
+      updates.lengthFt = null;
+      updates.widthFt = null;
+      updates.radiusFt = null;
     }
     updateElement(id, updates);
   };
@@ -761,24 +768,20 @@ const ElementSidebar: React.FC<SidebarProps> = ({
       })()}
 
       {/* Shape selector — V4 partner ask: round patios, garden beds, edging
-          curves. Only meaningful for elements that have a length/width or
-          area surface; we hide it for purely linear elements. */}
+          curves, and now irregular shapes (mig 034). Only meaningful for
+          elements that have a length/width or area surface; we hide it for
+          purely linear elements. */}
       {(showLW || showArea) && (
         <div>
           <label className={labelClass}>Shape</label>
           <div className="flex gap-[6px] mt-[4px]">
-            {(['rectangle', 'circle'] as const).map((s) => {
+            {(['rectangle', 'circle', 'polygon'] as const).map((s) => {
               const active = (element.shape ?? 'rectangle') === s;
               return (
                 <button
                   key={s}
                   type="button"
                   onClick={() => {
-                    // Also sync ElementGeometry.shape so PlanView2D renders
-                    // a circle on the satellite canvas. PlanView3D currently
-                    // only renders rectangles; circle elements will appear
-                    // boxed in 3D until the 3D primitive is added (3D pivot
-                    // backlog 6f extension).
                     const existingGeom = element.geometry;
                     if (s === 'circle') {
                       const radius = element.radiusFt && element.radiusFt > 0
@@ -792,6 +795,28 @@ const ElementSidebar: React.FC<SidebarProps> = ({
                         widthFt: null,
                         geometry: existingGeom
                           ? { ...existingGeom, shape: { kind: 'circle', radius } }
+                          : null,
+                      });
+                    } else if (s === 'polygon') {
+                      // Seed a rectangular 4-vertex polygon from current
+                      // dims so the engine has something to compute against
+                      // and the canvas has something to render. The
+                      // contractor refines via the textarea below.
+                      const w = element.lengthFt ?? 10;
+                      const h = element.widthFt ?? 10;
+                      const seedPoints = [
+                        { x: 0, y: 0 },
+                        { x: w, y: 0 },
+                        { x: w, y: h },
+                        { x: 0, y: h },
+                      ];
+                      onUpdate({
+                        shape: 'polygon',
+                        lengthFt: null,
+                        widthFt: null,
+                        radiusFt: null,
+                        geometry: existingGeom
+                          ? { ...existingGeom, shape: { kind: 'polygon', points: seedPoints } }
                           : null,
                       });
                     } else {
@@ -814,7 +839,7 @@ const ElementSidebar: React.FC<SidebarProps> = ({
                     fontWeight: active ? 600 : 400,
                   }}
                 >
-                  {s === 'rectangle' ? 'Rectangle' : 'Circle'}
+                  {s === 'rectangle' ? 'Rectangle' : s === 'circle' ? 'Circle' : 'Polygon'}
                 </button>
               );
             })}
@@ -824,6 +849,9 @@ const ElementSidebar: React.FC<SidebarProps> = ({
 
       {/* Dimensions */}
       <div className="grid grid-cols-2 gap-[8px]">
+        {(element.shape ?? 'rectangle') === 'polygon' && (showLW || showArea) && (
+          <PolygonVertexEditor element={element} onUpdate={onUpdate} />
+        )}
         {(element.shape ?? 'rectangle') === 'circle' && (showLW || showArea) && (
           <div className="col-span-2">
             <label className={labelClass}>Radius (ft)</label>
@@ -854,7 +882,9 @@ const ElementSidebar: React.FC<SidebarProps> = ({
             )}
           </div>
         )}
-        {showLW && (element.shape ?? 'rectangle') !== 'circle' && (
+        {showLW &&
+          (element.shape ?? 'rectangle') !== 'circle' &&
+          (element.shape ?? 'rectangle') !== 'polygon' && (
           <>
             <div>
               <label className={labelClass}>Length (ft)</label>
@@ -1077,5 +1107,140 @@ const ElementSidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
     </aside>
+  );
+};
+
+// ── PolygonVertexEditor ─────────────────────────────────────────────────────
+//
+// Manual vertex entry for irregular shapes (mig 034). v1 is a textarea —
+// each line is "x,y" in feet. The contractor types the corners; we parse,
+// validate, and write the points back into element.geometry.shape. A live
+// summary shows area + perimeter so they can sanity-check while editing.
+//
+// Future: a click-to-draw canvas tool replaces this textarea (Sprint 6f
+// extension on PlanView2D). For v1 the textarea is honest, simple, and
+// keyboard-driven — better than building a half-broken canvas editor.
+
+interface PolygonVertexEditorProps {
+  element: WizardElement;
+  onUpdate: (updates: Partial<WizardElement>) => void;
+}
+
+function pointsToText(points: Array<{ x: number; y: number }>): string {
+  return points.map((p) => `${p.x},${p.y}`).join('\n');
+}
+
+function parsePointsText(text: string): Array<{ x: number; y: number }> | null {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const out: Array<{ x: number; y: number }> = [];
+  for (const line of lines) {
+    const parts = line.split(/[,\s]+/).map((s) => s.trim());
+    if (parts.length < 2) return null;
+    const x = parseFloat(parts[0]);
+    const y = parseFloat(parts[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    out.push({ x, y });
+  }
+  return out;
+}
+
+const PolygonVertexEditor: React.FC<PolygonVertexEditorProps> = ({ element, onUpdate }) => {
+  const initialPoints =
+    element.geometry?.shape && element.geometry.shape.kind === 'polygon'
+      ? element.geometry.shape.points
+      : [];
+  const [text, setText] = useState(() => pointsToText(initialPoints));
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync the textarea when the underlying geometry changes from the canvas
+  // (e.g. drag in PlanView2D). Compare via stringify — cheaper than deep
+  // equality and the strings are short.
+  const externalText = pointsToText(initialPoints);
+  useEffect(() => {
+    setText(externalText);
+    setError(null);
+  }, [externalText]);
+
+  const flush = () => {
+    const parsed = parsePointsText(text);
+    if (!parsed) {
+      setError('Format: one "x,y" pair per line, in feet.');
+      return;
+    }
+    if (parsed.length < 3) {
+      setError('A polygon needs at least 3 vertices.');
+      return;
+    }
+    setError(null);
+    const existingGeom = element.geometry;
+    if (existingGeom) {
+      onUpdate({
+        geometry: {
+          ...existingGeom,
+          shape: { kind: 'polygon', points: parsed },
+        },
+      });
+    } else {
+      // No geometry yet — synthesize a minimal one so the canvas can mount.
+      onUpdate({
+        geometry: {
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          shape: { kind: 'polygon', points: parsed },
+        },
+      });
+    }
+  };
+
+  // Live area + perimeter from the parsed text (re-parsing is cheap).
+  const live = (() => {
+    const parsed = parsePointsText(text);
+    if (!parsed || parsed.length < 3) return null;
+    let sum = 0;
+    let perim = 0;
+    const n = parsed.length;
+    for (let i = 0; i < n; i++) {
+      const a = parsed[i];
+      const b = parsed[(i + 1) % n];
+      sum += a.x * b.y - b.x * a.y;
+      perim += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    return { area: Math.abs(sum) / 2, perim };
+  })();
+
+  return (
+    <div className="col-span-2">
+      <label className={labelClass}>Vertices (one "x,y" per line, feet)</label>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={flush}
+        rows={Math.max(4, Math.min(8, text.split('\n').length))}
+        spellCheck={false}
+        placeholder={'0,0\n10,0\n10,8\n0,8'}
+        className={`${inputClass} font-mono text-[11px]`}
+        style={{ resize: 'vertical', whiteSpace: 'pre' }}
+      />
+      {error && (
+        <div className="text-[11px] mt-[3px]" style={{ color: 'var(--status-red)' }}>
+          {error}
+        </div>
+      )}
+      {!error && live && (
+        <div className="text-[11px] text-[var(--text-4)] mt-[3px]">
+          ≈ {Math.round(live.area)} sqft · perimeter {Math.round(live.perim * 10) / 10} ft ·
+          {' '}
+          {parsePointsText(text)?.length ?? 0} vertices
+        </div>
+      )}
+      {!error && !live && (
+        <div className="text-[11px] text-[var(--text-4)] mt-[3px]">
+          Need at least 3 points to form a polygon. Click "Save" or tab out to commit.
+        </div>
+      )}
+    </div>
   );
 };

@@ -9,6 +9,7 @@ import type { Material, ProjectElement, ProjectElementMaterial, ComputationModel
 import {
   areaToCuyd, cuydToTons, applyWaste, roundToPurchaseUnit,
   gridCount, wallBlockCount, getEffectiveDepth,
+  polygonAreaSqft, polygonPerimeterFt,
 } from './unit-conversions';
 
 // ── Result Types ────────────────────────────────────────────────────────────
@@ -66,27 +67,38 @@ export function computeElementMaterial(
 ): number {
   const model: ComputationModel = (elMat.computationModel || catalogMat?.computationModel || 'AREA_COVERAGE') as ComputationModel;
   const params = catalogMat?.computeParams ?? {};
-  // Migration 033: dispatch area by element.shape. Circles use π × r²;
-  // everything else falls back to the length × width / computedAreaSqft path
-  // that's been live since day one. Polyline is reserved for v2 — for now
-  // it falls through to the rectangle path so any in-flight wizard data
-  // still produces a manifest.
+  // Migration 033/034: dispatch area by element.shape.
+  //   'circle'   → π × r²
+  //   'polygon'  → Shoelace formula on geometry.shape.points
+  //   anything else → length × width / computedAreaSqft (rectangle path)
+  // 'polyline' is reserved and falls through to rectangle.
   const circleArea =
     element.shape === 'circle' && element.radiusFt && element.radiusFt > 0
       ? Math.PI * element.radiusFt * element.radiusFt
       : null;
+  // Polygon area requires the vertex list from ElementGeometry. Pull it
+  // through both the geometry's shape.points (the canvas-edited path) and
+  // legacy null-safety.
+  const polyPoints =
+    element.shape === 'polygon' &&
+    element.geometry?.shape &&
+    element.geometry.shape.kind === 'polygon'
+      ? element.geometry.shape.points
+      : null;
+  const polygonArea = polyPoints && polyPoints.length >= 3 ? polygonAreaSqft(polyPoints) : null;
   const area =
     circleArea ??
+    polygonArea ??
     (element.computedAreaSqft ||
       (element.lengthFt && element.widthFt ? element.lengthFt * element.widthFt : element.areaSqft ?? 0));
-  // Circumference fallback for LINEAR computation on a circle (e.g. edging
-  // around a round bed). 2 × π × r when shape='circle'; otherwise the
-  // existing perimeter math (linearFt or 2L+2W) applies.
+  // Linear fallback. Circle → circumference, polygon → segment perimeter,
+  // otherwise the existing element.linearFt / 2L+2W chain applies.
   const circleCircumference =
     element.shape === 'circle' && element.radiusFt && element.radiusFt > 0
       ? 2 * Math.PI * element.radiusFt
       : null;
-  const linearFt = element.linearFt ?? circleCircumference ?? 0;
+  const polygonPerimeter = polyPoints && polyPoints.length >= 2 ? polygonPerimeterFt(polyPoints) : null;
+  const linearFt = element.linearFt ?? circleCircumference ?? polygonPerimeter ?? 0;
 
   switch (model) {
     case 'AREA_COVERAGE': {

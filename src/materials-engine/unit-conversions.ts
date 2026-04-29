@@ -81,3 +81,44 @@ export function getEffectiveDepth(depthIn: number | null | undefined, category: 
   const specified = depthIn || catMin;
   return Math.max(specified, catMin);
 }
+
+// ── Polygon math (mig 034) ──────────────────────────────────────────────────
+
+/**
+ * Shoelace formula for polygon area.
+ * Points are in any winding order — we take abs() so CW and CCW both work.
+ * Returns 0 for fewer than 3 points (a polygon needs three vertices).
+ *
+ * Area = ½ × |Σ (x_i × y_{i+1} − x_{i+1} × y_i)|
+ *
+ * Used by the materials engine when element.shape === 'polygon' to compute
+ * area from geometry.shape.points instead of length × width.
+ */
+export function polygonAreaSqft(points: ReadonlyArray<{ x: number; y: number }>): number {
+  if (!points || points.length < 3) return 0;
+  let sum = 0;
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % n];
+    sum += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(sum) / 2;
+}
+
+/**
+ * Sum of segment lengths around a closed polygon — its perimeter in feet.
+ * Used by LINEAR computation when shape === 'polygon' (e.g. edging around
+ * an irregular bed). Returns 0 for fewer than 2 points.
+ */
+export function polygonPerimeterFt(points: ReadonlyArray<{ x: number; y: number }>): number {
+  if (!points || points.length < 2) return 0;
+  let total = 0;
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % n];
+    total += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  return total;
+}

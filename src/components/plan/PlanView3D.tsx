@@ -1,7 +1,7 @@
 import React, { useMemo, Suspense, useRef, useState, useEffect } from 'react'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls, Grid, Html, TransformControls } from '@react-three/drei'
-import { TextureLoader, SRGBColorSpace, RepeatWrapping } from 'three'
+import { TextureLoader, SRGBColorSpace, RepeatWrapping, Shape as ThreeShape } from 'three'
 import type { Texture, Group } from 'three'
 import type { ProjectElement, Material, ElementGeometry } from '@/types'
 import { autoLayout, computeBoundingBox, elementColor, elementHeightFt, elementMaterial } from '@/lib/planLayout'
@@ -215,7 +215,44 @@ const KITCHEN_COUNTER_HEIGHT_FT = 3
 const KITCHEN_COUNTER_DEPTH_FT = 2.5
 
 function ElementPrimitive({ b }: { b: ExtrudedBox }) {
-  const { elementType, width, depth, height, color, roughness, metalness, textureAlbedoUrl, shapeKind } = b
+  const { elementType, width, depth, height, color, roughness, metalness, textureAlbedoUrl, shapeKind, polygonPoints } = b
+
+  // Migration 034: shape='polygon' extrudes a THREE.Shape from the centered
+  // vertex points up to the element's height. Plan-Y is flipped to scene
+  // -Z (consistent with the rectangle path). The shape is built once via
+  // useMemo so we don't churn ExtrudeGeometry on every render.
+  const polyShape = useMemo(() => {
+    if (shapeKind !== 'polygon' || !polygonPoints || polygonPoints.length < 3) return null
+    const s = new ThreeShape()
+    s.moveTo(polygonPoints[0].x, -polygonPoints[0].y)
+    for (let i = 1; i < polygonPoints.length; i++) {
+      s.lineTo(polygonPoints[i].x, -polygonPoints[i].y)
+    }
+    s.closePath()
+    return s
+  }, [shapeKind, polygonPoints])
+
+  if (shapeKind === 'polygon' && polyShape) {
+    return (
+      // ExtrudeGeometry default extrudes along +Z. Rotate so it stands up
+      // along Y (matching how box/cylinder primitives are oriented).
+      <mesh
+        position={[0, 0, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        castShadow
+        receiveShadow
+      >
+        <extrudeGeometry args={[polyShape, { depth: height, bevelEnabled: false }]} />
+        <BoxMaterial
+          textureAlbedoUrl={textureAlbedoUrl}
+          color={color}
+          roughness={roughness}
+          metalness={metalness}
+          tileUnits={Math.max(width, depth)}
+        />
+      </mesh>
+    )
+  }
 
   // Migration 033: shape='circle' renders as a vertical cylinder of the
   // element's height. Falls before all the elementType branches so a
@@ -635,11 +672,17 @@ interface ExtrudedBox {
   /** Sprint 7c: albedo texture URL from first element-material with one set. Null = flat color. */
   textureAlbedoUrl: string | null
   /**
-   * Migration 033 + 3D pivot 6f extension: shape discriminator from
-   * ElementGeometry. 'rectangle' (default) renders as a box; 'circle'
-   * renders as a vertical cylinder of radius = width/2 and height = h.
+   * Migration 033/034: shape discriminator from ElementGeometry.
+   * 'rectangle' renders as a box, 'circle' as a vertical cylinder,
+   * 'polygon' as an extruded Shape from the vertex points.
    */
-  shapeKind: 'rectangle' | 'circle'
+  shapeKind: 'rectangle' | 'circle' | 'polygon'
+  /**
+   * Migration 034: polygon vertex points in plan-feet, relative to the
+   * box's local origin (centered). Set only when shapeKind='polygon';
+   * undefined for the other two kinds.
+   */
+  polygonPoints?: Array<{ x: number; y: number }>
 }
 
 // ===== Sprint 7a-translate / 7a-rotate / 7a-resize: editable 3D element layer =====
@@ -699,6 +742,7 @@ function ElementsLayer({
     // Existing shape determines width/height unless we're scaling (below).
     const existing = el.geometry
     const isCircle = existing?.shape?.kind === 'circle'
+    const isPolygon = existing?.shape?.kind === 'polygon'
     let newWidth = (existing?.shape && existing.shape.kind === 'rectangle')
       ? existing.shape.width
       : selectedBox.width
@@ -760,7 +804,16 @@ function ElementsLayer({
           ? { x: snap(planX), y: snap(planY) }
           : { x: snap(planX), y: snap(planY) },
       rotation: newRotationDeg,
-      shape: isCircle
+      shape: isPolygon && existing?.shape && existing.shape.kind === 'polygon'
+        ? // Polygons preserve their vertex list under translate/rotate
+          // (the gizmo only moves the group's position/rotation). Scale
+          // mode falls through to rectangle below — there's no clean
+          // semantics for "scale a polygon" without re-projecting all
+          // vertices. The contractor can re-edit vertices in the wizard.
+          transformMode === 'scale'
+          ? { kind: 'rectangle', width: newWidth, height: newHeight }
+          : { kind: 'polygon', points: existing.shape.points }
+        : isCircle
         ? { kind: 'circle', radius: newRadius }
         : { kind: 'rectangle', width: newWidth, height: newHeight },
     }
@@ -870,18 +923,46 @@ export const PlanView3D: React.FC<Props> = ({
   )
   const boxes = useMemo<ExtrudedBox[]>(() => {
     return autoLayout(elements).flatMap(({ element, geometry }) => {
-      // Migration 033 + 3D pivot 6f extension: also accept circles.
-      // Polygon and line shapes still drop out — they need bespoke
-      // geometry treatment that isn't built yet.
-      if (geometry.shape.kind !== 'rectangle' && geometry.shape.kind !== 'circle') {
+      // Migration 033/034: render rectangle, circle, and polygon shapes.
+      // 'line' still drops out — it needs a thin extruded ribbon and is
+      // not yet wired (would primarily benefit edging/curbing renders).
+      if (
+        geometry.shape.kind !== 'rectangle' &&
+        geometry.shape.kind !== 'circle' &&
+        geometry.shape.kind !== 'polygon'
+      ) {
         return []
       }
       const { shape, position, rotation } = geometry
-      // Width / depth in plan-feet. For circles we square the bounding box
-      // to 2 × radius so the existing layout / picking math (which assumes
-      // a rectangular footprint) keeps working.
-      const planWidth = shape.kind === 'rectangle' ? shape.width : shape.radius * 2
-      const planHeight = shape.kind === 'rectangle' ? shape.height : shape.radius * 2
+      // Compute a bounding box in plan-feet. The 3D group is placed at the
+      // bbox center; primitives below render relative to that origin.
+      let planWidth: number
+      let planHeight: number
+      let polygonPoints: Array<{ x: number; y: number }> | undefined
+      if (shape.kind === 'rectangle') {
+        planWidth = shape.width
+        planHeight = shape.height
+      } else if (shape.kind === 'circle') {
+        planWidth = shape.radius * 2
+        planHeight = shape.radius * 2
+      } else {
+        // polygon: derive bbox from points; pre-center them around (0,0)
+        // so ExtrudeGeometry's local space matches the rectangle pattern.
+        const pts = shape.points
+        if (pts.length < 3) return []
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        for (const p of pts) {
+          if (p.x < minX) minX = p.x
+          if (p.x > maxX) maxX = p.x
+          if (p.y < minY) minY = p.y
+          if (p.y > maxY) maxY = p.y
+        }
+        planWidth = maxX - minX
+        planHeight = maxY - minY
+        const cxLocal = (minX + maxX) / 2
+        const cyLocal = (minY + maxY) / 2
+        polygonPoints = pts.map((p) => ({ x: p.x - cxLocal, y: p.y - cyLocal }))
+      }
       const cx = position.x + planWidth / 2
       const cy = position.y + planHeight / 2
       const h = elementHeightFt(element)
@@ -916,6 +997,7 @@ export const PlanView3D: React.FC<Props> = ({
           elementType: element.elementType,
           textureAlbedoUrl,
           shapeKind: shape.kind,
+          polygonPoints,
         },
       ]
     })
