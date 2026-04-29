@@ -70,6 +70,52 @@ export async function callClaude(
 }
 
 /**
+ * Sprint AI-Place: vision variant. Same proxy / auth / rate-limit /
+ * model selection as `callClaude`, but passes one or more image URLs
+ * to the proxy which fetches + base64-encodes them server-side and
+ * builds the multi-block user message. The image URLs are NOT exposed
+ * to Anthropic — the proxy does the fetch in the trusted environment.
+ *
+ * @param prompt    User text appended after the images.
+ * @param images    Array of http(s) URLs (max 4, enforced by proxy).
+ * @param model     Model ID — defaults to claude-haiku-4-5-20251001.
+ * @param maxTokens Max output tokens.
+ * @returns         The assistant's text response.
+ */
+export async function callClaudeWithVision(
+  prompt: string,
+  images: string[],
+  model: string = DEFAULT_MODEL,
+  maxTokens: number = 1024,
+): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<ProxyResponseBody>(
+    'proxy-claude',
+    {
+      body: { prompt, images, model, max_tokens: maxTokens },
+    },
+  );
+
+  if (error) {
+    let message = error.message || 'AI vision request failed';
+    const ctx = (error as unknown as { context?: Response }).context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const body = (await ctx.json()) as ProxyResponseBody;
+        if (body?.error) message = body.error;
+      } catch {
+        /* ignore */
+      }
+    }
+    throw new Error(message);
+  }
+
+  if (!data?.content) throw new Error('No content in proxy response');
+  const textBlock = data.content.find((b) => b.type === 'text');
+  if (!textBlock) throw new Error('No text content in Claude response');
+  return textBlock.text;
+}
+
+/**
  * Sprint S: lightweight feature-flag helper. The proxy needs an authenticated
  * Supabase session, so AI features should hide when no user is signed in.
  * Replaces the prior `import.meta.env.VITE_ANTHROPIC_API_KEY` truthy checks

@@ -16,6 +16,12 @@
  *     model?: string,        // defaults to claude-haiku-4-5-20251001
  *     max_tokens?: number,   // defaults to 1024, capped at 8192
  *     system?: string,       // optional system prompt
+ *     images?: string[],     // optional vision input (Sprint AI-Place):
+ *                            // each entry is a URL the proxy fetches +
+ *                            // base64-encodes server-side so the
+ *                            // upstream URL (e.g. with Mapbox token)
+ *                            // never touches Anthropic's logs. Cap of
+ *                            // 4 images per call to keep payloads sane.
  *   }
  *
  * Response body (success):
@@ -52,7 +58,14 @@ interface RequestBody {
   model?: string
   max_tokens?: number
   system?: string
+  images?: string[]
 }
+
+// Sprint AI-Place: cap on inline image attachments. Each Mapbox satellite
+// tile is ~700 KB at 1200x1200@2x, so 4 is a reasonable upper bound on
+// payload size before we hit Anthropic's per-request limits.
+const MAX_IMAGES = 4
+const IMAGE_FETCH_TIMEOUT_MS = 8000
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -150,11 +163,54 @@ Deno.serve(async (req: Request): Promise<Response> => {
     MAX_TOKENS_CAP,
   )
 
+  // Sprint AI-Place: if `images` was passed, fetch each URL server-side,
+  // base64-encode, and construct a multi-block user message. This keeps
+  // the Mapbox token (and any other URL secrets) out of Anthropic's
+  // request logs. Falls back to a clear error so the client can degrade
+  // to non-vision flow.
+  let userContent: unknown = body.prompt
+  if (Array.isArray(body.images) && body.images.length > 0) {
+    if (body.images.length > MAX_IMAGES) {
+      return jsonResp({ error: `Too many images (max ${MAX_IMAGES})` }, 400)
+    }
+    const blocks: Array<Record<string, unknown>> = []
+    for (const url of body.images) {
+      if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+        return jsonResp({ error: 'images[] must be http(s) URLs' }, 400)
+      }
+      try {
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), IMAGE_FETCH_TIMEOUT_MS)
+        const imgResp = await fetch(url, { signal: ctrl.signal })
+        clearTimeout(timer)
+        if (!imgResp.ok) {
+          console.warn(`proxy-claude: image fetch ${imgResp.status} for ${truncate(url)}`)
+          return jsonResp({ error: `Image fetch failed (${imgResp.status})` }, 502)
+        }
+        const mediaType = imgResp.headers.get('content-type') || 'image/png'
+        if (!/^image\//.test(mediaType)) {
+          return jsonResp({ error: `Image URL returned non-image content (${mediaType})` }, 400)
+        }
+        const buf = new Uint8Array(await imgResp.arrayBuffer())
+        const b64 = base64Encode(buf)
+        blocks.push({
+          type: 'image',
+          source: { type: 'base64', media_type: mediaType, data: b64 },
+        })
+      } catch (err) {
+        console.error('proxy-claude: image fetch error', (err as Error).message)
+        return jsonResp({ error: 'Image fetch failed' }, 502)
+      }
+    }
+    blocks.push({ type: 'text', text: body.prompt })
+    userContent = blocks
+  }
+
   // Build Anthropic payload.
   const payload: Record<string, unknown> = {
     model,
     max_tokens: maxTokens,
-    messages: [{ role: 'user', content: body.prompt }],
+    messages: [{ role: 'user', content: userContent }],
   }
   if (body.system) payload.system = body.system
 
@@ -212,4 +268,25 @@ function jsonResp(body: unknown, status: number): Response {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
+}
+
+/**
+ * Base64-encode a Uint8Array. Deno has built-in encoders but we keep
+ * this inline to avoid an extra import and to make the function fully
+ * self-contained for the deploy bundle. ~5 ms for a 1 MB tile.
+ */
+function base64Encode(bytes: Uint8Array): string {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary)
+}
+
+/**
+ * Truncate a URL for log readability. Strips query strings (where
+ * tokens live) and caps overall length.
+ */
+function truncate(url: string): string {
+  const queryIdx = url.indexOf('?')
+  const base = queryIdx === -1 ? url : url.slice(0, queryIdx)
+  return base.length > 80 ? base.slice(0, 80) + '...' : base
 }
