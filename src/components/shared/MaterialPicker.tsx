@@ -257,6 +257,30 @@ const AssignedRow: React.FC<AssignedRowProps> = ({
   const showWall = model === 'LINEAR_DEPTH';
   // Waste factor + computation model are universal.
 
+  // Category-aware hint copy. Defaults come from contractor estimating
+  // references — reasonable starting points the contractor can override.
+  const cat = m.category.toLowerCase();
+  const wasteHint =
+    cat === 'paver' || cat === 'stone' || cat === 'tile' || cat === 'brick'
+      ? 'typical 5-10%'
+      : cat === 'plant' || cat === 'shrub' || cat === 'tree'
+      ? 'typical 10-15% (replacement allowance)'
+      : cat === 'sod' || cat === 'seed'
+      ? 'typical 5-8%'
+      : cat === 'mulch' || cat === 'gravel' || cat === 'sand' || cat === 'soil'
+      ? 'typical 5%'
+      : 'typical 5-10%';
+  const spacingHint =
+    cat === 'shrub'
+      ? 'typical 24-36"'
+      : cat === 'tree'
+      ? 'typical 96-240" (8-20 ft)'
+      : cat === 'plant'
+      ? 'typical 12-18"'
+      : cat === 'lighting'
+      ? 'typical 60-96"'
+      : '';
+
   return (
     <div className="rounded-[6px] border" style={{ borderColor: 'var(--green)', backgroundColor: 'rgba(45,106,79,0.06)' }}>
       <div className="flex items-center gap-[6px] px-[10px] py-[6px] text-[12px]">
@@ -291,6 +315,7 @@ const AssignedRow: React.FC<AssignedRowProps> = ({
           <label className="flex flex-col gap-[2px]">
             <span className="uppercase text-[10px] text-[var(--text-4)] tracking-wide">
               Waste % override
+              <span className="ml-[4px] normal-case lowercase opacity-70">· {wasteHint}</span>
             </span>
             <input
               type="number"
@@ -316,6 +341,9 @@ const AssignedRow: React.FC<AssignedRowProps> = ({
               <label className="flex flex-col gap-[2px]">
                 <span className="uppercase text-[10px] text-[var(--text-4)] tracking-wide">
                   Spacing (in)
+                  {spacingHint && (
+                    <span className="ml-[4px] normal-case lowercase opacity-70">· {spacingHint}</span>
+                  )}
                 </span>
                 <input
                   type="number"
