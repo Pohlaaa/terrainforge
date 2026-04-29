@@ -207,7 +207,7 @@ export function getMaterialsForPhase(
 
 export interface ElementPreset {
   label: string;
-  shape?: 'rectangle' | 'circle';
+  shape?: 'rectangle' | 'circle' | 'polygon';
   lengthFt?: number | null;
   widthFt?: number | null;
   radiusFt?: number | null;
@@ -216,6 +216,55 @@ export interface ElementPreset {
   depthIn?: number | null;
   /** Manual area override — used for irregular shapes the contractor measures by area. */
   areaSqft?: number | null;
+  /**
+   * Polygon vertex points in feet, only set when shape='polygon'. Origin
+   * is the polygon's local top-left; the wizard re-centers them on the
+   * canvas via geometry.position. Vertices should be ordered (CW or CCW)
+   * around the polygon — the engine tolerates either via abs() in
+   * polygonAreaSqft.
+   */
+  polygonPoints?: Array<{ x: number; y: number }>;
+}
+
+// Helper: 8-point smooth ring approximating an ellipse with semi-axes
+// (a, b). Used for kidney bean and other curved presets — beats a manual
+// 30-vertex string for a tight bundle, and the Shoelace formula gives
+// area accurate to <1% for the 80% case.
+function ellipseRing(
+  a: number,
+  b: number,
+  cx: number,
+  cy: number,
+  steps = 12,
+): Array<{ x: number; y: number }> {
+  const pts: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    pts.push({ x: cx + a * Math.cos(t), y: cy + b * Math.sin(t) });
+  }
+  return pts;
+}
+
+// Kidney bean: two overlapping ellipses joined by a concave waist.
+// Ratio approximates a real garden-bed silhouette.
+function kidneyBean(scaleFt: number): Array<{ x: number; y: number }> {
+  // 12-point hand-tuned ring at scale=1, scaled to scaleFt total length.
+  const base: Array<{ x: number; y: number }> = [
+    { x: 0,    y: 2 },
+    { x: 1.5,  y: 4 },
+    { x: 4,    y: 4.5 },
+    { x: 7,    y: 4 },
+    { x: 9,    y: 2.5 },
+    { x: 10,   y: 0 },
+    { x: 9,    y: -2.5 },
+    { x: 7,    y: -4 },
+    { x: 4,    y: -4.5 },
+    { x: 2,    y: -2 }, // concave waist on the lower side
+    { x: 1.5,  y: 0 },
+    { x: 0,    y: 1 },
+  ];
+  const k = scaleFt / 10; // base spans 10 units in x
+  return base.map((p) => ({ x: p.x * k, y: p.y * k }));
 }
 
 export const ELEMENT_PRESETS: Partial<Record<ElementType, ElementPreset[]>> = {
@@ -224,6 +273,28 @@ export const ELEMENT_PRESETS: Partial<Record<ElementType, ElementPreset[]>> = {
     { label: '16×20 (medium)', shape: 'rectangle', lengthFt: 20, widthFt: 16 },
     { label: '24×18 (large)', shape: 'rectangle', lengthFt: 24, widthFt: 18 },
     { label: '14-ft round', shape: 'circle', radiusFt: 7 },
+    {
+      label: 'L-shape 16×16',
+      shape: 'polygon',
+      // L = 16×16 outer with an 8×8 corner notch cut out → 192 sqft.
+      polygonPoints: [
+        { x: 0, y: 0 },
+        { x: 8, y: 0 },
+        { x: 8, y: 8 },
+        { x: 16, y: 8 },
+        { x: 16, y: 16 },
+        { x: 0, y: 16 },
+      ],
+    },
+    {
+      label: 'Octagon 16-ft',
+      shape: 'polygon',
+      // 8-sided regular polygon, ~178 sqft. Apothem ≈ 7.4 ft.
+      polygonPoints: ellipseRing(8, 8, 8, 8, 8).map((p) => ({
+        x: Math.round(p.x * 100) / 100,
+        y: Math.round(p.y * 100) / 100,
+      })),
+    },
   ],
   walkway: [
     { label: '4×20 ft', shape: 'rectangle', lengthFt: 20, widthFt: 4, linearFt: 20 },
@@ -233,11 +304,39 @@ export const ELEMENT_PRESETS: Partial<Record<ElementType, ElementPreset[]>> = {
   driveway: [
     { label: '12×40 (single)', shape: 'rectangle', lengthFt: 40, widthFt: 12 },
     { label: '20×40 (double)', shape: 'rectangle', lengthFt: 40, widthFt: 20 },
+    {
+      label: 'Trapezoidal flare',
+      shape: 'polygon',
+      // Single-car drive that flares from 12 ft at the street to 16 ft at
+      // the garage door. Typical residential ask.
+      polygonPoints: [
+        { x: 0, y: 0 },
+        { x: 12, y: 0 },
+        { x: 14, y: 30 },
+        { x: -2, y: 30 },
+      ],
+    },
   ],
   garden_bed: [
     { label: '4×8 (small)', shape: 'rectangle', lengthFt: 8, widthFt: 4 },
     { label: '6×12 (medium)', shape: 'rectangle', lengthFt: 12, widthFt: 6 },
     { label: '6-ft round', shape: 'circle', radiusFt: 3 },
+    {
+      label: 'Kidney 12 ft',
+      shape: 'polygon',
+      polygonPoints: kidneyBean(12).map((p) => ({
+        x: Math.round(p.x * 100) / 100,
+        y: Math.round(p.y * 100) / 100,
+      })),
+    },
+    {
+      label: 'Kidney 18 ft',
+      shape: 'polygon',
+      polygonPoints: kidneyBean(18).map((p) => ({
+        x: Math.round(p.x * 100) / 100,
+        y: Math.round(p.y * 100) / 100,
+      })),
+    },
   ],
   sod_area: [
     { label: '200 sqft', areaSqft: 200 },
@@ -304,9 +403,12 @@ export const ELEMENT_PRESETS: Partial<Record<ElementType, ElementPreset[]>> = {
  * the existing element. Fields the preset doesn't touch are explicitly
  * cleared (set to null) so picking a 'circle' preset on a rectangle
  * element wipes lengthFt/widthFt instead of layering inconsistent state.
+ *
+ * Polygon presets return polygonPoints; the wizard wires them into
+ * geometry.shape.points so the canvas + engine pick them up immediately.
  */
 export function applyElementPreset(preset: ElementPreset): {
-  shape: 'rectangle' | 'circle';
+  shape: 'rectangle' | 'circle' | 'polygon';
   lengthFt: number | null;
   widthFt: number | null;
   radiusFt: number | null;
@@ -314,6 +416,7 @@ export function applyElementPreset(preset: ElementPreset): {
   heightFt: number | null;
   depthIn: number | null;
   areaSqft: number | null;
+  polygonPoints: Array<{ x: number; y: number }> | null;
 } {
   const shape = preset.shape ?? 'rectangle';
   return {
@@ -325,5 +428,6 @@ export function applyElementPreset(preset: ElementPreset): {
     heightFt: preset.heightFt ?? null,
     depthIn: preset.depthIn ?? null,
     areaSqft: preset.areaSqft ?? null,
+    polygonPoints: preset.polygonPoints ?? null,
   };
 }

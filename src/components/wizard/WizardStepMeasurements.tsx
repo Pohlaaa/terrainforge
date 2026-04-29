@@ -716,17 +716,28 @@ const ElementSidebar: React.FC<SidebarProps> = ({
                   type="button"
                   onClick={() => {
                     const deltas = applyElementPreset(p);
+                    // Strip polygonPoints from the WizardElement deltas —
+                    // it doesn't live on the element row, only on geometry.
+                    const { polygonPoints, ...elementDeltas } = deltas;
+                    const updates: Partial<WizardElement> = { ...elementDeltas };
                     // Mirror geometry.shape if the preset specifies one and
                     // the element has existing geometry (so the canvas
-                    // re-renders the right primitive). When circle, derive
-                    // radius; when rectangle with len/width, set width/height.
-                    const updates: Partial<WizardElement> = { ...deltas };
+                    // re-renders the right primitive).
                     const existingGeom = element.geometry;
                     if (existingGeom) {
                       if (deltas.shape === 'circle' && deltas.radiusFt) {
                         updates.geometry = {
                           ...existingGeom,
                           shape: { kind: 'circle', radius: deltas.radiusFt },
+                        };
+                      } else if (
+                        deltas.shape === 'polygon' &&
+                        polygonPoints &&
+                        polygonPoints.length >= 3
+                      ) {
+                        updates.geometry = {
+                          ...existingGeom,
+                          shape: { kind: 'polygon', points: polygonPoints },
                         };
                       } else if (
                         deltas.shape === 'rectangle' &&
@@ -742,6 +753,18 @@ const ElementSidebar: React.FC<SidebarProps> = ({
                           },
                         };
                       }
+                    } else if (
+                      deltas.shape === 'polygon' &&
+                      polygonPoints &&
+                      polygonPoints.length >= 3
+                    ) {
+                      // No existing geometry — synthesize one so the canvas
+                      // can mount the polygon immediately.
+                      updates.geometry = {
+                        position: { x: 0, y: 0 },
+                        rotation: 0,
+                        shape: { kind: 'polygon', points: polygonPoints },
+                      };
                     }
                     onUpdate(updates);
                   }}
