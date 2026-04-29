@@ -44,12 +44,22 @@ export type ElementType =
   | 'mulch_area' | 'gravel_area' | 'concrete_slab' | 'curbing'
   | 'other';
 
+/**
+ * Migration 033: shape discriminator + optional radius_ft. Defaults to
+ * 'rectangle' for back-compat. The materials engine reads `shape` to
+ * dispatch area calculation: 'circle' → π × radius_ft², everything else
+ * falls back to length × width or computedAreaSqft.
+ */
+export type ElementShape = 'rectangle' | 'circle' | 'polyline';
+
 export interface ProjectElement {
   id: string;
   orgId: string;
   projectId: string;
   name: string;
   elementType: ElementType;
+  shape: ElementShape;
+  radiusFt: number | null;
   lengthFt: number | null;
   widthFt: number | null;
   areaSqft: number | null;

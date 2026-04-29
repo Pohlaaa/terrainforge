@@ -97,6 +97,11 @@ const DIMENSION_CONFIG: Record<ElementType, DimensionConfig> = {
 };
 
 function computeArea(el: WizardElement): number {
+  // Migration 033: circles compute area from radius. Falls through to the
+  // rectangle paths below when shape isn't 'circle' or radius is missing.
+  if (el.shape === 'circle' && el.radiusFt && el.radiusFt > 0) {
+    return Math.round(Math.PI * el.radiusFt * el.radiusFt * 100) / 100;
+  }
   if (el.areaSqft != null && el.areaSqft > 0) return el.areaSqft;
   if (el.lengthFt && el.widthFt) return Math.round(el.lengthFt * el.widthFt * 100) / 100;
   if (el.linearFt && el.heightFt) return Math.round(el.linearFt * el.heightFt * 100) / 100;
@@ -115,6 +120,8 @@ function toProjectElement(el: WizardElement): ProjectElement {
     projectId: '',
     name: el.name || ELEMENT_TYPE_LABELS[el.elementType],
     elementType: el.elementType,
+    shape: el.shape ?? 'rectangle',
+    radiusFt: el.radiusFt ?? null,
     lengthFt: el.lengthFt,
     widthFt: el.widthFt,
     areaSqft: el.areaSqft,
@@ -680,9 +687,64 @@ const ElementSidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
+      {/* Shape selector — V4 partner ask: round patios, garden beds, edging
+          curves. Only meaningful for elements that have a length/width or
+          area surface; we hide it for purely linear elements. */}
+      {(showLW || showArea) && (
+        <div>
+          <label className={labelClass}>Shape</label>
+          <div className="flex gap-[6px] mt-[4px]">
+            {(['rectangle', 'circle'] as const).map((s) => {
+              const active = (element.shape ?? 'rectangle') === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => {
+                    if (s === 'circle') {
+                      onUpdate({ shape: 'circle', lengthFt: null, widthFt: null });
+                    } else {
+                      onUpdate({ shape: 'rectangle', radiusFt: null });
+                    }
+                  }}
+                  className="flex-1 px-[10px] py-[6px] rounded-[6px] border text-[12px] cursor-pointer"
+                  style={{
+                    borderColor: active ? 'var(--green)' : 'var(--border)',
+                    background: active ? 'rgba(45,106,79,0.08)' : 'transparent',
+                    color: active ? 'var(--green-l)' : 'var(--text-3)',
+                    fontWeight: active ? 600 : 400,
+                  }}
+                >
+                  {s === 'rectangle' ? 'Rectangle' : 'Circle'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Dimensions */}
       <div className="grid grid-cols-2 gap-[8px]">
-        {showLW && (
+        {(element.shape ?? 'rectangle') === 'circle' && (showLW || showArea) && (
+          <div className="col-span-2">
+            <label className={labelClass}>Radius (ft)</label>
+            <NumberInput
+              className={inputClass}
+              min={0}
+              step={0.5}
+              value={element.radiusFt ?? null}
+              onChange={(v) => onUpdate({ radiusFt: v })}
+              placeholder="0"
+            />
+            {element.radiusFt && element.radiusFt > 0 && (
+              <div className="text-[11px] text-[var(--text-4)] mt-[3px]">
+                ≈ {Math.round(Math.PI * element.radiusFt * element.radiusFt)} sqft
+                · circumference {Math.round(2 * Math.PI * element.radiusFt * 10) / 10} ft
+              </div>
+            )}
+          </div>
+        )}
+        {showLW && (element.shape ?? 'rectangle') !== 'circle' && (
           <>
             <div>
               <label className={labelClass}>Length (ft)</label>

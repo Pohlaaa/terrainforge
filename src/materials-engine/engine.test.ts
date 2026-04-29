@@ -19,6 +19,8 @@ function makeElement(overrides: Partial<ProjectElement> = {}): ProjectElement {
     projectId: 'proj-1',
     name: overrides.name ?? 'Test Element',
     elementType: overrides.elementType ?? 'patio',
+    shape: overrides.shape ?? 'rectangle',
+    radiusFt: overrides.radiusFt ?? null,
     lengthFt: overrides.lengthFt ?? null,
     widthFt: overrides.widthFt ?? null,
     areaSqft: overrides.areaSqft ?? null,
@@ -84,6 +86,75 @@ function makeMaterial(overrides: Partial<Material> = {}): Material {
 }
 
 // ── computeElementMaterial: model-by-model ──────────────────────────────────
+
+describe('computeElementMaterial — circles (migration 033)', () => {
+  it('AREA_COVERAGE on a 10-ft-radius circle uses π × r²', () => {
+    // π × 10² = 314.159 sqft. × 6" depth = 157.08 cuft = 5.818 cuyd.
+    const element = makeElement({ shape: 'circle', radiusFt: 10 });
+    const elMat = makeElMat({ depthIn: 6, category: 'gravel' });
+    const cat = makeMaterial({
+      computationModel: 'AREA_COVERAGE',
+      purchaseUnit: 'cubic_yard',
+      computeParams: {},
+    });
+    expect(computeElementMaterial(element, elMat, cat)).toBeCloseTo(
+      (Math.PI * 100 * 0.5) / 27,
+      4,
+    );
+  });
+
+  it('LINEAR on a circular element uses circumference (2πr)', () => {
+    // Round garden bed, 8 ft radius, 4-ft edging units → 2π×8 / 4 = ~12.57.
+    const element = makeElement({ shape: 'circle', radiusFt: 8, linearFt: null });
+    const elMat = makeElMat({ category: 'edging' });
+    const cat = makeMaterial({
+      computationModel: 'LINEAR',
+      computeParams: { length_per_unit_ft: 4 },
+    });
+    expect(computeElementMaterial(element, elMat, cat)).toBeCloseTo(
+      (2 * Math.PI * 8) / 4,
+      4,
+    );
+  });
+
+  it('falls back to rectangle math when shape=circle but radius is missing', () => {
+    // Defensive: an in-progress wizard row could land here mid-edit.
+    const element = makeElement({
+      shape: 'circle',
+      radiusFt: null,
+      lengthFt: 10,
+      widthFt: 10,
+      computedAreaSqft: 100,
+    });
+    const elMat = makeElMat({ depthIn: 6, category: 'gravel' });
+    const cat = makeMaterial({
+      computationModel: 'AREA_COVERAGE',
+      purchaseUnit: 'cubic_yard',
+      computeParams: {},
+    });
+    // 100 sqft × 6" / 27 ≈ 1.852
+    expect(computeElementMaterial(element, elMat, cat)).toBeCloseTo(
+      (100 * 0.5) / 27,
+      4,
+    );
+  });
+
+  it('rectangle math still works when shape is omitted (back-compat)', () => {
+    const element = makeElement({
+      // Note: no `shape` override — uses the builder default 'rectangle'.
+      lengthFt: 24,
+      widthFt: 18,
+      computedAreaSqft: 432,
+    });
+    const elMat = makeElMat({ depthIn: 6, category: 'gravel' });
+    const cat = makeMaterial({
+      computationModel: 'AREA_COVERAGE',
+      purchaseUnit: 'cubic_yard',
+      computeParams: {},
+    });
+    expect(computeElementMaterial(element, elMat, cat)).toBeCloseTo(8, 5);
+  });
+});
 
 describe('computeElementMaterial — AREA_COVERAGE', () => {
   it('432-sqft patio × 6" gravel base → 8 cuyd raw', () => {

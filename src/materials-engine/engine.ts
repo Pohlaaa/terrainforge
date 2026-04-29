@@ -66,8 +66,27 @@ export function computeElementMaterial(
 ): number {
   const model: ComputationModel = (elMat.computationModel || catalogMat?.computationModel || 'AREA_COVERAGE') as ComputationModel;
   const params = catalogMat?.computeParams ?? {};
-  const area = element.computedAreaSqft || (element.lengthFt && element.widthFt ? element.lengthFt * element.widthFt : element.areaSqft ?? 0);
-  const linearFt = element.linearFt ?? 0;
+  // Migration 033: dispatch area by element.shape. Circles use π × r²;
+  // everything else falls back to the length × width / computedAreaSqft path
+  // that's been live since day one. Polyline is reserved for v2 — for now
+  // it falls through to the rectangle path so any in-flight wizard data
+  // still produces a manifest.
+  const circleArea =
+    element.shape === 'circle' && element.radiusFt && element.radiusFt > 0
+      ? Math.PI * element.radiusFt * element.radiusFt
+      : null;
+  const area =
+    circleArea ??
+    (element.computedAreaSqft ||
+      (element.lengthFt && element.widthFt ? element.lengthFt * element.widthFt : element.areaSqft ?? 0));
+  // Circumference fallback for LINEAR computation on a circle (e.g. edging
+  // around a round bed). 2 × π × r when shape='circle'; otherwise the
+  // existing perimeter math (linearFt or 2L+2W) applies.
+  const circleCircumference =
+    element.shape === 'circle' && element.radiusFt && element.radiusFt > 0
+      ? 2 * Math.PI * element.radiusFt
+      : null;
+  const linearFt = element.linearFt ?? circleCircumference ?? 0;
 
   switch (model) {
     case 'AREA_COVERAGE': {

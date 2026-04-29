@@ -817,7 +817,7 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
             <button type="button" onClick={async () => {
               const orgId = useOrgStore.getState().org?.id;
               if (!orgId) return;
-              await projectStoreRef.addElement({ orgId, projectId: project.id, name: 'New Element', elementType: 'other', lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, computedAreaSqft: 0, notes: '', sequence: elements.length, createdAt: new Date().toISOString() }, orgId);
+              await projectStoreRef.addElement({ orgId, projectId: project.id, name: 'New Element', elementType: 'other', shape: 'rectangle', radiusFt: null, lengthFt: null, widthFt: null, areaSqft: null, linearFt: null, heightFt: null, depthIn: null, computedAreaSqft: 0, notes: '', sequence: elements.length, createdAt: new Date().toISOString() }, orgId);
             }}
               className="mt-[8px] w-full rounded-[6px] border-2 border-dashed py-[8px] text-[12px] font-[500] cursor-pointer bg-transparent transition-colors"
               style={{ borderColor: 'var(--border)', color: 'var(--green-l)' }}>

@@ -140,10 +140,15 @@ export const ElementVisual: React.FC<Props> = ({ element, size = 100 }) => {
     );
   }
 
-  // Circular elements
-  const isCircular = element.elementType === 'fire_pit' || element.elementType === 'tree_planting';
+  // Circular elements: fire pit / tree (always circular by type) OR any
+  // element flagged as shape='circle' via migration 033.
+  const isCircular =
+    element.elementType === 'fire_pit' ||
+    element.elementType === 'tree_planting' ||
+    element.shape === 'circle';
   if (isCircular) {
     const r = Math.min(size * 0.4, 40);
+    const radiusFt = element.radiusFt;
     return (
       <svg width={size} height={size} viewBox="0 0 100 100">
         <defs>{renderPattern(element.elementType, color, patId)}</defs>
@@ -156,6 +161,15 @@ export const ElementVisual: React.FC<Props> = ({ element, size = 100 }) => {
         )}
         {element.elementType === 'tree_planting' && (
           <text x="50" y="50" textAnchor="middle" fill={color} fontSize="16" opacity="0.5">🌳</text>
+        )}
+        {/* Radius dimension line for explicit-circle elements */}
+        {element.shape === 'circle' && radiusFt && radiusFt > 0 && (
+          <>
+            <line x1="50" y1="46" x2={50 + r} y2="46" stroke={color} strokeWidth="0.75" opacity="0.5" />
+            <text x={50 + r / 2} y="42" textAnchor="middle" fill={color} fontSize="9" fontWeight="600" opacity="0.7">
+              r = {radiusFt}'
+            </text>
+          </>
         )}
         {area > 0 && <text x="50" y="80" textAnchor="middle" fill={color} fontSize="10" fontWeight="600">{Math.round(area)} sqft</text>}
       </svg>

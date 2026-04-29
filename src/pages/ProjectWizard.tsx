@@ -67,6 +67,10 @@ export interface WizardElement {
   tempId: string;
   name: string;
   elementType: ElementType;
+  /** Migration 033: defaults to 'rectangle' (back-compat). 'circle' uses radiusFt. */
+  shape?: 'rectangle' | 'circle' | 'polyline';
+  /** Radius in feet when shape='circle'. Null otherwise. */
+  radiusFt?: number | null;
   lengthFt: number | null;
   widthFt: number | null;
   areaSqft: number | null;
@@ -891,15 +895,22 @@ export default function ProjectWizard() {
         for (let i = 0; i < data.elements.length; i++) {
           const el = data.elements[i];
           try {
-            const computedArea = (el.lengthFt && el.widthFt)
-              ? el.lengthFt * el.widthFt
-              : el.areaSqft ?? 0;
+            // Migration 033: circles compute area from radius. Falls through
+            // to the rectangle path when shape is unset or rectangle.
+            const isCircle = el.shape === 'circle' && el.radiusFt && el.radiusFt > 0;
+            const computedArea = isCircle
+              ? Math.PI * (el.radiusFt as number) * (el.radiusFt as number)
+              : (el.lengthFt && el.widthFt)
+                ? el.lengthFt * el.widthFt
+                : el.areaSqft ?? 0;
 
             const saved = await projectStore.addElement({
               orgId,
               projectId,
               name: el.name.trim() || `${el.elementType} ${i + 1}`,
               elementType: el.elementType,
+              shape: el.shape ?? 'rectangle',
+              radiusFt: el.radiusFt ?? null,
               lengthFt: el.lengthFt,
               widthFt: el.widthFt,
               areaSqft: el.areaSqft,
