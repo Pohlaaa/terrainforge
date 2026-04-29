@@ -24,6 +24,28 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
   const { materials: catalog } = useMaterialStore();
   const orgId = useOrgStore((s) => s.org?.id);
   const { addElementMaterial, updateElementMaterial, removeElementMaterial } = useProjectStore();
+  // Recently-used materials in THIS project (other elements). Lets the
+  // contractor add the same paver-brick across 5 patios without searching
+  // each time. Sorted by recency, deduped, top 6.
+  const recentMaterials = useProjectStore((s) => {
+    const elems = s.activeProject?.elements ?? [];
+    const seen = new Set<string>();
+    const usages: Array<{ materialId: string; createdAt: string }> = [];
+    for (const el of elems) {
+      if (el.id === element.id) continue;
+      for (const em of el.materials ?? []) {
+        if (!em.materialId) continue;
+        if (seen.has(em.materialId)) continue;
+        seen.add(em.materialId);
+        usages.push({ materialId: em.materialId, createdAt: em.createdAt });
+      }
+    }
+    return usages
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .slice(0, 6)
+      .map((u) => catalog.find((m) => m.id === u.materialId))
+      .filter((m): m is Material => Boolean(m));
+  });
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
   // Element-level override UI: which assigned-row's "Advanced" panel is open.
@@ -191,6 +213,61 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
             </div>
           </div>
         )}
+
+        {/* Recently-used in this project — chips that already-assigned
+            materials elsewhere on the project, so a contractor doing
+            five patios with the same paver doesn't search every time. */}
+        {recentMaterials.length > 0 && (() => {
+          const usable = recentMaterials.filter((m) => !assignedIds.has(m.id));
+          if (usable.length === 0) return null;
+          return (
+            <div>
+              <div
+                className="text-[10px] font-[600] uppercase mb-[4px]"
+                style={{ color: 'var(--text-4)', letterSpacing: '0.04em' }}
+              >
+                Recent in this project
+              </div>
+              <div className="flex flex-wrap gap-[4px]">
+                {usable.map((mat) => (
+                  <button
+                    key={mat.id}
+                    type="button"
+                    onClick={() => handleAssign(mat)}
+                    disabled={!!adding}
+                    title={`${mat.name} · ${getCategoryLabel(mat.category)}`}
+                    className="flex items-center gap-[4px] px-[8px] py-[4px] rounded-full border text-[11px] cursor-pointer bg-transparent transition-colors"
+                    style={{
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-2)',
+                      opacity: adding === mat.id ? 0.5 : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--green)';
+                      e.currentTarget.style.background = 'rgba(45,106,79,0.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <span
+                      className="px-[4px] py-[1px] rounded-[3px] text-[9px] font-[500]"
+                      style={{
+                        backgroundColor: 'rgba(45,106,79,0.1)',
+                        color: 'var(--green-l)',
+                      }}
+                    >
+                      {getCategoryLabel(mat.category)}
+                    </span>
+                    {mat.name}
+                    <span style={{ color: 'var(--text-4)', fontWeight: 600 }}>+</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Search */}
         <input
