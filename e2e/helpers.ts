@@ -40,18 +40,32 @@ export function uniqueProjectName(label: string): string {
 }
 
 /**
- * Wait for both Anthropic API calls (project recommendations + element
- * inference) that fire on Step 1 → Step 2 transition. Returns the array
- * of response statuses so callers can assert all 200.
+ * Sprint S routed all Anthropic calls through the proxy-claude Edge
+ * Function so the API key never ships to the browser. The wire URL
+ * contractors hit is now /functions/v1/proxy-claude on the Supabase
+ * project, not api.anthropic.com directly. Match either pattern so
+ * the helper is robust to a future un-proxy decision.
+ */
+function isAIRequest(url: string): boolean {
+  return (
+    url.includes('/functions/v1/proxy-claude') ||
+    url.includes('api.anthropic.com/v1/messages')
+  )
+}
+
+/**
+ * Wait for both AI calls (project recommendations + element inference)
+ * that fire on Step 1 → Step 2 transition. Returns the array of response
+ * statuses so callers can assert all 200.
  */
 export async function waitForStep2AICalls(page: Page) {
   const responses = await Promise.all([
     page.waitForResponse(
-      (r) => r.url().includes('api.anthropic.com/v1/messages') && r.request().method() === 'POST',
+      (r) => isAIRequest(r.url()) && r.request().method() === 'POST',
       { timeout: 30_000 },
     ),
     page.waitForResponse(
-      (r) => r.url().includes('api.anthropic.com/v1/messages') && r.request().method() === 'POST',
+      (r) => isAIRequest(r.url()) && r.request().method() === 'POST',
       { timeout: 30_000 },
     ),
   ])
@@ -59,15 +73,13 @@ export async function waitForStep2AICalls(page: Page) {
 }
 
 /**
- * Wait for one per-element inferMaterialsForElement call (smaller
- * Anthropic POST). Times out at 20s — the call itself is ~1-2s but we
- * give headroom for transient backoff.
+ * Wait for one per-element inferMaterialsForElement call. Times out at
+ * 20s — the call itself is ~1-2s but we give headroom for transient
+ * backoff and proxy-claude rate-limit retries.
  */
 export async function waitForPerElementMaterialCall(page: Page) {
   return page.waitForResponse(
-    (r) =>
-      r.url().includes('api.anthropic.com/v1/messages') &&
-      r.request().method() === 'POST',
+    (r) => isAIRequest(r.url()) && r.request().method() === 'POST',
     { timeout: 20_000 },
   )
 }
