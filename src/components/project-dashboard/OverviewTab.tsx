@@ -15,7 +15,7 @@ import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildSh
 import type { ProjectDesignVersion } from '@/types';
 import { computeProjectCost } from '@/lib/projectCost';
 import { toast } from '@/hooks/useToast';
-import { fetchManifestsForProject, type ManifestRow } from '@/services/supabaseManifests';
+import { fetchManifestsForProject, snapshotManifestForProject, type ManifestRow } from '@/services/supabaseManifests';
 
 interface Props {
   project: Project;
@@ -97,12 +97,40 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   }, [project.id, activeToken?.clientChangesSubmittedAt]);
 
   // Manifest snapshot history. New rows appear automatically when a project
-  // crosses approved → scheduled (see projectStore.updateProject).
+  // crosses approved → scheduled (see projectStore.updateProject), or when
+  // the contractor clicks "Snapshot now" below.
   const [manifests, setManifests] = useState<ManifestRow[]>([]);
   const [manifestsOpen, setManifestsOpen] = useState(false);
+  const [snapshotting, setSnapshotting] = useState(false);
   useEffect(() => {
     fetchManifestsForProject(project.id).then(setManifests);
   }, [project.id, project.status]);
+
+  async function handleSnapshotNow() {
+    const orgId = useOrgStore.getState().org?.id;
+    if (!orgId || snapshotting) return;
+    setSnapshotting(true);
+    try {
+      const id = await snapshotManifestForProject({
+        projectId: project.id,
+        orgId,
+        elements: elements,
+        catalog: useMaterialStore.getState().materials,
+      });
+      if (id) {
+        toast.success('Manifest snapshot saved.');
+        const refreshed = await fetchManifestsForProject(project.id);
+        setManifests(refreshed);
+        setManifestsOpen(true);
+      } else {
+        toast.error('Nothing to snapshot — assign materials to elements first.');
+      }
+    } catch (err) {
+      toast.error(`Snapshot failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+    } finally {
+      setSnapshotting(false);
+    }
+  }
 
   async function handleCreateShareLink() {
     const orgId = useOrgStore.getState().org?.id;
@@ -630,39 +658,59 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   )}
                 </div>
               )}
-              {/* Manifest snapshot history. Rows added automatically when
-                  approved → scheduled. Each row freezes line items + purchase
-                  list at that moment so contractors have the audit trail of
-                  what they ordered. */}
-              {manifests.length > 0 && (
-                <div className="mb-[12px]">
+              {/* Manifest snapshot history + manual trigger. Rows added
+                  automatically when approved → scheduled (see projectStore).
+                  Each row freezes line items + purchase list so the
+                  contractor has the audit trail of what they ordered. */}
+              <div className="mb-[12px]">
+                <div className="flex items-center gap-[8px]">
+                  {manifests.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setManifestsOpen((v) => !v)}
+                      className="text-[11px] font-[500] cursor-pointer bg-transparent border-none"
+                      style={{ color: 'var(--text-3)' }}
+                    >
+                      {manifestsOpen ? '▾' : '▸'} Manifest snapshots ({manifests.length})
+                    </button>
+                  ) : (
+                    <span className="text-[11px]" style={{ color: 'var(--text-4)' }}>
+                      No manifest snapshots yet
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setManifestsOpen((v) => !v)}
-                    className="text-[11px] font-[500] cursor-pointer bg-transparent border-none"
-                    style={{ color: 'var(--text-3)' }}
+                    onClick={handleSnapshotNow}
+                    disabled={snapshotting}
+                    className="ml-auto px-[8px] py-[3px] rounded-[5px] border text-[10px] font-[600] cursor-pointer bg-transparent transition-colors"
+                    style={{
+                      borderColor: 'var(--green)',
+                      color: 'var(--green-l)',
+                      opacity: snapshotting ? 0.6 : 1,
+                    }}
+                    title="Generate a versioned manifest snapshot from current elements + materials. Useful before sending the BOM to a supplier."
                   >
-                    {manifestsOpen ? '▾' : '▸'} Manifest snapshots ({manifests.length})
+                    {snapshotting ? 'Snapshotting…' : '+ Snapshot now'}
                   </button>
-                  {manifestsOpen && (
-                    <div
-                      className="mt-[6px] rounded-[6px] border"
-                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
-                    >
-                      {manifests.map((mf, i) => (
-                        <ManifestRowExpander
-                          key={mf.id}
-                          mf={mf}
-                          isFirst={i === 0}
-                          fmt={fmt}
-                          project={project}
-                          orgName={useOrgStore.getState().org?.name ?? undefined}
-                        />
-                      ))}
-                    </div>
-                  )}
                 </div>
-              )}
+                {manifestsOpen && manifests.length > 0 && (
+                  <div
+                    className="mt-[6px] rounded-[6px] border"
+                    style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+                  >
+                    {manifests.map((mf, i) => (
+                      <ManifestRowExpander
+                        key={mf.id}
+                        mf={mf}
+                        isFirst={i === 0}
+                        fmt={fmt}
+                        project={project}
+                        orgName={useOrgStore.getState().org?.name ?? undefined}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
               {activeToken.clientResponse && (
                 <div
                   className="mb-[12px] px-[12px] py-[10px] rounded-[8px] text-[12px]"
