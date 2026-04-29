@@ -7,22 +7,25 @@ import { createClient } from '@supabase/supabase-js'
  * Sprint S transitively loads this module — and Node has no
  * `import.meta.env`. Falling back to process.env keeps the import chain
  * Node-safe without changing browser behavior.
+ *
+ * IMPORTANT: Vite's static-replace pass only handles the literal pattern
+ * `import.meta.env.VITE_FOO` (property-access). It does NOT replace
+ * `import.meta.env[varName]` (dynamic key). Earlier versions of this
+ * module used the dynamic form and silently fell through to the
+ * placeholder URL on the deployed bundle, breaking auth in production.
+ * Always read with literal property access.
  */
-function viteEnv(name: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const meta = import.meta as any
-  if (meta?.env && typeof meta.env[name] !== 'undefined') {
-    return meta.env[name] || ''
-  }
-  if (typeof process !== 'undefined' && process.env) {
-    // Try in order: VITE_-prefixed → E2E_-prefixed → bare.
-    const bare = name.replace(/^VITE_/, '')
-    return (
-      process.env[name] ||
-      process.env[`E2E_${bare}`] ||
-      process.env[bare] ||
-      ''
-    ) as string
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const browserEnv = (import.meta as any)?.env as Record<string, string> | undefined
+const browserSupabaseUrl: string = browserEnv?.VITE_SUPABASE_URL || ''
+const browserSupabaseKey: string = browserEnv?.VITE_SUPABASE_ANON_KEY || ''
+
+function nodeEnv(...names: string[]): string {
+  if (typeof process === 'undefined' || !process.env) return ''
+  for (const n of names) {
+    const v = process.env[n]
+    if (v) return v
   }
   return ''
 }
@@ -35,8 +38,12 @@ function viteEnv(name: string): string {
 const PLACEHOLDER_URL = 'https://placeholder.supabase.invalid'
 const PLACEHOLDER_KEY = 'placeholder.anon.key'
 
-const resolvedUrl = viteEnv('VITE_SUPABASE_URL')
-const resolvedKey = viteEnv('VITE_SUPABASE_ANON_KEY')
+const resolvedUrl =
+  browserSupabaseUrl ||
+  nodeEnv('VITE_SUPABASE_URL', 'E2E_SUPABASE_URL', 'SUPABASE_URL')
+const resolvedKey =
+  browserSupabaseKey ||
+  nodeEnv('VITE_SUPABASE_ANON_KEY', 'E2E_SUPABASE_ANON_KEY', 'SUPABASE_ANON_KEY')
 
 const supabaseUrl = resolvedUrl || PLACEHOLDER_URL
 const supabaseAnonKey = resolvedKey || PLACEHOLDER_KEY
