@@ -70,7 +70,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // Auth: pull the JWT from the Authorization header so we can identify the
-  // user (platform already verified it because verify_jwt=true).
+  // user. The function is deployed with verify_jwt=true so the gateway has
+  // already validated signature + expiry by the time we run.
   const authHeader = req.headers.get('Authorization') || req.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
     return jsonResp({ error: 'Missing bearer token' }, 401)
@@ -83,11 +84,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
-  const { data: userResult, error: userErr } = await admin.auth.getUser(userJwt)
-  if (userErr || !userResult?.user) {
+  // IMPORTANT: do NOT call admin.auth.getUser(userJwt) here — that API is
+  // for anon-keyed clients and returns 401 against a service-role client.
+  // The Supabase gateway has already verified the signature + expiry; we
+  // just decode the payload to extract the sub claim. Same pattern as
+  // send-proposal-email Edge Function.
+  let userId: string
+  try {
+    const parts = userJwt.split('.')
+    if (parts.length !== 3) throw new Error('malformed JWT')
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+    if (!payload.sub) throw new Error('no sub claim')
+    userId = payload.sub as string
+  } catch (err) {
+    console.error('proxy-claude: JWT decode failed', err)
     return jsonResp({ error: 'Unauthorized' }, 401)
   }
-  const userId = userResult.user.id
 
   // Find the user's org (organization_members → org_id). A user could in
   // theory belong to multiple orgs; pick the most recently accepted one.

@@ -140,7 +140,13 @@ test('contractor walkthrough — Phase A/B/C end-to-end', async ({ page }) => {
   expect(projectId).toBeTruthy()
 
   // ── 12. OverviewTab renders + Estimate badge ───────────────────────────
-  await expect(page.getByText(/^Estimate$/i)).toBeVisible({ timeout: 15_000 })
+  // Batch 7 added a ProjectStatusPills row that also contains an "Estimate"
+  // pill, so a bare text match now resolves to two elements (the legacy
+  // status badge + the new pill). Scope to the pill's pressed state to
+  // pick exactly one — the active status pill is aria-pressed=true.
+  await expect(
+    page.getByRole('button', { name: /Set status to Estimate/i, pressed: true }),
+  ).toBeVisible({ timeout: 15_000 })
   // Project elements section header shows "Project Elements (N)". Count
   // depends on AI inference; just match the parenthesized form to scope
   // tightly enough.
