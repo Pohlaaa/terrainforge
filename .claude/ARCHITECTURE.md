@@ -2,18 +2,23 @@
 
 > **Purpose**: The north star for all development. Every code session reads this file. Every decision about where data lives, how it flows, and how pages consume it is answered here.
 > **Created**: 2026-04-03 (data layer refactor)
-> **Updated**: 2026-04-21 (materials engine, 6-step wizard, migration 027)
+> **Updated**: 2026-04-28 (3D-in-Wizard, Sprint X/S/U/D run, curved shapes, manifests wiring, /queue page, proxy-claude Edge Function)
 > **Owner**: Charlie + Cowork
 
 ---
 
-## TL;DR of post-Apr-21 state
+## TL;DR of post-2026-04-28 state
 
-- **Wizard**: 6 steps (Job → Measurements → Plan → Materials → Numbers → Summary). AI fires after Step 0 (the Job) and feeds Plan/Materials/Numbers. Old 9-step Step1-7 flow is gone.
-- **Measurements are king**: `project_elements` (24 types, dimensions) + `project_element_materials` (junction with computation overrides) is the measurement-driven core.
-- **Manifest engine**: `src/materials-engine/` dispatches 6 computation models (AREA_COVERAGE | UNIT_COVERAGE | LINEAR | POINT_SPACING | LINEAR_DEPTH | SUBSTRATE). `src/lib/manifest.ts` wraps it with a legacy zone fallback.
-- **Lifecycle**: 7-state status enum `estimate → quoted → approved → scheduled → in_progress → completed (+ on_hold)`. Progress gated via `src/lib/projectProgress.ts`.
-- **RLS**: as of migration 027 every `auth.*()` call wraps in `(select auth.*())`. New policies MUST follow this pattern. See `.claude/CONTEXT.md` triggers.
+- **Wizard**: 5 steps now (3D-in-Wizard pivot). Step 1 = Job → Step 2 = Measurements + 3D canvas → Step 3 = Plan/Crew → Step 4 = Numbers → Step 5 = Review. The old "Step 4 Materials" got folded into Step 2 (per-element material picker on the canvas) + a Step 3 review panel.
+- **Measurements are king**: `project_elements` (24 types, dimensions, **shape + radius** as of mig 033) + `project_element_materials` (junction with computation + spacing + manual_count + wall_length/height + waste overrides). The override UI is now wired (MaterialPicker `Adjust` panel).
+- **Curved shapes (mig 033)**: shape='circle' uses π × r² for area, 2πr for circumference. Renders as cylinder in 3D, circle in 2D, circle in ElementVisual.
+- **Manifest engine**: `src/materials-engine/` — 6 computation models (AREA_COVERAGE | UNIT_COVERAGE | LINEAR | POINT_SPACING | LINEAR_DEPTH | SUBSTRATE). 58 vitest tests as of Sprint U. **Snapshots fire on `approved → scheduled`** transition (Batch 1) — versioned rows in `manifests` table; OverviewTab has a history expander.
+- **AI is server-side (Sprint S)**: every Claude call goes through the `proxy-claude` Edge Function (auth via Supabase JWT, 30 req/min per-org rate limit, audit-logged). The browser never sees the API key. Operator must set `ANTHROPIC_API_KEY` secret on Supabase for AI to work.
+- **Lifecycle**: 7-state status enum `estimate → quoted → approved → scheduled → in_progress → completed (+ on_hold)`.
+- **Share-link surface (Phase A/B/C v0)**: `/share/:token` viewer with role discriminator `client_view | client_approve | client_design`. Phase D Inc 1 added contractor `/queue` page for cross-project pending submissions; Inc 3 added "design invite" email mode (still uses send-proposal-email Edge Function with mode=design_invite).
+- **RLS**: as of mig 027 every `auth.*()` call wraps in `(select auth.*())`. New policies MUST follow this pattern. Mig 028+ added share-token-scoped anon policies on projects/elements/materials/share_tokens.
+- **Edge Functions** (7 deployed): `proxy-claude` (Sprint S), `send-proposal-email` (proposal + design_invite modes), `notify-client-response`, `search-local-suppliers`, `create-checkout-session`, `create-portal-session`, `stripe-webhook` (refactored to handlers.ts for unit testing in P0).
+- **Testing (A-level)**: 88 vitest unit tests; Playwright walkthrough + rpc-negative + materials-accuracy harness. CI workflows (`pr-checks`, `nightly`, `pre-deploy`) added in P0 — warn-only by default. See `.claude/TESTING/PLAN.md` for the strategy doc.
 - **Pages to NOT touch**: Schedule, CrewManager, EquipmentManager no longer exist — their UI lives in CrewEquipmentHub + project-dashboard tabs.
 
 ---
@@ -50,18 +55,22 @@ The app uses a **top navigation bar** with 4 primary tabs. No sidebar.
 
 | Route | Page | Notes |
 |-------|------|-------|
-| `/manifest` | ManifestEngine | Unchanged |
+| `/queue` | ReviewQueue | **Sprint D Inc 1** — cross-project pending design submissions. Badge in TopNav reflects count. |
 | `/work-orders` | WorkOrders | Unchanged |
 | `/price-research` | PriceResearch | Unchanged |
 | `/settings` | Settings | Unchanged |
 | `/billing` | Billing | Unchanged |
 
-### Detail Routes (unchanged)
+### Detail Routes
 
-| Route | Page |
-|-------|------|
-| `/projects/:id` | ProjectDashboard (6 tabs) |
-| `/projects/new` | ProjectWizard |
+| Route | Page | Notes |
+|-------|------|-------|
+| `/projects/:id` | ProjectDashboard (6 tabs) | Overview, Tasks, Budget, Materials, Resources, Compliance |
+| `/projects/wizard` | ProjectWizard | 5-step flow (see §5) |
+| `/share/:token` | SharedProjectView | **Public**, no auth. Anon access via project_share_tokens (mig 028). Role discriminator: client_view (read-only), client_approve (read + approve/reject), client_design (read + edit element geometry, mig 031). |
+| `/auth/callback`, `/login`, `/signup`, `/forgot-password`, `/reset-password` | Auth pages | Public |
+| `/onboarding` | Onboarding | Auth required, no AppLayout |
+| `/crew/*` | CrewLayout (separate shell) | Crew app routes for foremen — `/crew` (dashboard), `/crew/job/:entryId` |
 
 ### Tab Content Pattern
 
@@ -261,23 +270,39 @@ Every clickable item in a widget navigates to the appropriate detail view:
 
 ---
 
-## 5. Wizard Architecture (6-step flow as of Apr 2026)
+## 5. Wizard Architecture (5-step flow as of 2026-04-28 — 3D-in-Wizard pivot)
 
 ### Step order + responsibility
 
 ```
-Step 0 — The Job           name, project/property type, scope size, client info, address
-Step 1 — Measurements      project_elements: add areas of work with dimensions
-  ↓ AI fires here
-Step 2 — The Plan          AI-suggested tasks / crew / equipment (accept/dismiss)
-Step 3 — Materials         material picks with engine-computed quantities
-Step 4 — The Numbers       budget breakdown, permits, quote
+Step 1 — The Job           name, project/property type, scope size, client info, address
+  ↓ AI inferElements() fires on Step 1 → 2 transition
+Step 2 — Measurements +    project_elements with dimensions, AI-seeded onto a 3D
+         3D canvas         canvas over a Mapbox satellite of the property. Shape
+                           selector (rectangle / circle), per-element material picker
+                           sidebar with "Tailored to this element" AI suggestions.
+  ↓ AI generateProjectRecommendations() also fires on this transition
+Step 3 — Plan              AI-suggested tasks / crew / equipment / permits +
+                           Materials review (rolled up from Step 2's per-element
+                           assignments). Old "Step 4 Materials" got folded into
+                           Step 2 + this review panel.
+Step 4 — The Numbers       budget breakdown, overhead %, quote
 Step 5 — Review & Create   summary, status=estimate, write to DB
 ```
 
-The AI recommendation set fires at the transition Step 0 → Step 1 (right after the
-job description is captured and before the contractor starts measuring). That way
-recommendations for tasks/crew/equipment/materials are present from Step 2 onward.
+The wizard kicks off **two parallel AI calls** at the Step 1 → Step 2 transition
+(both go through the `proxy-claude` Edge Function as of Sprint S):
+
+- `inferElements()` — returns element list with rough dimensions + a placement
+  hint. Hint feeds `placementBucket()` to seed each element's geometry on the
+  satellite canvas so they appear in roughly the right zone (backyard / front /
+  side / driveway / perimeter) before the contractor refines.
+- `generateProjectRecommendations()` — the bigger call: tasks, crew, equipment,
+  materials, permits, budget. Results feed Step 3.
+
+Per-element material suggestions (`inferMaterialsForElement()`) fire lazily — the
+first time the contractor selects an element of a given type in Step 2, the
+sidebar caches the result by `tempId`. Type changes invalidate; renames don't.
 
 ### AI Recommendation Flow
 
@@ -406,69 +431,145 @@ createCrew, updateCrew, createEquipment, updateEquipment, etc.
 
 ---
 
-## 7. File Organization (Post-Rebuild)
+## 7. File Organization (current)
 
 ```
 src/
-  pages/              — One component per route. 4 hub tabs + ProjectDashboard + wizard + secondary.
+  pages/              — One component per route.
+                        - Dashboard, BudgetHub, MaterialLibrary, CrewEquipmentHub (4 hub tabs)
+                        - ProjectDashboard, ProjectWizard
+                        - ReviewQueue (Sprint D Inc 1), SharedProjectView (Phase A/B/C)
+                        - Settings, Billing, WorkOrders, PriceResearch, Onboarding
+                        - crew/CrewDashboard, crew/CrewJobDetail (separate layout)
+                        - Login, Signup, ForgotPassword, ResetPassword, AuthCallback, Landing
   components/
-    layout/           — App shell (TopNav, AppLayout)
-    shared/           — Reusable UI blocks (KPICard, DataTable, Modal, Badge, etc.)
-    pdf/              — PDF templates — UNCHANGED
-    ui/               — Atomic form elements — UNCHANGED
-    wizard/           — Wizard step components
-    dashboard/        — Shared dashboard components (MapWidget)
-    project-dashboard/ — ProjectDashboard tab components
-  stores/             — Zustand stores with clear ownership boundaries
+    layout/           — TopNav (with pending-design badge), AppLayout, CrewLayout, MobileSidebar
+    shared/           — Reusable UI blocks (KPICard, DataTable, Modal, MaterialPicker w/
+                        override panel, ElementVisual w/ circle support, TaskTimeline, etc.)
+    pdf/              — @react-pdf/renderer templates
+    ui/               — Atomic form elements (Input, Select, Button, NumberInput, ...)
+    wizard/           — 5-step wizard components incl. WizardStepMeasurements (3D canvas host)
+    plan/             — PlanView2D, PlanView3D (R3F + drei + Mapbox satellite ground)
+    project-dashboard/ — ProjectDashboard tab components (Overview, Budget, Materials, ...)
+  stores/             — Zustand: projectStore, crewStore, scheduleStore, equipmentStore,
+                        materialStore, orgStore, uiStore, supplierStore
+  materials-engine/   — Pure compute layer: engine.ts (6 models),
+                        unit-conversions.ts, catalog.ts (35-row starter catalog),
+                        supplier-import.ts. 58 vitest tests. NO side effects.
   services/
-    supabase.ts       — Client instance — UNCHANGED
-    supabaseData.ts   — ALL Supabase CRUD — refactored
-    stripe.ts         — Billing — UNCHANGED
-    anthropic.ts      — Claude API client (low-level calls)
-    aiRecommendations.ts — AI project recommendation engine (uses anthropic.ts)
+    supabase.ts                 — Client instance
+    supabaseData.ts             — Re-exports from supabaseElements/Materials/Crew/etc
+    supabaseElements.ts         — project_elements + project_element_materials CRUD
+    supabaseMaterials.ts        — org material library + bulk import (chunked)
+    supabaseShareTokens.ts      — share-link CRUD, fetchPendingDesignSubmissions, etc
+    supabaseManifests.ts        — manifest snapshot CRUD (Batch 1 wiring)
+    supabaseShareTokens (cont)  — sendProposalEmail with mode='proposal' | 'design_invite'
+    stripe.ts                   — Stripe.js loader
+    anthropic.ts                — callClaude() — proxies through proxy-claude Edge Function
+    aiRecommendations.ts        — Higher-level prompts (inferElements, inferMaterialsForElement,
+                                  generateProjectRecommendations) — all go through callClaude
   lib/
-    manifest.ts       — Manifest engine — UNCHANGED
-    workorders.ts     — Work order generation — UNCHANGED
-    alerts.ts         — Alert aggregation — UNCHANGED
-    constants.ts      — App constants — UNCHANGED
-    kpiCompute.ts     — KPI pure functions (refactored from kpiDefinitions.ts)
-  hooks/              — Custom React hooks — UNCHANGED
-  types/              — TypeScript interfaces — extended with new types
-  utils/              — Formatting, dates, validation — UNCHANGED
+    manifest.ts             — Legacy zone-based manifest wrapper around materials-engine
+    workorders.ts           — Work order generation
+    alerts.ts               — Alert aggregation
+    constants.ts            — App constants
+    kpiCompute.ts           — Pure KPI functions
+    projectCost.ts          — computeProjectCost (wizard ↔ Overview consistency)
+    projectProgress.ts      — Status-gated progress computation
+    planLayout.ts           — autoLayout, placementBucket (AI hint → satellite zone),
+                              elementColor, elementMaterial, fallbackDimensions
+    elements.ts             — getElementTypesForMaterial, ELEMENT_TYPE_LABELS, dim configs
+    categories.ts           — Material category normalization + labels
+    taskTimeline.ts         — Critical path / overrun calc (X-12 fix)
+  hooks/                    — useToast, useBillingGate, usePendingDesignCount (Sprint D)
+  types/                    — TypeScript interfaces
+  utils/                    — Formatting, dates, validation
+
+supabase/
+  functions/                — 7 Edge Functions (all deno-runtime + npm: imports)
+    proxy-claude/           — AI proxy (Sprint S) — JWT auth + per-org rate limit
+    send-proposal-email/    — Resend integration; mode toggle proposal vs design_invite
+    notify-client-response/ — Contractor notification on client approve/reject/submit
+    search-local-suppliers/ — Nominatim search + civic blocklist (X-10)
+    create-checkout-session/ + create-portal-session/ — Stripe billing entry points
+    stripe-webhook/         — index.ts (dispatch) + handlers.ts (unit-tested in P0 #2)
+  migrations/               — 33 migrations applied to staging + prod
+
+scripts/
+  check-perf-budget.mjs     — Bundle size check vs PERF_BUDGET.md (P0 #5)
+  test-persistence.ts       — Local DB diagnostic
+
+e2e/                        — Playwright suite: walkthrough, rpc-negative + RLS sweep,
+                              materials-accuracy harness, helpers.ts
+
+.github/workflows/          — CI (P0 #1): pr-checks.yml, nightly.yml, pre-deploy.yml
 ```
 
 ---
 
-## 8. Migration Required
+## 8. Migrations Inventory
 
-**One new migration**: `013_project_crew_assignments.sql`
+33 migrations applied. Recent (post-Apr-21) ones with brief context:
 
-```sql
--- project_crew_assignments table
--- Persists crew-to-project assignments (replaces in-memory projectCrew map)
--- NOTE: Org membership table is `organization_members` (not `org_members`)
-CREATE TABLE IF NOT EXISTS project_crew_assignments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID NOT NULL REFERENCES organizations(id),
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  crew_member_id UUID NOT NULL REFERENCES crew_members(id) ON DELETE CASCADE,
-  role_on_project TEXT,
-  assigned_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(project_id, crew_member_id)
-);
+| # | File | What |
+|---|------|------|
+| 026 | `materials_engine_upgrade` | engine columns on materials, project_element_materials override columns, manifests table |
+| 027 | `perf_and_security_hardening` | wrap auth.*() in (select auth.*()) across 88 RLS policies; FK indexes; pin search_path on functions |
+| 028 | `design_app_foundation` | site_geometry on projects; element_geometry on project_elements; project_share_tokens (anon-readable when role-scoped) |
+| 029 | `client_approval` | client_response/note/responded_at on share tokens; respond_to_share_token RPC |
+| 030 | `material_textures` | textureAlbedoUrl/Normal/Roughness on materials |
+| 031 | `client_design_edit` | role='client_design' on share tokens; client_update_element_geometry RPC (SECURITY DEFINER) |
+| 032 | `project_design_versions` | Append-only design submission history; submit_design_changes RPC |
+| 033 | `element_shapes` | shape (rectangle\|circle\|polyline) + radius_ft on project_elements; engine reads shape='circle' as π × r² |
 
--- RLS policies (same pattern as project_tasks, project_subcontractors)
--- Uses `organization_members` table for role checks
-ALTER TABLE project_crew_assignments ENABLE ROW LEVEL SECURITY;
-```
-
-**No other schema changes needed for stabilization.** The contractor's feature requests (disposal costs, org rates, equipment types, crew phone) will require additional migrations post-stabilization.
+When adding a new migration: name `NNN_snake_case.sql`, include RLS policies that wrap `auth.*()` calls per mig 027, default new columns so back-compat holds.
 
 ---
 
-## 9. Future Considerations
+## 9. AI Layer (Sprint S — server-side)
+
+```
+src/services/aiRecommendations.ts
+            ↓ callClaude() (no longer uses VITE_ANTHROPIC_API_KEY)
+src/services/anthropic.ts
+            ↓ supabase.functions.invoke('proxy-claude', { prompt, model, max_tokens })
+proxy-claude Edge Function
+            ↓ verify JWT, look up organization_members, rate-limit (audit_log count)
+            ↓ forward to api.anthropic.com/v1/messages with x-api-key from secret
+            ↓ insert audit_log row (action='view', entity_type='proxy-claude')
+```
+
+**Operator action required**: set `ANTHROPIC_API_KEY` in Supabase Edge Function Secrets before AI works. Failure mode is graceful — `callClaude()` rejects, callers return null/[] so the wizard still renders without recommendations.
+
+The browser bundle no longer contains the API key. Rotate the previously-exposed key after the secret is set.
+
+---
+
+## 10. Manifest Snapshots (Batch 1 wiring)
+
+`manifests` table (mig 026) was finally consumed by store wiring on 2026-04-28.
+
+```
+projectStore.updateProject(id, { status: 'scheduled' })
+    ↓ if prevStatus === 'approved' && updates.status === 'scheduled'
+    ↓ get current activeProject + materials catalog
+src/services/supabaseManifests.ts.snapshotManifestForProject()
+    ↓ generateEngineManifest() pure compute
+    ↓ nextManifestVersion(projectId) → existing top + 1
+    ↓ supabase.from('manifests').insert(buildManifestInsert(...))
+toast.success('Manifest snapshot saved.')
+```
+
+OverviewTab has a "Manifest snapshots" expander showing version, timestamp, line-item count, and total cost. Each snapshot is the engine output frozen — line_items, purchase_list, summary as JSONB columns.
+
+---
+
+## 11. Future Considerations
 
 - Real-time collaboration (multi-user editing)
 - Offline/PWA support for field crews
-- Advanced reporting and analytics
+- Magic-link auth for clients (Phase D Inc 2 — sensitive, deferred)
+- 3D primitives for polygon and line shape kinds
+- PDF export of manifest snapshots (planned)
+- Cross-tenant RLS automation needs a second test account
 - Client portal (read-only project view for clients)
