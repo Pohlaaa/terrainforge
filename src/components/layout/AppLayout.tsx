@@ -13,6 +13,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { TopNav } from '@/components/layout/TopNav';
 import { MobileSidebar } from '@/components/layout/MobileSidebar';
+import { ProjectQuickSwitcher } from '@/components/layout/ProjectQuickSwitcher';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgStore } from '@/stores/orgStore';
 import { useProjectStore } from '@/stores/projectStore';
@@ -56,6 +57,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [pastDueBannerDismissed, setPastDueBannerDismissed] = useState(false);
   const [expiredOverlayDismissed, setExpiredOverlayDismissed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -118,6 +120,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     function handleKey(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
+      const key = e.key.toLowerCase();
+
+      // Cmd-K / Cmd-P open the quick-switcher. These work even from
+      // text inputs since they're explicit "go somewhere else" intents.
+      if (key === 'k' || key === 'p') {
+        e.preventDefault();
+        setQuickSwitcherOpen((v) => !v);
+        return;
+      }
+
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
       const isEditable =
@@ -129,7 +141,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       // Cmd-Z (no shift) → undo
       // Cmd-Shift-Z OR Ctrl-Y → redo
-      const key = e.key.toLowerCase();
       const isUndo = key === 'z' && !e.shiftKey;
       const isRedo = (key === 'z' && e.shiftKey) || key === 'y';
       if (!isUndo && !isRedo) return;
@@ -264,6 +275,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       {/* Toast notification region */}
       <ToastContainer />
+
+      {/* Cmd-K / Cmd-P quick-switcher — global modal overlay */}
+      <ProjectQuickSwitcher
+        open={quickSwitcherOpen}
+        onClose={() => setQuickSwitcherOpen(false)}
+      />
     </div>
   );
 };
