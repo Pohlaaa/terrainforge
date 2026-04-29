@@ -164,6 +164,14 @@ export const WizardStepMeasurements: React.FC<Props> = ({
 }) => {
   const elements = data.elements;
   const [planViewMode, setPlanViewMode] = useState<'2d' | '3d'>('3d');
+  // Batch 24: when set, the canvas enters click-to-draw polygon mode for
+  // this element. Forces the view to 2D (3D extrusion can't host the
+  // click-to-draw flow). Cleared by PlanView2D via onDrawingExit when
+  // the contractor commits or cancels.
+  const [drawingPolygonForTempId, setDrawingPolygonForTempId] = useState<string | null>(null);
+  useEffect(() => {
+    if (drawingPolygonForTempId) setPlanViewMode('2d');
+  }, [drawingPolygonForTempId]);
   const [selectedTempId, setSelectedTempId] = useState<string | null>(
     elements[0]?.tempId ?? null,
   );
@@ -505,6 +513,8 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                   editable
                   onElementClick={(el) => setSelectedTempId(el.id)}
                   onElementGeometryChange={handleElementGeometryChange}
+                  drawingPolygonForElementId={drawingPolygonForTempId}
+                  onDrawingExit={() => setDrawingPolygonForTempId(null)}
                 />
               ) : (
                 <PlanView3D
@@ -567,6 +577,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                 const newId = duplicateElement(selected.tempId);
                 if (newId) setSelectedTempId(newId);
               }}
+              onStartRedraw={() => setDrawingPolygonForTempId(selected.tempId)}
               recommendations={recommendations}
               materialAccepted={materialAccepted}
               materialDismissed={materialDismissed}
@@ -609,6 +620,7 @@ interface SidebarProps {
   onUpdate: (updates: Partial<WizardElement>) => void;
   onRemove: () => void;
   onDuplicate: () => void;
+  onStartRedraw: () => void;
   recommendations: AIRecommendationSet | null;
   materialAccepted: Set<string>;
   materialDismissed: Set<string>;
@@ -625,6 +637,7 @@ const ElementSidebar: React.FC<SidebarProps> = ({
   onUpdate,
   onRemove,
   onDuplicate,
+  onStartRedraw,
   recommendations,
   materialAccepted,
   materialDismissed,
@@ -987,7 +1000,30 @@ const ElementSidebar: React.FC<SidebarProps> = ({
       {/* Dimensions */}
       <div className="grid grid-cols-2 gap-[8px]">
         {(element.shape ?? 'rectangle') === 'polygon' && (showLW || showArea) && (
-          <PolygonVertexEditor element={element} onUpdate={onUpdate} />
+          <div className="col-span-2 space-y-[6px]">
+            {/* Redraw on canvas — Batch 24 click-to-draw mode */}
+            <button
+              type="button"
+              onClick={onStartRedraw}
+              className="w-full px-[10px] py-[6px] rounded-[6px] border text-[12px] font-[500] cursor-pointer bg-transparent transition-colors flex items-center justify-center gap-[6px]"
+              style={{ borderColor: 'var(--green)', color: 'var(--green-l)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(45,106,79,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+              title="Redraw the polygon by clicking points on the canvas. Esc to cancel."
+            >
+              {/* Pencil icon */}
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 2l3 3-9 9H2v-3l9-9z" />
+                <path d="M10 3l3 3" />
+              </svg>
+              Redraw on canvas
+            </button>
+            <PolygonVertexEditor element={element} onUpdate={onUpdate} />
+          </div>
         )}
         {(element.shape ?? 'rectangle') === 'circle' && (showLW || showArea) && (
           <div className="col-span-2">

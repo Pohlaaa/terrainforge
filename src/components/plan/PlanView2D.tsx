@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectElement, ElementGeometry } from '@/types'
 import { autoLayout, computeBoundingBox, elementColor } from '@/lib/planLayout'
 import { ELEMENT_TYPE_LABELS } from '@/lib/elements'
@@ -45,6 +45,20 @@ interface Props {
    * projectStore.updateElement(id, { geometry: newGeometry })).
    */
   onElementGeometryChange?: (elementId: string, geometry: ElementGeometry) => void
+  /**
+   * Batch 24: when set, PlanView2D enters click-to-draw polygon mode for
+   * the named element. Each click on empty canvas appends a vertex; the
+   * existing polygon is rendered ghosted underneath so the contractor
+   * can trace its outline. Clicking on the first vertex (when ≥3 placed)
+   * commits. Enter / Done button also commits. Esc cancels.
+   */
+  drawingPolygonForElementId?: string | null
+  /**
+   * Fires once when the contractor exits draw mode (commit OR cancel).
+   * Parent is responsible for clearing its `drawingPolygonForElementId`
+   * state so PlanView2D returns to normal interaction.
+   */
+  onDrawingExit?: () => void
 }
 
 /** Snap feet to the nearest integer — keeps dragged elements on 1-ft grid. */
@@ -158,10 +172,25 @@ export const PlanView2D: React.FC<Props> = ({
   backdrop,
   editable = false,
   onElementGeometryChange,
+  drawingPolygonForElementId,
+  onDrawingExit,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const [, setDragTick] = useState(0)
+  // Batch 24: click-to-draw polygon state.
+  const [drawingPoints, setDrawingPoints] = useState<Array<{ x: number; y: number }>>([])
+  const [drawingCursor, setDrawingCursor] = useState<{ x: number; y: number } | null>(null)
+  // Reset draw state when entering/exiting draw mode.
+  useEffect(() => {
+    setDrawingPoints([])
+    setDrawingCursor(null)
+  }, [drawingPolygonForElementId])
+
+  // How close to the first vertex (in feet) counts as "click to close
+  // the polygon." Generous enough that contractors don't have to hit it
+  // exactly; tight enough that nearby spurious clicks don't auto-close.
+  const CLOSE_THRESHOLD_FT = 1.5
 
   const baseLaid = useMemo(() => autoLayout(elements), [elements])
 
@@ -323,6 +352,93 @@ export const PlanView2D: React.FC<Props> = ({
       setDragTick((t) => t + 1)
     },
     [editable, clientToFeet],
+  )
+
+  // ── Batch 24: click-to-draw polygon ─────────────────────────────────
+  const commitDrawing = useCallback(() => {
+    const id = drawingPolygonForElementId
+    if (!id || drawingPoints.length < 3) return
+    const existing = elements.find((e) => e.id === id)
+    if (!existing) {
+      onDrawingExit?.()
+      return
+    }
+    // Clicked points are world-space (in feet, in the SVG's coord system).
+    // The element's polygon points are stored in element-LOCAL space —
+    // i.e., relative to geometry.position. Translate before saving so
+    // the rendered polygon lands where the contractor drew it.
+    const basePosition = existing.geometry?.position ?? { x: 0, y: 0 }
+    const localPoints = drawingPoints.map((p) => ({
+      x: p.x - basePosition.x,
+      y: p.y - basePosition.y,
+    }))
+    const baseGeometry = existing.geometry ?? {
+      position: basePosition,
+      rotation: 0,
+      shape: { kind: 'polygon' as const, points: localPoints },
+    }
+    onElementGeometryChange?.(id, {
+      ...baseGeometry,
+      shape: { kind: 'polygon', points: localPoints },
+    })
+    setDrawingPoints([])
+    setDrawingCursor(null)
+    onDrawingExit?.()
+  }, [drawingPolygonForElementId, drawingPoints, elements, onElementGeometryChange, onDrawingExit])
+
+  const cancelDrawing = useCallback(() => {
+    setDrawingPoints([])
+    setDrawingCursor(null)
+    onDrawingExit?.()
+  }, [onDrawingExit])
+
+  // Esc/Enter handlers when drawing.
+  useEffect(() => {
+    if (!drawingPolygonForElementId) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        cancelDrawing()
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        commitDrawing()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [drawingPolygonForElementId, commitDrawing, cancelDrawing])
+
+  const onSvgClickDrawing = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if (!drawingPolygonForElementId) return
+      const cursor = clientToFeet(e.clientX, e.clientY)
+      if (!cursor) return
+      // Click-to-close: if ≥3 points and click landed near the first
+      // vertex, commit. Skips if the click happened to be exactly on a
+      // later vertex (rare; would still snap to grid anyway).
+      if (drawingPoints.length >= 3) {
+        const first = drawingPoints[0]
+        const dist = Math.hypot(cursor.x - first.x, cursor.y - first.y)
+        if (dist < CLOSE_THRESHOLD_FT) {
+          commitDrawing()
+          return
+        }
+      }
+      setDrawingPoints((pts) => [
+        ...pts,
+        { x: snapFt(cursor.x), y: snapFt(cursor.y) },
+      ])
+    },
+    [drawingPolygonForElementId, drawingPoints, clientToFeet, commitDrawing],
+  )
+
+  const onSvgMouseMoveDrawing = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if (!drawingPolygonForElementId) return
+      const cursor = clientToFeet(e.clientX, e.clientY)
+      if (cursor) setDrawingCursor(cursor)
+    },
+    [drawingPolygonForElementId, clientToFeet],
   )
 
   // ── Vertex drag (mig 034 polygons) ─────────────────────────────────
@@ -537,7 +653,10 @@ export const PlanView2D: React.FC<Props> = ({
             position: 'relative',
             zIndex: 1,
             touchAction: editable ? 'none' : 'auto',
+            cursor: drawingPolygonForElementId ? 'crosshair' : undefined,
           }}
+          onClick={drawingPolygonForElementId ? onSvgClickDrawing : undefined}
+          onMouseMove={drawingPolygonForElementId ? onSvgMouseMoveDrawing : undefined}
         >
           {!backdropUrl && (
             <>
@@ -635,29 +754,39 @@ export const PlanView2D: React.FC<Props> = ({
                 key={element.id}
                 transform={transform}
                 style={{
-                  cursor: editable
+                  cursor: drawingPolygonForElementId
+                    ? 'crosshair'
+                    : editable
                     ? isBeingDragged && dragRef.current?.mode === 'move'
                       ? 'grabbing'
                       : 'grab'
                     : clickable
                       ? 'pointer'
                       : 'default',
-                  opacity: isBeingDragged ? 0.75 : 1,
+                  opacity:
+                    drawingPolygonForElementId === element.id
+                      ? 0.18 // ghost the element being redrawn
+                      : isBeingDragged
+                      ? 0.75
+                      : 1,
+                  pointerEvents: drawingPolygonForElementId ? 'none' : undefined,
                 }}
-                onClick={clickable && !editable ? () => onElementClick?.(element) : undefined}
-                onPointerDown={editable ? (e) => beginMove(e, element, geometry) : undefined}
-                onPointerMove={editable ? onPointerMove : undefined}
-                onPointerUp={editable ? onPointerUp : undefined}
-                onPointerCancel={editable ? onPointerUp : undefined}
+                onClick={clickable && !editable && !drawingPolygonForElementId ? () => onElementClick?.(element) : undefined}
+                onPointerDown={editable && !drawingPolygonForElementId ? (e) => beginMove(e, element, geometry) : undefined}
+                onPointerMove={editable && !drawingPolygonForElementId ? onPointerMove : undefined}
+                onPointerUp={editable && !drawingPolygonForElementId ? onPointerUp : undefined}
+                onPointerCancel={editable && !drawingPolygonForElementId ? onPointerUp : undefined}
                 role={clickable || editable ? 'button' : undefined}
                 aria-label={element.name}
               >
                 {shapeEl}
 
                 {/* Polygon vertex handles (mig 034, edit mode). Click + drag
-                    a vertex to reshape the polygon in place. The textarea
-                    editor in the wizard sidebar stays usable for bulk
-                    coord entry. */}
+                    a vertex to reshape the polygon. Right-click removes
+                    a vertex (only when 4+ remain — polygons need 3 to be
+                    valid, and removing the last "movable" vertex would
+                    collapse the shape). The textarea editor in the wizard
+                    sidebar stays usable for bulk coord entry + insert. */}
                 {editable && shape.kind === 'polygon' && (
                   <>
                     {shape.points.map((p, i) => (
@@ -673,7 +802,22 @@ export const PlanView2D: React.FC<Props> = ({
                         data-handle="vertex"
                         data-vertex-index={i}
                         onPointerDown={(ev) => beginVertexMove(ev, element, geometry, i)}
-                      />
+                        onContextMenu={(ev) => {
+                          ev.preventDefault()
+                          ev.stopPropagation()
+                          if (shape.points.length <= 3) return // need 3+ for valid polygon
+                          const nextPoints = shape.points.filter((_, idx) => idx !== i)
+                          onElementGeometryChange?.(element.id, {
+                            ...geometry,
+                            shape: { kind: 'polygon', points: nextPoints },
+                          })
+                        }}
+                      >
+                        <title>
+                          Drag to move · right-click to remove
+                          {shape.points.length <= 3 ? ' (locked at 3 vertices)' : ''}
+                        </title>
+                      </circle>
                     ))}
                   </>
                 )}
@@ -773,7 +917,119 @@ export const PlanView2D: React.FC<Props> = ({
               {SCALE_BAR_FT} ft
             </text>
           </g>
+
+          {/* Batch 24: in-progress polygon outline while drawing.
+              - Solid green polyline through committed clicks
+              - Dashed green segment from last click to mouse cursor
+              - Vertex circles on each committed click (the first one
+                gets a thicker ring + larger radius as the click-target
+                for closing the polygon) */}
+          {drawingPolygonForElementId && drawingPoints.length > 0 && (
+            <g style={{ pointerEvents: 'none' }}>
+              {/* Committed segments */}
+              {drawingPoints.length >= 2 && (
+                <polyline
+                  points={drawingPoints.map((p) => `${p.x},${p.y}`).join(' ')}
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth={ftPerPx * 1.5}
+                  strokeLinejoin="round"
+                />
+              )}
+              {/* Live preview segment from last point to cursor */}
+              {drawingCursor && (
+                <line
+                  x1={drawingPoints[drawingPoints.length - 1].x}
+                  y1={drawingPoints[drawingPoints.length - 1].y}
+                  x2={drawingCursor.x}
+                  y2={drawingCursor.y}
+                  stroke="#10B981"
+                  strokeWidth={ftPerPx * 1}
+                  strokeDasharray={`${ftPerPx * 4} ${ftPerPx * 3}`}
+                  opacity={0.7}
+                />
+              )}
+              {/* Vertex circles. First click gets a larger close-target ring. */}
+              {drawingPoints.map((p, i) => (
+                <circle
+                  key={`draw-${i}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r={i === 0 && drawingPoints.length >= 3
+                    ? handleRadiusFt * 1.6
+                    : handleRadiusFt}
+                  fill={i === 0 && drawingPoints.length >= 3 ? 'transparent' : '#10B981'}
+                  stroke={i === 0 && drawingPoints.length >= 3 ? '#10B981' : '#ffffff'}
+                  strokeWidth={ftPerPx * 1}
+                />
+              ))}
+            </g>
+          )}
         </svg>
+      )}
+
+      {/* Batch 24: floating instructions + commit/cancel buttons while
+          drawing. HTML overlay (not SVG) so button styling matches the
+          rest of the app. Positioned absolute over the canvas. */}
+      {drawingPolygonForElementId && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(15, 21, 16, 0.92)',
+            border: '1px solid #10B981',
+            borderRadius: 8,
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            zIndex: 5,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          }}
+        >
+          <span style={{ fontSize: 12, color: '#fff', fontWeight: 500 }}>
+            {drawingPoints.length === 0
+              ? 'Click on the canvas to start drawing the polygon'
+              : drawingPoints.length < 3
+              ? `Click to add vertex (${drawingPoints.length} placed, need 3+)`
+              : `Click first vertex or press Enter to close (${drawingPoints.length} placed)`}
+          </span>
+          <button
+            type="button"
+            onClick={commitDrawing}
+            disabled={drawingPoints.length < 3}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: 'none',
+              background: drawingPoints.length >= 3 ? '#10B981' : 'rgba(16,185,129,0.3)',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: drawingPoints.length >= 3 ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Done (⏎)
+          </button>
+          <button
+            type="button"
+            onClick={cancelDrawing}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: '1px solid rgba(255,255,255,0.2)',
+              background: 'transparent',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel (Esc)
+          </button>
+        </div>
       )}
     </div>
   )
