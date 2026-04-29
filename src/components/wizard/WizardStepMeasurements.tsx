@@ -295,6 +295,12 @@ export const WizardStepMeasurements: React.FC<Props> = ({
         // Treat the longer side as the linear run.
         updates.linearFt = Math.max(geometry.shape.width, geometry.shape.height);
       }
+    } else if (geometry.shape.kind === 'circle') {
+      // Circle resize from the canvas → mirror radius back to the sidebar.
+      updates.shape = 'circle';
+      updates.radiusFt = geometry.shape.radius;
+      updates.lengthFt = null;
+      updates.widthFt = null;
     }
     updateElement(id, updates);
   };
@@ -701,10 +707,36 @@ const ElementSidebar: React.FC<SidebarProps> = ({
                   key={s}
                   type="button"
                   onClick={() => {
+                    // Also sync ElementGeometry.shape so PlanView2D renders
+                    // a circle on the satellite canvas. PlanView3D currently
+                    // only renders rectangles; circle elements will appear
+                    // boxed in 3D until the 3D primitive is added (3D pivot
+                    // backlog 6f extension).
+                    const existingGeom = element.geometry;
                     if (s === 'circle') {
-                      onUpdate({ shape: 'circle', lengthFt: null, widthFt: null });
+                      const radius = element.radiusFt && element.radiusFt > 0
+                        ? element.radiusFt
+                        : (element.lengthFt && element.widthFt
+                          ? Math.max(element.lengthFt, element.widthFt) / 2
+                          : 5);
+                      onUpdate({
+                        shape: 'circle',
+                        lengthFt: null,
+                        widthFt: null,
+                        geometry: existingGeom
+                          ? { ...existingGeom, shape: { kind: 'circle', radius } }
+                          : null,
+                      });
                     } else {
-                      onUpdate({ shape: 'rectangle', radiusFt: null });
+                      const w = element.lengthFt ?? (element.radiusFt ? element.radiusFt * 2 : 10);
+                      const h = element.widthFt ?? (element.radiusFt ? element.radiusFt * 2 : 10);
+                      onUpdate({
+                        shape: 'rectangle',
+                        radiusFt: null,
+                        geometry: existingGeom
+                          ? { ...existingGeom, shape: { kind: 'rectangle', width: w, height: h } }
+                          : null,
+                      });
                     }
                   }}
                   className="flex-1 px-[10px] py-[6px] rounded-[6px] border text-[12px] cursor-pointer"
@@ -733,7 +765,18 @@ const ElementSidebar: React.FC<SidebarProps> = ({
               min={0}
               step={0.5}
               value={element.radiusFt ?? null}
-              onChange={(v) => onUpdate({ radiusFt: v })}
+              onChange={(v) => {
+                // Mirror the radius into geometry so the 2D canvas resizes
+                // the circle in step with the input.
+                const updates: Partial<WizardElement> = { radiusFt: v };
+                if (v && v > 0 && element.geometry) {
+                  updates.geometry = {
+                    ...element.geometry,
+                    shape: { kind: 'circle', radius: v },
+                  };
+                }
+                onUpdate(updates);
+              }}
               placeholder="0"
             />
             {element.radiusFt && element.radiusFt > 0 && (
