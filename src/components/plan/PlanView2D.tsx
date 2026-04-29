@@ -139,6 +139,16 @@ type DragState =
       baseGeometry: ElementGeometry
       live: ElementGeometry
     }
+  | {
+      // Batch 22: drag a single polygon vertex (mig 034 polygon shape).
+      // Cursor coords arrive in world feet; we transform back into the
+      // element's LOCAL space (un-rotate around center) so the vertex
+      // delta makes sense regardless of element rotation.
+      mode: 'vertex'
+      elementId: string
+      vertexIndex: number
+      live: ElementGeometry
+    }
 
 export const PlanView2D: React.FC<Props> = ({
   elements,
@@ -156,6 +166,8 @@ export const PlanView2D: React.FC<Props> = ({
   const baseLaid = useMemo(() => autoLayout(elements), [elements])
 
   // Overlay the live-drag geometry (if any) on top of the base layout.
+  // resize/rotate/vertex modes all carry a `live` ElementGeometry that
+  // reflects the in-progress edit; move tracks position separately.
   const laid = useMemo(() => {
     const d = dragRef.current
     if (!d) return baseLaid
@@ -170,6 +182,7 @@ export const PlanView2D: React.FC<Props> = ({
           } as ElementGeometry,
         }
       }
+      // resize / rotate / vertex
       return { ...item, geometry: d.live }
     })
   }, [baseLaid])
@@ -312,6 +325,32 @@ export const PlanView2D: React.FC<Props> = ({
     [editable, clientToFeet],
   )
 
+  // ── Vertex drag (mig 034 polygons) ─────────────────────────────────
+  // Click + drag a polygon vertex handle. Snap-to-foot via snapFt() in
+  // onPointerMove; commit fires on pointerup which writes the new
+  // points[] back through onElementGeometryChange.
+  const beginVertexMove = useCallback(
+    (
+      e: React.PointerEvent,
+      element: ProjectElement,
+      geometry: ElementGeometry,
+      vertexIndex: number,
+    ) => {
+      if (!editable) return
+      if (geometry.shape.kind !== 'polygon') return
+      dragRef.current = {
+        mode: 'vertex',
+        elementId: element.id,
+        vertexIndex,
+        live: geometry,
+      }
+      ;(e.target as Element).setPointerCapture(e.pointerId)
+      e.stopPropagation()
+      setDragTick((t) => t + 1)
+    },
+    [editable],
+  )
+
   // ── Common pointer move / up dispatch ────────────────────────────────
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -359,6 +398,48 @@ export const PlanView2D: React.FC<Props> = ({
           ...d.live,
           position: newPosition,
           shape: { kind: 'rectangle', width: newWidth, height: newHeight },
+        }
+        setDragTick((t) => t + 1)
+        return
+      }
+
+      if (d.mode === 'vertex' && d.live.shape.kind === 'polygon') {
+        // Cursor is in world feet; convert into element-local space by
+        // subtracting position and inverse-rotating around the element's
+        // current bbox center. The polygon's points array stores
+        // local-coordinate vertices; updating points[i] live re-renders
+        // the polygon at the new position.
+        const localCursor = (() => {
+          const p = d.live.position
+          // First un-translate
+          const tx = cursorFt.x - p.x
+          const ty = cursorFt.y - p.y
+          // Then un-rotate around the local origin. Note: position is the
+          // unrotated top-left, so local space starts at (0,0) regardless
+          // of rotation. rotate2d returns a fresh vector — we negate the
+          // rotation since we're going world → local.
+          if (d.live.rotation === 0) return { x: tx, y: ty }
+          // The element transform applies rotate(rot, cx, cy) AFTER translate
+          // so we need to undo around the element center, not (0,0).
+          const center = elementCenter(d.live)
+          const cx = center.x - p.x
+          const cy = center.y - p.y
+          const offX = tx - cx
+          const offY = ty - cy
+          const undone = rotate2d(offX, offY, -d.live.rotation)
+          return { x: cx + undone.x, y: cy + undone.y }
+        })()
+        const newX = snapFt(localCursor.x)
+        const newY = snapFt(localCursor.y)
+        const points = d.live.shape.points
+        const cur = points[d.vertexIndex]
+        if (cur && cur.x === newX && cur.y === newY) return
+        const nextPoints = points.map((p, i) =>
+          i === d.vertexIndex ? { x: newX, y: newY } : p,
+        )
+        d.live = {
+          ...d.live,
+          shape: { kind: 'polygon', points: nextPoints },
         }
         setDragTick((t) => t + 1)
         return
@@ -572,6 +653,30 @@ export const PlanView2D: React.FC<Props> = ({
                 aria-label={element.name}
               >
                 {shapeEl}
+
+                {/* Polygon vertex handles (mig 034, edit mode). Click + drag
+                    a vertex to reshape the polygon in place. The textarea
+                    editor in the wizard sidebar stays usable for bulk
+                    coord entry. */}
+                {editable && shape.kind === 'polygon' && (
+                  <>
+                    {shape.points.map((p, i) => (
+                      <circle
+                        key={`vtx-${i}`}
+                        cx={p.x}
+                        cy={p.y}
+                        r={handleRadiusFt}
+                        fill="#10B981"
+                        stroke="#ffffff"
+                        strokeWidth={ftPerPx * 1}
+                        style={{ cursor: 'move' }}
+                        data-handle="vertex"
+                        data-vertex-index={i}
+                        onPointerDown={(ev) => beginVertexMove(ev, element, geometry, i)}
+                      />
+                    ))}
+                  </>
+                )}
 
                 {/* Resize corner handles (rectangles only, edit mode only). */}
                 {editable && shape.kind === 'rectangle' && (
