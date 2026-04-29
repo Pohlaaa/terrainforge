@@ -215,7 +215,33 @@ const KITCHEN_COUNTER_HEIGHT_FT = 3
 const KITCHEN_COUNTER_DEPTH_FT = 2.5
 
 function ElementPrimitive({ b }: { b: ExtrudedBox }) {
-  const { elementType, width, depth, height, color, roughness, metalness, textureAlbedoUrl } = b
+  const { elementType, width, depth, height, color, roughness, metalness, textureAlbedoUrl, shapeKind } = b
+
+  // Migration 033: shape='circle' renders as a vertical cylinder of the
+  // element's height. Falls before all the elementType branches so a
+  // circular patio reads as a circle even though patio's default
+  // primitive is a textured slab. Type-specific circular shapes (tree,
+  // shrub, fire_pit) keep their custom primitives below.
+  if (
+    shapeKind === 'circle' &&
+    elementType !== 'tree_planting' &&
+    elementType !== 'shrub_planting' &&
+    elementType !== 'fire_pit'
+  ) {
+    const r = Math.max(Math.min(width, depth) / 2, 0.5)
+    return (
+      <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[r, r, height, 32]} />
+        <BoxMaterial
+          textureAlbedoUrl={textureAlbedoUrl}
+          color={color}
+          roughness={roughness}
+          metalness={metalness}
+          tileUnits={Math.max(width, depth)}
+        />
+      </mesh>
+    )
+  }
 
   if (elementType === 'tree_planting') {
     // Radius based on element footprint (smaller of width/depth), minimum 1.5
@@ -608,6 +634,12 @@ interface ExtrudedBox {
   elementType: import('@/types').ElementType
   /** Sprint 7c: albedo texture URL from first element-material with one set. Null = flat color. */
   textureAlbedoUrl: string | null
+  /**
+   * Migration 033 + 3D pivot 6f extension: shape discriminator from
+   * ElementGeometry. 'rectangle' (default) renders as a box; 'circle'
+   * renders as a vertical cylinder of radius = width/2 and height = h.
+   */
+  shapeKind: 'rectangle' | 'circle'
 }
 
 // ===== Sprint 7a-translate / 7a-rotate / 7a-resize: editable 3D element layer =====
@@ -666,12 +698,18 @@ function ElementsLayer({
 
     // Existing shape determines width/height unless we're scaling (below).
     const existing = el.geometry
+    const isCircle = existing?.shape?.kind === 'circle'
     let newWidth = (existing?.shape && existing.shape.kind === 'rectangle')
       ? existing.shape.width
       : selectedBox.width
     let newHeight = (existing?.shape && existing.shape.kind === 'rectangle')
       ? existing.shape.height
       : selectedBox.depth
+    // Migration 033 + 6f extension: track circle radius separately so we
+    // can reconstruct the same shape kind in the commit payload below.
+    let newRadius = (existing?.shape && existing.shape.kind === 'circle')
+      ? existing.shape.radius
+      : selectedBox.width / 2
 
     // Rotation in degrees CCW (we invert later because plan rotation is CW).
     // Group's rotation.y is current live state — in translate/scale modes this
@@ -690,8 +728,17 @@ function ElementsLayer({
       // After commit we reset scale to 1 so subsequent operations start fresh.
       const sx = selectedGroup.scale.x
       const sz = selectedGroup.scale.z
-      newWidth = Math.max(2, snap(newWidth * sx))
-      newHeight = Math.max(2, snap(newHeight * sz))
+      if (isCircle) {
+        // Circles take a uniform scale (max of sx/sz) so they stay circular.
+        // Non-uniform user input is rounded up to the bigger axis.
+        const s = Math.max(sx, sz)
+        newRadius = Math.max(1, snap(newRadius * s))
+        newWidth = newRadius * 2
+        newHeight = newRadius * 2
+      } else {
+        newWidth = Math.max(2, snap(newWidth * sx))
+        newHeight = Math.max(2, snap(newHeight * sz))
+      }
       selectedGroup.scale.set(1, 1, 1)
     }
 
@@ -713,11 +760,9 @@ function ElementsLayer({
           ? { x: snap(planX), y: snap(planY) }
           : { x: snap(planX), y: snap(planY) },
       rotation: newRotationDeg,
-      shape: {
-        kind: 'rectangle',
-        width: newWidth,
-        height: newHeight,
-      },
+      shape: isCircle
+        ? { kind: 'circle', radius: newRadius }
+        : { kind: 'rectangle', width: newWidth, height: newHeight },
     }
     onElementGeometryChange?.(selectedBox.key, newGeometry)
   }
@@ -825,10 +870,20 @@ export const PlanView3D: React.FC<Props> = ({
   )
   const boxes = useMemo<ExtrudedBox[]>(() => {
     return autoLayout(elements).flatMap(({ element, geometry }) => {
-      if (geometry.shape.kind !== 'rectangle') return []
+      // Migration 033 + 3D pivot 6f extension: also accept circles.
+      // Polygon and line shapes still drop out — they need bespoke
+      // geometry treatment that isn't built yet.
+      if (geometry.shape.kind !== 'rectangle' && geometry.shape.kind !== 'circle') {
+        return []
+      }
       const { shape, position, rotation } = geometry
-      const cx = position.x + shape.width / 2
-      const cy = position.y + shape.height / 2
+      // Width / depth in plan-feet. For circles we square the bounding box
+      // to 2 × radius so the existing layout / picking math (which assumes
+      // a rectangular footprint) keeps working.
+      const planWidth = shape.kind === 'rectangle' ? shape.width : shape.radius * 2
+      const planHeight = shape.kind === 'rectangle' ? shape.height : shape.radius * 2
+      const cx = position.x + planWidth / 2
+      const cy = position.y + planHeight / 2
       const h = elementHeightFt(element)
       const mat = elementMaterial(element.elementType)
       // Sprint 7c: first material with a textureAlbedoUrl wins. A patio with
@@ -853,13 +908,14 @@ export const PlanView3D: React.FC<Props> = ({
           x: cx,
           z: -cy, // flip plan-Y so the 2D top-down "down" becomes +z in 3D
           rot: -(rotation * Math.PI) / 180, // match SVG clockwise rotation
-          width: shape.width,
-          depth: shape.height,
+          width: planWidth,
+          depth: planHeight,
           height: h,
           roughness: mat.roughness,
           metalness: mat.metalness,
           elementType: element.elementType,
           textureAlbedoUrl,
+          shapeKind: shape.kind,
         },
       ]
     })
