@@ -2,7 +2,7 @@
  * MaterialPicker — modal for assigning materials to a project element.
  * Shows catalog filtered by element type, live quantity preview, assign/remove.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useOrgStore } from '@/stores/orgStore';
@@ -29,6 +29,10 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
   // Element-level override UI: which assigned-row's "Advanced" panel is open.
   // Only one open at a time keeps the modal compact.
   const [advancedOpen, setAdvancedOpen] = useState<string | null>(null);
+  // X-6: arrow-key navigation through the filtered material list.
+  // -1 = no highlight (initial); ArrowDown moves to 0.
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const assignedIds = new Set((element.materials || []).map(m => m.materialId));
 
@@ -93,6 +97,68 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
     await removeElementMaterial(element.id, elMat.id);
   }
 
+  // X-6: clamp activeIndex when the filtered list shrinks (e.g. user keeps
+  // typing and the previously-highlighted item drops out). Reset to -1 on
+  // every search change so a fresh keystroke doesn't carry stale highlight.
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [search]);
+
+  // X-6: scroll the highlighted row into view as the user arrows through.
+  useEffect(() => {
+    if (activeIndex < 0 || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(
+      `[data-mat-row="${activeIndex}"]`,
+    );
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex]);
+
+  // X-6: keyboard handler attached to the search input. Lets the contractor
+  // type → arrow → enter without ever touching the mouse. Mirrors the
+  // AddressInput pattern (F-041) for consistency.
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex((i) =>
+          filtered.length === 0 ? -1 : (i + 1) % filtered.length,
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex((i) =>
+          filtered.length === 0
+            ? -1
+            : i <= 0
+            ? filtered.length - 1
+            : i - 1,
+        );
+      } else if (e.key === 'Enter' && activeIndex >= 0) {
+        const mat = filtered[activeIndex];
+        if (!mat) return;
+        if (assignedIds.has(mat.id)) return;
+        e.preventDefault();
+        void handleAssign(mat);
+      } else if (e.key === 'Escape') {
+        // First Esc: clear highlight. Second Esc (no highlight to clear):
+        // close the modal. Lets a contractor undo a stray arrow without
+        // losing the search state.
+        if (activeIndex >= 0) {
+          e.preventDefault();
+          setActiveIndex(-1);
+        } else {
+          onClose();
+        }
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setActiveIndex(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setActiveIndex(filtered.length - 1);
+      }
+    },
+    [filtered, activeIndex, assignedIds, onClose],
+  );
+
   const area = element.computedAreaSqft || (element.lengthFt && element.widthFt ? element.lengthFt * element.widthFt : element.areaSqft ?? 0);
 
   return (
@@ -129,23 +195,53 @@ export const MaterialPicker: React.FC<Props> = ({ element, isOpen, onClose }) =>
         {/* Search */}
         <input
           className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-[8px] px-[12px] py-[8px] text-[13px] text-[var(--text)] placeholder:text-[var(--text-4)] focus:outline-none focus:border-[var(--green)]"
-          placeholder="Search materials..."
+          placeholder="Search materials… (↑↓ to navigate, Enter to add)"
           value={search}
           onChange={e => setSearch(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
+          autoFocus
+          role="combobox"
+          aria-expanded={filtered.length > 0}
+          aria-controls="material-picker-list"
+          aria-activedescendant={activeIndex >= 0 ? `mat-row-${activeIndex}` : undefined}
         />
 
         {/* Available materials */}
-        <div className="max-h-[300px] overflow-y-auto space-y-[3px]">
+        <div
+          ref={listRef}
+          id="material-picker-list"
+          className="max-h-[300px] overflow-y-auto space-y-[3px]"
+          role="listbox"
+        >
           {filtered.length === 0 && (
             <div className="text-[12px] text-[var(--text-4)] text-center py-[16px]">No matching materials found</div>
           )}
-          {filtered.map(mat => {
+          {filtered.map((mat, idx) => {
             const isAssigned = assignedIds.has(mat.id);
             const preview = !isAssigned ? previewQty(mat) : null;
+            const isActive = idx === activeIndex && !isAssigned;
             return (
               <div key={mat.id}
+                id={`mat-row-${idx}`}
+                data-mat-row={idx}
+                role="option"
+                aria-selected={isActive}
+                onMouseEnter={() => setActiveIndex(idx)}
                 className="flex items-center gap-[8px] rounded-[6px] border px-[10px] py-[8px] text-[12px] transition-colors"
-                style={{ borderColor: isAssigned ? 'var(--green)' : 'var(--border)', backgroundColor: isAssigned ? 'rgba(45,106,79,0.04)' : 'var(--surface2)', opacity: isAssigned ? 0.6 : 1 }}
+                style={{
+                  borderColor: isActive
+                    ? 'var(--green-l)'
+                    : isAssigned
+                    ? 'var(--green)'
+                    : 'var(--border)',
+                  backgroundColor: isActive
+                    ? 'rgba(45,106,79,0.12)'
+                    : isAssigned
+                    ? 'rgba(45,106,79,0.04)'
+                    : 'var(--surface2)',
+                  opacity: isAssigned ? 0.6 : 1,
+                  outline: isActive ? '1px solid var(--green-l)' : undefined,
+                }}
               >
                 <span className="px-[5px] py-[1px] rounded-[3px] text-[10px] font-[500] shrink-0" style={{ backgroundColor: 'rgba(45,106,79,0.1)', color: 'var(--green-l)' }}>
                   {getCategoryLabel(mat.category)}

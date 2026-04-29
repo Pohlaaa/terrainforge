@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 export interface SuggestionItem {
   id: string;
@@ -89,12 +89,69 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({
   onUpdateAccepted,
 }) => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  // X-6: keyboard navigation through pending suggestions. -1 = no highlight.
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const pendingListRef = useRef<HTMLDivElement>(null);
   const pendingItems = items.filter(
     (i) => !acceptedIds.has(i.id) && !dismissedIds.has(i.id)
   );
   const acceptedItems = items.filter((i) => acceptedIds.has(i.id));
   const dismissedItems = items.filter((i) => dismissedIds.has(i.id));
   const hasPending = pendingItems.length > 0;
+
+  // Clamp activeIndex when items shift (Accept/Dismiss removes from pending,
+  // which shrinks the list). Keep the highlight near where it was.
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    if (pendingItems.length === 0) {
+      setActiveIndex(-1);
+    } else if (activeIndex >= pendingItems.length) {
+      setActiveIndex(pendingItems.length - 1);
+    }
+  }, [pendingItems.length, activeIndex]);
+
+  // Scroll the highlighted card into view as the user arrows.
+  useEffect(() => {
+    if (activeIndex < 0 || !pendingListRef.current) return;
+    const el = pendingListRef.current.querySelector<HTMLElement>(
+      `[data-pending-row="${activeIndex}"]`,
+    );
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex]);
+
+  const handlePendingKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (pendingItems.length === 0) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex((i) =>
+          i < 0 ? 0 : (i + 1) % pendingItems.length,
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex((i) =>
+          i <= 0 ? pendingItems.length - 1 : i - 1,
+        );
+      } else if (e.key === 'Enter' && activeIndex >= 0) {
+        e.preventDefault();
+        const item = pendingItems[activeIndex];
+        if (item) onAccept(item.id);
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && activeIndex >= 0) {
+        e.preventDefault();
+        const item = pendingItems[activeIndex];
+        if (item) onDismiss(item.id);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setActiveIndex(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setActiveIndex(pendingItems.length - 1);
+      } else if (e.key === 'Escape') {
+        setActiveIndex(-1);
+      }
+    },
+    [pendingItems, activeIndex, onAccept, onDismiss],
+  );
 
   if (isLoading) {
     return (
@@ -177,13 +234,36 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({
         )}
       </div>
 
-      {/* Pending items */}
-      <div className="space-y-[8px]">
-        {pendingItems.map((item) => (
+      {/* Pending items — keyboard nav via the wrapper. tabIndex=0 makes
+          the panel reachable via Tab; arrow keys then move the highlight. */}
+      <div
+        ref={pendingListRef}
+        className="space-y-[8px] outline-none"
+        role={hasPending ? 'listbox' : undefined}
+        tabIndex={hasPending ? 0 : -1}
+        aria-label={hasPending ? `${title} suggestions, use arrow keys to navigate, Enter to accept, Delete to dismiss` : undefined}
+        onKeyDown={handlePendingKeyDown}
+        onFocus={() => {
+          if (activeIndex < 0 && pendingItems.length > 0) setActiveIndex(0);
+        }}
+      >
+        {pendingItems.map((item, idx) => (
           <div
             key={item.id}
+            data-pending-row={idx}
+            role="option"
+            aria-selected={idx === activeIndex}
+            onMouseEnter={() => setActiveIndex(idx)}
             className="rounded-[8px] border p-[12px] transition-colors"
-            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
+            style={{
+              backgroundColor: idx === activeIndex
+                ? 'rgba(45,106,79,0.10)'
+                : 'var(--surface)',
+              borderColor: idx === activeIndex
+                ? 'var(--green-l)'
+                : 'var(--border)',
+              outline: idx === activeIndex ? '1px solid var(--green-l)' : undefined,
+            }}
           >
             <div className="flex items-start gap-[10px]">
               <div className="flex-1 min-w-0">
