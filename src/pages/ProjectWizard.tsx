@@ -237,6 +237,69 @@ const WIZARD_STEPS = [
   { label: 'Review & Create', shortLabel: 'Review' },         // 4 — Final review + create
 ];
 
+// Wizard state persistence (jbluhm-feedback hardening): contractors
+// frequently spend 5+ minutes in the wizard. A refresh / accidental
+// tab close / browser crash today loses everything. localStorage
+// backing rehydrates the wizard exactly where they left off, scoped
+// per org so two contractors on the same machine don't see each
+// other's drafts.
+//
+// Cleared on successful project create. Cleared on Cancel. Bumped
+// `WIZARD_DRAFT_VERSION` invalidates all stale drafts when the
+// WizardData shape changes (e.g. adding a new field) — better to lose
+// a draft than render a malformed one.
+const WIZARD_DRAFT_VERSION = 1;
+const WIZARD_DRAFT_STEP_KEY = (orgId: string | undefined) =>
+  `tf-wizard-draft-step-v${WIZARD_DRAFT_VERSION}-${orgId ?? 'anon'}`;
+const WIZARD_DRAFT_DATA_KEY = (orgId: string | undefined) =>
+  `tf-wizard-draft-data-v${WIZARD_DRAFT_VERSION}-${orgId ?? 'anon'}`;
+
+interface PersistedDraft {
+  step: number;
+  data: WizardData;
+}
+
+function loadWizardDraft(orgId: string | undefined): PersistedDraft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stepRaw = localStorage.getItem(WIZARD_DRAFT_STEP_KEY(orgId));
+    const dataRaw = localStorage.getItem(WIZARD_DRAFT_DATA_KEY(orgId));
+    if (!dataRaw) return null;
+    const step = stepRaw ? Math.max(0, Math.min(parseInt(stepRaw, 10), 4)) : 0;
+    const data = JSON.parse(dataRaw) as WizardData;
+    return { step, data };
+  } catch {
+    // Corrupted JSON — clear so we don't keep crashing on load.
+    try {
+      localStorage.removeItem(WIZARD_DRAFT_STEP_KEY(orgId));
+      localStorage.removeItem(WIZARD_DRAFT_DATA_KEY(orgId));
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+}
+
+function saveWizardDraft(orgId: string | undefined, step: number, data: WizardData): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(WIZARD_DRAFT_STEP_KEY(orgId), String(step));
+    localStorage.setItem(WIZARD_DRAFT_DATA_KEY(orgId), JSON.stringify(data));
+  } catch {
+    /* quota / disabled storage — silent */
+  }
+}
+
+function clearWizardDraft(orgId: string | undefined): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(WIZARD_DRAFT_STEP_KEY(orgId));
+    localStorage.removeItem(WIZARD_DRAFT_DATA_KEY(orgId));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function ProjectWizard() {
   const navigate = useNavigate();
   const { addProject, createProjectTask, createProjectSubcontractor } = useProjectStore();
@@ -248,10 +311,38 @@ export default function ProjectWizard() {
   const scheduleStore = useScheduleStore();
   const orgId = org?.id;
 
-  const [currentStep, setCurrentStep] = useState(0);
-  const [data, setData] = useState<WizardData>(INITIAL_DATA);
+  // Hydrate from localStorage if a draft exists for this org. Lazy
+  // initializer runs once on mount before the first render, so the
+  // wizard paints with the rehydrated state directly (no flash of
+  // empty state). Org ID may not be loaded yet on first render —
+  // fall back to anon-keyed draft, which the org-scoped effect
+  // below will swap to once org resolves.
+  const [currentStep, setCurrentStep] = useState<number>(() => {
+    const draft = loadWizardDraft(orgId);
+    return draft?.step ?? 0;
+  });
+  const [data, setData] = useState<WizardData>(() => {
+    const draft = loadWizardDraft(orgId);
+    return draft?.data ?? INITIAL_DATA;
+  });
+  // Track whether we've shown the "draft restored" hint once after
+  // hydrate so we don't pester on re-renders.
+  const [draftRestored, setDraftRestored] = useState<boolean>(() => {
+    const draft = loadWizardDraft(orgId);
+    return draft !== null && (draft.step > 0 || draft.data.name.length > 0);
+  });
   const [isCreating, setIsCreating] = useState(false);
   const [createStatus, setCreateStatus] = useState('');
+
+  // Persist on every state change (debounce-free — localStorage is
+  // synchronous + cheap; saving 50 KB JSON takes < 1 ms). Keyed by
+  // orgId so different orgs on the same machine have separate
+  // drafts. Skipped while creating so an in-flight create doesn't
+  // clobber on success.
+  useEffect(() => {
+    if (isCreating) return;
+    saveWizardDraft(orgId, currentStep, data);
+  }, [orgId, currentStep, data, isCreating]);
 
   // ── Exit warning: prevent accidental navigation away ─────────────────────
   const hasUnsavedData = data.name.trim().length > 0 || data.tasks.length > 0;
@@ -285,6 +376,138 @@ export default function ProjectWizard() {
   const [placementRationales, setPlacementRationales] = useState<Record<string, string>>({});
   const [placementImageryPoor, setPlacementImageryPoor] = useState(false);
   const [placementCount, setPlacementCount] = useState(0);
+
+  /**
+   * Sprint AI-Place / Recompute button. Re-run the vision call against
+   * the CURRENT wizard state (whatever elements / address the contractor
+   * has after their edits). Bound to the "Recompute" button on the
+   * placement banner so the contractor can resync placement after
+   * adding / removing elements or after the AI's first pass missed.
+   *
+   * Reads from `data` via closure — we recreate this callback when
+   * data changes so the latest snapshot is used. Same fallback +
+   * collision-nudge pipeline as the initial trigger; just no
+   * inferElements call (we keep the existing element list).
+   */
+  const recomputePlacements = useCallback(async () => {
+    if (placementLoading) return;
+    if (data.elements.length === 0) return;
+    // Resolve lat/lng (geocode if not yet set — same logic as initial path).
+    let coords: { lat: number; lng: number } | null = null;
+    if (data.lat != null && data.lng != null) {
+      coords = { lat: data.lat, lng: data.lng };
+    } else if (data.address?.trim()) {
+      const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+      if (token) {
+        try {
+          const enc = encodeURIComponent(data.address.trim());
+          const r = await fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${enc}.json?access_token=${token}&country=us&types=address,poi&limit=1`,
+          );
+          if (r.ok) {
+            const j = (await r.json()) as { features?: Array<{ center?: [number, number] }> };
+            const c = j.features?.[0]?.center;
+            if (c) {
+              const [lng, lat] = c;
+              coords = { lat, lng };
+              setData((prev) => ({ ...prev, lat, lng }));
+            }
+          }
+        } catch {
+          /* fall through */
+        }
+      }
+    }
+    if (!coords) return;
+    const tileUrl = buildMapboxStaticUrl(coords.lat, coords.lng);
+    if (!tileUrl) return;
+
+    const elementsForPlacement: ElementToPlace[] = data.elements.map((el) => ({
+      key: el.tempId,
+      elementType: el.elementType,
+      name: el.name,
+      lengthFt: el.lengthFt,
+      widthFt: el.widthFt,
+      linearFt: el.linearFt,
+    }));
+    setPlacementLoading(true);
+    try {
+      const result = await inferElementPlacements({
+        tileImageUrl: tileUrl,
+        lat: coords.lat,
+        lng: coords.lng,
+        zoom: BACKDROP_ZOOM,
+        tilePxWide: BACKDROP_IMAGE_PX,
+        elements: elementsForPlacement,
+      });
+      setPlacementImageryPoor(result.imageryPoor);
+      const buildablePlanFt = result.buildableArea
+        ? result.buildableArea.map((p) =>
+            normalizedToPlanFeet(p, coords!.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
+          )
+        : null;
+      const obstaclesPlanFt = result.obstacles.map((poly) =>
+        poly.map((p) => normalizedToPlanFeet(p, coords!.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX)),
+      );
+      const rationales: Record<string, string> = {};
+      setData((prev) => {
+        let placedCount = 0;
+        const updatedElements = prev.elements.map((el) => {
+          const place = result.placements.get(el.tempId);
+          if (!place || !el.geometry) return el;
+          placedCount += 1;
+          if (place.rationale) rationales[el.tempId] = place.rationale;
+          return {
+            ...el,
+            geometry: { ...el.geometry, position: place.position },
+          };
+        });
+        setPlacementCount(placedCount);
+
+        // Apply same collision nudge as the initial path so a recompute
+        // after manual edits doesn't leave overlapping elements.
+        const boxes: ElementBox[] = [];
+        for (const el of updatedElements) {
+          if (!el.geometry) continue;
+          const s = el.geometry.shape;
+          let w = 4, h = 4;
+          if (s.kind === 'rectangle') { w = s.width; h = s.height; }
+          else if (s.kind === 'circle') { w = s.radius * 2; h = s.radius * 2; }
+          else if (s.kind === 'polygon' && s.points.length >= 3) {
+            let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
+            for (const p of s.points) {
+              if (p.x < mnx) mnx = p.x;
+              if (p.y < mny) mny = p.y;
+              if (p.x > mxx) mxx = p.x;
+              if (p.y > mxy) mxy = p.y;
+            }
+            w = mxx - mnx; h = mxy - mny;
+          }
+          boxes.push({ key: el.tempId, x: el.geometry.position.x, y: el.geometry.position.y, w, h });
+        }
+        const nudge = nudgeOverlaps(boxes);
+        const nudgedElements = nudge.changed
+          ? updatedElements.map((el) => {
+              const moved = nudge.positions.get(el.tempId);
+              if (!moved || !el.geometry) return el;
+              return { ...el, geometry: { ...el.geometry, position: moved } };
+            })
+          : updatedElements;
+
+        return {
+          ...prev,
+          elements: nudgedElements,
+          buildableArea: buildablePlanFt,
+          obstacles: obstaclesPlanFt,
+        };
+      });
+      setPlacementRationales((prev) => ({ ...prev, ...rationales }));
+    } catch {
+      /* keep existing positions on failure */
+    } finally {
+      setPlacementLoading(false);
+    }
+  }, [placementLoading, data]);
   const [acceptedItems, setAcceptedItems] = useState<Record<string, Set<string>>>({
     tasks: new Set(),
     crew: new Set(),
@@ -639,12 +862,26 @@ export default function ProjectWizard() {
   const handleCancel = () => {
     if (hasUnsavedData) {
       if (window.confirm('You have unsaved project data. Are you sure you want to leave?')) {
+        clearWizardDraft(orgId);
         navigate('/projects');
       }
     } else {
+      clearWizardDraft(orgId);
       navigate('/projects');
     }
   };
+
+  /**
+   * Sprint AI-Place / draft hardening: explicit "discard draft" button.
+   * Surfaced in the restored-banner so contractors who see the draft
+   * pop in but want to start fresh have a clean way out.
+   */
+  const handleDiscardDraft = useCallback(() => {
+    clearWizardDraft(orgId);
+    setData(INITIAL_DATA);
+    setCurrentStep(0);
+    setDraftRestored(false);
+  }, [orgId]);
 
   // Track highest visited step for forward navigation
   const [highestVisitedStep, setHighestVisitedStep] = useState(0);
@@ -1298,6 +1535,10 @@ export default function ProjectWizard() {
       }
 
       setCreateStatus('Done!');
+      // Clear the rehydrate draft now that the project is in the DB.
+      // Done BEFORE navigate so a fast back-button doesn't repopulate
+      // the wizard with the just-saved state.
+      clearWizardDraft(orgId);
       navigate(`/projects/${projectId}`);
     } catch (err) {
       console.error('Wizard create failed:', err);
@@ -1323,6 +1564,48 @@ export default function ProjectWizard() {
           Cancel
         </Button>
       </div>
+
+      {/* Draft-restored banner — shown once when localStorage hydrate
+          surfaced an in-progress wizard. Lets the contractor either
+          continue OR start fresh. Auto-dismisses after first dismissal
+          and never shows again until a new draft accumulates. */}
+      {draftRestored && (
+        <div
+          className="rounded-[8px] px-[14px] py-[10px] mb-[16px] flex items-center justify-between gap-[12px]"
+          style={{
+            background: 'rgba(16,185,129,0.10)',
+            border: '1px solid rgba(16,185,129,0.30)',
+          }}
+          role="status"
+        >
+          <span className="text-[12px]" style={{ color: 'var(--text-2)' }}>
+            <span style={{ color: 'var(--green-l)', fontWeight: 600 }}>
+              Restored your draft.
+            </span>{' '}
+            Picking up at step {currentStep + 1} of {WIZARD_STEPS.length}.
+            {data.name ? <> · "{data.name}"</> : null}
+          </span>
+          <div className="flex items-center gap-[6px] shrink-0">
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="text-[11px] cursor-pointer border-none bg-transparent hover:underline"
+              style={{ color: 'var(--text-3)' }}
+            >
+              Discard + start fresh
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraftRestored(false)}
+              aria-label="Dismiss draft-restored banner"
+              className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] cursor-pointer border-none bg-transparent hover:bg-[rgba(255,255,255,0.05)]"
+              style={{ color: 'var(--text-3)' }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stepper */}
       <div className="mb-[32px]">
@@ -1353,6 +1636,7 @@ export default function ProjectWizard() {
             placementCount={placementCount}
             placementImageryPoor={placementImageryPoor}
             placementRationales={placementRationales}
+            onRecomputePlacements={recomputePlacements}
             materialAccepted={acceptedItems.materials}
             materialDismissed={dismissedItems.materials}
             onAcceptMaterial={(id: string) => handleAccept('materials', id)}

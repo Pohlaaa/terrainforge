@@ -63,6 +63,13 @@ interface Props {
   placementCount?: number;
   placementImageryPoor?: boolean;
   placementRationales?: Record<string, string>;
+  /**
+   * Sprint AI-Place: re-run the vision placement call against the
+   * current address + element list. Bound to the "Recompute" button on
+   * the banner so contractors can resync after manual edits or after
+   * the initial pass missed.
+   */
+  onRecomputePlacements?: () => void;
   materialAccepted: Set<string>;
   materialDismissed: Set<string>;
   onAcceptMaterial: (id: string) => void;
@@ -176,6 +183,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({
   placementCount = 0,
   placementImageryPoor = false,
   placementRationales = {},
+  onRecomputePlacements,
   materialAccepted,
   materialDismissed,
   onAcceptMaterial,
@@ -576,7 +584,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({
       )}
       {elements.length > 0 && !placementLoading && placementImageryPoor && (
         <div
-          className="rounded-[8px] px-[12px] py-[8px] text-[11.5px]"
+          className="rounded-[8px] px-[12px] py-[8px] text-[11.5px] flex items-center justify-between gap-[8px]"
           style={{
             background: 'rgba(234,179,8,0.10)',
             border: '1px solid rgba(234,179,8,0.30)',
@@ -584,7 +592,20 @@ export const WizardStepMeasurements: React.FC<Props> = ({
           }}
           role="status"
         >
-          Satellite image was too unclear to place elements automatically. Drag each element on the canvas to position it.
+          <span>
+            Satellite image was too unclear to place elements automatically. Drag each element on the canvas to position it.
+          </span>
+          {onRecomputePlacements && (
+            <button
+              type="button"
+              onClick={onRecomputePlacements}
+              className="text-[11px] font-[600] cursor-pointer border-none bg-transparent shrink-0 hover:underline"
+              style={{ color: 'var(--text-2)' }}
+              aria-label="Re-run AI placement"
+            >
+              Try again ↻
+            </button>
+          )}
         </div>
       )}
       {elements.length > 0 &&
@@ -592,7 +613,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({
         !placementImageryPoor &&
         placementCount > 0 && (
           <div
-            className="rounded-[8px] px-[12px] py-[8px] text-[11.5px] flex items-center gap-[8px]"
+            className="rounded-[8px] px-[12px] py-[8px] text-[11.5px] flex items-center justify-between gap-[8px]"
             style={{
               background: 'rgba(16,185,129,0.10)',
               border: '1px solid rgba(16,185,129,0.30)',
@@ -600,12 +621,26 @@ export const WizardStepMeasurements: React.FC<Props> = ({
             }}
             role="status"
           >
-            <span
-              className="inline-block w-[8px] h-[8px] rounded-full"
-              style={{ backgroundColor: 'var(--green)' }}
-            />
-            AI placed {placementCount} element{placementCount === 1 ? '' : 's'} on real
-            ground. Drag any to reposition.
+            <span className="flex items-center gap-[8px]">
+              <span
+                className="inline-block w-[8px] h-[8px] rounded-full"
+                style={{ backgroundColor: 'var(--green)' }}
+              />
+              AI placed {placementCount} element{placementCount === 1 ? '' : 's'} on real
+              ground. Drag any to reposition.
+            </span>
+            {onRecomputePlacements && (
+              <button
+                type="button"
+                onClick={onRecomputePlacements}
+                className="text-[11px] font-[600] cursor-pointer border-none bg-transparent shrink-0 hover:underline"
+                style={{ color: 'var(--green-l)' }}
+                aria-label="Re-run AI placement against current elements"
+                title="Re-run AI placement after editing the address or adding/removing elements"
+              >
+                Recompute ↻
+              </button>
+            )}
           </div>
         )}
 
