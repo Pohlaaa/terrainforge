@@ -18,6 +18,7 @@ import { inferElementPlacements, type ElementToPlace } from '@/services/aiPlacem
 import { buildMapboxStaticUrl, BACKDROP_ZOOM, BACKDROP_IMAGE_PX } from '@/lib/mapboxStatic';
 import { normalizedToPlanFeet } from '@/lib/mapTileMath';
 import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
+import { nudgeOverlaps, type ElementBox } from '@/lib/elementOverlap';
 import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, ElementGeometry, Material, Zone, SiteConditionType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
 import { normalizeCategory } from '@/lib/categories';
@@ -532,9 +533,59 @@ export default function ProjectWizard() {
                       };
                     });
                     setPlacementCount(placedCount);
+
+                    // Sprint AI-Buildable Phase 2 / collision nudge: AI
+                    // places each element independently, so two backyard
+                    // patios commonly land at the same coords. Detect
+                    // overlapping AABBs and push later elements out of
+                    // the way along the smaller-displacement axis. First
+                    // element wins (anchor) so AI's most-confident
+                    // placement isn't moved by a less-confident sibling.
+                    const boxes: ElementBox[] = [];
+                    for (const el of updatedElements) {
+                      if (!el.geometry) continue;
+                      const s = el.geometry.shape;
+                      let w = 4, h = 4;
+                      if (s.kind === 'rectangle') {
+                        w = s.width;
+                        h = s.height;
+                      } else if (s.kind === 'circle') {
+                        w = s.radius * 2;
+                        h = s.radius * 2;
+                      } else if (s.kind === 'polygon' && s.points.length >= 3) {
+                        let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
+                        for (const p of s.points) {
+                          if (p.x < mnx) mnx = p.x;
+                          if (p.y < mny) mny = p.y;
+                          if (p.x > mxx) mxx = p.x;
+                          if (p.y > mxy) mxy = p.y;
+                        }
+                        w = mxx - mnx;
+                        h = mxy - mny;
+                      }
+                      boxes.push({
+                        key: el.tempId,
+                        x: el.geometry.position.x,
+                        y: el.geometry.position.y,
+                        w,
+                        h,
+                      });
+                    }
+                    const nudge = nudgeOverlaps(boxes);
+                    const nudgedElements = nudge.changed
+                      ? updatedElements.map((el) => {
+                          const moved = nudge.positions.get(el.tempId);
+                          if (!moved || !el.geometry) return el;
+                          return {
+                            ...el,
+                            geometry: { ...el.geometry, position: moved },
+                          };
+                        })
+                      : updatedElements;
+
                     return {
                       ...prev,
-                      elements: updatedElements,
+                      elements: nudgedElements,
                       buildableArea: buildablePlanFt,
                       obstacles: obstaclesPlanFt,
                     };

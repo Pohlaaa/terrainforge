@@ -112,6 +112,7 @@ import {
   BACKDROP_IMAGE_PX,
 } from '@/lib/mapboxStatic'
 import { tileFootprintFt } from '@/lib/mapTileMath'
+import { pointInPolygon } from '@/lib/polygonGeom'
 
 function buildMapboxStaticUrl(lat: number, lng: number): string | null {
   return buildMapboxStaticUrlShared(lat, lng)
@@ -808,6 +809,35 @@ export const PlanView2D: React.FC<Props> = ({
             const isBeingDragged = dragRef.current?.elementId === element.id
             const transform = elementTransform(geometry)
 
+            // Sprint AI-Buildable Phase 2: soft-clip drag violation. When
+            // the element is being dragged AND its center has moved into
+            // an obstacle polygon (or out of the buildable polygon),
+            // surface a red halo + "outside buildable area" tooltip near
+            // the element. We don't BLOCK the drag — contractors might
+            // know better than the AI (overlay is decoration, not a
+            // hard rule). Only computed during move (resize/rotate
+            // don't reposition the center).
+            let violationKind: 'obstacle' | 'outside-buildable' | null = null
+            if (
+              isBeingDragged &&
+              dragRef.current?.mode === 'move' &&
+              (buildableArea || obstacles.length > 0)
+            ) {
+              const c = elementCenter(geometry)
+              if (
+                obstacles.length > 0 &&
+                obstacles.some((poly) => pointInPolygon(c.x, c.y, poly))
+              ) {
+                violationKind = 'obstacle'
+              } else if (
+                buildableArea &&
+                buildableArea.length >= 3 &&
+                !pointInPolygon(c.x, c.y, buildableArea)
+              ) {
+                violationKind = 'outside-buildable'
+              }
+            }
+
             let shapeEl: React.ReactNode = null
             if (shape.kind === 'rectangle') {
               shapeEl = (
@@ -967,6 +997,38 @@ export const PlanView2D: React.FC<Props> = ({
                 role={clickable || editable ? 'button' : undefined}
                 aria-label={element.name}
               >
+                {/* Sprint AI-Buildable Phase 2: violation halo. Renders
+                    BEFORE shapeEl so it sits behind the element fill but
+                    in front of the satellite. Sized to the rectangle
+                    bbox of the shape; for non-rectangle shapes the halo
+                    just over-covers slightly which still reads as a
+                    warning. */}
+                {violationKind && shape.kind === 'rectangle' && (
+                  <rect
+                    x={-ftPerPx * 4}
+                    y={-ftPerPx * 4}
+                    width={shape.width + ftPerPx * 8}
+                    height={shape.height + ftPerPx * 8}
+                    fill="rgba(239,68,68,0.15)"
+                    stroke="rgba(239,68,68,0.85)"
+                    strokeWidth={ftPerPx * 2}
+                    strokeDasharray={`${ftPerPx * 4} ${ftPerPx * 3}`}
+                    rx={1}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )}
+                {violationKind && shape.kind === 'circle' && (
+                  <circle
+                    cx={shape.radius}
+                    cy={shape.radius}
+                    r={shape.radius + ftPerPx * 4}
+                    fill="rgba(239,68,68,0.15)"
+                    stroke="rgba(239,68,68,0.85)"
+                    strokeWidth={ftPerPx * 2}
+                    strokeDasharray={`${ftPerPx * 4} ${ftPerPx * 3}`}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )}
                 {shapeEl}
 
                 {/* Polygon vertex handles (mig 034, edit mode). Click + drag
@@ -1059,6 +1121,74 @@ export const PlanView2D: React.FC<Props> = ({
               </g>
             )
           })}
+
+          {/* Sprint AI-Buildable Phase 2: violation tooltip. Renders
+              once for the currently-dragged element when it crosses
+              into an obstacle / outside the buildable area. Positioned
+              just above the element center so it stays in the
+              contractor's eyeline. */}
+          {(() => {
+            const d = dragRef.current
+            if (!d || d.mode !== 'move') return null
+            if (!buildableArea && obstacles.length === 0) return null
+            const item = laid.find((x) => x.element.id === d.elementId)
+            if (!item) return null
+            const c = elementCenter(item.geometry)
+            let kind: 'obstacle' | 'outside-buildable' | null = null
+            if (
+              obstacles.length > 0 &&
+              obstacles.some((poly) => pointInPolygon(c.x, c.y, poly))
+            ) {
+              kind = 'obstacle'
+            } else if (
+              buildableArea &&
+              buildableArea.length >= 3 &&
+              !pointInPolygon(c.x, c.y, buildableArea)
+            ) {
+              kind = 'outside-buildable'
+            }
+            if (!kind) return null
+            const msg =
+              kind === 'obstacle'
+                ? 'On obstacle (rooftop / road / driveway)'
+                : 'Outside buildable area'
+            const tipFontFt = Math.max(ftPerPx * 11, 1.2)
+            const padX = ftPerPx * 5
+            const padY = ftPerPx * 3
+            // Approx text width — SVG can't measure text without DOM read;
+            // err on generous so the pill always fits.
+            const w = msg.length * tipFontFt * 0.55 + padX * 2
+            const h = tipFontFt * 1.4 + padY * 2
+            // Position above the element center, with margin.
+            const tipX = c.x - w / 2
+            const tipY = c.y - h - tipFontFt * 2
+            return (
+              <g style={{ pointerEvents: 'none' }}>
+                <rect
+                  x={tipX}
+                  y={tipY}
+                  width={w}
+                  height={h}
+                  rx={padY}
+                  fill="rgba(127,29,29,0.92)"
+                  stroke="rgba(239,68,68,0.85)"
+                  strokeWidth={ftPerPx * 0.75}
+                />
+                <text
+                  x={c.x}
+                  y={tipY + h / 2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#fff"
+                  fontSize={tipFontFt}
+                  fontWeight={600}
+                  style={{ userSelect: 'none' }}
+                >
+                  {msg}
+                </text>
+              </g>
+            )
+          })()}
 
           {/* Labels drawn in a second pass so they always sit above shapes.
               Labels are positioned at the ROTATED visual center. */}
