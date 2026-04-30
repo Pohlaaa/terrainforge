@@ -148,6 +148,54 @@ export const STARTER_CATALOG: CatalogEntry[] = [
     defaultWasteFactor: 0.05, dependentMaterialIds: [], unit: 'each',
   },
 
+  // ── Consumables / fasteners (LINEAR, jbluhm-V6) ────────────────────────
+  // jbluhm: "The material engine needs to be able to calculate ideally
+  // all the way out to how many Edging spikes & pave edge spikes
+  // needed on a project. Those small materials all add up and can
+  // make or break an estimate."
+  //
+  // length_per_unit_ft is set so 1 purchase unit covers the run of
+  // edging it would naturally fasten. A box of 50 steel spikes at 1
+  // spike per 2 ft covers 100 ft → length_per_unit_ft = 100, qty = 50.
+  {
+    // Used with steel / aluminum edging. ~1 spike every 2 ft.
+    name: 'Steel Edging Spikes (10")', category: 'edging', subcategory: 'Fastener',
+    computationModel: 'LINEAR', computeParams: { length_per_unit_ft: 100 },
+    purchaseUnit: 'box', qtyPerPurchaseUnit: 50, costPerPurchaseUnit: 18,
+    defaultWasteFactor: 0.10, dependentMaterialIds: [], unit: 'box',
+  },
+  {
+    // Used with plastic edging. Tighter spacing (~1 stake every 18 in).
+    name: 'Plastic Edging Stakes (8")', category: 'edging', subcategory: 'Fastener',
+    computationModel: 'LINEAR', computeParams: { length_per_unit_ft: 75 },
+    purchaseUnit: 'bag', qtyPerPurchaseUnit: 50, costPerPurchaseUnit: 12,
+    defaultWasteFactor: 0.10, dependentMaterialIds: [], unit: 'bag',
+  },
+  {
+    // Used with paver edge restraint (e.g. Pave Edge, Snap Edge). One
+    // spike every 12 in is typical. Box of 50 → 50 ft of restraint.
+    name: 'Paver Edge Restraint Spikes (10")', category: 'edging', subcategory: 'Fastener',
+    computationModel: 'LINEAR', computeParams: { length_per_unit_ft: 50 },
+    purchaseUnit: 'box', qtyPerPurchaseUnit: 50, costPerPurchaseUnit: 22,
+    defaultWasteFactor: 0.10, dependentMaterialIds: [], unit: 'box',
+  },
+  {
+    // The plastic / poly edge restraint that the spikes hold in
+    // place. Sold in 6 ft sections; pairs naturally with the
+    // Paver Edge Restraint Spikes above.
+    name: 'Paver Edge Restraint (6 ft)', category: 'edging', subcategory: 'Paver Edge',
+    computationModel: 'LINEAR', computeParams: { length_per_unit_ft: 6 },
+    purchaseUnit: 'each', qtyPerPurchaseUnit: 1, costPerPurchaseUnit: 11,
+    defaultWasteFactor: 0.05, dependentMaterialIds: [], unit: 'lnft',
+  },
+  {
+    // Landscape staples for fabric / drip line. Tight spacing.
+    name: 'Landscape Fabric Staples (6")', category: 'edging', subcategory: 'Fastener',
+    computationModel: 'LINEAR', computeParams: { length_per_unit_ft: 50 },
+    purchaseUnit: 'box', qtyPerPurchaseUnit: 100, costPerPurchaseUnit: 14,
+    defaultWasteFactor: 0.10, dependentMaterialIds: [], unit: 'box',
+  },
+
   // ── Plants (POINT_SPACING) ─────────────────────────────────────────────
   {
     name: 'Assorted Shrubs (3 gal)', category: 'shrub', subcategory: 'Shrubs',

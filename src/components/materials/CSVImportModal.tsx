@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal } from '@/components/shared/Modal';
+import type { Supplier } from '@/types';
 
 interface CSVRow {
   name: string;
@@ -17,6 +18,15 @@ interface CSVImportModalProps {
   handleCsvFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleImportConfirm: () => void;
   csvInputRef: React.RefObject<HTMLInputElement>;
+  /**
+   * jbluhm-V6: optional "import as supplier" picker. When set, the
+   * imported materials get a `supplier_prices` row linking them to
+   * the chosen supplier and SKUs are auto-prefixed with the
+   * supplier's short_code (e.g. "RH-PAVER-12").
+   */
+  suppliers?: Supplier[];
+  selectedSupplierId?: string | null;
+  onSelectedSupplierChange?: (id: string | null) => void;
 }
 
 export const CSVImportModal: React.FC<CSVImportModalProps> = ({
@@ -28,6 +38,9 @@ export const CSVImportModal: React.FC<CSVImportModalProps> = ({
   handleCsvFile,
   handleImportConfirm,
   csvInputRef,
+  suppliers = [],
+  selectedSupplierId = null,
+  onSelectedSupplierChange,
 }) => {
   return (
     <Modal
@@ -39,6 +52,38 @@ export const CSVImportModal: React.FC<CSVImportModalProps> = ({
       maxWidth="560px"
     >
       <div className="flex flex-col gap-[12px]">
+        {/* jbluhm-V6: per-supplier import. Selecting a supplier here
+            prefixes SKUs with the supplier's short_code AND links each
+            imported material to the supplier's `supplier_prices` row
+            so the Suppliers tab can show "what does this vendor sell
+            us." Default no-supplier behavior unchanged. */}
+        {onSelectedSupplierChange && suppliers.length > 0 && (
+          <div className="rounded-[8px] border border-[var(--border)] p-[10px] bg-[var(--surface3)]">
+            <label className="block text-[11px] font-[600] text-[var(--text-3)] uppercase tracking-[0.06em] mb-[6px]">
+              Import for supplier (optional)
+            </label>
+            <select
+              value={selectedSupplierId ?? ''}
+              onChange={(e) => onSelectedSupplierChange(e.target.value || null)}
+              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-[6px] px-[10px] py-[7px] text-[12px] text-[var(--text)] outline-none focus:border-[var(--brand-primary)]"
+            >
+              <option value="">-- No specific supplier --</option>
+              {suppliers
+                .filter((s) => s.isActive !== false)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.shortCode ? ` (${s.shortCode}-)` : ''}
+                  </option>
+                ))}
+            </select>
+            <div className="text-[11px] text-[var(--text-4)] mt-[6px]">
+              {selectedSupplierId
+                ? "Imported materials will link to this supplier's pricing. SKUs get the supplier's short-code prefix when set."
+                : 'Skip this if these materials aren\'t supplier-specific. You can add supplier links later.'}
+            </div>
+          </div>
+        )}
         <div className="text-[12px] text-[var(--text-2)]">
           {/* F-CW-29: surface the optional engine columns + offer a template
               download so power users can ship manifest-engine-ready imports. */}

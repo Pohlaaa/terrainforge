@@ -551,6 +551,13 @@ export interface Supplier {
   id: string;
   orgId: string;
   name: string;
+  /**
+   * Optional 2-6 character supplier code (e.g. "RH" for Rock Hard).
+   * Used at CSV import time to prefix material SKUs so similarly-
+   * named products from different suppliers stay distinct. Org-scoped
+   * unique. Migration 036.
+   */
+  shortCode: string | null;
   contactName: string;
   phone: string;
   email: string;

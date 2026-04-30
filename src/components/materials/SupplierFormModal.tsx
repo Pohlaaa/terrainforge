@@ -7,6 +7,8 @@ import type { Supplier, MaterialCategory } from '@/types';
 
 interface SupplierForm {
   name: string;
+  /** jbluhm-V6: 2-6 char prefix for SKU IDs at CSV import time. */
+  shortCode: string;
   contactName: string;
   phone: string;
   email: string;
@@ -19,6 +21,7 @@ interface SupplierForm {
 
 const EMPTY_FORM: SupplierForm = {
   name: '',
+  shortCode: '',
   contactName: '',
   phone: '',
   email: '',
@@ -32,6 +35,7 @@ const EMPTY_FORM: SupplierForm = {
 function supplierToForm(s: Supplier): SupplierForm {
   return {
     name: s.name,
+    shortCode: s.shortCode ?? '',
     contactName: s.contactName,
     phone: s.phone,
     email: s.email,
@@ -83,14 +87,19 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
     const errs: Partial<Record<keyof SupplierForm, string>> = {};
     if (!form.name.trim()) errs.name = 'Required';
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Invalid email';
+    if (form.shortCode && !/^[A-Za-z0-9]{2,6}$/.test(form.shortCode.trim())) {
+      errs.shortCode = '2–6 letters or digits, no spaces or symbols';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
 
   function handleSave() {
     if (!validate()) return;
+    const trimmedCode = form.shortCode.trim().toUpperCase();
     onSave({
       name: form.name.trim(),
+      shortCode: trimmedCode || null,
       contactName: form.contactName.trim(),
       phone: form.phone.trim(),
       email: form.email.trim(),
@@ -118,14 +127,25 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
             Company Info
           </div>
           <div className="flex flex-col gap-[10px]">
-            <Input
-              label="Supplier Name"
-              required
-              value={form.name}
-              error={errors.name}
-              onChange={(e) => setField('name', e.target.value)}
-              placeholder="ABC Landscape Supply"
-            />
+            <div className="grid grid-cols-[2fr_1fr] gap-[10px]">
+              <Input
+                label="Supplier Name"
+                required
+                value={form.name}
+                error={errors.name}
+                onChange={(e) => setField('name', e.target.value)}
+                placeholder="ABC Landscape Supply"
+              />
+              <Input
+                label="Short Code"
+                value={form.shortCode}
+                error={errors.shortCode}
+                onChange={(e) => setField('shortCode', e.target.value)}
+                placeholder="e.g. RH"
+                maxLength={6}
+                hint="Prefixes SKUs at CSV import (RH-PAVER-12)"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-[10px]">
               <Input
                 label="Contact Person"

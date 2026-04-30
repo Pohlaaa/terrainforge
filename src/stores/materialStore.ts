@@ -13,6 +13,13 @@ export interface BulkImportResult {
   imported: number
   failed: number
   failedRows: Array<{ index: number; error: string }>
+  /**
+   * jbluhm-V6: pre-assigned UUIDs of materials that successfully imported,
+   * paired with their input-array index. Callers (e.g. CSV import with a
+   * supplier selected) use these to create supplier_prices junction rows
+   * without an extra round-trip lookup-by-name.
+   */
+  importedIds: Array<{ index: number; id: string }>
 }
 
 interface MaterialStore {
@@ -102,7 +109,7 @@ export const useMaterialStore = create<MaterialStore>()(
     bulkImportMaterials: async (materials, onProgress) => {
       const orgId = useOrgStore.getState().org?.id
       if (!orgId) {
-        return { imported: 0, failed: materials.length, failedRows: materials.map((_, index) => ({ index, error: 'No organization context' })) }
+        return { imported: 0, failed: materials.length, failedRows: materials.map((_, index) => ({ index, error: 'No organization context' })), importedIds: [] }
       }
 
       // Pre-assign client-side UUIDs so we know which row succeeded / failed.
@@ -114,6 +121,7 @@ export const useMaterialStore = create<MaterialStore>()(
 
       let imported = 0
       const failedRows: Array<{ index: number; error: string }> = []
+      const importedIds: Array<{ index: number; id: string }> = []
 
       for (let i = 0; i < withIds.length; i += BULK_CHUNK_SIZE) {
         const chunk = withIds.slice(i, i + BULK_CHUNK_SIZE)
@@ -127,6 +135,7 @@ export const useMaterialStore = create<MaterialStore>()(
               orgId,
             )
             imported += chunk.length
+            for (const c of chunk) importedIds.push({ index: c.index, id: c.id })
             success = true
             break
           } catch (err: unknown) {
@@ -156,7 +165,7 @@ export const useMaterialStore = create<MaterialStore>()(
       // per-row fetchMaterials() which made the import O(N^2) in network calls.
       await get().fetchMaterials()
 
-      return { imported, failed: failedRows.length, failedRows }
+      return { imported, failed: failedRows.length, failedRows, importedIds }
     },
 
     updateMaterial: async (id, updates) => {

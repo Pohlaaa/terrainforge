@@ -19,6 +19,8 @@ import { LowStockBanner } from '@/components/materials/LowStockBanner';
 // MaterialQuickAddBar removed — replaced by toolbar buttons
 import { MaterialTable } from '@/components/materials/MaterialTable';
 import { CSVImportModal } from '@/components/materials/CSVImportModal';
+import { EngineMathPanel } from '@/components/materials/EngineMathPanel';
+import { parseCSV as parseCSVRobust, CSVParseError } from '@/lib/csvParse';
 import { MaterialFormModal } from '@/components/materials/MaterialFormModal';
 import { SupplierTable } from '@/components/materials/SupplierTable';
 import { SupplierFormModal } from '@/components/materials/SupplierFormModal';
@@ -153,6 +155,7 @@ export const MaterialLibrary: React.FC = () => {
   const { materials, addMaterial, bulkImportMaterials, updateMaterial, deleteMaterial, adjustStock, isLoading, error } = useMaterialStore();
   const {
     suppliers, fetchSuppliers, addSupplier, updateSupplier, deleteSupplier,
+    upsertSupplierPrice,
     isLoading: suppliersLoading,
   } = useSupplierStore();
   const { readOnly } = useBillingGate();
@@ -182,8 +185,16 @@ export const MaterialLibrary: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'low' | 'out'>('all');
-  // CSV import state
+  // CSV import state. jbluhm-V6: csvSupplierId, when set, prefixes SKUs
+  // with the supplier's short_code AND links each imported material to
+  // a `supplier_prices` row so the supplier-detail view can show
+  // "what does Rock Hard sell us" without manual linking.
+  const [csvSupplierId, setCsvSupplierId] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  // jbluhm-V6 "backdoor": Engine Math panel that shows what the engine
+  // computes for any material given test dimensions. Useful for
+  // sanity-checking unit conversions before running real estimates.
+  const [showEngineMath, setShowEngineMath] = useState(false);
   const [csvPreview, setCsvPreview] = useState<Array<{
     name: string; category: string; unit: string; cost: string;
     coverage?: string; depthIn?: string; defaultWasteFactor?: string;
@@ -260,36 +271,28 @@ export const MaterialLibrary: React.FC = () => {
   const deletingSupplier = deleteSupplierTarget ? suppliers.find((s) => s.id === deleteSupplierTarget) : null;
 
   function parseCSV(text: string) {
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
-    return lines.slice(1).map(line => {
-      const vals = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) ?? line.split(',');
-      const clean = vals.map(v => v.replace(/^"|"$/g, '').trim());
-      const obj: Record<string, string> = {};
-      headers.forEach((h, i) => { obj[h] = clean[i] ?? ''; });
-      // F-CW-29: required columns are still name/category/unit/unit_cost.
-      // Optional engine columns (coverage, depth_in, default_waste_factor,
-      // purchase_unit, qty_per_purchase_unit, cost_per_purchase_unit,
-      // subcategory, supplier_sku, computation_model) accepted for power
-      // users who want library rows ready for the manifest engine without
-      // post-import edits.
-      return {
-        name: obj['name'] ?? '',
-        category: obj['category'] ?? 'misc',
-        unit: obj['unit'] ?? 'each',
-        cost: obj['unit_cost'] ?? obj['cost'] ?? '0',
-        coverage: obj['coverage'] ?? '',
-        depthIn: obj['depth_in'] ?? obj['depth'] ?? '',
-        defaultWasteFactor: obj['default_waste_factor'] ?? obj['waste_factor'] ?? obj['waste'] ?? '',
-        purchaseUnit: obj['purchase_unit'] ?? '',
-        qtyPerPurchaseUnit: obj['qty_per_purchase_unit'] ?? '',
-        costPerPurchaseUnit: obj['cost_per_purchase_unit'] ?? '',
-        subcategory: obj['subcategory'] ?? '',
-        supplierSku: obj['supplier_sku'] ?? obj['sku'] ?? '',
-        computationModel: obj['computation_model'] ?? '',
-      };
-    }).filter(r => r.name);
+    // jbluhm-V6 CSV import 50-row fix: use the proper RFC 4180 parser
+    // from `src/lib/csvParse.ts`. The prior regex-based implementation
+    // misparsed quoted fields containing commas, escaped quotes, and
+    // embedded newlines — a single bad row would shift every
+    // subsequent row's columns by one, the DB would silently reject
+    // the malformed inserts, and the import "only landed 50 rows."
+    const result = parseCSVRobust(text);
+    return result.rows.map((obj) => ({
+      name: obj['name'] ?? '',
+      category: obj['category'] ?? 'misc',
+      unit: obj['unit'] ?? 'each',
+      cost: obj['unit_cost'] ?? obj['cost'] ?? '0',
+      coverage: obj['coverage'] ?? '',
+      depthIn: obj['depth_in'] ?? obj['depth'] ?? '',
+      defaultWasteFactor: obj['default_waste_factor'] ?? obj['waste_factor'] ?? obj['waste'] ?? '',
+      purchaseUnit: obj['purchase_unit'] ?? '',
+      qtyPerPurchaseUnit: obj['qty_per_purchase_unit'] ?? '',
+      costPerPurchaseUnit: obj['cost_per_purchase_unit'] ?? '',
+      subcategory: obj['subcategory'] ?? '',
+      supplierSku: obj['supplier_sku'] ?? obj['sku'] ?? '',
+      computationModel: obj['computation_model'] ?? '',
+    })).filter(r => r.name);
   }
 
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -300,7 +303,22 @@ export const MaterialLibrary: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const rows = parseCSV(text);
+      // jbluhm-V6: surface parse errors with the line number so
+      // contractors can find the bad row in their CSV. Pre-fix the
+      // parser silently swallowed errors and pretended fewer rows
+      // existed.
+      let rows: ReturnType<typeof parseCSV>;
+      try {
+        rows = parseCSV(text);
+      } catch (err) {
+        const msg = err instanceof CSVParseError
+          ? `${err.message}. Save your CSV from Excel as "CSV UTF-8 (Comma delimited)" to fix.`
+          : err instanceof Error
+            ? err.message
+            : 'Failed to parse CSV';
+        setCsvError(msg);
+        return;
+      }
       if (rows.length === 0) { setCsvError('No valid rows found. Columns needed: name, category, unit, unit_cost'); return; }
       setCsvPreview(rows);
     };
@@ -311,7 +329,16 @@ export const MaterialLibrary: React.FC = () => {
     // F-045: batched bulk import via store action. Replaces the old
     // sequential for-await loop which silently failed past ~50 rows
     // on slow / rate-limited connections.
+    //
+    // jbluhm-V6: when csvSupplierId is set, each material's SKU gets
+    // prefixed with the supplier's short_code (if present) and a
+    // supplier_prices junction row is created so the suppliers tab
+    // can show "what does this vendor sell us." Falls back to the
+    // existing behavior when no supplier is selected.
     if (csvPreview.length === 0) return;
+
+    const csvSupplier = csvSupplierId ? suppliers.find((s) => s.id === csvSupplierId) ?? null : null;
+    const prefix = csvSupplier?.shortCode ? `${csvSupplier.shortCode}-` : '';
 
     setCsvError('');
     setImportSuccess(`Importing 0 / ${csvPreview.length}…`);
@@ -336,6 +363,13 @@ export const MaterialLibrary: React.FC = () => {
         return n > 1 ? n / 100 : n; // assume "5" means 5%
       };
       const csvCostPerPurchaseUnit = numOrNull(row.costPerPurchaseUnit);
+      // jbluhm-V6: SKU prefix from selected supplier's short_code.
+      // Skipped when row.supplierSku is empty (no SKU to prefix) or
+      // when the prefix is already present (idempotent on re-import).
+      let supplierSku = row.supplierSku || null;
+      if (supplierSku && prefix && !supplierSku.startsWith(prefix)) {
+        supplierSku = prefix + supplierSku;
+      }
       return {
         name: row.name,
         category: row.category || inferred.category,
@@ -352,7 +386,7 @@ export const MaterialLibrary: React.FC = () => {
         costPerPurchaseUnit: csvCostPerPurchaseUnit ?? cost,
         defaultWasteFactor: parseWaste(row.defaultWasteFactor),
         subcategory: row.subcategory || inferred.subcategory,
-        supplierSku: row.supplierSku || null,
+        supplierSku,
         isActive: true,
       } as Omit<Material, 'id'>;
     });
@@ -361,14 +395,42 @@ export const MaterialLibrary: React.FC = () => {
       setImportSuccess(`Importing ${p.imported} / ${p.total}…`);
     });
 
-    const { imported, failed } = result;
+    const { imported, failed, importedIds } = result;
+
+    // jbluhm-V6: when a supplier was picked, attach each successfully-
+    // imported material to a supplier_prices row. Each row carries
+    // unitCost (from CSV `cost`), the SKU (now prefixed), and any
+    // optional lead-time / min-order columns the CSV supplied.
+    let priceLinkFailed = 0;
+    if (csvSupplier) {
+      setImportSuccess(`Linking ${importedIds.length} prices to ${csvSupplier.name}…`);
+      for (const { index, id } of importedIds) {
+        const row = csvPreview[index];
+        const unitCost = parseFloat(row.cost) || 0;
+        try {
+          await upsertSupplierPrice({
+            materialId: id,
+            supplierId: csvSupplier.id,
+            unitCost,
+            sku: payloads[index].supplierSku ?? undefined,
+          });
+        } catch {
+          priceLinkFailed += 1;
+        }
+      }
+    }
+
     setImportSuccess(
-      `Imported ${imported} material${imported !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}`,
+      `Imported ${imported} material${imported !== 1 ? 's' : ''}` +
+        (csvSupplier ? ` linked to ${csvSupplier.name}` : '') +
+        (failed > 0 ? ` (${failed} failed)` : '') +
+        (priceLinkFailed > 0 ? ` (${priceLinkFailed} price links failed)` : ''),
     );
     if (failed > 0) {
       setCsvError(`${failed} row${failed !== 1 ? 's' : ''} failed to import`);
     }
     setCsvPreview([]);
+    setCsvSupplierId(null);
     if (csvInputRef.current) csvInputRef.current.value = '';
   }
 
@@ -771,6 +833,13 @@ export const MaterialLibrary: React.FC = () => {
             {!readOnly && (
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => setShowEngineMath(true)}
+                  className="h-[40px] px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-secondary)] text-[13px] font-[500] hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2 whitespace-nowrap"
+                  title="Show how the engine converts dimensions to material quantities for each library entry."
+                >
+                  ⚙ Engine Math
+                </button>
+                <button
                   onClick={() => { setCsvPreview([]); setCsvError(''); setImportSuccess(''); setShowImportModal(true); }}
                   className="h-[40px] px-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-secondary)] text-[13px] font-[500] hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2 whitespace-nowrap"
                 >
@@ -814,6 +883,16 @@ export const MaterialLibrary: React.FC = () => {
         handleCsvFile={handleCsvFile}
         handleImportConfirm={handleImportConfirm}
         csvInputRef={csvInputRef}
+        suppliers={suppliers}
+        selectedSupplierId={csvSupplierId}
+        onSelectedSupplierChange={setCsvSupplierId}
+      />
+
+      {/* jbluhm-V6 backdoor: Engine Math debug view */}
+      <EngineMathPanel
+        isOpen={showEngineMath}
+        onClose={() => setShowEngineMath(false)}
+        materials={materials}
       />
 
       {/* ── Add / Edit Material Modal ─────────────────────────────────────────── */}
