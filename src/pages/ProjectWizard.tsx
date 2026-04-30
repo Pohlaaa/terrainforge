@@ -425,13 +425,43 @@ export default function ProjectWizard() {
           // fallback positions immediately, then animates to the AI
           // placements when the call returns ~5-10 s later.
           //
-          // Skipped when:
-          //   - lat/lng aren't geocoded yet (no satellite to send Claude)
-          //   - Mapbox token unset (URL builder returns null)
-          //   - Contractor already manually added elements before we got
-          //     here (race — we don't clobber their placements)
-          if (data.lat != null && data.lng != null) {
-            const tileUrl = buildMapboxStaticUrl(data.lat, data.lng);
+          // jbluhm-feedback: if the contractor TYPED an address without
+          // selecting from the autocomplete dropdown, lat/lng will be
+          // null and the AI placement would silently skip (leaving
+          // every element at its fallback bucket position). On-demand
+          // geocode of the entered address closes that gap so the AI
+          // placement fires regardless of how the address was entered.
+          // Token gates the URL builder and the geocode lookup; both
+          // skip cleanly when unset.
+          const ensureLatLng = async (): Promise<{ lat: number; lng: number } | null> => {
+            if (data.lat != null && data.lng != null) {
+              return { lat: data.lat, lng: data.lng };
+            }
+            if (!data.address?.trim()) return null;
+            const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+            if (!token) return null;
+            try {
+              const enc = encodeURIComponent(data.address.trim());
+              const r = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${enc}.json?access_token=${token}&country=us&types=address,poi&limit=1`,
+              );
+              if (!r.ok) return null;
+              const j = (await r.json()) as { features?: Array<{ center?: [number, number] }> };
+              const c = j.features?.[0]?.center;
+              if (!c) return null;
+              const [lng, lat] = c;
+              // Backfill into wizard state so subsequent steps + the
+              // create write get the geocoded coords too.
+              setData((prev) => ({ ...prev, lat, lng }));
+              return { lat, lng };
+            } catch {
+              return null;
+            }
+          };
+
+          ensureLatLng().then((coords) => {
+          if (coords) {
+            const tileUrl = buildMapboxStaticUrl(coords.lat, coords.lng);
             if (tileUrl) {
               const elementsForPlacement: ElementToPlace[] = seeded.map((el) => ({
                 key: el.tempId,
@@ -444,8 +474,8 @@ export default function ProjectWizard() {
               setPlacementLoading(true);
               inferElementPlacements({
                 tileImageUrl: tileUrl,
-                lat: data.lat,
-                lng: data.lng,
+                lat: coords.lat,
+                lng: coords.lng,
                 zoom: BACKDROP_ZOOM,
                 tilePxWide: BACKDROP_IMAGE_PX,
                 elements: elementsForPlacement,
@@ -460,12 +490,12 @@ export default function ProjectWizard() {
                   // before storing — same coord space as element positions.
                   const buildablePlanFt = result.buildableArea
                     ? result.buildableArea.map((p) =>
-                        normalizedToPlanFeet(p, data.lat!, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
+                        normalizedToPlanFeet(p, coords.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
                       )
                     : null;
                   const obstaclesPlanFt = result.obstacles.map((poly) =>
                     poly.map((p) =>
-                      normalizedToPlanFeet(p, data.lat!, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
+                      normalizedToPlanFeet(p, coords.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
                     ),
                   );
 
@@ -517,6 +547,7 @@ export default function ProjectWizard() {
                 });
             }
           }
+          }); // end ensureLatLng().then
         }).catch(() => { /* non-blocking */ });
       }
     }

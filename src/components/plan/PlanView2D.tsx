@@ -85,13 +85,36 @@ function snapDeg(v: number): number {
   return Math.round(v / 15) * 15
 }
 
-/** Zoom level for the satellite backdrop. 19 ≈ residential-lot close view. */
-const BACKDROP_ZOOM = 19
+// Sprint AI-Buildable / jbluhm-feedback fix:
+//
+// The PlanView2D backdrop used to be a 1200x800 tile rendered as an
+// absolute-positioned `<img>` with `objectFit: cover`, COMPLETELY
+// independent of the SVG's viewBox. Result: a 16-ft patio rendered as
+// 30% of the screen on a satellite that geographically covered ~955 ft
+// across the same screen — wildly out of scale, and the AI-buildable
+// polygon overlays (which live in plan-feet) didn't align with the
+// satellite imagery either.
+//
+// Fix: import the shared 1200x1200 URL builder + zoom constant from
+// `@/lib/mapboxStatic` (the same one PlanView3D and aiPlacement use),
+// compute the tile's geographic footprint in feet via mapTileMath, and
+// render the satellite as a `<image>` element INSIDE the SVG so it
+// shares the plan-feet coordinate space with elements + overlays.
+//
+// Net effect:
+//   - elements render at correct relative scale on the satellite
+//   - "10 ft" scale bar matches a 10-ft feature on the imagery
+//   - buildable + obstacle overlays land where the AI intended
+//   - same imagery in 2D and 3D
+import {
+  buildMapboxStaticUrl as buildMapboxStaticUrlShared,
+  BACKDROP_ZOOM,
+  BACKDROP_IMAGE_PX,
+} from '@/lib/mapboxStatic'
+import { tileFootprintFt } from '@/lib/mapTileMath'
 
 function buildMapboxStaticUrl(lat: number, lng: number): string | null {
-  const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
-  if (!token) return null
-  return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${BACKDROP_ZOOM},0/1200x800@2x?access_token=${token}&attribution=false&logo=false`
+  return buildMapboxStaticUrlShared(lat, lng)
 }
 
 /** Rotate (dx, dy) by `deg` around origin. Math convention: +y down. */
@@ -238,10 +261,49 @@ export const PlanView2D: React.FC<Props> = ({
     [backdrop],
   )
 
-  const viewMinX = bbox.minX - PADDING_FT
-  const viewMinY = bbox.minY - PADDING_FT
-  const viewWidth = bbox.maxX - bbox.minX + PADDING_FT * 2
-  const viewHeight = bbox.maxY - bbox.minY + PADDING_FT * 2
+  // Satellite tile footprint in plan-feet. The tile is centered on the
+  // property's lat/lng (which equals plan-feet origin). At zoom 19 +
+  // Asheville lat + 1200 px = ~955 ft. Used to size the SVG viewBox
+  // when a backdrop is present so the satellite imagery and the
+  // elements share the SAME plan-feet coordinate space.
+  const tileFootprint = useMemo(
+    () =>
+      backdrop ? tileFootprintFt(backdrop.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX) : null,
+    [backdrop],
+  )
+
+  // Compute the SVG viewBox.
+  // - With backdrop: cover the satellite tile centered on origin AND
+  //   the element bbox (in case some elements drifted outside the tile).
+  //   This is what makes elements render at correct relative scale to
+  //   imagery — a 16-ft patio sized as ~16/955ths of the screen width.
+  // - Without backdrop: tight to the element bbox + padding (legacy).
+  const view = useMemo(() => {
+    if (tileFootprint != null) {
+      const half = tileFootprint / 2
+      const minX = Math.min(-half, bbox.minX) - PADDING_FT
+      const maxX = Math.max(half, bbox.maxX) + PADDING_FT
+      const minY = Math.min(-half, bbox.minY) - PADDING_FT
+      const maxY = Math.max(half, bbox.maxY) + PADDING_FT
+      return {
+        minX,
+        minY,
+        width: maxX - minX,
+        height: maxY - minY,
+      }
+    }
+    return {
+      minX: bbox.minX - PADDING_FT,
+      minY: bbox.minY - PADDING_FT,
+      width: bbox.maxX - bbox.minX + PADDING_FT * 2,
+      height: bbox.maxY - bbox.minY + PADDING_FT * 2,
+    }
+  }, [tileFootprint, bbox])
+
+  const viewMinX = view.minX
+  const viewMinY = view.minY
+  const viewWidth = view.width
+  const viewHeight = view.height
 
   const ftPerPx = viewWidth / 700
   const labelFontSizeFt = Math.max(ftPerPx * 11, 0.8)
@@ -621,26 +683,12 @@ export const PlanView2D: React.FC<Props> = ({
         overflow: 'hidden',
       }}
     >
-      {/* Mapbox satellite backdrop */}
-      {backdropUrl && !isEmpty && (
-        <img
-          src={backdropUrl}
-          alt=""
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            filter: 'brightness(0.7) saturate(0.85)',
-            pointerEvents: 'none',
-          }}
-          onError={(e) => {
-            ;(e.target as HTMLImageElement).style.display = 'none'
-          }}
-        />
-      )}
+      {/* Satellite backdrop is now rendered as an `<image>` element
+          inside the SVG (see below) so it shares the plan-feet coord
+          space with elements + overlays. The pre-fix absolute-positioned
+          <img> rendered independently of the SVG viewBox, which produced
+          out-of-scale elements + a misaligned scale bar + drifting
+          AI-buildable overlays. */}
       {isEmpty ? (
         <div
           style={{
@@ -703,6 +751,23 @@ export const PlanView2D: React.FC<Props> = ({
                 fill="url(#plan-grid-major)"
               />
             </>
+          )}
+
+          {/* Satellite backdrop — rendered as a SVG <image> sized to the
+              actual geographic footprint of the tile in plan-feet, so
+              elements + buildable overlays land at the correct relative
+              scale. Brightness/saturate filter keeps element labels
+              legible against bright daylight imagery. */}
+          {backdropUrl && tileFootprint != null && (
+            <image
+              href={backdropUrl}
+              x={-tileFootprint / 2}
+              y={-tileFootprint / 2}
+              width={tileFootprint}
+              height={tileFootprint}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ filter: 'brightness(0.7) saturate(0.85)', pointerEvents: 'none' }}
+            />
           )}
 
           {/* Sprint AI-Buildable: AI-identified polygons. Drawn BEFORE

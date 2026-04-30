@@ -394,8 +394,6 @@ export const WizardStepMeasurements: React.FC<Props> = ({
   const clipboardRef = useRef<WizardElement | null>(null);
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
       const isEditable =
@@ -404,6 +402,31 @@ export const WizardStepMeasurements: React.FC<Props> = ({
         tag === 'select' ||
         target?.isContentEditable === true;
       if (isEditable) return;
+
+      // jbluhm-feedback: Delete / Backspace removes the selected
+      // element. Pre-fix, the only way to delete was the small ✕
+      // button in the sidebar, which contractors weren't finding.
+      // Skipped inside text inputs so typing's native behavior
+      // stays unchanged.
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTempId) {
+        e.preventDefault();
+        const idx = elements.findIndex((el) => el.tempId === selectedTempId);
+        removeElement(selectedTempId);
+        // Move selection to the next-best element so the contractor
+        // can keep working without re-clicking. Falls to null when the
+        // list is now empty.
+        const remaining = elements.filter((el) => el.tempId !== selectedTempId);
+        if (remaining.length === 0) {
+          setSelectedTempId(null);
+        } else {
+          const nextIdx = Math.min(idx, remaining.length - 1);
+          setSelectedTempId(remaining[nextIdx].tempId);
+        }
+        return;
+      }
+
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
 
       const key = e.key.toLowerCase();
       if (key === 'd' && !e.shiftKey) {
@@ -668,25 +691,54 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                 const isSelected = el.tempId === selectedTempId;
                 const area = computeArea(el);
                 return (
-                  <button
+                  // jbluhm-feedback: per-thumbnail trash icon so contractors
+                  // can remove an element without selecting it first or
+                  // hunting for the sidebar ✕ button. Stops propagation so
+                  // clicking trash doesn't also select the chip.
+                  <div
                     key={el.tempId}
-                    type="button"
-                    onClick={() => setSelectedTempId(el.tempId)}
-                    className="rounded-[6px] border px-[10px] py-[5px] text-[11px] cursor-pointer transition-colors"
-                    style={{
-                      borderColor: isSelected ? 'var(--green)' : 'var(--border)',
-                      backgroundColor: isSelected ? 'rgba(45,106,79,0.08)' : 'var(--surface2)',
-                      color: 'var(--text)',
-                    }}
+                    className="relative inline-flex group"
                   >
-                    <span className="font-[500]">{el.name || ELEMENT_TYPE_LABELS[el.elementType]}</span>
-                    {area > 0 && (
-                      <span className="text-[var(--text-4)] ml-[6px]">{area} sqft</span>
-                    )}
-                    {!area && el.linearFt && (
-                      <span className="text-[var(--text-4)] ml-[6px]">{el.linearFt} LF</span>
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTempId(el.tempId)}
+                      className="rounded-[6px] border pl-[10px] pr-[22px] py-[5px] text-[11px] cursor-pointer transition-colors"
+                      style={{
+                        borderColor: isSelected ? 'var(--green)' : 'var(--border)',
+                        backgroundColor: isSelected ? 'rgba(45,106,79,0.08)' : 'var(--surface2)',
+                        color: 'var(--text)',
+                      }}
+                    >
+                      <span className="font-[500]">{el.name || ELEMENT_TYPE_LABELS[el.elementType]}</span>
+                      {area > 0 && (
+                        <span className="text-[var(--text-4)] ml-[6px]">{area} sqft</span>
+                      )}
+                      {!area && el.linearFt && (
+                        <span className="text-[var(--text-4)] ml-[6px]">{el.linearFt} LF</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const idx = elements.findIndex((x) => x.tempId === el.tempId);
+                        removeElement(el.tempId);
+                        const remaining = elements.filter((x) => x.tempId !== el.tempId);
+                        if (remaining.length === 0) {
+                          setSelectedTempId(null);
+                        } else if (selectedTempId === el.tempId) {
+                          const nextIdx = Math.min(idx, remaining.length - 1);
+                          setSelectedTempId(remaining[nextIdx].tempId);
+                        }
+                      }}
+                      aria-label={`Remove ${el.name || ELEMENT_TYPE_LABELS[el.elementType]}`}
+                      title={`Remove (Delete)`}
+                      className="absolute right-[4px] top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center cursor-pointer border-none bg-transparent text-[10px] leading-none opacity-50 hover:opacity-100 hover:bg-[rgba(220,38,38,0.15)] hover:text-[var(--status-red)] transition-colors"
+                      style={{ color: 'var(--text-4)' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 );
               })}
               <button
