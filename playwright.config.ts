@@ -86,5 +86,20 @@ export default defineConfig({
       timeout: 15 * 60_000,
       retries: 0,
     },
+    {
+      // Sprint AI-Place — vision-grounded placement harness. Runs the
+      // 15-property corpus through Claude Haiku vision and scores each
+      // placement against contractor-authored expected coords with
+      // tolerance. Excluded from `npm run e2e` default; invoke via
+      // `npm run placement:score`. Costs ~$0.75 per pass. Skipped
+      // automatically when ANTHROPIC_API_KEY or MAPBOX_TOKEN are unset.
+      name: 'ai-placement',
+      testMatch: /ai-placement\/harness\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      timeout: 15 * 60_000,
+      retries: 0,
+    },
   ],
 })

@@ -14,6 +14,8 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { generateProjectRecommendations, inferElements } from '@/services/aiRecommendations';
+import { inferElementPlacements, type ElementToPlace } from '@/services/aiPlacement';
+import { buildMapboxStaticUrl, BACKDROP_ZOOM, BACKDROP_IMAGE_PX } from '@/lib/mapboxStatic';
 import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
 import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, ElementGeometry, Material, Zone, SiteConditionType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
@@ -256,6 +258,21 @@ export default function ProjectWizard() {
   // AI recommendation state
   const [recommendations, setRecommendations] = useState<AIRecommendationSet | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Sprint AI-Place: vision-grounded element placement state. Independent of
+  // `aiLoading` because the placement call runs AFTER `inferElements` resolves
+  // — they're sequential, not parallel (placement needs the element list).
+  // We expose:
+  //   - `placementLoading`: true while the vision call is in flight
+  //   - `placementRationales`: tempId → 1-sentence "why I placed this here"
+  //                            from Claude. Surfaced as tooltips in Step 2.
+  //   - `placementImageryPoor`: model self-rated the satellite as too poor;
+  //                              the wizard surfaces a "drag to position"
+  //                              hint instead of the AI-placed banner.
+  const [placementLoading, setPlacementLoading] = useState(false);
+  const [placementRationales, setPlacementRationales] = useState<Record<string, string>>({});
+  const [placementImageryPoor, setPlacementImageryPoor] = useState(false);
+  const [placementCount, setPlacementCount] = useState(0);
   const [acceptedItems, setAcceptedItems] = useState<Record<string, Set<string>>>({
     tasks: new Set(),
     crew: new Set(),
@@ -389,6 +406,77 @@ export default function ProjectWizard() {
           // Merge into existing wizard state — only seed when user hasn't
           // already started adding elements (race-safe via setData).
           setData((prev) => prev.elements.length === 0 ? { ...prev, elements: seeded } : prev);
+
+          // Sprint AI-Place: kick off vision-grounded placement after we
+          // have a seeded element list. Runs sequentially after
+          // inferElements (placement needs the element list as input) but
+          // BEHIND the wizard UI — Step 2 paints with placementBucket
+          // fallback positions immediately, then animates to the AI
+          // placements when the call returns ~5-10 s later.
+          //
+          // Skipped when:
+          //   - lat/lng aren't geocoded yet (no satellite to send Claude)
+          //   - Mapbox token unset (URL builder returns null)
+          //   - Contractor already manually added elements before we got
+          //     here (race — we don't clobber their placements)
+          if (data.lat != null && data.lng != null) {
+            const tileUrl = buildMapboxStaticUrl(data.lat, data.lng);
+            if (tileUrl) {
+              const elementsForPlacement: ElementToPlace[] = seeded.map((el) => ({
+                key: el.tempId,
+                elementType: el.elementType,
+                name: el.name,
+                lengthFt: el.lengthFt,
+                widthFt: el.widthFt,
+                linearFt: el.linearFt,
+              }));
+              setPlacementLoading(true);
+              inferElementPlacements({
+                tileImageUrl: tileUrl,
+                lat: data.lat,
+                lng: data.lng,
+                zoom: BACKDROP_ZOOM,
+                tilePxWide: BACKDROP_IMAGE_PX,
+                elements: elementsForPlacement,
+              })
+                .then((result) => {
+                  setPlacementLoading(false);
+                  setPlacementImageryPoor(result.imageryPoor);
+                  if (result.imageryPoor || result.placements.size === 0) {
+                    // Imagery too poor or no valid coords — keep the
+                    // placementBucket fallback positions.
+                    return;
+                  }
+                  // Override seeded geometry.position with AI coords.
+                  // Preserves rotation + shape (dimensions, etc.) from
+                  // the bucket seed.
+                  const rationales: Record<string, string> = {};
+                  setData((prev) => {
+                    let placedCount = 0;
+                    const updatedElements = prev.elements.map((el) => {
+                      const place = result.placements.get(el.tempId);
+                      if (!place || !el.geometry) return el;
+                      placedCount += 1;
+                      if (place.rationale) rationales[el.tempId] = place.rationale;
+                      return {
+                        ...el,
+                        geometry: {
+                          ...el.geometry,
+                          position: place.position,
+                        },
+                      };
+                    });
+                    setPlacementCount(placedCount);
+                    return { ...prev, elements: updatedElements };
+                  });
+                  setPlacementRationales((prev) => ({ ...prev, ...rationales }));
+                })
+                .catch(() => {
+                  setPlacementLoading(false);
+                  /* fallback to placementBucket positions — already there */
+                });
+            }
+          }
         }).catch(() => { /* non-blocking */ });
       }
     }
@@ -1133,6 +1221,10 @@ export default function ProjectWizard() {
             onChange={handleChange}
             recommendations={recommendations}
             aiLoading={aiLoading}
+            placementLoading={placementLoading}
+            placementCount={placementCount}
+            placementImageryPoor={placementImageryPoor}
+            placementRationales={placementRationales}
             materialAccepted={acceptedItems.materials}
             materialDismissed={dismissedItems.materials}
             onAcceptMaterial={(id: string) => handleAccept('materials', id)}

@@ -48,6 +48,21 @@ interface Props {
   onChange: (updates: Partial<WizardData>) => void;
   recommendations: AIRecommendationSet | null;
   aiLoading: boolean;
+  /**
+   * Sprint AI-Place wiring. When `placementLoading` is true, the
+   * vision call is in flight — render skeleton hint. When the call
+   * completes with success, `placementCount` is the number of
+   * elements that received AI-grounded coords + a banner appears
+   * with the count. `placementImageryPoor` flips when Claude
+   * self-rated the satellite as too poor to read; UI surfaces a
+   * "drag to position" hint instead of the success banner.
+   * `placementRationales[tempId]` maps each element tempId to the
+   * 1-sentence rationale Claude returned for the placement.
+   */
+  placementLoading?: boolean;
+  placementCount?: number;
+  placementImageryPoor?: boolean;
+  placementRationales?: Record<string, string>;
   materialAccepted: Set<string>;
   materialDismissed: Set<string>;
   onAcceptMaterial: (id: string) => void;
@@ -157,6 +172,10 @@ export const WizardStepMeasurements: React.FC<Props> = ({
   onChange,
   recommendations,
   aiLoading,
+  placementLoading = false,
+  placementCount = 0,
+  placementImageryPoor = false,
+  placementRationales = {},
   materialAccepted,
   materialDismissed,
   onAcceptMaterial,
@@ -509,6 +528,64 @@ export const WizardStepMeasurements: React.FC<Props> = ({
         )}
       </div>
 
+      {/* Sprint AI-Place: vision-grounded placement status banner.
+          Three states:
+          - placementLoading + we have elements → "Reading the satellite…"
+          - placementImageryPoor → soft yellow "Image too unclear — drag to position"
+          - placementCount > 0 → green success "AI placed N elements on your property"
+          Hidden once the contractor starts dragging (would be noise). */}
+      {elements.length > 0 && placementLoading && (
+        <div
+          className="rounded-[8px] px-[12px] py-[8px] text-[11.5px] flex items-center gap-[8px]"
+          style={{
+            background: 'var(--surface2)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-3)',
+          }}
+          role="status"
+        >
+          <span
+            className="inline-block w-[8px] h-[8px] rounded-full animate-pulse"
+            style={{ backgroundColor: 'var(--green)' }}
+          />
+          AI is reading the satellite to place each element on real ground…
+        </div>
+      )}
+      {elements.length > 0 && !placementLoading && placementImageryPoor && (
+        <div
+          className="rounded-[8px] px-[12px] py-[8px] text-[11.5px]"
+          style={{
+            background: 'rgba(234,179,8,0.10)',
+            border: '1px solid rgba(234,179,8,0.30)',
+            color: 'var(--text-2)',
+          }}
+          role="status"
+        >
+          Satellite image was too unclear to place elements automatically. Drag each element on the canvas to position it.
+        </div>
+      )}
+      {elements.length > 0 &&
+        !placementLoading &&
+        !placementImageryPoor &&
+        placementCount > 0 && (
+          <div
+            className="rounded-[8px] px-[12px] py-[8px] text-[11.5px] flex items-center gap-[8px]"
+            style={{
+              background: 'rgba(16,185,129,0.10)',
+              border: '1px solid rgba(16,185,129,0.30)',
+              color: 'var(--text-2)',
+            }}
+            role="status"
+          >
+            <span
+              className="inline-block w-[8px] h-[8px] rounded-full"
+              style={{ backgroundColor: 'var(--green)' }}
+            />
+            AI placed {placementCount} element{placementCount === 1 ? '' : 's'} on real
+            ground. Drag any to reposition.
+          </div>
+        )}
+
       {/* Empty state — pre-AI or AI failed */}
       {elements.length === 0 && !aiLoading && (
         <div className="rounded-[10px] border-dashed border-2 px-[16px] py-[24px] text-center" style={{ borderColor: 'var(--border)' }}>
@@ -651,6 +728,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({
               onAcceptMaterial={onAcceptMaterial}
               onDismissMaterial={onDismissMaterial}
               perElementEntry={perElementEntry}
+              placementRationale={placementRationales[selected.tempId]}
             />
           )}
         </div>
@@ -695,6 +773,11 @@ interface SidebarProps {
   onDismissMaterial: (id: string) => void;
   /** Phase B: per-element AI material cache entry for THIS element. */
   perElementEntry: PerElementCacheEntry | undefined;
+  /** Sprint AI-Place: 1-sentence rationale Claude returned for this
+   *  element's placement (e.g. "Backyard, behind house, away from pool.").
+   *  Undefined when the placement call hasn't run or this element wasn't
+   *  AI-placed (manual-add or fallback path). */
+  placementRationale?: string;
 }
 
 const ElementSidebar: React.FC<SidebarProps> = ({
@@ -711,6 +794,7 @@ const ElementSidebar: React.FC<SidebarProps> = ({
   onAcceptMaterial,
   onDismissMaterial,
   perElementEntry,
+  placementRationale,
 }) => {
   const cfg = DIMENSION_CONFIG[element.elementType];
   const showLW = cfg.lengthWidth || cfg.allFields;
@@ -893,6 +977,24 @@ const ElementSidebar: React.FC<SidebarProps> = ({
           ✕
         </button>
       </div>
+
+      {/* Sprint AI-Place: AI placement rationale callout. Only renders
+          when this element received an AI-grounded placement (the
+          rationale is non-empty). Designed as low-key text — it's
+          context, not a CTA. */}
+      {placementRationale && (
+        <div
+          className="rounded-[6px] px-[8px] py-[6px] text-[10.5px] leading-[14px]"
+          style={{
+            background: 'rgba(16,185,129,0.08)',
+            border: '1px solid rgba(16,185,129,0.20)',
+            color: 'var(--text-3)',
+          }}
+        >
+          <span style={{ color: 'var(--green-l)', fontWeight: 600 }}>AI placed here:</span>{' '}
+          {placementRationale}
+        </div>
+      )}
 
       {/* Element dimension presets — quick-pick common sizes per element
           type. Only renders when the type has presets defined; rare

@@ -5,6 +5,7 @@ import { TextureLoader, SRGBColorSpace, RepeatWrapping, Shape as ThreeShape } fr
 import type { Texture, Group } from 'three'
 import type { ProjectElement, Material, ElementGeometry } from '@/types'
 import { autoLayout, computeBoundingBox, elementColor, elementHeightFt, elementMaterial } from '@/lib/planLayout'
+import { BACKDROP_ZOOM, BACKDROP_IMAGE_PX, buildMapboxStaticUrl } from '@/lib/mapboxStatic'
 
 // ===== PlanView3D (Sprint 4) =====
 //
@@ -59,8 +60,9 @@ interface Props {
   onElementGeometryChange?: (elementId: string, geometry: ElementGeometry) => void
 }
 
-const BACKDROP_ZOOM = 19
-const BACKDROP_IMAGE_PX = 1200 // geographic coverage; @2x only doubles resolution
+// BACKDROP_ZOOM, BACKDROP_IMAGE_PX, and buildMapboxStaticUrl are now
+// shared via `@/lib/mapboxStatic` so the wizard's vision-placement call
+// (Sprint AI-Place) builds the identical URL.
 
 /**
  * Earth's equatorial circumference in meters. Used by the Web Mercator
@@ -68,12 +70,6 @@ const BACKDROP_IMAGE_PX = 1200 // geographic coverage; @2x only doubles resoluti
  */
 const EARTH_CIRCUMFERENCE_M = 40075016.686
 const METERS_PER_FOOT = 0.3048
-
-function buildMapboxStaticUrl(lat: number, lng: number): string | null {
-  const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
-  if (!token) return null
-  return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${BACKDROP_ZOOM},0/${BACKDROP_IMAGE_PX}x${BACKDROP_IMAGE_PX}@2x?access_token=${token}&attribution=false&logo=false`
-}
 
 /**
  * Width (= height) in FEET of the satellite backdrop at the given latitude,
