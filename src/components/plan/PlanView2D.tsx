@@ -59,6 +59,20 @@ interface Props {
    * state so PlanView2D returns to normal interaction.
    */
   onDrawingExit?: () => void
+  /**
+   * Sprint AI-Buildable: AI-identified buildable polygon (lawn / dirt /
+   * non-paved non-rooftop) in plan-feet. Rendered as a translucent
+   * green fill with dashed outline so the contractor sees where the
+   * AI thinks the yard is. Null = no overlay.
+   */
+  buildableArea?: Array<{ x: number; y: number }> | null
+  /**
+   * Sprint AI-Buildable: AI-identified obstacle polygons (rooftop, road,
+   * driveway, pool, canopy) in plan-feet. Rendered as faint red dashed
+   * outlines so the contractor sees what the AI considered "do not place
+   * elements here." Empty array = no obstacles.
+   */
+  obstacles?: Array<Array<{ x: number; y: number }>>
 }
 
 /** Snap feet to the nearest integer — keeps dragged elements on 1-ft grid. */
@@ -174,6 +188,8 @@ export const PlanView2D: React.FC<Props> = ({
   onElementGeometryChange,
   drawingPolygonForElementId,
   onDrawingExit,
+  buildableArea = null,
+  obstacles = [],
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
@@ -688,6 +704,36 @@ export const PlanView2D: React.FC<Props> = ({
               />
             </>
           )}
+
+          {/* Sprint AI-Buildable: AI-identified polygons. Drawn BEFORE
+              elements so the elements render on top, but AFTER the
+              satellite backdrop so they're visible. Buildable area is
+              translucent green; obstacles are faint red dashed outlines.
+              Both are decorative — no pointer events, no interaction. */}
+          {(buildableArea && buildableArea.length >= 3) && (
+            <polygon
+              points={buildableArea.map((p) => `${p.x},${p.y}`).join(' ')}
+              fill="rgba(16,185,129,0.10)"
+              stroke="rgba(16,185,129,0.55)"
+              strokeWidth={ftPerPx * 1.5}
+              strokeDasharray={`${ftPerPx * 4} ${ftPerPx * 3}`}
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
+          {obstacles.length > 0 &&
+            obstacles.map((poly, i) =>
+              poly.length >= 3 ? (
+                <polygon
+                  key={`obstacle-${i}`}
+                  points={poly.map((p) => `${p.x},${p.y}`).join(' ')}
+                  fill="rgba(239,68,68,0.06)"
+                  stroke="rgba(239,68,68,0.40)"
+                  strokeWidth={ftPerPx * 1}
+                  strokeDasharray={`${ftPerPx * 3} ${ftPerPx * 2}`}
+                  style={{ pointerEvents: 'none' }}
+                />
+              ) : null,
+            )}
 
           {/* Elements */}
           {laid.map(({ element, geometry }) => {

@@ -322,6 +322,8 @@ const SharedProjectView: React.FC = () => {
                   onElementGeometryChange={
                     state.tokenRow.role === 'client_design' ? handleClientGeometryChange : undefined
                   }
+                  buildableArea={state.project.buildableAreaGeometry ?? null}
+                  obstacles={state.project.obstaclesGeometry ?? []}
                 />
               ) : (
                 <PlanView3D
@@ -337,6 +339,8 @@ const SharedProjectView: React.FC = () => {
                   onElementGeometryChange={
                     state.tokenRow.role === 'client_design' ? handleClientGeometryChange : undefined
                   }
+                  buildableArea={state.project.buildableAreaGeometry ?? null}
+                  obstacles={state.project.obstaclesGeometry ?? []}
                 />
               )}
               {editError && (

@@ -803,6 +803,8 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               }
               editable={editingLayout}
               onElementGeometryChange={handleElementGeometryChange}
+              buildableArea={project.buildableAreaGeometry ?? null}
+              obstacles={project.obstaclesGeometry ?? []}
             />
           ) : (
             <PlanView3D
@@ -816,6 +818,8 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               materialsById={materialsById}
               editable={editingLayout}
               onElementGeometryChange={handleElementGeometryChange}
+              buildableArea={project.buildableAreaGeometry ?? null}
+              obstacles={project.obstaclesGeometry ?? []}
             />
           )}
         </div>

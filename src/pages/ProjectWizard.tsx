@@ -16,6 +16,7 @@ import { useScheduleStore } from '@/stores/scheduleStore';
 import { generateProjectRecommendations, inferElements } from '@/services/aiRecommendations';
 import { inferElementPlacements, type ElementToPlace } from '@/services/aiPlacement';
 import { buildMapboxStaticUrl, BACKDROP_ZOOM, BACKDROP_IMAGE_PX } from '@/lib/mapboxStatic';
+import { normalizedToPlanFeet } from '@/lib/mapTileMath';
 import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
 import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, ElementGeometry, Material, Zone, SiteConditionType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
@@ -137,6 +138,14 @@ export interface WizardData {
   // Step 2b: Project Elements (measurements)
   elements: WizardElement[];
 
+  // Sprint AI-Buildable (mig 035): polygons returned by the AI placement
+  // call. Plan-feet, origin = property tile center. All null when
+  // placement hasn't run, failed, or imagery was too poor. Persisted to
+  // projects.{buildable_area_geometry, obstacles_geometry} on create
+  // (lot_geometry is Phase 2 — parcel-data lookup).
+  buildableArea: Array<{ x: number; y: number }> | null;
+  obstacles: Array<Array<{ x: number; y: number }>>;
+
   // Step 4b: Materials
   materialSelections: WizardMaterial[];
 
@@ -194,6 +203,8 @@ const INITIAL_DATA: WizardData = {
   equipmentNotes: null,
   subcontractors: [],
   elements: [],
+  buildableArea: null,
+  obstacles: [],
   materialSelections: [],
   startDate: null,
   targetDate: null,
@@ -442,9 +453,33 @@ export default function ProjectWizard() {
                 .then((result) => {
                   setPlacementLoading(false);
                   setPlacementImageryPoor(result.imageryPoor);
+
+                  // Sprint AI-Buildable: capture the buildable polygon +
+                  // obstacles for overlay rendering and persist-on-create.
+                  // Convert from normalized [0,1] tile coords to plan-feet
+                  // before storing — same coord space as element positions.
+                  const buildablePlanFt = result.buildableArea
+                    ? result.buildableArea.map((p) =>
+                        normalizedToPlanFeet(p, data.lat!, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
+                      )
+                    : null;
+                  const obstaclesPlanFt = result.obstacles.map((poly) =>
+                    poly.map((p) =>
+                      normalizedToPlanFeet(p, data.lat!, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
+                    ),
+                  );
+
                   if (result.imageryPoor || result.placements.size === 0) {
                     // Imagery too poor or no valid coords — keep the
-                    // placementBucket fallback positions.
+                    // placementBucket fallback positions, but still
+                    // persist whatever polygons came back (the overlay
+                    // can still help even when individual placements
+                    // didn't work).
+                    setData((prev) => ({
+                      ...prev,
+                      buildableArea: buildablePlanFt,
+                      obstacles: obstaclesPlanFt,
+                    }));
                     return;
                   }
                   // Override seeded geometry.position with AI coords.
@@ -467,7 +502,12 @@ export default function ProjectWizard() {
                       };
                     });
                     setPlacementCount(placedCount);
-                    return { ...prev, elements: updatedElements };
+                    return {
+                      ...prev,
+                      elements: updatedElements,
+                      buildableArea: buildablePlanFt,
+                      obstacles: obstaclesPlanFt,
+                    };
                   });
                   setPlacementRationales((prev) => ({ ...prev, ...rationales }));
                 })
@@ -655,6 +695,12 @@ export default function ProjectWizard() {
         lng: data.lng ?? undefined,
         materials: [], // Will be populated after project creation
         zones: [],
+        // Sprint AI-Buildable: persist the AI-identified polygons so the
+        // 2D/3D viewers can render the buildable-area overlay across
+        // sessions. lotGeometry is Phase 2 — null on create.
+        buildableAreaGeometry: data.buildableArea,
+        obstaclesGeometry: data.obstacles.length > 0 ? data.obstacles : null,
+        lotGeometry: null,
         checklist: {
           permit: data.permitChecklist.length > 0,
           utility: !!data.utilityLocations,

@@ -58,6 +58,18 @@ interface Props {
    * Fires when a drag ends. Parent persists via projectStore.updateElement.
    */
   onElementGeometryChange?: (elementId: string, geometry: ElementGeometry) => void
+  /**
+   * Sprint AI-Buildable: AI-identified buildable polygon in plan-feet.
+   * Rendered as a translucent green ground decal above the satellite.
+   * Null = no overlay.
+   */
+  buildableArea?: Array<{ x: number; y: number }> | null
+  /**
+   * Sprint AI-Buildable: AI-identified obstacle polygons in plan-feet.
+   * Rendered as faint red ground decals so the contractor sees what
+   * the AI considered "do not place elements here." Empty = no overlay.
+   */
+  obstacles?: Array<Array<{ x: number; y: number }>>
 }
 
 // BACKDROP_ZOOM, BACKDROP_IMAGE_PX, and buildMapboxStaticUrl are now
@@ -635,6 +647,51 @@ function ElementPrimitive({ b }: { b: ExtrudedBox }) {
 // camera ranges where the depth precision tightens.
 const GROUND_Y_OFFSET_FT = -0.05
 
+// Sprint AI-Buildable: y heights for the AI overlay decals. The
+// buildable polygon sits BETWEEN the satellite and the elements so
+// it tints the ground green. Obstacles use the same Y so they don't
+// punch through the buildable polygon. ~1 inch above the satellite.
+const OVERLAY_Y_FT = -0.04
+
+/**
+ * Renders a flat polygon decal at OVERLAY_Y_FT above the ground plane,
+ * sized + shaped by the input plan-feet points. Used for both buildable
+ * area (translucent green) and obstacles (translucent red). Polygon-y
+ * in plan-feet maps to scene-z negated (matches element placement).
+ */
+function PolygonDecal({
+  points,
+  color,
+  opacity,
+}: {
+  points: Array<{ x: number; y: number }>
+  color: string
+  opacity: number
+}) {
+  const shape = useMemo(() => {
+    if (points.length < 3) return null
+    const s = new ThreeShape()
+    // Flip plan-y to scene-z to match the element-rendering convention
+    // (PlanView2D's "down" = scene-+z).
+    s.moveTo(points[0].x, -points[0].y)
+    for (let i = 1; i < points.length; i++) s.lineTo(points[i].x, -points[i].y)
+    s.closePath()
+    return s
+  }, [points])
+  if (!shape) return null
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, OVERLAY_Y_FT, 0]}>
+      <shapeGeometry args={[shape]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={opacity}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
+
 function SatelliteGround({
   url,
   centerX,
@@ -918,6 +975,8 @@ export const PlanView3D: React.FC<Props> = ({
   materialsById,
   editable = false,
   onElementGeometryChange,
+  buildableArea = null,
+  obstacles = [],
 }) => {
   // Sprint 7a: edit state. Selected element id + current gizmo mode.
   // Only used when editable; null/false means no selection/no gizmo.
@@ -1211,6 +1270,21 @@ export const PlanView3D: React.FC<Props> = ({
             position={[centerX, 0.005, -centerPlanY]}
           />
         )}
+
+        {/* Sprint AI-Buildable: buildable area + obstacle decals. Drawn
+            BEFORE the elements so the elements render on top, but AFTER
+            the satellite ground so they tint it. Both are non-interactive
+            (depthWrite=false; pointer-events disabled by being below the
+            ElementsLayer that owns the gizmo). */}
+        {buildableArea && buildableArea.length >= 3 && (
+          <PolygonDecal points={buildableArea} color="#10b981" opacity={0.15} />
+        )}
+        {obstacles.length > 0 &&
+          obstacles.map((poly, i) =>
+            poly.length >= 3 ? (
+              <PolygonDecal key={`obstacle-${i}`} points={poly} color="#ef4444" opacity={0.10} />
+            ) : null,
+          )}
 
         {/* Extruded elements */}
         <ElementsLayer

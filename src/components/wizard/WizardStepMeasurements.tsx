@@ -646,6 +646,8 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                   onElementGeometryChange={handleElementGeometryChange}
                   drawingPolygonForElementId={drawingPolygonForTempId}
                   onDrawingExit={() => setDrawingPolygonForTempId(null)}
+                  buildableArea={data.buildableArea}
+                  obstacles={data.obstacles}
                 />
               ) : (
                 <PlanView3D
@@ -654,6 +656,8 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                   backdrop={backdrop}
                   editable
                   onElementGeometryChange={handleElementGeometryChange}
+                  buildableArea={data.buildableArea}
+                  obstacles={data.obstacles}
                 />
               )}
             </div>

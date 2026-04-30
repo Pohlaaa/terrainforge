@@ -228,6 +228,20 @@ export interface Project {
    */
   siteGeometry?: SiteGeometry | null;
 
+  /**
+   * Sprint AI-Buildable (migration 035). Polygons in plan-feet (same
+   * coordinate space as ProjectElement.geometry.position). All null when
+   * the AI placement call hasn't run yet, or when imagery was too poor
+   * to identify the regions.
+   *   - lotGeometry: parcel boundary (Phase 2 — parcel data lookup)
+   *   - buildableArea: AI-identified non-paved, non-rooftop ground
+   *   - obstacles: array of obstacle polygons (rooftop, road, driveway,
+   *     pool, canopy) used for soft-clip drag warnings
+   */
+  lotGeometry?: Array<{ x: number; y: number }> | null;
+  buildableAreaGeometry?: Array<{ x: number; y: number }> | null;
+  obstaclesGeometry?: Array<Array<{ x: number; y: number }>> | null;
+
   // ── M1.5 Project Intelligence fields (all nullable) ──────────────────────
 
   // Step 1: Client info (inline)
