@@ -852,6 +852,40 @@ export default function ProjectWizard() {
     }
   };
 
+  // jbluhm-V6 fix: Enter advances the wizard to the next step. Skipped
+  // inside textarea (multi-line input) and inside contenteditable
+  // surfaces, and skipped when the focused input has its own Enter
+  // semantics (e.g. address autocomplete dropdown — that input lives
+  // inside a wrapper that calls preventDefault on Enter, so keypress
+  // doesn't bubble here when the dropdown is open). Modifier-Enter
+  // (Cmd/Ctrl/Alt/Shift) reserved for future per-input shortcuts.
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key !== 'Enter') return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      // Multi-line inputs: Enter inserts a newline, do not advance.
+      if (tag === 'textarea' || target?.isContentEditable === true) return;
+      // Buttons: let the button's own click fire (Space/Enter on a
+      // focused button is the native default).
+      if (tag === 'button') return;
+      // Address autocomplete dropdown calls preventDefault when its
+      // suggestions are open; e.defaultPrevented short-circuits us.
+      if (e.defaultPrevented) return;
+      // On the last step, Enter shouldn't trigger Create — that's
+      // destructive + needs explicit click. Only advances forward.
+      if (currentStep >= WIZARD_STEPS.length - 1) return;
+      if (!canProceed()) return;
+      e.preventDefault();
+      handleNext();
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+    // canProceed reads `data` + `currentStep` via closure; rebind on
+    // every render so the latest values are checked. Cheap.
+  });
+
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep((s) => s - 1);

@@ -194,8 +194,11 @@ export const MaterialLibrary: React.FC = () => {
   const [importSuccess, setImportSuccess] = useState('');
   const csvInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'inventory' | 'suppliers' | 'library'>('inventory');
+  // Tab state. jbluhm-V6: reordered to library → suppliers →
+  // inventory. "Not many small-time guys have a yard to stock
+  // materials" — Inventory On Hand moves to last and stops being
+  // the default. Library is now the landing tab.
+  const [activeTab, setActiveTab] = useState<'library' | 'suppliers' | 'inventory'>('library');
 
   // Supplier UI state
   const [showSupplierModal, setShowSupplierModal] = useState(false);
@@ -501,10 +504,13 @@ export const MaterialLibrary: React.FC = () => {
   }
 
   // ── Tabs ─────────────────────────────────────────────────────────────────────
+  // jbluhm-V6 order: Material Library → Suppliers → Inventory On Hand.
+  // Library is the landing tab; Inventory is moved last because most
+  // small-time contractors don't track yard stock.
   const tabs = [
-    { id: 'inventory', label: `Inventory On Hand${lowStockCount > 0 ? ` (${lowStockCount} low)` : ''}` },
-    { id: 'suppliers', label: 'Suppliers' },
     { id: 'library', label: 'Material Library' },
+    { id: 'suppliers', label: 'Suppliers' },
+    { id: 'inventory', label: `Inventory On Hand${lowStockCount > 0 ? ` (${lowStockCount} low)` : ''}` },
   ];
 
   const adjustingMaterial = adjustMaterialId ? materials.find(m => m.id === adjustMaterialId) : null;

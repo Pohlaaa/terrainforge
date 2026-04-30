@@ -21,11 +21,23 @@ export const CompanySetupStep: React.FC<CompanySetupStepProps> = ({
 }) => {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleChange = (field: string, value: string | number) => {
+  const handleChange = (field: string, value: string | number | null) => {
+    // jbluhm-V6: contractors complained "Should be able to put 0 in for
+    // hourly rates if N/A." The previous logic was `(value as number)
+    // || null`, which coerced 0 → null because 0 is falsy. Now we
+    // explicitly preserve 0 (a real "N/A" value); only null/undefined/
+    // empty becomes null.
+    const toRate = (v: string | number | null): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = typeof v === 'number' ? v : parseFloat(v);
+      return Number.isNaN(n) ? null : n;
+    };
     onChange({
       orgName: field === 'orgName' ? (value as string) : orgName,
-      defaultLaborRate: field === 'defaultLaborRate' ? (value as number) || null : defaultLaborRate,
-      defaultEquipmentRate: field === 'defaultEquipmentRate' ? (value as number) || null : defaultEquipmentRate,
+      defaultLaborRate:
+        field === 'defaultLaborRate' ? toRate(value) : defaultLaborRate,
+      defaultEquipmentRate:
+        field === 'defaultEquipmentRate' ? toRate(value) : defaultEquipmentRate,
     })
     // Clear error for this field
     setErrors(prev => {
@@ -78,24 +90,27 @@ export const CompanySetupStep: React.FC<CompanySetupStepProps> = ({
 
         <Input
           label="Default Labor Rate ($/hr)"
-          placeholder="e.g., 65"
+          placeholder="e.g., 65 — enter 0 if N/A"
           type="number"
           inputMode="decimal"
+          // jbluhm-V6: pass the raw string so 0 reaches handleChange
+          // intact. Previous `parseFloat || 0` was OK locally but the
+          // handleChange's `|| null` step then nuked the 0 again.
           value={defaultLaborRate ?? ''}
-          onChange={(e) => handleChange('defaultLaborRate', parseFloat(e.target.value) || 0)}
+          onChange={(e) => handleChange('defaultLaborRate', e.target.value)}
           error={errors.defaultLaborRate}
-          hint="Used as default when creating projects and estimating labor costs"
+          hint="Used as default when creating projects. Enter 0 if you'd rather set rates per project."
         />
 
         <Input
           label="Default Equipment Rate ($/hr)"
-          placeholder="e.g., 50"
+          placeholder="e.g., 50 — enter 0 if N/A"
           type="number"
           inputMode="decimal"
           value={defaultEquipmentRate ?? ''}
-          onChange={(e) => handleChange('defaultEquipmentRate', parseFloat(e.target.value) || 0)}
+          onChange={(e) => handleChange('defaultEquipmentRate', e.target.value)}
           error={errors.defaultEquipmentRate}
-          hint="Used as default when estimating equipment costs. Actual rates can vary per item."
+          hint="Used as default when estimating equipment costs. Enter 0 if you'd rather set rates per item."
         />
       </div>
 

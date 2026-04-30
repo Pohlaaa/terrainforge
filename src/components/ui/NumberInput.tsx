@@ -14,6 +14,12 @@ import React, { forwardRef, useCallback } from 'react';
  * callback fires with `number | null` as well (empty string → null; any
  * parseable number → that number). Keeps call sites from sprinkling
  * parseFloat + NaN handling everywhere.
+ *
+ * jbluhm-V6: hourly-rate / cost-per-X / tax-rate fields commonly have 0
+ * as a real value meaning "free" / "N/A." For those, pass `allowZero`
+ * so the rendered display shows "0" explicitly. Default keeps the
+ * F-040 behavior for quantity / count / weight inputs where 0 is
+ * semantically empty.
  */
 export interface NumberInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> {
@@ -21,16 +27,21 @@ export interface NumberInputProps
   onChange: (value: number | null) => void;
   /** Whether to select all contents on focus. Default true. Set false for read-only previews. */
   selectOnFocus?: boolean;
+  /** Render 0 as "0" instead of "" (empty). Default false. Use for
+   *  rate / cost / tax fields where 0 is a real meaningful value. */
+  allowZero?: boolean;
 }
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(function NumberInput(
-  { value, onChange, selectOnFocus = true, onFocus, onBlur, onKeyDown, ...rest },
+  { value, onChange, selectOnFocus = true, allowZero = false, onFocus, onBlur, onKeyDown, ...rest },
   ref,
 ) {
-  // Render 0 / null / undefined as empty string; any other number as its string form.
-  // This is the "zero disappears" fix.
+  // Render null / undefined / NaN as empty string. 0 is empty-display
+  // by default (F-040) but rendered explicitly when allowZero=true
+  // (jbluhm-V6).
+  const isZero = value === 0;
   const displayValue =
-    value === null || value === undefined || value === 0 || Number.isNaN(value)
+    value === null || value === undefined || Number.isNaN(value) || (isZero && !allowZero)
       ? ''
       : String(value);
 

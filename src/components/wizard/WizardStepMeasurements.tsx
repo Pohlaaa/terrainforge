@@ -28,6 +28,7 @@ import { NumberInput } from '@/components/ui/NumberInput';
 import PlanView2D from '@/components/plan/PlanView2D';
 import PlanView3D from '@/components/plan/PlanView3D';
 import { inferMaterialsForElement } from '@/services/aiRecommendations';
+import { scaleAIQuantityForDimensions } from '@/lib/scaleAIQuantity';
 import type { WizardData, WizardElement, WizardMaterial } from '@/pages/ProjectWizard';
 import type { AIMaterialRecommendation, AIRecommendationSet, ElementGeometry, ElementType, Material, ProjectElement } from '@/types';
 
@@ -37,11 +38,29 @@ import type { AIMaterialRecommendation, AIRecommendationSet, ElementGeometry, El
 // stay cached because Claude's quantity estimate is just one of many
 // downstream inputs anyway (the engine will recompute final qty at create
 // time using the latest dimensions).
+//
+// jbluhm-V6 fix: when the AI returns its estimatedQuantity, we capture
+// the dimensions at fetch time as `baselineArea` / `baselineLinear`.
+// Live-displayed qty then scales linearly with the contractor's CURRENT
+// dimensions ("I changed 100sqft → 500sqft, mulch went 1yd → 5yd"). No
+// new API call needed; this matches contractor mental model and gives
+// real-time feedback while editing dimensions.
 type PerElementCacheEntry =
   | { status: 'loading'; cacheKey: string }
-  | { status: 'ready'; cacheKey: string; recs: AIMaterialRecommendation[] }
+  | {
+      status: 'ready';
+      cacheKey: string;
+      recs: AIMaterialRecommendation[];
+      baselineArea: number;
+      baselineLinear: number;
+    }
   | { status: 'failed'; cacheKey: string };
 type PerElementCache = Record<string, PerElementCacheEntry | undefined>;
+
+// scaleAIQuantityForDimensions lives in src/lib/scaleAIQuantity.ts —
+// shared so other surfaces (Step 3 review, Overview tab) can apply
+// the same live-scaling rule without duplicating the unit-classifier
+// table.
 
 interface Props {
   data: WizardData;
@@ -191,6 +210,28 @@ export const WizardStepMeasurements: React.FC<Props> = ({
 }) => {
   const elements = data.elements;
   const [planViewMode, setPlanViewMode] = useState<'2d' | '3d'>('3d');
+  // jbluhm-V6: contractors complained about the auto-generated
+  // "highlighted area" cluttering the canvas. Toggle hides the
+  // buildable polygon + obstacle decals while keeping placements
+  // intact. Default ON (show overlay) so first-time users see the
+  // AI's reasoning; persisted to localStorage so the contractor's
+  // preference sticks across wizard sessions.
+  const [showAIOverlay, setShowAIOverlay] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const v = localStorage.getItem('tf-wizard-show-ai-overlay');
+      return v === null ? true : v === '1';
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('tf-wizard-show-ai-overlay', showAIOverlay ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [showAIOverlay]);
   // Batch 24: when set, the canvas enters click-to-draw polygon mode for
   // this element. Forces the view to 2D (3D extrusion can't host the
   // click-to-draw flow). Cleared by PlanView2D via onDrawingExit when
@@ -240,6 +281,17 @@ export const WizardStepMeasurements: React.FC<Props> = ({
     inFlightRef.current.add(inFlightKey);
     setPerElementMaterials((prev) => ({ ...prev, [selected.tempId]: { status: 'loading', cacheKey } }));
 
+    // Capture dimensions at fetch time so the displayed qty can be
+    // proportionally scaled when the contractor edits dimensions
+    // afterwards (jbluhm-V6 fix). Falls to lengthFt × widthFt when
+    // areaSqft isn't explicitly set.
+    const baselineArea =
+      selected.areaSqft ??
+      (selected.lengthFt && selected.widthFt
+        ? selected.lengthFt * selected.widthFt
+        : 0);
+    const baselineLinear = selected.linearFt ?? 0;
+
     inferMaterialsForElement(
       {
         name: selected.name,
@@ -257,7 +309,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({
         setPerElementMaterials((prev) => ({
           ...prev,
           [selected.tempId]: recs.length > 0
-            ? { status: 'ready', cacheKey, recs }
+            ? { status: 'ready', cacheKey, recs, baselineArea, baselineLinear }
             : { status: 'failed', cacheKey },
         }));
       })
@@ -629,18 +681,34 @@ export const WizardStepMeasurements: React.FC<Props> = ({
               AI placed {placementCount} element{placementCount === 1 ? '' : 's'} on real
               ground. Drag any to reposition.
             </span>
-            {onRecomputePlacements && (
+            <div className="flex items-center gap-[10px] shrink-0">
               <button
                 type="button"
-                onClick={onRecomputePlacements}
-                className="text-[11px] font-[600] cursor-pointer border-none bg-transparent shrink-0 hover:underline"
-                style={{ color: 'var(--green-l)' }}
-                aria-label="Re-run AI placement against current elements"
-                title="Re-run AI placement after editing the address or adding/removing elements"
+                onClick={() => setShowAIOverlay((v) => !v)}
+                className="text-[11px] cursor-pointer border-none bg-transparent hover:underline"
+                style={{ color: 'var(--text-3)' }}
+                aria-pressed={showAIOverlay}
+                title={
+                  showAIOverlay
+                    ? 'Hide the AI buildable + obstacle overlay on the canvas'
+                    : 'Show the AI buildable + obstacle overlay on the canvas'
+                }
               >
-                Recompute ↻
+                {showAIOverlay ? 'Hide overlay' : 'Show overlay'}
               </button>
-            )}
+              {onRecomputePlacements && (
+                <button
+                  type="button"
+                  onClick={onRecomputePlacements}
+                  className="text-[11px] font-[600] cursor-pointer border-none bg-transparent hover:underline"
+                  style={{ color: 'var(--green-l)' }}
+                  aria-label="Re-run AI placement against current elements"
+                  title="Re-run AI placement after editing the address or adding/removing elements"
+                >
+                  Recompute ↻
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -704,8 +772,8 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                   onElementGeometryChange={handleElementGeometryChange}
                   drawingPolygonForElementId={drawingPolygonForTempId}
                   onDrawingExit={() => setDrawingPolygonForTempId(null)}
-                  buildableArea={data.buildableArea}
-                  obstacles={data.obstacles}
+                  buildableArea={showAIOverlay ? data.buildableArea : null}
+                  obstacles={showAIOverlay ? data.obstacles : []}
                 />
               ) : (
                 <PlanView3D
@@ -714,8 +782,8 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                   backdrop={backdrop}
                   editable
                   onElementGeometryChange={handleElementGeometryChange}
-                  buildableArea={data.buildableArea}
-                  obstacles={data.obstacles}
+                  buildableArea={showAIOverlay ? data.buildableArea : null}
+                  obstacles={showAIOverlay ? data.obstacles : []}
                 />
               )}
             </div>
@@ -953,14 +1021,33 @@ const ElementSidebar: React.FC<SidebarProps> = ({
     data.materialSelections,
   ]);
 
+  // jbluhm-V6 fix: when accepting an AI rec, capture the SCALED qty
+  // (current dims vs. AI-fetch-time baseline) instead of the raw AI
+  // value. So a contractor who edits the patio from 100→500 sqft and
+  // then accepts the mulch suggestion gets 5yd in their wizard
+  // selections, not 1yd.
+  const currentArea =
+    element.areaSqft ??
+    (element.lengthFt && element.widthFt ? element.lengthFt * element.widthFt : 0);
+  const currentLinear = element.linearFt ?? 0;
+  const baselineArea = perElementEntry?.status === 'ready' ? perElementEntry.baselineArea : 0;
+  const baselineLinear = perElementEntry?.status === 'ready' ? perElementEntry.baselineLinear : 0;
+
   const acceptAIMaterial = (rec: AIMaterialRecommendation, id: string) => {
     if (data.materialSelections.some((m) => m.materialName.toLowerCase() === rec.materialName.toLowerCase())) return;
+    const liveQty = scaleAIQuantityForDimensions(
+      rec,
+      currentArea,
+      currentLinear,
+      baselineArea,
+      baselineLinear,
+    );
     const newMat: WizardMaterial = {
       tempId: crypto.randomUUID(),
       materialId: rec.materialId,
       materialName: rec.materialName,
       category: rec.category,
-      quantity: rec.estimatedQuantity,
+      quantity: liveQty,
       unit: rec.unit,
       unitCost: rec.unitCost,
       inLibrary: rec.inLibrary,
@@ -1481,11 +1568,26 @@ const ElementSidebar: React.FC<SidebarProps> = ({
                     {getCategoryLabel(rec.category)}
                   </span>
                   <span className="text-[11px] text-[var(--text)] flex-1 truncate">{rec.materialName}</span>
-                  {rec.estimatedQuantity > 0 && (
-                    <span className="text-[10px] text-[var(--text-4)] tabular-nums">
-                      {rec.estimatedQuantity} {rec.unit}
-                    </span>
-                  )}
+                  {(() => {
+                    // jbluhm-V6 fix: live-scaled qty so the chip reflects
+                    // the contractor's CURRENT element dimensions, not
+                    // the dims at AI-fetch time. The accept handler uses
+                    // the same scaled value so the wizard selections
+                    // match what's displayed.
+                    const liveQty = scaleAIQuantityForDimensions(
+                      rec,
+                      currentArea,
+                      currentLinear,
+                      baselineArea,
+                      baselineLinear,
+                    );
+                    if (liveQty <= 0) return null;
+                    return (
+                      <span className="text-[10px] text-[var(--text-4)] tabular-nums">
+                        {liveQty} {rec.unit}
+                      </span>
+                    );
+                  })()}
                   <button
                     type="button"
                     onClick={() => acceptAIMaterial(rec, id)}

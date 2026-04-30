@@ -259,17 +259,24 @@ export const AddEquipmentStep: React.FC<AddEquipmentStepProps> = ({
 
         <Input
           label="Hourly Rate ($/hr, optional)"
-          placeholder="e.g., 75"
+          placeholder="e.g., 75 — enter 0 if N/A"
           type="number"
           inputMode="decimal"
           value={form.hourlyCost ?? ''}
           onChange={(e) => {
-            const val = e.target.value ? parseFloat(e.target.value) : null
+            // jbluhm-V6: explicit empty-vs-0 handling. "" → null,
+            // "0" → 0, anything else → parseFloat (NaN → null).
+            const raw = e.target.value;
+            let val: number | null = null;
+            if (raw !== '') {
+              const n = parseFloat(raw);
+              val = Number.isNaN(n) ? null : n;
+            }
             setForm(prev => ({ ...prev, hourlyCost: val }))
             setErrors(prev => ({ ...prev, hourlyCost: '' }))
           }}
           error={errors.hourlyCost}
-          hint="Leave blank and fill in later if unsure"
+          hint="Leave blank or enter 0 if unsure / not applicable"
           disabled={isAdding || isSaving}
         />
 
