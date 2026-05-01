@@ -2020,3 +2020,56 @@ south-east by 12 ft).
 through the wizard on staging — Chrome MCP cannot exercise the wizard
 without Supabase env (only available on the deployed bundle).
 
+---
+
+## F-PLAC-04 — Dimension edits in sheet/sidebar don't update the canvas (P0)
+
+**Found**: 2026-05-02, surfaced while auditing the F-PLAC-03 fix
+landing zone.
+
+**Symptom**: Contractor opens the wizard, AI places a 24×18 patio, then
+they tap the patio and use the touch-friendly sheet to change dimensions
+to 30×20. Materials engine recomputes against 30×20 (correct), but the
+canvas keeps showing the original 24×18 rectangle. Dimension fields
+and visual rectangle silently desync — broken mental model. Same bug
+appears in three places:
+
+1. `WizardStepMeasurements.updateElement()` — flat shallow merge ignores
+   geometry.shape.
+2. `ProjectElementEditSheet.handleSheetUpdate()` — same flat merge.
+3. `OverviewTab.tsx` inline dimension editor — `lengthFt`/`widthFt`
+   `<input>`s update the field but not geometry.
+
+**Root cause**: `updateElement` (in both wizard and projectStore) is a
+shallow merge — it doesn't know that dimension fields and
+`geometry.shape` are coupled when an element has been canvas-placed.
+
+**Fix**: New `applyDimensionEditToGeometry(geometry, oldDims, newDims)`
+in `src/lib/planLayout.ts`. Returns a recentered geometry (same visual
+center, new shape size), or null when nothing should change. All three
+sites now pipe through it. Re-anchoring at the visual CENTER (not
+top-left) means resizing a patio doesn't drift it toward the SE —
+contractors expect the center to stay fixed when they grow/shrink an
+element.
+
+Behavior across shape kinds:
+
+| Shape | Dim source | Re-anchor |
+|---|---|---|
+| rectangle + lengthFt+widthFt | new W×H | center fixed |
+| rectangle + linearFt only | preserve long-axis (edging case) | center fixed |
+| circle + radiusFt | new radius | center fixed |
+| polygon | preserved (vertex drag is the right primitive) | n/a |
+
+**Verification**: `aiCenterToTopLeft.test.ts` extended with 7 new
+tests covering all branches. Full suite 203/203 (was 196). tsc + build
+clean.
+
+**Why this didn't show up before**: pre-touch-UI, dimension edits
+happened in the desktop sidebar where the contractor was looking at
+the canvas anyway and would notice the drift when they switched
+focus. Touch-UI sheet (PR #128) made the desync invisible — sheet
+covers the canvas, contractor commits the dimension edit, the canvas
+underneath the sheet stayed stale, contractor closes the sheet and
+sees the old size.
+

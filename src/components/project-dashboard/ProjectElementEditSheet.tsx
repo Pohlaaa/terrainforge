@@ -24,6 +24,7 @@ import { useMaterialStore } from '@/stores/materialStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { generateEngineManifest } from '@/materials-engine/engine'
 import { getElementTypesForMaterial } from '@/lib/elements'
+import { applyDimensionEditToGeometry } from '@/lib/planLayout'
 import type { ProjectElement, ProjectElementMaterial, MaterialCategory } from '@/types'
 
 interface Props {
@@ -103,6 +104,25 @@ export const ProjectElementEditSheet: React.FC<Props> = ({ element, orgId, onClo
     if (updates.linearFt !== undefined) out.linearFt = updates.linearFt
     if (updates.heightFt !== undefined) out.heightFt = updates.heightFt
     if (updates.depthIn !== undefined) out.depthIn = updates.depthIn
+
+    // F-PLAC-04: dimension edits via the sheet must propagate to
+    // geometry.shape so the 2D + 3D canvas re-renders at the new size,
+    // re-anchored at the visual center so resizing doesn't drift SE.
+    const recentered = applyDimensionEditToGeometry(
+      element.geometry,
+      {
+        lengthFt: element.lengthFt,
+        widthFt: element.widthFt,
+        linearFt: element.linearFt,
+      },
+      {
+        lengthFt: updates.lengthFt,
+        widthFt: updates.widthFt,
+        linearFt: updates.linearFt,
+      },
+    )
+    if (recentered) out.geometry = recentered
+
     updateElement(element.id, out)
   }
 

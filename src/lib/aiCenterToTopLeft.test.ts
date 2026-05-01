@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aiCenterToTopLeft } from './planLayout';
+import { aiCenterToTopLeft, elementVisualCenter, applyDimensionEditToGeometry } from './planLayout';
 import type { ElementGeometry } from '@/types';
 
 // F-PLAC-03 regression suite. The bug: Sprint AI-Place wrote the AI's
@@ -102,5 +102,185 @@ describe('aiCenterToTopLeft', () => {
     });
     const result = aiCenterToTopLeft({ x: 50, y: 50 }, geom);
     expect(result).toEqual({ x: 50, y: 50 });
+  });
+});
+
+describe('elementVisualCenter', () => {
+  it('rectangle — adds half-width and half-height to position', () => {
+    const geom = makeGeom({ kind: 'rectangle', width: 24, height: 18 }, { x: -12, y: 21 });
+    expect(elementVisualCenter(geom)).toEqual({ x: 0, y: 30 });
+  });
+
+  it('circle — adds radius to position on both axes', () => {
+    const geom = makeGeom({ kind: 'circle', radius: 5 }, { x: -5, y: -5 });
+    expect(elementVisualCenter(geom)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('polygon — uses local bbox midpoint + position offset', () => {
+    const geom = makeGeom(
+      {
+        kind: 'polygon',
+        points: [
+          { x: 5, y: 5 },
+          { x: 15, y: 5 },
+          { x: 15, y: 15 },
+          { x: 5, y: 15 },
+        ],
+      },
+      { x: 90, y: 90 },
+    );
+    expect(elementVisualCenter(geom)).toEqual({ x: 100, y: 100 });
+  });
+
+  it('round-trips with aiCenterToTopLeft for any shape', () => {
+    const center = { x: 42, y: -17 };
+    const geom = makeGeom({ kind: 'rectangle', width: 10, height: 7 });
+    const topLeft = aiCenterToTopLeft(center, geom);
+    const placed: ElementGeometry = { ...geom, position: topLeft };
+    const recovered = elementVisualCenter(placed);
+    // Allow ±1 because aiCenterToTopLeft rounds (visual center recovers
+    // exactly only on integer-half dimensions; 7/2 = 3.5 → rounds to 4)
+    expect(Math.abs(recovered.x - center.x)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(recovered.y - center.y)).toBeLessThanOrEqual(0.5);
+  });
+});
+
+describe('F-PLAC-04 dimension edit re-anchors to visual center', () => {
+  // Simulates what the wizard does when the contractor types a new
+  // length/width into the sheet: rebuild the rectangle shape, recompute
+  // top-left so the visual CENTER stays where it was.
+  function reAnchor(
+    oldGeom: ElementGeometry,
+    newWidth: number,
+    newHeight: number,
+  ): ElementGeometry {
+    const oldCenter = elementVisualCenter(oldGeom);
+    return {
+      ...oldGeom,
+      shape: { kind: 'rectangle', width: newWidth, height: newHeight },
+      position: {
+        x: Math.round(oldCenter.x - newWidth / 2),
+        y: Math.round(oldCenter.y - newHeight / 2),
+      },
+    };
+  }
+
+  it('grows a patio symmetrically around its center, not toward the SE', () => {
+    // Patio at (-12, 21), 24×18 → visual center (0, 30)
+    const before: ElementGeometry = {
+      position: { x: -12, y: 21 },
+      rotation: 0,
+      shape: { kind: 'rectangle', width: 24, height: 18 },
+    };
+    expect(elementVisualCenter(before)).toEqual({ x: 0, y: 30 });
+
+    // Contractor edits to 36×24 → visual center MUST stay at (0, 30)
+    const after = reAnchor(before, 36, 24);
+    expect(after.position).toEqual({ x: -18, y: 18 });
+    expect(elementVisualCenter(after)).toEqual({ x: 0, y: 30 });
+  });
+
+  it('shrinking a patio also keeps the visual center fixed', () => {
+    const before: ElementGeometry = {
+      position: { x: 100, y: 100 },
+      rotation: 0,
+      shape: { kind: 'rectangle', width: 40, height: 20 },
+    };
+    const center = elementVisualCenter(before); // (120, 110)
+    const after = reAnchor(before, 10, 10);
+    expect(elementVisualCenter(after)).toEqual(center);
+  });
+});
+
+describe('applyDimensionEditToGeometry', () => {
+  it('returns null when geometry is null', () => {
+    expect(
+      applyDimensionEditToGeometry(null, { lengthFt: 10, widthFt: 5, linearFt: null }, { lengthFt: 12 }),
+    ).toBeNull();
+  });
+
+  it('returns null when no dim field changed', () => {
+    const geom = makeGeom({ kind: 'rectangle', width: 24, height: 18 });
+    const result = applyDimensionEditToGeometry(
+      geom,
+      { lengthFt: 24, widthFt: 18, linearFt: null },
+      { lengthFt: 24 },
+    );
+    expect(result).toBeNull();
+  });
+
+  it('rectangle — both lengthFt and widthFt edited together', () => {
+    const before: ElementGeometry = {
+      position: { x: -12, y: 21 },
+      rotation: 0,
+      shape: { kind: 'rectangle', width: 24, height: 18 },
+    };
+    const result = applyDimensionEditToGeometry(
+      before,
+      { lengthFt: 24, widthFt: 18, linearFt: null },
+      { lengthFt: 36, widthFt: 24 },
+    );
+    expect(result).not.toBeNull();
+    expect(result!.shape).toEqual({ kind: 'rectangle', width: 36, height: 24 });
+    expect(elementVisualCenter(result!)).toEqual({ x: 0, y: 30 });
+  });
+
+  it('rectangle — only lengthFt edited, widthFt taken from old dims', () => {
+    const before: ElementGeometry = {
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      shape: { kind: 'rectangle', width: 10, height: 5 },
+    };
+    const result = applyDimensionEditToGeometry(
+      before,
+      { lengthFt: 10, widthFt: 5, linearFt: null },
+      { lengthFt: 20 },
+    );
+    expect(result!.shape).toEqual({ kind: 'rectangle', width: 20, height: 5 });
+    expect(elementVisualCenter(result!)).toEqual(elementVisualCenter(before));
+  });
+
+  it('linear-only edit (edging) keeps the long-axis orientation', () => {
+    const before: ElementGeometry = {
+      position: { x: -30, y: 35 },
+      rotation: 0,
+      shape: { kind: 'rectangle', width: 60, height: 1 },
+    };
+    const result = applyDimensionEditToGeometry(
+      before,
+      { lengthFt: null, widthFt: null, linearFt: 60 },
+      { linearFt: 80 },
+    );
+    expect(result!.shape).toEqual({ kind: 'rectangle', width: 80, height: 1 });
+    expect(elementVisualCenter(result!)).toEqual(elementVisualCenter(before));
+  });
+
+  it('circle — radiusFt edited keeps visual center fixed', () => {
+    const before: ElementGeometry = {
+      position: { x: 95, y: 95 },
+      rotation: 0,
+      shape: { kind: 'circle', radius: 5 },
+    };
+    const result = applyDimensionEditToGeometry(
+      before,
+      { lengthFt: null, widthFt: null, linearFt: null, radiusFt: 5 },
+      { radiusFt: 8 },
+    );
+    expect(result!.shape).toEqual({ kind: 'circle', radius: 8 });
+    expect(elementVisualCenter(result!)).toEqual({ x: 100, y: 100 });
+  });
+
+  it('polygon — preserved (vertex drag is the right edit primitive)', () => {
+    const before: ElementGeometry = {
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      shape: { kind: 'polygon', points: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }, { x: 0, y: 5 }] },
+    };
+    const result = applyDimensionEditToGeometry(
+      before,
+      { lengthFt: null, widthFt: null, linearFt: null },
+      { lengthFt: 10 },
+    );
+    expect(result).toBeNull();
   });
 });

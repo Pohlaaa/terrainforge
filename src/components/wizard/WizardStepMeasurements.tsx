@@ -21,7 +21,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ELEMENT_TYPE_LABELS, getElementTypesForMaterial, ELEMENT_PRESETS, applyElementPreset } from '@/lib/elements';
-import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
+import { fallbackDimensions, placementBucket, applyDimensionEditToGeometry } from '@/lib/planLayout';
 import { normalizeCategory, getCategoryLabel } from '@/lib/categories';
 import { useMaterialStore } from '@/stores/materialStore';
 import { NumberInput } from '@/components/ui/NumberInput';
@@ -329,9 +329,26 @@ export const WizardStepMeasurements: React.FC<Props> = ({
   const perElementEntry = selected ? perElementMaterials[selected.tempId] : undefined;
 
   // ── Element CRUD on wizard data ─────────────────────────────────────────
+  // F-PLAC-04: dimension edits via the sidebar / sheet propagate to
+  // geometry.shape via applyDimensionEditToGeometry — re-anchored at
+  // the visual center so resizing doesn't make the element drift SE.
+  // Skipped when the update already carries a geometry (canvas drag
+  // owns geometry in that case).
   const updateElement = (tempId: string, updates: Partial<WizardElement>) => {
     onChange({
-      elements: elements.map((el) => (el.tempId === tempId ? { ...el, ...updates } : el)),
+      elements: elements.map((el) => {
+        if (el.tempId !== tempId) return el;
+        const merged: WizardElement = { ...el, ...updates };
+        if (!('geometry' in updates)) {
+          const recentered = applyDimensionEditToGeometry(
+            el.geometry,
+            { lengthFt: el.lengthFt, widthFt: el.widthFt, linearFt: el.linearFt, radiusFt: el.radiusFt },
+            updates,
+          );
+          if (recentered) merged.geometry = recentered;
+        }
+        return merged;
+      }),
     });
   };
 
