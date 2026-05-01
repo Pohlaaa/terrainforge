@@ -166,27 +166,28 @@ export const ElementEditSheet: React.FC<Props> = ({
   const showD = cfg.showDepthIn
 
   return (
-    <div className="md:hidden">
-      {/* Backdrop */}
+    <>
+      {/* Backdrop — only on small viewports. Desktop sheet floats
+          bottom-right and doesn't steal whole-screen focus. */}
       <div
         onClick={onClose}
-        className="fixed inset-0 z-40"
+        className="fixed inset-0 z-40 md:hidden"
         style={{ background: 'rgba(0,0,0,0.45)' }}
       />
 
-      {/* Sheet — mobile bottom sheet only. Desktop keeps its inline
-          sidebar editor; the sheet would duplicate state on wide
-          screens and steal canvas real-estate. */}
+      {/* Sheet — bottom sheet on mobile (full-width); bottom-right
+          anchored panel on desktop (max-width 480px) so it doesn't
+          cover the canvas. Coexists with the inline desktop sidebar:
+          they're both editing the same `selected` element so state
+          stays in sync. */}
       <div
         role="dialog"
         aria-label="Edit element"
-        className="fixed z-50 flex flex-col"
+        className="fixed z-50 flex flex-col left-0 right-0 md:left-auto md:right-4 md:bottom-4 md:w-[480px] md:max-w-[calc(100vw-32px)] md:rounded-2xl"
         style={{
           background: 'var(--surface-card)',
-          borderTop: '1px solid var(--border-default)',
+          border: '1px solid var(--border-default)',
           boxShadow: 'var(--shadow-panel)',
-          left: 0,
-          right: 0,
           bottom: 0,
           maxHeight: '85vh',
           borderTopLeftRadius: 16,
@@ -478,7 +479,7 @@ export const ElementEditSheet: React.FC<Props> = ({
           </span>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

@@ -869,9 +869,11 @@ export const WizardStepMeasurements: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Per-element sidebar — desktop only */}
+          {/* Per-element sidebar — kept for the AI material accept/dismiss
+              flow on lg+ viewports. Below lg, the touch-first
+              ElementEditSheet (rendered below) is the editor. */}
           {selected && (
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
               <ElementSidebar
                 element={selected}
                 data={data}
