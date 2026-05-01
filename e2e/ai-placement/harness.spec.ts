@@ -352,19 +352,38 @@ test.describe('AI placement accuracy', () => {
 
       const tileUrl = buildMapboxUrl(entry.lat, entry.lng, entry.zoom, entry.tilePxWide, mapboxToken)
 
-      let raw = ''
       let imageryPoor = false
       const failures: Array<{ key: string; reason: string }> = []
       let matched = 0
 
+      // F-PLAC-01 Phase D investigation — multi-shot averaging.
+      // CONCLUSION: averaging doesn't help when variance is multi-modal.
+      // When the model picks "east clearing" then "west clearing" across
+      // runs, the centroid is in no-man's-land BETWEEN them — often
+      // outside every acceptable zone or even inside the building. The
+      // 3-shot run scored 53-67%, no better than single-shot. The right
+      // structural fix is CLUSTERING (DBSCAN) + picking the densest
+      // cluster's centroid, OR polygon-shaped acceptableZones derived
+      // from OSM. Defer to F-PLAC-02. Multi-shot stays available behind
+      // PLACEMENT_SHOTS env var for prompt iteration; default 1.
+      const SHOTS = Number(process.env.PLACEMENT_SHOTS) || 1
+      type Shot = { placements: ParsedPlacement[]; imageryPoor: boolean }
+      const shots: Shot[] = []
+      let lastCallError: string | null = null
       try {
         const tile = await fetchTileBase64(tileUrl)
         const prompt = buildPlacementPrompt(entry.elements)
-        raw = await callAnthropicVision(prompt, tile.base64, tile.mediaType, apiKey)
+        for (let i = 0; i < SHOTS; i++) {
+          const raw = await callAnthropicVision(prompt, tile.base64, tile.mediaType, apiKey)
+          shots.push(parseModelResponse(raw))
+        }
       } catch (err) {
-        const msg = (err as Error).message
-        console.error(`  call failed: ${msg}`)
-        failures.push({ key: '*', reason: `call failed: ${msg}` })
+        lastCallError = (err as Error).message
+      }
+
+      if (lastCallError && shots.length === 0) {
+        console.error(`  call failed: ${lastCallError}`)
+        failures.push({ key: '*', reason: `call failed: ${lastCallError}` })
         entryReports.push({
           id: entry.id,
           label: entry.label,
@@ -380,9 +399,32 @@ test.describe('AI placement accuracy', () => {
         continue
       }
 
-      const { imageryPoor: poor, placements } = parseModelResponse(raw)
+      // imageryPoor if a majority of shots reported poor.
+      const poorCount = shots.filter((s) => s.imageryPoor).length
+      const poor = poorCount > shots.length / 2
       imageryPoor = poor
       if (poor) imageryPoorCount += 1
+
+      // Aggregate: per element key, gather all observed normalized coords
+      // across the N shots, take the centroid as the consensus answer.
+      // Picks rationale from the first non-empty shot for that key.
+      const centroidsByKey = new Map<string, { norm: { x: number; y: number }; rationale: string; count: number }>()
+      for (const shot of shots) {
+        for (const p of shot.placements) {
+          const existing = centroidsByKey.get(p.key)
+          if (existing) {
+            // Online mean
+            existing.norm.x = (existing.norm.x * existing.count + p.norm.x) / (existing.count + 1)
+            existing.norm.y = (existing.norm.y * existing.count + p.norm.y) / (existing.count + 1)
+            existing.count++
+          } else {
+            centroidsByKey.set(p.key, { norm: { ...p.norm }, rationale: p.rationale, count: 1 })
+          }
+        }
+      }
+      const placements: ParsedPlacement[] = Array.from(centroidsByKey.entries()).map(
+        ([key, v]) => ({ key, norm: v.norm, rationale: v.rationale }),
+      )
 
       // Capture every model placement (regardless of whether it matched
       // an expected) so the scorecard JSON shows the full model output.

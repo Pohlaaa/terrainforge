@@ -61,7 +61,7 @@ The harness now **does** detect regressions on the 10 stable elements — if the
 
 | ID | Severity | Finding | Status |
 |----|----------|---------|--------|
-| F-PLAC-02 | P2 | **Vision placement still has continuous-distribution variance even with temperature:0.** Not a discrete two-mode pattern; model picks anywhere within a ~150ft band of valid placements. Reactive zone widening hits diminishing returns at ~70% accuracy. Two structural fixes scoped: multi-shot averaging in harness (3× call, take centroid) and OSM-derived polygon zones (mechanical region computation from building + road geometry). Either should reach 80%+; both together would be production-grade. | Logged for follow-up |
+| F-PLAC-02 | P2 | **Vision placement still has continuous-distribution variance even with temperature:0.** Not a discrete two-mode pattern; model picks anywhere within a ~150ft band of valid placements. Reactive zone widening hits diminishing returns at ~70% accuracy. **Multi-shot averaging tried and ruled out** — averaging multi-modal output gives a centroid BETWEEN the modes (in no-man's-land or on the building). 3-shot run scored 53-67%, no better than single-shot. **Right structural fix: density-based clustering (DBSCAN-lite) of multi-shot output + pick LARGEST cluster's centroid.** Or polygon-shaped `acceptableZones` derived from OSM (mechanical "buildable region" = OSM building + road buffer subtracted from property circle). Multi-shot left available in the harness behind `PLACEMENT_SHOTS` env var for prompt iteration; default 1. | Logged for follow-up |
 
 ---
 
