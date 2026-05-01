@@ -1,0 +1,223 @@
+{
+  "generatedAt": "2026-05-01T20:20:44.356Z",
+  "meanScore": 0,
+  "entryCount": 15,
+  "scoredCount": 7,
+  "skippedCount": 8,
+  "totalElements": 10,
+  "totalMatched": 0,
+  "imageryPoorCount": 2,
+  "entries": [
+    {
+      "id": "01-suburban-asheville",
+      "label": "Asheville suburban / large lawn (baseline)",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "heuristic",
+      "skipped": false,
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "262 ft from expected (tolerance 25 ft)"
+        },
+        {
+          "key": "edging",
+          "reason": "247 ft from expected (tolerance 25 ft)"
+        }
+      ]
+    },
+    {
+      "id": "02-urban-rowhouse",
+      "label": "Urban rowhouse with tiny yard",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": true,
+      "source": "heuristic",
+      "skipped": false,
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "15 ft from expected (tolerance 8 ft)"
+        },
+        {
+          "key": "bed",
+          "reason": "14 ft from expected (tolerance 8 ft)"
+        }
+      ]
+    },
+    {
+      "id": "03-rural-multi-acre",
+      "label": "Rural multi-acre property",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "failures": []
+    },
+    {
+      "id": "04-commercial-strip-mall",
+      "label": "Commercial parking lot redesign",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "failures": []
+    },
+    {
+      "id": "05-recently-built-sparse",
+      "label": "Recently-built / sparse imagery",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "failures": []
+    },
+    {
+      "id": "06-heavily-treed",
+      "label": "Heavily-treed lot",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "heuristic",
+      "skipped": false,
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "235 ft from expected (tolerance 25 ft)"
+        },
+        {
+          "key": "firepit",
+          "reason": "202 ft from expected (tolerance 25 ft)"
+        }
+      ]
+    },
+    {
+      "id": "07-corner-lot",
+      "label": "Corner lot (2 street faces)",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "failures": []
+    },
+    {
+      "id": "08-house-on-slope",
+      "label": "House on slope",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "failures": []
+    },
+    {
+      "id": "09-driveway-front-yard",
+      "label": "Driveway-dominant front yard",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "failures": []
+    },
+    {
+      "id": "10-waterfront",
+      "label": "Lakefront / waterfront property",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "heuristic",
+      "skipped": false,
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "468 ft from expected (tolerance 25 ft)"
+        }
+      ]
+    },
+    {
+      "id": "11-hoa-tract",
+      "label": "HOA-style identical lots",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "heuristic",
+      "skipped": false,
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "82 ft from expected (tolerance 25 ft)"
+        }
+      ]
+    },
+    {
+      "id": "12-apartment-complex",
+      "label": "Apartment / multi-family complex",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "failures": []
+    },
+    {
+      "id": "13-townhouse-shared",
+      "label": "Townhouse with shared driveway",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "failures": []
+    },
+    {
+      "id": "14-flat-suburban-baseline",
+      "label": "Generic flat suburban (regression baseline)",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "heuristic",
+      "skipped": false,
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "168 ft from expected (tolerance 25 ft)"
+        },
+        {
+          "key": "walkway",
+          "reason": "168 ft from expected (tolerance 25 ft)"
+        }
+      ]
+    },
+    {
+      "id": "15-bad-address",
+      "label": "Invalid address — graceful failure path",
+      "matched": 0,
+      "total": 0,
+      "score": 1,
+      "imageryPoor": true,
+      "source": "manual",
+      "skipped": false,
+      "failures": []
+    }
+  ]
+}

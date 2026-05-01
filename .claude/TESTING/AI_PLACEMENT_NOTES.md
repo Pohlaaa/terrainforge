@@ -5,11 +5,13 @@
 > property type, the authoring protocol for the corpus's expected
 > placements, and the cost/cadence of running the harness.
 >
-> **Status as of 2026-04-29 (commit `<TBD>`):** plumbing PR landed.
-> mapTileMath + proxy-claude vision support + aiPlacement service +
-> 15-entry corpus skeleton are all in place. The corpus needs Charlie's
-> manual `expected` authoring before the harness becomes a real CI gate.
-> Wizard wiring (Step 1 → Step 2 transition) is the second PR.
+> **Status as of 2026-05-02 (Sprint Corpus Authoring):** plumbing + vision
+> wizard wiring shipped (Sprints AI-Place + AI-Buildable Phase 1 + 2). The
+> 15-entry corpus has been re-shaped with explicit `source` provenance:
+> 6 entries are now operational (geocoded + OSM building coverage
+> verified), 8 remain as placeholders, and 1 is the codified bad-address
+> failure path. Run `npm run placement:score` to score the operational
+> subset against Claude Haiku vision (~$0.30 — 6 entries × $0.05).
 
 ---
 
@@ -112,24 +114,63 @@ Fallback chain (each step degrades gracefully):
 
 ## Authoring the corpus expected placements
 
-The corpus's `expected` arrays start as sensible-but-unverified guesses.
-Before the harness becomes a real CI gate, **Charlie needs to author
-each entry by hand**.
+The corpus carries a `source` field on every entry tracking provenance:
 
-Protocol per entry:
+| Source | Meaning | Counts toward score? |
+|---|---|---|
+| `manual` | Hand-placed by Charlie on the live wizard, plan-feet read off the 2D viewer. Treat as ground truth. | ✅ |
+| `heuristic` | Real geocode + OSM building coverage verified, but `expected[]` is a fixture-archetype default (e.g. "patio 30 ft south for suburban backyards"). Score is directional, not absolute. | ✅ |
+| `placeholder` | `lat/lng` still 0/0. Harness skips. Need authoring before scoring. | ❌ skipped |
 
-1. Fill in the real `address`, `lat`, `lng` on the entry.
-2. Open the address in `terrainforge-staging.netlify.app` (create a
-   sample project at that address).
-3. Add the entry's `elements` to the project (matching keys + types +
-   dims).
-4. Drag each element to where it should sit on the satellite (Step 2
-   of the wizard). Verify in 3D view that placement reads correctly.
-5. Note the resulting plan-feet `position.x` and `position.y` from
-   each element's debug overlay (TODO: needs a small dev affordance —
-   add to `WizardStepMeasurements` debug menu in the wizard PR).
-6. Update `e2e/ai-placement/corpus.ts` with those coords.
-7. Mark the entry's `// TBD` annotations as done.
+The harness's mean-accuracy is computed across **operational** entries only (manual + heuristic), so adding a placeholder doesn't drag the score down.
+
+### Current corpus state (2026-05-02)
+
+| ID | Source | Notes |
+|---|---|---|
+| 01-suburban-asheville | heuristic | Existing E2E baseline. 100 Tunnel Rd, Asheville NC. |
+| 02-urban-rowhouse | heuristic | 200 Garfield Pl, Brooklyn (Park Slope). 149 OSM buildings/120m. |
+| 03-rural-multi-acre | placeholder | Needs an OSM-tagged rural address. Try Vermont / upstate NY with confirmed coverage. |
+| 04-commercial-strip-mall | placeholder | Need an OSM-tagged strip mall. Federal Way WA was geocoded but had 0 buildings. |
+| 05-recently-built-sparse | placeholder | Tract development. Try a 2024-2026 build in TX / NC. |
+| 06-heavily-treed | heuristic | 100 Cherry Lane, Doylestown PA. 18 OSM buildings/120m. |
+| 07-corner-lot | placeholder | Any corner-lot suburban address with OSM coverage. |
+| 08-house-on-slope | placeholder | Foothills address — try Boulder CO or Asheville NC suburb. |
+| 09-driveway-front-yard | placeholder | Suburb with a long driveway visible on satellite. |
+| 10-waterfront | heuristic | Hyatt Carmel Highlands, CA. 13 OSM buildings/120m on Big Sur coast. |
+| 11-hoa-tract | heuristic | 1 Park Lane, Mountain View CA. 74 OSM buildings/120m (Silicon Valley tract). |
+| 12-apartment-complex | placeholder | Multi-family complex with multiple buildings. |
+| 13-townhouse-shared | placeholder | Townhouse with a shared driveway across units. |
+| 14-flat-suburban-baseline | heuristic | 1234 Maple Ave, Evanston IL. 68 OSM buildings/120m. |
+| 15-bad-address | manual | Codified failure path. Empty `expected[]` IS the ground truth. |
+
+**6 operational, 8 placeholder, 1 codified.** Run `npm run placement:score` for the directional baseline; refine heuristic entries on review.
+
+### Protocol for promoting `placeholder` → `heuristic`
+
+1. Pick a real, public US address that matches the fixture archetype.
+2. Geocode via Nominatim:
+   ```
+   curl -A 'TF/1.0' 'https://nominatim.openstreetmap.org/search?format=json&q=<address>&limit=1'
+   ```
+3. Verify OSM has buildings tagged at the result via Overpass:
+   ```
+   curl -A 'TF/1.0' --max-time 10 -X POST 'https://overpass-api.de/api/interpreter' \
+     --data-urlencode 'data=[out:json][timeout:8];(way["building"](around:120,LAT,LNG););out body;' \
+     | grep -c '"way"'
+   ```
+   Reject the address if the count is 0 — `parcelLookup()` will return null and the lot overlay won't render.
+4. Update the entry: real `address`, real `lat`/`lng`, set `source: 'heuristic'`. Keep the existing fixture-archetype `expected[]` for now — they're sensible defaults.
+5. Run `PLACEMENT_PROBE_ID=<id> npm run placement:probe` (~$0.05) to see what the model says at this address.
+6. Optionally promote to `manual` after dragging the elements on the live wizard and reading exact coords from the 2D viewer.
+
+### Protocol for promoting `heuristic` → `manual`
+
+1. Open `terrainforge-staging.netlify.app` and run the wizard at the entry's address.
+2. Drag each element to where it should sit on the satellite.
+3. Read the resulting plan-feet `position.x` / `position.y` (small dev affordance pending).
+4. Update `expected[]` with those exact coords.
+5. Set `source: 'manual'`.
 
 Tolerance bands by property type (already set per entry):
 

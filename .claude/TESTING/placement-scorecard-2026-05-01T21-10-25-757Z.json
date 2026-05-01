@@ -1,0 +1,315 @@
+{
+  "generatedAt": "2026-05-01T21:10:25.756Z",
+  "meanScore": 0.5333333333333333,
+  "entryCount": 15,
+  "scoredCount": 10,
+  "skippedCount": 5,
+  "totalElements": 15,
+  "totalMatched": 8,
+  "imageryPoorCount": 2,
+  "entries": [
+    {
+      "id": "01-suburban-asheville",
+      "label": "Asheville suburban / large lawn (baseline)",
+      "matched": 1,
+      "total": 2,
+      "score": 0.5,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": -165.7,
+          "y": 210.3,
+          "rationale": "Positioned in open backyard area with good clearance from mature trees and structures. Located on level ground suitable for paver installation."
+        },
+        "edging": {
+          "x": 0,
+          "y": 95.6,
+          "rationale": "Garden bed edging placed around perimeter of open yard area, defining planting beds between patio and tree line while maintaining safe distance from structures."
+        }
+      },
+      "failures": [
+        {
+          "key": "edging",
+          "reason": "outside all 1 zone; nearest \"around geocode point\" is 46 ft past its boundary"
+        }
+      ]
+    },
+    {
+      "id": "02-urban-rowhouse",
+      "label": "Urban rowhouse with tiny yard",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": true,
+      "source": "heuristic",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 0,
+          "y": 0,
+          "rationale": "Image resolution and angle make it difficult to identify clear yard boundaries, building footprints, or usable ground space with confidence. Defaulting to center for manual contractor placement."
+        },
+        "bed": {
+          "x": 0,
+          "y": 0,
+          "rationale": "Image resolution and angle make it difficult to identify clear yard boundaries, building footprints, or usable ground space with confidence. Defaulting to center for manual contractor placement."
+        }
+      },
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "outside all 1 zone; nearest is 7 ft past its boundary"
+        },
+        {
+          "key": "bed",
+          "reason": "outside all 1 zone; nearest is 6 ft past its boundary"
+        }
+      ]
+    },
+    {
+      "id": "03-rural-multi-acre",
+      "label": "Rural multi-acre property",
+      "matched": 2,
+      "total": 2,
+      "score": 1,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 0,
+          "y": -272.1,
+          "rationale": "Positioned in the open yard area behind the main house structure, between the upper and lower driveways, with adequate clearance from tree canopies and buildings."
+        },
+        "walkway": {
+          "x": 0,
+          "y": -839,
+          "rationale": "Placed in the front yard area connecting the house to the upper driveway/parking area, running horizontally through the open lawn space."
+        }
+      },
+      "failures": []
+    },
+    {
+      "id": "04-commercial-strip-mall",
+      "label": "Commercial parking lot redesign",
+      "matched": 1,
+      "total": 2,
+      "score": 0.5,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "island": {
+          "x": -402.2,
+          "y": 233.5,
+          "rationale": "Positioned in the open yard area on the left side of the property, away from the main building rooftop and parking lot. This location provides adequate clearance for a 30x8 ft garden bed island."
+        },
+        "tree-row": {
+          "x": -51.9,
+          "y": -291.9,
+          "rationale": "Placed along the southern portion of the property in the open ground area below the main building. The 80x6 ft tree row runs horizontally and provides street frontage screening while avoiding existing structures and mature canopies."
+        }
+      },
+      "failures": [
+        {
+          "key": "island",
+          "reason": "outside all 3 zones; nearest \"west bay\" is 96 ft past its boundary"
+        }
+      ]
+    },
+    {
+      "id": "05-recently-built-sparse",
+      "label": "Recently-built / sparse imagery",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "06-heavily-treed",
+      "label": "Heavily-treed lot",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": -134.5,
+          "y": 122.5,
+          "rationale": "Positioned in the open backyard area between the upper-left house and mature trees, providing a level ground space away from tree canopies and roads."
+        },
+        "firepit": {
+          "x": -65.7,
+          "y": 203.2,
+          "rationale": "Placed near the patio in the cleared backyard area, maintaining safe distance from tree canopies, structures, and the road."
+        }
+      },
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "outside all 2 zones; nearest \"west clearing\" is 22 ft past its boundary"
+        },
+        {
+          "key": "firepit",
+          "reason": "outside all 2 zones; nearest \"near south patio\" is 37 ft past its boundary"
+        }
+      ]
+    },
+    {
+      "id": "07-corner-lot",
+      "label": "Corner lot (2 street faces)",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "08-house-on-slope",
+      "label": "House on slope",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "09-driveway-front-yard",
+      "label": "Driveway-dominant front yard",
+      "matched": 1,
+      "total": 1,
+      "score": 1,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "bed": {
+          "x": 0,
+          "y": -205.5,
+          "rationale": "Front foundation bed placed along the north side of the house foundation, centered horizontally. This location provides good visibility from the street and is clear of the driveway, mature trees, and roof structures."
+        }
+      },
+      "failures": []
+    },
+    {
+      "id": "10-waterfront",
+      "label": "Lakefront / waterfront property",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 75.6,
+          "y": 340.2,
+          "rationale": "Positioned in the backyard southeast of the house, adjacent to the waterfront cliff edge. This location offers scenic views of the water while maintaining safe distance from the pool, house structure, and mature tree canopies. The terrain appears relatively level and suitable for patio construction."
+        }
+      },
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "outside all 2 zones; nearest \"east of cluster\" is 51 ft past its boundary"
+        }
+      ]
+    },
+    {
+      "id": "11-hoa-tract",
+      "label": "HOA-style identical lots",
+      "matched": 1,
+      "total": 1,
+      "score": 1,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 46.7,
+          "y": 68.5,
+          "rationale": "Positioned in the open backyard area southeast of the house, away from mature tree canopy and large obstacles. This location provides good sun exposure and is accessible from the house while maintaining distance from the central tree cluster."
+        }
+      },
+      "failures": []
+    },
+    {
+      "id": "12-apartment-complex",
+      "label": "Apartment / multi-family complex",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "13-townhouse-shared",
+      "label": "Townhouse with shared driveway",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "14-flat-suburban-baseline",
+      "label": "Generic flat suburban (regression baseline)",
+      "matched": 2,
+      "total": 2,
+      "score": 1,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": -14.6,
+          "y": 122.2,
+          "rationale": "Positioned in the backyard (south of house), on open lawn area with good sun exposure, away from mature tree canopies and neighboring properties."
+        },
+        "walkway": {
+          "x": -145.5,
+          "y": -285.2,
+          "rationale": "Placed along the front approach from the street/driveway toward the house entrance, connecting public access to the front door on clear ground."
+        }
+      },
+      "failures": []
+    },
+    {
+      "id": "15-bad-address",
+      "label": "Invalid address — graceful failure path",
+      "matched": 0,
+      "total": 0,
+      "score": 1,
+      "imageryPoor": true,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 0,
+          "y": 0,
+          "rationale": "Image is too dark to identify property features, structures, or suitable placement areas. Contractor should manually position the 12x10 ft patio after reviewing the property in person."
+        }
+      },
+      "failures": []
+    }
+  ]
+}

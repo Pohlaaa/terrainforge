@@ -1,0 +1,315 @@
+{
+  "generatedAt": "2026-05-01T20:48:25.720Z",
+  "meanScore": 0.5333333333333333,
+  "entryCount": 15,
+  "scoredCount": 10,
+  "skippedCount": 5,
+  "totalElements": 15,
+  "totalMatched": 8,
+  "imageryPoorCount": 2,
+  "entries": [
+    {
+      "id": "01-suburban-asheville",
+      "label": "Asheville suburban / large lawn (baseline)",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": -143.4,
+          "y": 210.3,
+          "rationale": "Positioned in open backyard area with good clearance from mature trees and structures. Provides functional outdoor living space in a relatively flat, unobstructed zone."
+        },
+        "edging": {
+          "x": 0,
+          "y": 0,
+          "rationale": "Garden bed edging placed as a perimeter element around the patio area and along the open yard space, defining planting beds while avoiding tree canopies and structures."
+        }
+      },
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "244 ft from expected (tolerance 150 ft)"
+        },
+        {
+          "key": "edging",
+          "reason": "129 ft from expected (tolerance 50 ft)"
+        }
+      ]
+    },
+    {
+      "id": "02-urban-rowhouse",
+      "label": "Urban rowhouse with tiny yard",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": true,
+      "source": "heuristic",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 0,
+          "y": 0,
+          "rationale": "Image resolution and angle make property boundaries unclear; unable to confidently identify buildable yard space separate from streets and buildings."
+        },
+        "bed": {
+          "x": 0,
+          "y": 0,
+          "rationale": "Image resolution and angle make property boundaries unclear; unable to confidently identify buildable yard space separate from streets and buildings."
+        }
+      },
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "15 ft from expected (tolerance 8 ft)"
+        },
+        {
+          "key": "bed",
+          "reason": "14 ft from expected (tolerance 8 ft)"
+        }
+      ]
+    },
+    {
+      "id": "03-rural-multi-acre",
+      "label": "Rural multi-acre property",
+      "matched": 2,
+      "total": 2,
+      "score": 1,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 0,
+          "y": -272.1,
+          "rationale": "Positioned in the open yard area behind the main house, between the house and lower driveway, with adequate clearance from tree canopies and structures."
+        },
+        "walkway": {
+          "x": 0,
+          "y": -748.3,
+          "rationale": "Placed in the front yard connecting the main house to the upper driveway/parking area, utilizing the open ground between the house and driveway."
+        }
+      },
+      "failures": []
+    },
+    {
+      "id": "04-commercial-strip-mall",
+      "label": "Commercial parking lot redesign",
+      "matched": 1,
+      "total": 2,
+      "score": 0.5,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "island": {
+          "x": -155.7,
+          "y": 428.1,
+          "rationale": "Placed in open yard area south of main building, away from mature trees and structures. Suitable for a parking-lot island garden bed with adequate clearance."
+        },
+        "tree-row": {
+          "x": 0,
+          "y": -428.1,
+          "rationale": "Positioned along the north frontage of the property, between the street and building. Provides street-facing landscaping with sufficient width and clearance from the main structure."
+        }
+      },
+      "failures": [
+        {
+          "key": "island",
+          "reason": "160 ft from expected (tolerance 100 ft)"
+        }
+      ]
+    },
+    {
+      "id": "05-recently-built-sparse",
+      "label": "Recently-built / sparse imagery",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "06-heavily-treed",
+      "label": "Heavily-treed lot",
+      "matched": 2,
+      "total": 2,
+      "score": 1,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": -71.7,
+          "y": 251,
+          "rationale": "Positioned in open backyard area between the lower-right house and mature trees, providing a clear flat ground space away from water feature and tree canopies."
+        },
+        "firepit": {
+          "x": 44.8,
+          "y": 286.9,
+          "rationale": "Placed near the patio in the same open backyard zone, maintaining safe distance from structures and vegetation while creating a functional outdoor gathering area."
+        }
+      },
+      "failures": []
+    },
+    {
+      "id": "07-corner-lot",
+      "label": "Corner lot (2 street faces)",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "08-house-on-slope",
+      "label": "House on slope",
+      "matched": 0,
+      "total": 2,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "09-driveway-front-yard",
+      "label": "Driveway-dominant front yard",
+      "matched": 1,
+      "total": 1,
+      "score": 1,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "bed": {
+          "x": 0,
+          "y": -205.5,
+          "rationale": "Front foundation bed placed along the north side of the house foundation, centered horizontally. This location provides good visibility from the street and is clear of the driveway, mature trees, and roof structures."
+        }
+      },
+      "failures": []
+    },
+    {
+      "id": "10-waterfront",
+      "label": "Lakefront / waterfront property",
+      "matched": 1,
+      "total": 1,
+      "score": 1,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": -151.2,
+          "y": 340.2,
+          "rationale": "Positioned in the backyard south of the house and pool, on open ground with good clearance from structures, trees, and water features. This location provides a natural gathering space with access to the rear yard."
+        }
+      },
+      "failures": []
+    },
+    {
+      "id": "11-hoa-tract",
+      "label": "HOA-style identical lots",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 46.7,
+          "y": -74.7,
+          "rationale": "Positioned in the backyard immediately south of the house, in an open area with good sun exposure and away from mature tree canopies and the central landscape feature. This location provides convenient access from the house and adequate space for a 14x12 ft patio."
+        }
+      },
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "192 ft from expected (tolerance 150 ft)"
+        }
+      ]
+    },
+    {
+      "id": "12-apartment-complex",
+      "label": "Apartment / multi-family complex",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "13-townhouse-shared",
+      "label": "Townhouse with shared driveway",
+      "matched": 0,
+      "total": 1,
+      "score": 0,
+      "imageryPoor": false,
+      "source": "placeholder",
+      "skipped": true,
+      "modelPlacements": {},
+      "failures": []
+    },
+    {
+      "id": "14-flat-suburban-baseline",
+      "label": "Generic flat suburban (regression baseline)",
+      "matched": 1,
+      "total": 2,
+      "score": 0.5,
+      "imageryPoor": false,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": -131,
+          "y": 174.6,
+          "rationale": "Positioned in the backyard area with open ground space, away from mature tree canopies and house structure. Provides functional outdoor living space."
+        },
+        "walkway": {
+          "x": -244.4,
+          "y": -218.3,
+          "rationale": "Placed along the front approach from driveway toward house entrance, connecting the driveway to the front door area with clear ground access."
+        }
+      },
+      "failures": [
+        {
+          "key": "patio",
+          "reason": "88 ft from expected (tolerance 75 ft)"
+        }
+      ]
+    },
+    {
+      "id": "15-bad-address",
+      "label": "Invalid address — graceful failure path",
+      "matched": 0,
+      "total": 0,
+      "score": 1,
+      "imageryPoor": true,
+      "source": "manual",
+      "skipped": false,
+      "modelPlacements": {
+        "patio": {
+          "x": 0,
+          "y": 0,
+          "rationale": "Image is too dark to identify property features, structures, or suitable placement areas. Contractor should manually position the 12x10 ft patio after reviewing the property in person."
+        }
+      },
+      "failures": []
+    }
+  ]
+}
