@@ -10,6 +10,33 @@ Running log of bugs, friction points, and observations found during testing. Eac
 
 ---
 
+## Sprint Materials Settings — Live staging verification (2026-05-01)
+
+Deployed `c28587a` to `terrainforge-staging.netlify.app`, drove the new Settings → Material Defaults sub-section through Chrome MCP. Migration 037 applied to prod via Supabase MCP. End-to-end round-trip verified: add a category rate (Class 5 base / gravel / $35 / cuyd) → Save → toast confirms → navigate away + back → row re-loads from Supabase intact.
+
+Two minor polish items for the next sweep — neither is blocking.
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F-MAT-01 | P3 | Category + unit dropdown labels truncate ("Gravel / ba…", "cu…") because the row is laid out in a 12-col grid with fixed col-spans on a ~360px content column. Cosmetic. Either widen the content column on this section, drop the supplier picker to a row-2 line, or use compact two-letter codes for unit. | Logged for sweep |
+| F-MAT-02 | P3 | Save button doesn't visually distinguish enabled vs. disabled — looks active even when no unsaved changes. Underlying `disabled={!dirty}` prop is set correctly (button is non-functional when not dirty); only the styling lags. | Logged for sweep |
+
+**Verified working on staging (2026-05-01 deploy 69f432ee):**
+- Settings → Material Defaults appears as a new sub-section between Company and Preferences (with 🧱 icon)
+- Empty state renders both "No category rates yet" + "No disposal rates yet"
+- "+ Add rate" inserts a new row with sensible defaults (gravel / $0 / cuyd / no supplier)
+- "Unsaved changes" indicator appears next to Save button on edit
+- Save persists to Supabase (`organizations.material_defaults` JSONB) and toast confirms
+- Refresh / re-nav reloads the saved data from Supabase intact
+- Datalist autocomplete on disposal-rate type input pre-fills with Brush / Concrete / Soil / Fill / Rock / Sod / Asphalt / Mixed debris
+
+**Code path verified (not live-exercised — would have consumed an Anthropic call):**
+- `formatMaterialDefaults()` in `aiRecommendations.ts` renders the org's defaults into the prompt as a "Contractor Material Defaults (use these, do not override)" markdown block
+- `findCategoryRate()` in `validateAndEnrich()` backfills $0 / NaN unitCost on AI material suggestions when the org has a matching category rate
+- `ProjectWizard.tsx` passes `org.materialDefaults` into `RecommendationContext`
+
+---
+
 ## Sprint Schedule — Live staging verification (2026-04-30)
 
 Deployed `4422cae` to `terrainforge-staging.netlify.app`, drove the new `/schedule` page through Chrome MCP. Page renders, primary nav tab works, edit panel + filter pills + status save + drag-to-reschedule all functional. Six bugs surfaced — IDs prefixed `F-SCH-*`. P1s fixed inline + redeployed; P2/P3 logged for follow-up sweep.
