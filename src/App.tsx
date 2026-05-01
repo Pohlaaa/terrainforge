@@ -40,6 +40,7 @@ const SharedProjectView = React.lazy(() => import('@/pages/SharedProjectView'))
 // Lazy-load new hub pages
 const BudgetHub = React.lazy(() => import('@/pages/BudgetHub'))
 const CrewEquipmentHub = React.lazy(() => import('@/pages/CrewEquipmentHub'))
+const Schedule = React.lazy(() => import('@/pages/Schedule'))
 
 /** Show landing page for visitors, redirect authenticated users to /dashboard */
 function HomeRoute() {
@@ -181,6 +182,13 @@ function App() {
                       <ErrorBoundary>
                         <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
                           <CrewEquipmentHub />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/schedule" element={
+                      <ErrorBoundary>
+                        <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading...</div>}>
+                          <Schedule />
                         </React.Suspense>
                       </ErrorBoundary>
                     } />
