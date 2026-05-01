@@ -103,6 +103,8 @@ ${elementBriefs}
 ## Your task
 Return JSON with placement coordinates for each element. Coordinates are NORMALIZED to the satellite image: x = 0 is the LEFT edge, x = 1 is the RIGHT edge, y = 0 is the TOP edge (north), y = 1 is the BOTTOM edge (south). The property is centered in the image.
 
+The (x, y) you return for each element is the **CENTER** of where the element should sit (NOT a corner). You know each element's dimensions; pick the center such that the element's full footprint fits within real ground. For example, a 24×12 patio at (0.5, 0.7) means the patio is centered at that point — its footprint extends roughly 12 ft west and east, 6 ft north and south.
+
 ## Rules
 1. Place each element on REAL GROUND. Avoid placing on:
    - Building rooftops (dark uniform rectangles, often with HVAC units / shadows)

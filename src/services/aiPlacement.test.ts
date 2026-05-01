@@ -88,6 +88,16 @@ describe('buildPlacementPrompt', () => {
     expect(p).toMatch(/Pools/)
     expect(p).toMatch(/imageryPoor/)
   })
+
+  it('explicitly tells the model that (x, y) is the element CENTER', () => {
+    // F-PLAC-03 defense in depth: the wizard converts AI center → top-left,
+    // but the model interpretation needs to match. Without this guidance
+    // the model could plausibly return a top-left corner. Make it
+    // unambiguous in the prompt.
+    const p = buildPlacementPrompt(PATIO_AND_EDGING)
+    expect(p).toMatch(/CENTER/)
+    expect(p).toMatch(/NOT a corner/)
+  })
 })
 
 describe('inferElementPlacements / happy path', () => {
