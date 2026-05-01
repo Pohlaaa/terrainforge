@@ -1,8 +1,114 @@
-# Next session prompt — TerrainForge, post-2026-04-30
+# Next session prompt — TerrainForge, post-2026-05-01
 
 > Drop the contents below into a fresh Claude Code session as the
 > opening user message. Everything Claude needs to start producing
 > useful work is in here or one read-link away.
+
+---
+
+## Headline: 2D / 3D placement still needs work
+
+Charlie tested the live staging deploy at the close of the 2026-05-01
+session and reported, verbatim:
+
+> *"I just tested personally, there is still a lot of work to do on the
+> 3D and 2D placement. You're about to run out of context for this
+> session. We need to lock down this in our next session."*
+
+**This is your priority for the next session.** Before you touch any
+of the option list further down, work this thread first.
+
+### Why the placement harness says it's fine but Charlie says it isn't
+
+Sprint AI-Place + F-PLAC-02 region-based scoring just shipped the
+harness to **100% mean accuracy** across 22 operational fixtures. That
+metric checks three cheap things per element: within geocode radius,
+not inside an OSM building footprint, away from a road. It does NOT
+check:
+
+- Whether the element renders at the right visual scale on the satellite tile
+- Whether the 3D extrusion height / orientation / ground alignment looks right
+- Whether the element drifts visually from where the AI rationale says it placed
+- Whether the buildable polygon overlay agrees with actual element positions
+- Whether a contractor inspecting the canvas at multiple zoom levels sees obvious wrongness
+
+The harness is now a **regression gate**, not a **UX gate**. Saved as
+memory → `memory/feedback_2d3d_placement.md`. Read that first.
+
+### How to actually drive this down
+
+1. **Get Charlie's specific symptoms.** Ask him at session open: which
+   property did he test, what did he see (scale wrong? element on the
+   roof? 3D mesh sunk into ground? pinch felt wrong?), screenshots if
+   he has them.
+2. **Drive the live wizard end-to-end via Chrome MCP.** Pick 3-5
+   addresses from `e2e/ai-placement/corpus.ts` (urban / suburban /
+   rural / commercial / treed). Run the wizard, screenshot the 2D
+   canvas at full-zoom, mid-zoom, and zoomed-out. Open the project
+   dashboard, toggle 3D, screenshot from default angle + top-down.
+3. **Catalog what you see** in `.claude/TESTING/FINDINGS.md` under a
+   new F-PLAC-03 family. One row per visible defect with: property,
+   zoom level, expected vs observed, suspected file (PlanView2D /
+   PlanView3D / aiPlacement / element-mesh-builder).
+4. **Fix in priority order.** Likely candidates based on what we know:
+   - `src/components/plan/PlanView2D.tsx` — element rect/circle render
+     scale (uses `pixelsPerFoot * dimension`; verify against tile-bound
+     plan-feet math)
+   - `src/components/plan/PlanView3D.tsx` — mesh height defaults
+     (paver 0.4 ft, edging 0.3 ft from F-3D-MESH-01) and ground offset
+     (0.05 ft) — check whether they apply to all element types
+   - `src/components/wizard/WizardStepMeasurements.tsx` — the new
+     `<WizardElementEditSheet>` editor: confirm ± steppers actually
+     write back to `data.elements` (sheet → wizard data plumbing)
+   - `supabase/functions/proxy-claude/index.ts` vision call response
+     handling in `src/services/aiPlacement.ts` — rationale says X,
+     element ends up at Y means the normalized → plan-feet conversion
+     might be off
+5. **Don't trust the harness as your gate.** After every fix, eyeball
+   the canvas. Run the harness too — it should still be 100% — but
+   the screenshot is the proof.
+
+### Files to read first
+
+- `memory/feedback_2d3d_placement.md` (this session's takeaway)
+- `src/components/plan/PlanView2D.tsx` (large but stable — read for
+  element rendering math, NOT to refactor)
+- `src/components/plan/PlanView3D.tsx`
+- `src/components/wizard/WizardStepMeasurements.tsx`
+- `src/components/shared/ElementEditSheet.tsx` (new this session)
+- `src/components/wizard/WizardElementEditSheet.tsx` (new this session)
+- `src/services/aiPlacement.ts` (normalized tile coords → plan-feet)
+- `.claude/TESTING/AI_PLACEMENT_NOTES.md`
+
+---
+
+## Open PRs from the 2026-05-01 session — pending Charlie's review
+
+7 PRs are open and have NOT been merged. They were pushed to feature
+branches; do not assume they're on `main`:
+
+| PR | Branch | What |
+|----|--------|------|
+| [#122](https://github.com/anthropics/terrainforge/pull/122) | `sprint-schedule` | Dedicated `/schedule` Gantt-lite page |
+| [#123](https://github.com/anthropics/terrainforge/pull/123) | `sprint-materials-settings` | Org-level material defaults panel |
+| [#124](https://github.com/anthropics/terrainforge/pull/124) | `sprint-p2-hardening` | Probe script, obstacle labels, bulk-import stress |
+| [#125](https://github.com/anthropics/terrainforge/pull/125) | `sprint-provider-catalog` | Supplier directory autocomplete |
+| [#126](https://github.com/anthropics/terrainforge/pull/126) | `sprint-ai-buildable-2` | OSM building footprint overlay |
+| [#127](https://github.com/anthropics/terrainforge/pull/127) | `sprint-corpus-authoring` | F-PLAC-01/02 corpus + region-based scoring + 100% mean |
+| [#128](https://github.com/anthropics/terrainforge/pull/128) | `sprint-touch-ui` | ElementEditSheet + pinch-to-scale on PlanView2D |
+
+If Charlie merges any of these before next session, `git pull main`
+first and re-baseline before starting placement work — the touch UI
+sheet (#128) directly affects how he tests, and `sprint-corpus-authoring`
+(#127) defines what "100%" means.
+
+**Pinch-to-scale (in #128) was NOT verified live** — Chrome MCP can't
+emit two pointerdown events for a real pinch. Real touch hardware (or
+Chrome DevTools Device Mode) is required. Likely first thing Charlie
+will test.
+
+**Total spend on 2026-05-01 session: ~$8.95 of the $10 cap.** Anthropic
+vision calls were the bulk of it (multiple harness re-runs).
 
 ---
 
@@ -14,7 +120,8 @@ You're picking up a TerrainForge session. Read these in order, then come back he
 2. **`.claude/CONTEXT.md`** — partner preferences (Charlie), known quirks, decisions locked in.
 3. **`.claude/ROADMAP.md`** — START WITH the "Currently open work (post-2026-04-30 truth)" section at the top. The long history below is reference, not the to-do list.
 4. **`.claude/feedback/v6.md`** — most recent contractor (jbluhm) feedback round; what's shipped vs deferred.
-5. **`.claude/TESTING/AI_PLACEMENT_NOTES.md`** if you're working on placement; otherwise skim.
+5. **`memory/feedback_2d3d_placement.md`** — this session's UX gap.
+6. **`.claude/TESTING/AI_PLACEMENT_NOTES.md`** if you're working on placement; otherwise skim.
 
 Production deploys go to `terrainforge-staging.netlify.app` via `npx netlify-cli deploy --dir=dist --prod --site=d8efdf00-91f7-4717-aabd-d1c65372a634`. The site is NOT git-connected; you push commits AND drag-deploy the build.
 
@@ -22,19 +129,30 @@ Production deploys go to `terrainforge-staging.netlify.app` via `npx netlify-cli
 
 ## Where things stand right now
 
-The V6 contractor feedback loop with jbluhm is closed at the architectural level. Sprint AI-Place + AI-Buildable Phase 1 + the V6 jbluhm batch + Bucket A are all live in prod. Latest commit on `main` is `83e21c5` — doc refresh + `@rollup/rollup-linux-x64-gnu` demoted to optionalDependencies (so `npm install` no longer needs `--force` on Windows).
+The V6 contractor feedback loop with jbluhm is closed at the
+architectural level. Sprint AI-Place + AI-Buildable Phase 1 + the V6
+jbluhm batch + Bucket A are all live in prod. Latest commit on `main`
+is `a807987` (NEXT_SESSION_PROMPT itself).
 
-Single working tree on `main`. The historical `claude/quirky-ishizaka` worktree was cleaned up — fresh feature work goes in fresh worktrees as needed. 181/181 vitest green. tsc + build clean.
+Above that, on feature branches and unmerged: F-PLAC-02 (corpus +
+region-based scoring), touch UI sheet, pinch-to-scale, parcel polygon
+overlay, materials settings panel, schedule page, provider catalog,
+P2 hardening — see PR table above.
+
+Single working tree on `main`. 181/181 vitest green. tsc + build clean.
 
 ---
 
-## Pick one of these for this session
+## Pick one of these for this session — ONLY after the 2D/3D placement work above is locked
 
 The ROADMAP "Currently open work" section lists 14 items. I've grouped them here by "next big push" type. **Pick exactly one.** Don't try to multi-thread — they touch overlapping files. Each is sized to fit one focused session.
 
 ### Option 1 — "Ship the Schedule page" (P1, ~1 day)
 
 **Why this matters.** jbluhm's V6: *"I think the schedule should be its own defined page that can be edited & changed at any given moment."* Today's schedule UI is scattered across Work Orders / Resources tab / Crew + Equipment Hub. Nobody can answer "show me everything on Tuesday" with one click.
+
+**Already started in PR #122 (`sprint-schedule`).** Pull that branch
+and finish if Charlie hasn't merged it yet.
 
 **Scope.**
 - New route `/schedule` rendering a single editable schedule view: rows per project, columns per day (Gantt-lite), drag to reschedule, edit start/end inline.
@@ -49,6 +167,9 @@ The ROADMAP "Currently open work" section lists 14 items. I've grouped them here
 ---
 
 ### Option 2 — "Ship Materials Settings (fixed-rate defaults)" (P1, ~1.5 days)
+
+**Already started in PR #123 (`sprint-materials-settings`).** Pull
+that branch and finish if Charlie hasn't merged it yet.
 
 **Why this matters.** jbluhm's V6: *"Maybe we should have a Materials Setting where a contractor can go into and put in basic stuff like: 'I only use Class 5 for all my base work from this one Supplier & it costs this much.'"* Plus disposal-rate categories he wants to set once: Brush, Concrete, Soil, Fill, Rock. The AI currently invents these every project.
 
@@ -78,25 +199,21 @@ The ROADMAP "Currently open work" section lists 14 items. I've grouped them here
 
 ### Option 3 — "Author the AI placement corpus + harden the prompt" (P1, ~half day actively + scheduled passes)
 
-**Why this matters.** Sprint AI-Place plumbing is shipped, but the 15-property test corpus skeleton has placeholder lat/lng for 14 of 15 entries. Without real ground-truth, the harness (`npm run placement:score`) is directional, not a CI gate. And the placement quality on real properties — especially commercial / rural / heavily-treed — has only been spot-checked.
-
-**Scope.**
-- Author real lat/lng + hand-placed `expected[]` for the 15 entries in `e2e/ai-placement/corpus.ts`. Protocol in `.claude/TESTING/AI_PLACEMENT_NOTES.md`. Use the live wizard at `terrainforge-staging.netlify.app` to drag-place each fixture's elements and read off plan-feet.
-- Run `npm run placement:score`. Iterate the prompt in `src/services/aiPlacement.ts` (`buildPlacementPrompt`) until the corpus hits ≥70% mean accuracy.
-- Common failure modes likely to surface (predicted in `AI_PLACEMENT_NOTES.md`):
-  1. Tile-vs-parcel mismatch (placed on neighbor's lawn) — partially mitigated by Sprint AI-Buildable Phase 2 if you also do that.
-  2. Mature canopy occlusion — prompt rule already mentions canopy.
-  3. Stale satellite imagery (recently-built houses) — model should set `imageryPoor: true`.
-  4. Commercial scale confusion (parking lot ≠ buildable) — explicit rule #1 in prompt.
-- Each prompt iteration: commit + push (re-running the harness locally costs ~$0.75 on Anthropic). Log iterations in `AI_PLACEMENT_NOTES.md` "Prompt iteration log."
-
-**Critical files.** `e2e/ai-placement/corpus.ts`, `src/services/aiPlacement.ts`, `.claude/TESTING/AI_PLACEMENT_NOTES.md`.
-
-**Verification.** Threshold is ≥70% mean. Land + log the score regardless. If you can't author all 15, author the 5 most-different and skip the rest — the harness already skips entries with placeholder lat/lng.
+**LARGELY DONE in PR #127 (`sprint-corpus-authoring`).** Corpus now
+has 22 operational fixtures and the harness scores 100% on
+region-based criteria. Remaining work: convert harness from "region
+pass" to "render-quality pass" once Charlie's specific 2D/3D
+complaints are catalogued (see headline section above). That's the
+real Option 3 going forward.
 
 ---
 
 ### Option 4 — "Sprint AI-Buildable Phase 2 (parcel boundary clipping)" (P1, ~1.5 days)
+
+**Already started in PR #126 (`sprint-ai-buildable-2`).** OSM
+building footprint overlay landed; parcel polygon clipping is the
+remaining piece. Pull that branch and continue if Charlie hasn't
+merged it yet.
 
 **Why this matters.** The Sprint AI-Place vision call sometimes places elements in beautiful patches of grass that turn out to be the neighbor's lawn. The AI returns a `buildableArea` polygon, but it's just the AI's read of the satellite — there's no parcel data telling us where THIS lot ends. The fix is to fetch the actual parcel polygon from a public source per address and clip placements to it.
 
@@ -136,17 +253,20 @@ The ROADMAP "Currently open work" section lists 14 items. I've grouped them here
 
 ## What NOT to do this session
 
-- Don't refactor `PlanView3D.tsx` or `PlanView2D.tsx` for fun. They're large but stable.
+- **Don't trust the placement harness 100% score as proof of UX correctness** — it's a regression gate, not a UX gate. See headline section.
+- Don't refactor `PlanView3D.tsx` or `PlanView2D.tsx` for fun. They're large but stable. Targeted fixes only.
 - Don't reformat existing code wholesale.
 - Don't add new dependencies unless the option you picked specifically calls for one.
 - Don't push to `main` directly — push to a fresh branch and FF after `npm test` + `npm run build` are green.
 - Don't deploy without verifying staging shows the bundle hash matches `dist/assets/index-*.js`.
 - Don't auto-deploy to Netlify branch deploys — production deploy is manual via `netlify-cli deploy --dir=dist --prod`.
+- Don't merge the 7 open PRs (#122-#128) without Charlie's go — they're his to review.
 
 ---
 
 ## Operator decisions to confirm before starting
 
+- **First**: which 2D/3D placement symptoms specifically did Charlie see? (Scale? Drift? 3D height? Pinch feel? Buildable overlay disagreement?) — block on this before chasing fixes.
 - **Option 4 only:** which parcel-data provider should I use? (OSM-only → free, ~70% hit rate. Regrid → paid, accurate.)
 - **Option 5 only:** OK to add a second AI call per project create (~$0.10 added on top of the existing ~$0.05 vision call)? Total per-project cost goes ~$0.15.
 - All options: **the abandoned `sprint-23-crew-pin-auth` branch is 1 month old with 8 unique commits about crew PIN auth that never landed.** Should it be deleted, or do you want it back on the roadmap?
@@ -155,11 +275,11 @@ The ROADMAP "Currently open work" section lists 14 items. I've grouped them here
 
 ## Suggested process
 
-1. Read the load list at the top.
-2. Pick an option. Tell the user what you picked and why.
+1. Read the load list above (CLAUDE.md → CONTEXT.md → ROADMAP.md → feedback/v6.md → memory/feedback_2d3d_placement.md).
+2. Ask Charlie for his specific 2D/3D placement symptoms before writing code.
 3. Make a checklist (TodoWrite) with 5-10 concrete steps before writing code.
 4. Each step: edit, verify (`npx tsc --noEmit`, `npm test`), commit.
-5. End-to-end verification before pushing: `npm run build` clean, manual test on staging via Chrome MCP.
+5. End-to-end verification before pushing: `npm run build` clean, manual test on staging via Chrome MCP. **Screenshot the canvas at multiple zoom levels — that's the proof, not the harness score.**
 6. Update the ROADMAP "Currently open work" section + add an entry to `.claude/TESTING/FINDINGS.md` if you fixed a bug.
 7. Push to a feature branch first; FF to main + drag-deploy `dist/` to Netlify only after verification.
 
