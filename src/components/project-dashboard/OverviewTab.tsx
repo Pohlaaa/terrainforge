@@ -805,6 +805,7 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
               onElementGeometryChange={handleElementGeometryChange}
               buildableArea={project.buildableAreaGeometry ?? null}
               obstacles={project.obstaclesGeometry ?? []}
+              lotGeometry={project.lotGeometry ?? null}
             />
           ) : (
             <PlanView3D

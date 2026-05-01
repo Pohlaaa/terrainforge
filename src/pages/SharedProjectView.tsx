@@ -324,6 +324,7 @@ const SharedProjectView: React.FC = () => {
                   }
                   buildableArea={state.project.buildableAreaGeometry ?? null}
                   obstacles={state.project.obstaclesGeometry ?? []}
+                  lotGeometry={state.project.lotGeometry ?? null}
                 />
               ) : (
                 <PlanView3D

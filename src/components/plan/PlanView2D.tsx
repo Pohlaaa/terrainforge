@@ -73,6 +73,18 @@ interface Props {
    * elements here." Empty array = no obstacles.
    */
   obstacles?: Array<Array<{ x: number; y: number }>>
+  /**
+   * Sprint AI-Buildable Phase 2: OSM-derived lot hint polygon (typically
+   * the closest building footprint near the geocoded address). Plan-feet,
+   * same origin as buildableArea + obstacles. Rendered as a dotted blue
+   * outline so it's visually distinct from the AI's translucent green
+   * buildable polygon. Soft-clip drag warning also fires when the
+   * contractor drops an element outside this polygon.
+   *
+   * Null when the OSM lookup found no nearby building (rural / new
+   * construction / Overpass timeout) — viewer renders without overlay.
+   */
+  lotGeometry?: Array<{ x: number; y: number }> | null
 }
 
 /** Snap feet to the nearest integer — keeps dragged elements on 1-ft grid. */
@@ -214,6 +226,7 @@ export const PlanView2D: React.FC<Props> = ({
   onDrawingExit,
   buildableArea = null,
   obstacles = [],
+  lotGeometry = null,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
@@ -786,6 +799,22 @@ export const PlanView2D: React.FC<Props> = ({
               style={{ pointerEvents: 'none' }}
             />
           )}
+          {/* Sprint AI-Buildable Phase 2: lot hint polygon (typically the
+              OSM building footprint near the geocoded address). Rendered
+              as a dotted blue outline so it reads as "this is the
+              house / parcel" — visually distinct from the AI buildable's
+              translucent green. No fill — the satellite already shows
+              what's inside the building outline. */}
+          {(lotGeometry && lotGeometry.length >= 3) && (
+            <polygon
+              points={lotGeometry.map((p) => `${p.x},${p.y}`).join(' ')}
+              fill="none"
+              stroke="rgba(59,130,246,0.75)"
+              strokeWidth={ftPerPx * 1.5}
+              strokeDasharray={`${ftPerPx * 1.5} ${ftPerPx * 1.5}`}
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
           {obstacles.length > 0 &&
             obstacles.map((poly, i) =>
               poly.length >= 3 ? (
@@ -817,14 +846,23 @@ export const PlanView2D: React.FC<Props> = ({
             // know better than the AI (overlay is decoration, not a
             // hard rule). Only computed during move (resize/rotate
             // don't reposition the center).
-            let violationKind: 'obstacle' | 'outside-buildable' | null = null
+            // Phase 2: lot polygon (typically the OSM building footprint)
+            // counts as an obstacle for warning purposes — placing on top
+            // of the house structure should still warn.
+            let violationKind: 'obstacle' | 'outside-buildable' | 'lot' | null = null
             if (
               isBeingDragged &&
               dragRef.current?.mode === 'move' &&
-              (buildableArea || obstacles.length > 0)
+              (buildableArea || obstacles.length > 0 || lotGeometry)
             ) {
               const c = elementCenter(geometry)
               if (
+                lotGeometry &&
+                lotGeometry.length >= 3 &&
+                pointInPolygon(c.x, c.y, lotGeometry)
+              ) {
+                violationKind = 'lot'
+              } else if (
                 obstacles.length > 0 &&
                 obstacles.some((poly) => pointInPolygon(c.x, c.y, poly))
               ) {
@@ -1130,12 +1168,23 @@ export const PlanView2D: React.FC<Props> = ({
           {(() => {
             const d = dragRef.current
             if (!d || d.mode !== 'move') return null
-            if (!buildableArea && obstacles.length === 0) return null
+            if (!buildableArea && obstacles.length === 0 && !lotGeometry) return null
             const item = laid.find((x) => x.element.id === d.elementId)
             if (!item) return null
             const c = elementCenter(item.geometry)
-            let kind: 'obstacle' | 'outside-buildable' | null = null
+            // Phase 2: lot polygon (typically the OSM building footprint)
+            // counts as an obstacle for warning purposes — placing on top
+            // of the structure should warn before placing in road / pool /
+            // canopy obstacles, since "on the house" is the most common
+            // mistake the AI overlay misses.
+            let kind: 'lot' | 'obstacle' | 'outside-buildable' | null = null
             if (
+              lotGeometry &&
+              lotGeometry.length >= 3 &&
+              pointInPolygon(c.x, c.y, lotGeometry)
+            ) {
+              kind = 'lot'
+            } else if (
               obstacles.length > 0 &&
               obstacles.some((poly) => pointInPolygon(c.x, c.y, poly))
             ) {
@@ -1149,9 +1198,11 @@ export const PlanView2D: React.FC<Props> = ({
             }
             if (!kind) return null
             const msg =
-              kind === 'obstacle'
-                ? 'On obstacle (rooftop / road / driveway)'
-                : 'Outside buildable area'
+              kind === 'lot'
+                ? 'On house structure'
+                : kind === 'obstacle'
+                  ? 'On obstacle (rooftop / road / driveway)'
+                  : 'Outside buildable area'
             const tipFontFt = Math.max(ftPerPx * 11, 1.2)
             const padX = ftPerPx * 5
             const padY = ftPerPx * 3
