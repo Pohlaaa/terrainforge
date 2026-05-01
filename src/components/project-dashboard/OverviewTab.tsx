@@ -9,6 +9,7 @@ import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
 import { computeProjectProgress } from '@/lib/projectProgress';
 import { ElementVisual } from '@/components/shared/ElementVisual';
 import { MaterialPicker } from '@/components/shared/MaterialPicker';
+import ProjectElementEditSheet from '@/components/project-dashboard/ProjectElementEditSheet';
 import PlanView2D from '@/components/plan/PlanView2D';
 import PlanView3D from '@/components/plan/PlanView3D';
 import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl, sendProposalEmail, fetchDesignVersionsForProject } from '@/services/supabaseShareTokens';
@@ -75,6 +76,11 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   const [editingElements, setEditingElements] = useState(false);
   const [pickerElementId, setPickerElementId] = useState<string | null>(null);
   const pickerElement = elements.find(el => el.id === pickerElementId) ?? null;
+  // Touch-first per-element edit sheet (mobile only). Tap an element on
+  // the canvas to open. Same selected element is editable on desktop via
+  // the inline editor below the canvas.
+  const [sheetElementId, setSheetElementId] = useState<string | null>(null);
+  const sheetElement = elements.find(el => el.id === sheetElementId) ?? null;
   const projectStoreRef = useProjectStore();
 
   // ── Client share link (migration 028) ─────────────────────────────────
@@ -802,6 +808,7 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   : null
               }
               editable={editingLayout}
+              onElementClick={(el) => setSheetElementId(el.id)}
               onElementGeometryChange={handleElementGeometryChange}
               buildableArea={project.buildableAreaGeometry ?? null}
               obstacles={project.obstaclesGeometry ?? []}
@@ -999,6 +1006,14 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
           onClose={() => setPickerElementId(null)}
         />
       )}
+
+      {/* Touch-first per-element edit sheet (mobile bottom sheet). */}
+      <ProjectElementEditSheet
+        element={sheetElement}
+        orgId={useOrgStore.getState().org?.id ?? ''}
+        onClose={() => setSheetElementId(null)}
+      />
+
 
       {/* Email-to-client modal (Phase 2a) */}
       {emailModalOpen && activeToken && (
