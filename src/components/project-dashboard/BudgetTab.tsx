@@ -49,15 +49,21 @@ export const ProjectDashboardBudget: React.FC<Props> = ({
 
   const saveEdits = async () => {
     setSaving(true);
+    // Bug-sweep (post-F-V6): the prior `editValues.X || null` coerced
+    // 0 → null because 0 is falsy in JS. Same class of bug as the
+    // hourly-rate fix in CompanySetupStep — a contractor who legitimately
+    // sets laborBudget=$0 (subcontractor-only project) saw their input
+    // converted to null. Now we save the number as typed; aggregates +
+    // dashboards see the explicit 0 instead of an absent record.
     const updates: Partial<Project> = {
-      clientQuote: editValues.clientQuote || null,
+      clientQuote: editValues.clientQuote,
       overheadPct: editValues.overheadPct,
-      laborBudget: editValues.laborBudget || null,
-      materialsBudget: editValues.materialsBudget || null,
-      equipmentBudget: editValues.equipmentBudget || null,
-      subcontractorBudget: editValues.subcontractorBudget || null,
-      disposalCost: editValues.disposalCost || null,
-      equipmentCost: editValues.equipmentCost || null,
+      laborBudget: editValues.laborBudget,
+      materialsBudget: editValues.materialsBudget,
+      equipmentBudget: editValues.equipmentBudget,
+      subcontractorBudget: editValues.subcontractorBudget,
+      disposalCost: editValues.disposalCost,
+      equipmentCost: editValues.equipmentCost,
     };
     await useProjectStore.getState().updateProject(project.id, updates);
     setSaving(false);
