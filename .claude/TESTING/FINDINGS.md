@@ -10,6 +10,48 @@ Running log of bugs, friction points, and observations found during testing. Eac
 
 ---
 
+## Sprint AI-Buildable Phase 2 — Live staging verification (2026-05-01)
+
+Deployed `7889237` to `terrainforge-staging.netlify.app`. Verified end-to-end with a real-world test: created a fresh wizard project at the Asheville baseline (100 Tunnel Road, Asheville NC). Step 1 → Step 2 transition fired both the AI vision call AND the OSM Overpass parcel lookup in parallel; both completed in ~10 s.
+
+**OSM precondition probe** (free, no AI cost): Overpass returned 9 building polygons within 80m of the geocoded coords, all tagged `building: "house"` or commercial. The infrastructure works against real US imagery.
+
+**DOM verification** (post-Step-2 render): 3 overlay polygon types present in the SVG —
+- Translucent green `buildableArea` polygon (4 vertices, AI-derived)
+- Dotted blue `lotGeometry` polygon (8 vertices, OSM building footprint, `stroke="rgba(59,130,246,0.75)"`, `fill="none"`)
+- 6 translucent red `obstacles` polygons (AI-derived rooftop / road outlines)
+
+**Visual confirmation**: zoom of the canvas shows all three overlay layers compositing on the satellite tile. The two AI-placed elements (16×12 paver patio + Garden bed edging) sit inside the green buildable polygon, away from the red obstacles + the OSM building outline.
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F-PARC-01 | P3 | Dotted blue lot polygon outline is too subtle at the wizard's compact canvas resolution (~250×250 px). Stroke width 1.5 ft (which renders as ~1px at typical zoom) + 75% opacity gets lost against the satellite imagery + competing red obstacle outlines. Bump stroke to 2.5 ft + opacity to 0.95, or render an outline-only stroke with 0% fill (already done) AND a thin solid blue glow underneath. Cosmetic only — DOM confirms the polygon is present and the soft-clip warning still fires correctly via pointInPolygon. | Logged for sweep |
+
+**Verified working on staging (deploy `69f43cdc`):**
+- Wizard Step 1 → Step 2 transition fires `lookupParcel(lat, lng)` in parallel with `inferElementPlacements`
+- OSM Overpass round-trip completes inside the wizard's 12s local timeout
+- `WizardData.lotGeometry` populated with 8-vertex plan-feet polygon
+- PlanView2D renders all three overlay layers (green buildable + blue lot outline + red obstacles)
+- 6 starter materials still suggested for the patio element ("Concrete Pavers", "Crushed Stone Base", "Polymeric Sand", "Landscape Geotextile", "Paver Edge Restraint", "Edging Stakes")
+- AI rationale tooltip displayed: "Positioned in the open yard area between the buildings and tree line"
+
+No P0/P1/P2 bugs surfaced this round.
+
+---
+
+## Sprint Provider Catalog — Live staging verification (2026-05-01)
+
+Deployed `3e4a122` to `terrainforge-staging.netlify.app`, drove the new SupplierFormModal autocomplete through Chrome MCP. Token-aware search confirmed: typing `rock hard` returns "Rock Hard Landscape Supply" with the Twin Cities region pill at #1; click pre-fills name + website + 7 categories (paver/stone/mulch/gravel/sand/soil/edging). No bugs found in this round. 11/11 vitest cases pass (full-phrase ranking, category match, region match, token AND-logic, V6-named entries present in directory).
+
+**Verified working on staging (deploy `69f439b0`):**
+- Materials → Suppliers → "+ Add Supplier" → type "rock hard" → dropdown shows match with "Twin Cities" region pill
+- Click pre-fills Name + Website + merges categories into existing selections (Paver, Stone, Mulch, Gravel, Sand, Soil, Edging all highlighted)
+- Edit-mode skips the autocomplete (existing supplier already chosen)
+
+No findings logged this round.
+
+---
+
 ## Sprint 1 Findings (resolved)
 
 | ID | Severity | Finding | Resolution |

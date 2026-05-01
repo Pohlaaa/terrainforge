@@ -15,6 +15,7 @@ import { useMaterialStore } from '@/stores/materialStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { generateProjectRecommendations, inferElements } from '@/services/aiRecommendations';
 import { inferElementPlacements, type ElementToPlace } from '@/services/aiPlacement';
+import { lookupParcel } from '@/services/parcelLookup';
 import { buildMapboxStaticUrl, BACKDROP_ZOOM, BACKDROP_IMAGE_PX } from '@/lib/mapboxStatic';
 import { normalizedToPlanFeet } from '@/lib/mapTileMath';
 import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
@@ -142,10 +143,16 @@ export interface WizardData {
   // Sprint AI-Buildable (mig 035): polygons returned by the AI placement
   // call. Plan-feet, origin = property tile center. All null when
   // placement hasn't run, failed, or imagery was too poor. Persisted to
-  // projects.{buildable_area_geometry, obstacles_geometry} on create
-  // (lot_geometry is Phase 2 — parcel-data lookup).
+  // projects.{buildable_area_geometry, obstacles_geometry} on create.
   buildableArea: Array<{ x: number; y: number }> | null;
   obstacles: Array<Array<{ x: number; y: number }>>;
+
+  // Sprint AI-Buildable Phase 2: OSM-derived lot hint (typically the
+  // closest building footprint near the geocoded address). Plan-feet,
+  // same origin as buildableArea. Null when the OSM lookup found no
+  // building or timed out — wizard renders without a parcel overlay.
+  // Persisted to projects.lot_geometry on create.
+  lotGeometry: Array<{ x: number; y: number }> | null;
 
   // Step 4b: Materials
   materialSelections: WizardMaterial[];
@@ -206,6 +213,7 @@ const INITIAL_DATA: WizardData = {
   elements: [],
   buildableArea: null,
   obstacles: [],
+  lotGeometry: null,
   materialSelections: [],
   startDate: null,
   targetDate: null,
@@ -432,14 +440,20 @@ export default function ProjectWizard() {
     }));
     setPlacementLoading(true);
     try {
-      const result = await inferElementPlacements({
-        tileImageUrl: tileUrl,
-        lat: coords.lat,
-        lng: coords.lng,
-        zoom: BACKDROP_ZOOM,
-        tilePxWide: BACKDROP_IMAGE_PX,
-        elements: elementsForPlacement,
-      });
+      // AI-Buildable Phase 2: kick off OSM parcel lookup in parallel with
+      // the vision call. Both are independent — wizard tolerates either
+      // failing on its own, parcel returns null + we render no overlay.
+      const [result, parcel] = await Promise.all([
+        inferElementPlacements({
+          tileImageUrl: tileUrl,
+          lat: coords.lat,
+          lng: coords.lng,
+          zoom: BACKDROP_ZOOM,
+          tilePxWide: BACKDROP_IMAGE_PX,
+          elements: elementsForPlacement,
+        }),
+        lookupParcel(coords.lat, coords.lng).catch(() => null),
+      ]);
       setPlacementImageryPoor(result.imageryPoor);
       const buildablePlanFt = result.buildableArea
         ? result.buildableArea.map((p) =>
@@ -449,6 +463,9 @@ export default function ProjectWizard() {
       const obstaclesPlanFt = result.obstacles.map((poly) =>
         poly.map((p) => normalizedToPlanFeet(p, coords!.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX)),
       );
+      // parcelLookup already returns plan-feet centered on (lat, lng) —
+      // same coordinate space as buildable / obstacles, no conversion.
+      const lotGeometryPlanFt = parcel?.polygon ?? null;
       const rationales: Record<string, string> = {};
       setData((prev) => {
         let placedCount = 0;
@@ -499,6 +516,7 @@ export default function ProjectWizard() {
           elements: nudgedElements,
           buildableArea: buildablePlanFt,
           obstacles: obstaclesPlanFt,
+          lotGeometry: lotGeometryPlanFt,
         };
       });
       setPlacementRationales((prev) => ({ ...prev, ...rationales }));
@@ -696,15 +714,22 @@ export default function ProjectWizard() {
                 linearFt: el.linearFt,
               }));
               setPlacementLoading(true);
-              inferElementPlacements({
-                tileImageUrl: tileUrl,
-                lat: coords.lat,
-                lng: coords.lng,
-                zoom: BACKDROP_ZOOM,
-                tilePxWide: BACKDROP_IMAGE_PX,
-                elements: elementsForPlacement,
-              })
-                .then((result) => {
+              // AI-Buildable Phase 2: parcel lookup runs in parallel with
+              // the vision call. .catch(() => null) so an Overpass blip
+              // doesn't block the wizard transition — we just render
+              // without the lot overlay.
+              Promise.all([
+                inferElementPlacements({
+                  tileImageUrl: tileUrl,
+                  lat: coords.lat,
+                  lng: coords.lng,
+                  zoom: BACKDROP_ZOOM,
+                  tilePxWide: BACKDROP_IMAGE_PX,
+                  elements: elementsForPlacement,
+                }),
+                lookupParcel(coords.lat, coords.lng).catch(() => null),
+              ])
+                .then(([result, parcel]) => {
                   setPlacementLoading(false);
                   setPlacementImageryPoor(result.imageryPoor);
 
@@ -722,6 +747,7 @@ export default function ProjectWizard() {
                       normalizedToPlanFeet(p, coords.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
                     ),
                   );
+                  const lotGeometryPlanFt = parcel?.polygon ?? null;
 
                   if (result.imageryPoor || result.placements.size === 0) {
                     // Imagery too poor or no valid coords — keep the
@@ -733,6 +759,7 @@ export default function ProjectWizard() {
                       ...prev,
                       buildableArea: buildablePlanFt,
                       obstacles: obstaclesPlanFt,
+                      lotGeometry: lotGeometryPlanFt,
                     }));
                     return;
                   }
@@ -811,6 +838,7 @@ export default function ProjectWizard() {
                       elements: nudgedElements,
                       buildableArea: buildablePlanFt,
                       obstacles: obstaclesPlanFt,
+                      lotGeometry: lotGeometryPlanFt,
                     };
                   });
                   setPlacementRationales((prev) => ({ ...prev, ...rationales }));
@@ -1050,10 +1078,11 @@ export default function ProjectWizard() {
         zones: [],
         // Sprint AI-Buildable: persist the AI-identified polygons so the
         // 2D/3D viewers can render the buildable-area overlay across
-        // sessions. lotGeometry is Phase 2 — null on create.
+        // sessions. lotGeometry comes from the OSM parcel lookup
+        // (Phase 2) — typically the closest building footprint.
         buildableAreaGeometry: data.buildableArea,
         obstaclesGeometry: data.obstacles.length > 0 ? data.obstacles : null,
-        lotGeometry: null,
+        lotGeometry: data.lotGeometry,
         checklist: {
           permit: data.permitChecklist.length > 0,
           utility: !!data.utilityLocations,
