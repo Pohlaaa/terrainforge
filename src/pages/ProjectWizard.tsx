@@ -897,11 +897,11 @@ export default function ProjectWizard() {
     if (hasUnsavedData) {
       if (window.confirm('You have unsaved project data. Are you sure you want to leave?')) {
         clearWizardDraft(orgId);
-        navigate('/projects');
+        navigate('/dashboard');
       }
     } else {
       clearWizardDraft(orgId);
-      navigate('/projects');
+      navigate('/dashboard');
     }
   };
 

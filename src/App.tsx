@@ -96,6 +96,13 @@ function App() {
         <Routes>
           {/* Public routes - no layout */}
           <Route path="/" element={<HomeRoute />} />
+          {/* F-V6-PROD-01: legacy callers (Wizard Cancel, ProjectDashboard
+              fallbacks, WorkOrders empty state) navigated to '/projects'
+              which was never wired as a route — landed on the 404 page.
+              Redirect to /dashboard so old hrefs / external links / saved
+              browser tabs all resolve. Call sites also updated to use
+              /dashboard directly, but this catches anything missed. */}
+          <Route path="/projects" element={<Navigate to="/dashboard" replace />} />
           <Route path="/landing" element={
             <React.Suspense fallback={<div style={{ background: '#0B1A14', minHeight: '100vh' }} />}>
               <Landing />

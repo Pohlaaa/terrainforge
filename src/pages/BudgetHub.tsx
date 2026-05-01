@@ -284,7 +284,7 @@ const BudgetHub: React.FC = () => {
             Create a project with budget details to see financial data here.
           </p>
           <button
-            onClick={() => navigate('/projects/new')}
+            onClick={() => navigate('/projects/wizard')}
             className="px-4 py-2 rounded-lg text-sm font-medium text-white"
             style={{ backgroundColor: 'var(--brand-primary)' }}
           >

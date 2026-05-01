@@ -143,7 +143,7 @@ export const WorkOrders: React.FC = () => {
             title="No work orders yet"
             description="Work orders are generated from project zones. Create a project with zones first, then come back to see installation steps."
             actionLabel="Go to Projects"
-            onAction={() => navigate('/projects')}
+            onAction={() => navigate('/dashboard')}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[12px]">

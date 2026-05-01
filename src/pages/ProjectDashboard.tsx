@@ -254,7 +254,7 @@ export default function ProjectDashboard() {
     try {
       await useProjectStore.getState().deleteProject(id);
       toast.info('Project deleted');
-      navigate('/projects');
+      navigate('/dashboard');
     } catch {
       toast.error('Failed to delete project');
       setDeleting(false);
@@ -298,7 +298,7 @@ export default function ProjectDashboard() {
         <p className="text-[13px] text-[var(--text-3)] mb-[16px]">
           This project may have been deleted or you don't have access.
         </p>
-        <Button variant="primary" size="md" onClick={() => navigate('/projects')}>
+        <Button variant="primary" size="md" onClick={() => navigate('/dashboard')}>
           Back to Projects
         </Button>
       </div>
@@ -314,7 +314,7 @@ export default function ProjectDashboard() {
       {/* ── Header ────────────────────────────────────────────────────────────── */}
       <div className="mb-[24px]">
         {/* Back nav */}
-        <button type="button" onClick={() => navigate('/projects')}
+        <button type="button" onClick={() => navigate('/dashboard')}
           className="text-[12px] text-[var(--text-3)] hover:text-[var(--text)] bg-transparent border-none cursor-pointer p-0 mb-[12px] flex items-center gap-[4px]">
           ← Back to Projects
         </button>
