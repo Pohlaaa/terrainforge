@@ -1939,3 +1939,84 @@ just E2E test addresses.
 **Severity**: P0 architectural. Logged at the top of the P0 section
 in ROADMAP.md so it's visible to every next-session pick.
 
+---
+
+## F-PLAC-03 — AI-placed elements drift south-east by half their extent (P0)
+
+**Found**: 2026-05-01 (Charlie's hands-on staging test) → 2026-05-02
+diagnosed in code review.
+
+**Symptom**: every AI-placed element renders south-east of where the
+AI's per-element rationale says it landed. A 24×18 patio whose
+rationale says *"Backyard, behind house, away from pool"* shows up
+12 ft east + 9 ft south of where the model intended. Severity scales
+with element size — small edging strips are barely off, large patios
+and pool decks are obviously wrong on the satellite. The harness
+scored 100% under F-PLAC-02 region-based scoring because the harness
+compared model output (a single (x, y) per element) directly against
+the corpus's `expected[]` (also a single (x, y) per element) — both
+treated as centers. The wizard's misinterpretation of that center
+as a top-left never showed up in the score.
+
+**Root cause**: in `src/pages/ProjectWizard.tsx`, the two AI-placement
+application sites (initial Step 0→1 transition and the Recompute
+button) wrote `place.position` straight into
+`el.geometry.position`. But:
+
+- The vision call returns ONE (x, y) per element — semantically the
+  *spot* where the model wants the element CENTERED. (`prompt.ts`
+  example: `{"x": 0.5, "y": 0.7, "rationale": "Backyard, behind house"}`)
+- `ElementGeometry.position` is the *unrotated TOP-LEFT* of the
+  bounding box. The renderer in PlanView2D translates by `position`,
+  then draws the rect at `(0, 0)–(width, height)` — confirmed in
+  `elementCenter()` (PlanView2D line 133-151) which adds
+  `(width/2, height/2)` to recover the visual center.
+- Result: writing `position = aiCenter` placed the unrotated top-left
+  at the AI's spot, so the visual center landed at
+  `aiCenter + (width/2, height/2)` — south-east drift by half-extent
+  for rectangles, by `radius` for circles, by the local bbox center
+  for polygons.
+
+The fallback paths were already correct: `placementBucket()`
+(`src/lib/planLayout.ts:411-414`) does `cx - dimensions.width/2`,
+`cy - dimensions.height/2`. Only the AI-placement path skipped the
+conversion.
+
+**Fix**: `src/lib/planLayout.ts` exports new `aiCenterToTopLeft(center,
+geometry)` helper that mirrors `elementCenter()`'s local-space center
+math (rectangle → half-extent, circle → radius, polygon → local bbox
+midpoint, line → length/2 + 0.5). Both placement sites in
+`ProjectWizard.tsx` now pipe through it:
+
+```typescript
+position: aiCenterToTopLeft(place.position, el.geometry),
+```
+
+Regression coverage: `src/lib/aiCenterToTopLeft.test.ts` — 9 tests
+across all four shape kinds + the offset-polygon edge case + the
+rounding boundary.
+
+**Why the harness still says 100%**: the harness scoring path is
+*upstream* of the wizard. It calls `inferElementPlacements()`
+directly and compares the returned `placement.position` (a center, in
+plan-feet) against the corpus's `expected[]` (also a center, in
+plan-feet, because that's how the contractor reads them off the
+satellite). The wizard's center→top-left conversion is downstream of
+that, so it doesn't affect the harness score and the harness can't
+detect this class of bug. Charlie's Sprint AI-Place memory
+(`memory/feedback_2d3d_placement.md`) called this out architecturally
+— harness is a regression gate, not a UX gate. F-PLAC-03 is the first
+concrete instance.
+
+**Severity**: P0. Affects every AI-placed element on every property.
+Not previously visible in 2D walkthroughs because Charlie tested
+small lots where the drift looked like model imprecision. Visible
+immediately on the suburban Asheville baseline (24×18 patio drifts
+south-east by 12 ft).
+
+**Verification**: `npx vitest run src/lib/aiCenterToTopLeft.test.ts`
+(9 passing). Full suite stays at 190 green. `npx tsc --noEmit` clean.
+`npm run build` clean. Visual proof requires a corpus address run
+through the wizard on staging — Chrome MCP cannot exercise the wizard
+without Supabase env (only available on the deployed bundle).
+

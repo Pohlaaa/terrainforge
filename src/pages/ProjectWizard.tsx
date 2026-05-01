@@ -17,7 +17,7 @@ import { generateProjectRecommendations, inferElements } from '@/services/aiReco
 import { inferElementPlacements, type ElementToPlace } from '@/services/aiPlacement';
 import { buildMapboxStaticUrl, BACKDROP_ZOOM, BACKDROP_IMAGE_PX } from '@/lib/mapboxStatic';
 import { normalizedToPlanFeet } from '@/lib/mapTileMath';
-import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
+import { fallbackDimensions, placementBucket, aiCenterToTopLeft } from '@/lib/planLayout';
 import { nudgeOverlaps, type ElementBox } from '@/lib/elementOverlap';
 import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, ElementGeometry, Material, Zone, SiteConditionType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
@@ -459,7 +459,10 @@ export default function ProjectWizard() {
           if (place.rationale) rationales[el.tempId] = place.rationale;
           return {
             ...el,
-            geometry: { ...el.geometry, position: place.position },
+            geometry: {
+              ...el.geometry,
+              position: aiCenterToTopLeft(place.position, el.geometry),
+            },
           };
         });
         setPlacementCount(placedCount);
@@ -751,7 +754,7 @@ export default function ProjectWizard() {
                         ...el,
                         geometry: {
                           ...el.geometry,
-                          position: place.position,
+                          position: aiCenterToTopLeft(place.position, el.geometry),
                         },
                       };
                     });

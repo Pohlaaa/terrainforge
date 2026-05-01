@@ -361,6 +361,55 @@ const PLACEMENT_BUCKETS: Record<PlacementHint, PlacementSlot> = {
 }
 
 /**
+ * F-PLAC-03: convert an AI-returned center coord (the visual placement
+ * point — "put the patio HERE") to the top-left position used by
+ * `ElementGeometry.position`. Mirrors the local-space center math in
+ * `elementCenter()` (PlanView2D) so the rendered visual center lands
+ * exactly on the AI's intended spot, regardless of shape kind.
+ *
+ * Bug history: Sprint AI-Place originally wrote the AI center coord
+ * directly into geometry.position, which the renderer then treated as
+ * top-left. Every AI-placed element rendered south-east of where the
+ * rationale said. Charlie caught this in the 2026-05-01 staging test
+ * ("element drifts from rationale"). The harness's region-based 100%
+ * score didn't catch it because the harness compares model output
+ * (centers) to expected (also centers) — both in plan-feet directly,
+ * never going through the wizard's top-left misinterpretation.
+ */
+export function aiCenterToTopLeft(
+  center: { x: number; y: number },
+  geometry: ElementGeometry,
+): { x: number; y: number } {
+  const shape = geometry.shape;
+  let localCx = 0;
+  let localCy = 0;
+  if (shape.kind === 'rectangle') {
+    localCx = shape.width / 2;
+    localCy = shape.height / 2;
+  } else if (shape.kind === 'circle') {
+    localCx = shape.radius;
+    localCy = shape.radius;
+  } else if (shape.kind === 'polygon' && shape.points.length >= 3) {
+    let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
+    for (const p of shape.points) {
+      if (p.x < mnx) mnx = p.x;
+      if (p.y < mny) mny = p.y;
+      if (p.x > mxx) mxx = p.x;
+      if (p.y > mxy) mxy = p.y;
+    }
+    localCx = (mnx + mxx) / 2;
+    localCy = (mny + mxy) / 2;
+  } else if (shape.kind === 'line') {
+    localCx = shape.length / 2;
+    localCy = 0.5;
+  }
+  return {
+    x: Math.round(center.x - localCx),
+    y: Math.round(center.y - localCy),
+  };
+}
+
+/**
  * Computes the top-left position (in plan feet) for an element with the
  * given hint, dimensions, and stack index. The stack index lets multiple
  * elements with the same hint spread along an arc inside the bucket
