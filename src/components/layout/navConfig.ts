@@ -14,6 +14,7 @@ export interface NavSecondary {
 /** Primary hub tabs — always visible in top nav */
 export const primaryTabs: NavTab[] = [
   { path: '/dashboard', label: 'Projects', shortLabel: 'Projects', icon: 'folder' },
+  { path: '/schedule', label: 'Schedule', shortLabel: 'Schedule', icon: 'calendar' },
   { path: '/budget', label: 'Budget & Finance', shortLabel: 'Budget', icon: 'credit-card' },
   { path: '/materials', label: 'Materials', shortLabel: 'Materials', icon: 'package' },
   { path: '/crew-hub', label: 'Crew + Equipment', shortLabel: 'Crew + Equip', icon: 'users' },

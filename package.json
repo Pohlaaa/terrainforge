@@ -16,6 +16,7 @@
     "e2e:install": "playwright install chromium",
     "materials:score": "dotenv -e .env.e2e -- playwright test --project=materials-accuracy",
     "placement:score": "dotenv -e .env.e2e -- playwright test --project=ai-placement",
+    "placement:probe": "dotenv -e .env.e2e -- playwright test --project=ai-placement-probe",
     "test": "vitest run",
     "test:watch": "vitest",
     "perf:check": "node scripts/check-perf-budget.mjs"

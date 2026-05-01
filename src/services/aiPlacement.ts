@@ -57,6 +57,11 @@ export interface PlacementCallResult {
   buildableArea: Array<{ x: number; y: number }> | null
   /** Optional: AI-identified obstacles (roof, road, driveway, water), normalized tile coords */
   obstacles: Array<Array<{ x: number; y: number }>>
+  /** Parallel-index labels for `obstacles` ("house roof", "driveway", "pool", …).
+   *  Empty string when the model omitted the label. Used by the wizard's
+   *  soft-clip warning tooltip to say "On house roof" instead of generic
+   *  "On obstacle (rooftop / road / driveway)". */
+  obstacleLabels: string[]
   /** True when the model self-rated imagery as too poor to place reliably */
   imageryPoor: boolean
   /** Raw rationale string for the whole call — used by the harness */
@@ -210,6 +215,7 @@ export async function inferElementPlacements(
     placements: new Map(),
     buildableArea: null,
     obstacles: [],
+    obstacleLabels: [],
     imageryPoor: false,
     reasoning: '',
   }
@@ -239,10 +245,17 @@ export async function inferElementPlacements(
   const buildableArea = validatePolygon(parsed.buildableArea)
 
   const obstacles: Array<Array<{ x: number; y: number }>> = []
+  const obstacleLabels: string[] = []
   if (Array.isArray(parsed.obstacles)) {
     for (const ob of parsed.obstacles) {
       const poly = validatePolygon(ob.polygon)
-      if (poly) obstacles.push(poly)
+      if (poly) {
+        obstacles.push(poly)
+        // Capture label when present + non-empty; empty string means
+        // "model didn't say" so the consumer falls back to the generic copy.
+        const label = typeof ob.label === 'string' ? ob.label.trim() : ''
+        obstacleLabels.push(label)
+      }
     }
   }
 
@@ -267,6 +280,7 @@ export async function inferElementPlacements(
     placements,
     buildableArea,
     obstacles,
+    obstacleLabels,
     imageryPoor,
     reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : '',
   }

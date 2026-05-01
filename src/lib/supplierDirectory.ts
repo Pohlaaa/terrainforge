@@ -1,7 +1,18 @@
 /**
  * Supplier Directory — Common landscaping material suppliers
- * Used by onboarding to suggest real businesses for quick-add
- * These are well-known national/regional suppliers in the landscaping industry
+ *
+ * Used by onboarding's AddSuppliersStep AND the Materials → Suppliers tab
+ * (SupplierFormModal autocomplete). Closes jbluhm V6 P1 ask:
+ *   > "Supplier search returns small landscape services [...] I want
+ *   > Gertens, Site One, Frador, Bachmans, Rock Hard."
+ *
+ * Mix of national distributors, regional Twin Cities suppliers (jbluhm's
+ * area), and big-box retailers. Living catalog — additions encouraged
+ * as new operators / contractors call out missing entries.
+ *
+ * Each entry is metadata-only — no live API integration. The "Sprint
+ * Provider Catalog Phase 2" follow-up adds real per-supplier pricing
+ * via supplier APIs (where they exist) or scraped quote forms.
  */
 
 import type { MaterialCategory } from '@/types'
@@ -11,6 +22,12 @@ export interface SupplierSuggestion {
   website: string
   categories: MaterialCategory[]
   description: string
+  /** Optional region tag — surfaces "Twin Cities" / "Southeast US" etc.
+   *  in the picker. National chains have no region tag. */
+  region?: string
+  /** Short reference label visible in the autocomplete. Optional —
+   *  defaults to the first 24 chars of `description`. */
+  badge?: string
 }
 
 /**
@@ -212,6 +229,50 @@ export const SUPPLIER_DIRECTORY: SupplierSuggestion[] = [
     description: 'Composite and PVC decking',
   },
 
+  // ── Twin Cities / Upper Midwest regional (jbluhm V6) ──────────
+  {
+    name: 'Gertens',
+    website: 'gertens.com',
+    categories: ['plant', 'shrub', 'tree', 'sod', 'mulch', 'soil', 'seed', 'edging', 'irrigation', 'lighting', 'gravel', 'sand', 'misc'],
+    description: 'Full-line landscape and garden supplier — Inver Grove Heights, MN',
+    region: 'Twin Cities',
+  },
+  {
+    name: 'Frador',
+    website: 'frador.com',
+    categories: ['paver', 'stone', 'brick', 'edging', 'concrete'],
+    description: 'Stone, paver, and hardscape supplier — Twin Cities',
+    region: 'Twin Cities',
+  },
+  {
+    name: 'Bachman’s',
+    website: 'bachmans.com',
+    categories: ['plant', 'shrub', 'tree', 'sod', 'mulch', 'soil', 'seed'],
+    description: 'Greenhouse + nursery — Minneapolis-St. Paul',
+    region: 'Twin Cities',
+  },
+  {
+    name: 'Rock Hard Landscape Supply',
+    website: 'rockhardlandscape.com',
+    categories: ['gravel', 'stone', 'paver', 'mulch', 'soil', 'sand', 'edging'],
+    description: 'Bulk landscape rock, mulch, and pavers — Twin Cities',
+    region: 'Twin Cities',
+  },
+  {
+    name: 'Hedberg Landscape & Masonry Supplies',
+    website: 'hedbergsupplies.com',
+    categories: ['paver', 'stone', 'brick', 'gravel', 'sand', 'mulch', 'soil', 'edging'],
+    description: 'Hardscape, masonry, and bulk materials — Twin Cities',
+    region: 'Twin Cities',
+  },
+  {
+    name: 'Plaisted Companies',
+    website: 'plaistedcompanies.com',
+    categories: ['gravel', 'sand', 'soil', 'mulch'],
+    description: 'Aggregates and topsoil — Twin Cities',
+    region: 'Twin Cities',
+  },
+
   // ── Big Box / General ─────────────────────────────────────────
   {
     name: 'Home Depot Pro',
@@ -234,25 +295,45 @@ export const SUPPLIER_DIRECTORY: SupplierSuggestion[] = [
 ]
 
 /**
- * Search suppliers by name or category
+ * Search suppliers by name, category, region, or description.
+ *
+ * Token-aware: a query like "rock hard" is split into ["rock", "hard"]
+ * and an entry must match every token to be a candidate. This lets
+ * partial-name searches resolve cleanly without inadvertent description
+ * collisions. Exact substring matches on the full name still get the
+ * highest score (Sprint Provider Catalog).
  */
 export function searchSuppliers(query: string, limit = 10): SupplierSuggestion[] {
-  if (!query || query.length < 1) return SUPPLIER_DIRECTORY.slice(0, limit)
+  if (!query || query.trim().length < 1) return SUPPLIER_DIRECTORY.slice(0, limit)
 
-  const lower = query.toLowerCase()
-  const scored = SUPPLIER_DIRECTORY.map(s => {
+  const normalized = query.toLowerCase().trim()
+  const tokens = normalized.split(/\s+/).filter(Boolean)
+
+  const scored = SUPPLIER_DIRECTORY.map((s) => {
+    const nameLc = s.name.toLowerCase()
+    const descLc = s.description.toLowerCase()
+    const regionLc = (s.region ?? '').toLowerCase()
+    const haystack = `${nameLc} ${descLc} ${regionLc} ${s.categories.join(' ')}`
+
+    // Reject the entry if not every token shows up somewhere.
+    if (!tokens.every((t) => haystack.includes(t))) return { s, score: 0 }
+
     let score = 0
-    if (s.name.toLowerCase().includes(lower)) score += 10
-    if (s.description.toLowerCase().includes(lower)) score += 3
-    if (s.categories.some(c => c.includes(lower))) score += 5
+    if (nameLc.includes(normalized)) score += 20 // full-phrase name hit
+    for (const t of tokens) {
+      if (nameLc.includes(t)) score += 10
+      else if (descLc.includes(t)) score += 3
+      else if (regionLc.includes(t)) score += 5
+      else if (s.categories.some((c) => c.includes(t))) score += 5
+    }
     return { s, score }
   })
 
   return scored
-    .filter(x => x.score > 0)
+    .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(x => x.s)
+    .map((x) => x.s)
 }
 
 /**

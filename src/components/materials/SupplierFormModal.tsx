@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { Input } from '@/components/ui/Input';
 import { TextArea } from '@/components/ui/Textarea';
 import { MATERIAL_CATEGORIES, getCategoryLabel } from '@/lib/categories';
+import { searchSuppliers, type SupplierSuggestion } from '@/lib/supplierDirectory';
 import type { Supplier, MaterialCategory } from '@/types';
 
 interface SupplierForm {
@@ -63,10 +64,32 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
   const [form, setForm] = useState<SupplierForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof SupplierForm, string>>>({});
 
+  // Sprint Provider Catalog: directory autocomplete on the name field.
+  // Skipped in edit mode — contractor already picked the supplier.
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const isEditMode = !!supplier;
+  const suggestions = useMemo<SupplierSuggestion[]>(() => {
+    if (isEditMode) return [];
+    if (!form.name || form.name.trim().length < 1) return [];
+    return searchSuppliers(form.name, 6);
+  }, [form.name, isEditMode]);
+
+  function pickFromDirectory(s: SupplierSuggestion) {
+    setForm((f) => ({
+      ...f,
+      name: s.name,
+      website: f.website || (s.website.startsWith('http') ? s.website : `https://${s.website}`),
+      // Merge categories — preserve any the contractor already toggled on.
+      categories: Array.from(new Set([...f.categories, ...s.categories])),
+    }));
+    setShowSuggestions(false);
+  }
+
   useEffect(() => {
     if (isOpen) {
       setForm(supplier ? supplierToForm(supplier) : EMPTY_FORM);
       setErrors({});
+      setShowSuggestions(false);
     }
   }, [isOpen, supplier]);
 
@@ -128,14 +151,63 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
           </div>
           <div className="flex flex-col gap-[10px]">
             <div className="grid grid-cols-[2fr_1fr] gap-[10px]">
-              <Input
-                label="Supplier Name"
-                required
-                value={form.name}
-                error={errors.name}
-                onChange={(e) => setField('name', e.target.value)}
-                placeholder="ABC Landscape Supply"
-              />
+              <div className="relative">
+                <Input
+                  label="Supplier Name"
+                  required
+                  value={form.name}
+                  error={errors.name}
+                  onChange={(e) => {
+                    setField('name', e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  // Delay close so a click on a suggestion registers first.
+                  onBlur={() => window.setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="ABC Landscape Supply"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div
+                    className="absolute top-full left-0 right-0 mt-1 max-h-[260px] overflow-y-auto rounded-[8px] border shadow-lg z-30"
+                    style={{
+                      background: 'var(--surface-card)',
+                      borderColor: 'var(--border-default)',
+                      boxShadow: 'var(--shadow-panel)',
+                    }}
+                  >
+                    <div
+                      className="px-3 py-1.5 text-[10px] font-[600] uppercase tracking-wide"
+                      style={{ color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light, var(--border-default))' }}
+                    >
+                      From directory · click to fill
+                    </div>
+                    {suggestions.map((s) => (
+                      <button
+                        key={s.name}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault() /* keep input focused */}
+                        onClick={() => pickFromDirectory(s)}
+                        className="w-full text-left px-3 py-2 cursor-pointer border-none bg-transparent hover:bg-[var(--surface-hover)] block"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[13px] font-[600]" style={{ color: 'var(--text-primary)' }}>{s.name}</span>
+                          {s.region && (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded-md"
+                              style={{ background: 'var(--surface-bg)', color: 'var(--text-tertiary)' }}
+                            >
+                              {s.region}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                          {s.description}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <Input
                 label="Short Code"
                 value={form.shortCode}

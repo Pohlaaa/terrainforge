@@ -774,6 +774,7 @@ export const WizardStepMeasurements: React.FC<Props> = ({
                   onDrawingExit={() => setDrawingPolygonForTempId(null)}
                   buildableArea={showAIOverlay ? data.buildableArea : null}
                   obstacles={showAIOverlay ? data.obstacles : []}
+                  obstacleLabels={showAIOverlay ? data.obstacleLabels : []}
                 />
               ) : (
                 <PlanView3D
