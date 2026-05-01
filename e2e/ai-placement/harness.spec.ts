@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { CORPUS, scorePlacement } from './corpus'
+import { CORPUS, scorePlacement, nearestZone, pointInPolygon } from './corpus'
 
 import {
   buildPlacementPrompt,
@@ -12,6 +12,72 @@ import {
   isNormalizedInTile,
   normalizedToPlanFeet,
 } from '../../src/lib/mapTileMath'
+
+// F-PLAC-01 Phase B: inlined Overpass lookup (matches the prod
+// `parcelLookup` service on the AI-Buildable Phase 2 branch — kept
+// inline here so the corpus branch is self-contained). Returns the
+// closest building polygon to (lat, lng) in plan-feet, or null.
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+const EARTH_CIRCUMFERENCE_M = 40075016.686
+const METERS_PER_FOOT = 0.3048
+
+interface OsmNode { type: 'node'; id: number; lat: number; lon: number }
+interface OsmWay { type: 'way'; id: number; nodes: number[]; tags?: Record<string, string> }
+
+function llToPlanFeet(lat: number, lng: number, lat0: number, lng0: number): { x: number; y: number } {
+  const metersPerDegreeLat = EARTH_CIRCUMFERENCE_M / 360
+  const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat0 * Math.PI) / 180)
+  return {
+    x: ((lng - lng0) * metersPerDegreeLng) / METERS_PER_FOOT,
+    y: ((lat0 - lat) * metersPerDegreeLat) / METERS_PER_FOOT,
+  }
+}
+
+async function fetchClosestOsmBuilding(
+  lat: number,
+  lng: number,
+): Promise<Array<{ x: number; y: number }> | null> {
+  const query = `[out:json][timeout:8];(way["building"](around:120,${lat},${lng}););(._; >;);out body;`
+  let resp: Response
+  try {
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 12000)
+    resp = await fetch(OVERPASS_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: `data=${encodeURIComponent(query)}`,
+      signal: ctrl.signal,
+    })
+    clearTimeout(t)
+  } catch {
+    return null
+  }
+  if (!resp.ok) return null
+  const json = (await resp.json()) as { elements: Array<OsmNode | OsmWay> }
+  if (!json?.elements) return null
+  const nodeMap = new Map<number, { lat: number; lon: number }>()
+  for (const el of json.elements) if (el.type === 'node') nodeMap.set(el.id, { lat: el.lat, lon: el.lon })
+  const polygons: Array<{ centroid: { x: number; y: number }; polygon: Array<{ x: number; y: number }> }> = []
+  for (const el of json.elements) {
+    if (el.type !== 'way' || !el.nodes || el.nodes.length < 4) continue
+    const ids = el.nodes[0] === el.nodes[el.nodes.length - 1] ? el.nodes.slice(0, -1) : el.nodes
+    const polygon: Array<{ x: number; y: number }> = []
+    let valid = true
+    for (const nid of ids) {
+      const n = nodeMap.get(nid)
+      if (!n) { valid = false; break }
+      polygon.push(llToPlanFeet(n.lat, n.lon, lat, lng))
+    }
+    if (!valid || polygon.length < 3) continue
+    const cx = polygon.reduce((a, p) => a + p.x, 0) / polygon.length
+    const cy = polygon.reduce((a, p) => a + p.y, 0) / polygon.length
+    polygons.push({ centroid: { x: cx, y: cy }, polygon })
+  }
+  if (!polygons.length) return null
+  // Closest building (centroid distance from origin)
+  polygons.sort((a, b) => (a.centroid.x ** 2 + a.centroid.y ** 2) - (b.centroid.x ** 2 + b.centroid.y ** 2))
+  return polygons[0].polygon
+}
 
 /**
  * Sprint AI-Place harness runner.
@@ -100,6 +166,11 @@ async function callAnthropicVision(
     body: JSON.stringify({
       model: DEFAULT_MODEL,
       max_tokens: MAX_TOKENS,
+      // F-PLAC-01 Phase A: temperature: 0 to remove the "same intent,
+      // different exact pixels" jitter (~50 ft per element). Doesn't
+      // address property-layout ambiguity (model picking different
+      // valid backyards across runs); that's Phase B / region scoring.
+      temperature: 0,
       messages: [{ role: 'user', content }],
     }),
   })
@@ -315,8 +386,6 @@ test.describe('AI placement accuracy', () => {
 
       // Capture every model placement (regardless of whether it matched
       // an expected) so the scorecard JSON shows the full model output.
-      // Lets the operator review + promote heuristic → manual by
-      // accepting these coords as ground truth.
       const modelPlacements: Record<string, { x: number; y: number; rationale: string }> = {}
       for (const place of placements) {
         const planFt = normalizedToPlanFeet(place.norm, entry.lat, entry.zoom, entry.tilePxWide)
@@ -327,7 +396,17 @@ test.describe('AI placement accuracy', () => {
         }
       }
 
-      // Score each expected placement against model's returned coords.
+      // F-PLAC-01 Phase B: fetch the OSM building polygon ONCE per
+      // entry so the `on_osm_building` forbidden check is cheap. Free
+      // (Overpass), small ~120m radius. Null = no nearby building =
+      // skip the check.
+      const needsForbidden = entry.expected.some((e) => (e.forbidden ?? []).includes('on_osm_building'))
+      let osmBuilding: Array<{ x: number; y: number }> | null = null
+      if (needsForbidden) {
+        osmBuilding = await fetchClosestOsmBuilding(entry.lat, entry.lng).catch(() => null)
+      }
+
+      // Score each expected placement against zones + forbidden checks.
       for (const exp of entry.expected) {
         const place = placements.find((p) => p.key === exp.key)
         if (!place) {
@@ -335,16 +414,35 @@ test.describe('AI placement accuracy', () => {
           continue
         }
         const planFt = normalizedToPlanFeet(place.norm, entry.lat, entry.zoom, entry.tilePxWide)
+
+        // Forbidden short-circuit: if model placed inside the OSM
+        // building polygon, fail unconditionally regardless of zones.
+        const blocksOnBuilding = (exp.forbidden ?? []).includes('on_osm_building')
+        if (blocksOnBuilding && osmBuilding && pointInPolygon(planFt, osmBuilding)) {
+          failures.push({ key: exp.key, reason: 'placement is inside OSM building footprint (forbidden)' })
+          continue
+        }
+
         const score = scorePlacement(planFt, exp)
         if (score === 1) {
           matched += 1
+        } else if (exp.acceptableZones && exp.acceptableZones.length) {
+          const near = nearestZone(planFt, exp.acceptableZones)
+          const tag = near?.zone.label ? `"${near.zone.label}" ` : ''
+          failures.push({
+            key: exp.key,
+            reason: near
+              ? `outside all ${exp.acceptableZones.length} zone${exp.acceptableZones.length > 1 ? 's' : ''}; nearest ${tag}is ${(near.distanceFt - near.zone.radiusFt).toFixed(0)} ft past its boundary`
+              : 'no acceptable zones defined',
+          })
         } else {
-          const dx = planFt.x - exp.expectedX
-          const dy = planFt.y - exp.expectedY
+          // Legacy fixture path
+          const dx = planFt.x - (exp.expectedX ?? 0)
+          const dy = planFt.y - (exp.expectedY ?? 0)
           const dist = Math.sqrt(dx * dx + dy * dy)
           failures.push({
             key: exp.key,
-            reason: `${dist.toFixed(0)} ft from expected (tolerance ${exp.toleranceFt} ft)`,
+            reason: `${dist.toFixed(0)} ft from expected (tolerance ${exp.toleranceFt ?? 0} ft)`,
           })
         }
       }

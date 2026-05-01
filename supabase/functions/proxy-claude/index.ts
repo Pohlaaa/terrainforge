@@ -59,6 +59,10 @@ interface RequestBody {
   max_tokens?: number
   system?: string
   images?: string[]
+  /** F-PLAC-01 Phase A: caller-provided temperature override. Vision
+   *  calls default to 0 server-side; text-only calls use Anthropic's
+   *  default unless this field is set. */
+  temperature?: number
 }
 
 // Sprint AI-Place: cap on inline image attachments. Each Mapbox satellite
@@ -207,12 +211,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // Build Anthropic payload.
+  // F-PLAC-01 Phase A: vision calls (with images) get temperature: 0 to
+  // remove the "same intent, different pixels" jitter we measured at
+  // ~50 ft per placement. Text-only calls (planning recommendations,
+  // material inference) keep the API default since they benefit from
+  // some creative variation. Body can override via `body.temperature`.
+  const isVisionCall = Array.isArray(userContent)
+  const defaultTemperature = isVisionCall ? 0 : undefined
   const payload: Record<string, unknown> = {
     model,
     max_tokens: maxTokens,
     messages: [{ role: 'user', content: userContent }],
   }
   if (body.system) payload.system = body.system
+  if (typeof body.temperature === 'number') {
+    payload.temperature = body.temperature
+  } else if (defaultTemperature !== undefined) {
+    payload.temperature = defaultTemperature
+  }
 
   // Forward to Anthropic.
   let anthropicResp: Response
