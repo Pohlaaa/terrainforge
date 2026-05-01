@@ -64,18 +64,50 @@ export type ForbiddenCheck =
   /** Fail if placement is inside any OSM building polygon within 120m of geocode. */
   | 'on_osm_building'
 
+/**
+ * F-PLAC-02 Path 2: implicit polygon defined by membership tests.
+ *
+ * A placement passes the region check if ALL of these hold (each
+ * defined field is a constraint; missing fields are not enforced):
+ *   - distance from geocode <= maxDistanceFromGeocodeFt  ("on the property")
+ *   - not inside any OSM building polygon                ("not on the roof")
+ *   - distance from any OSM road centerline >= minDistanceFromOsmRoadFt
+ *                                                        ("not on the road")
+ *
+ * Defines a `(circle ∖ buildings ∖ roadBuffer)` region without doing
+ * actual polygon subtraction — three cheap point-membership tests.
+ * Replaces the hand-tuned `acceptableZones` with mechanical constraints.
+ *
+ * Tradeoff: the "neighbor bleed" case (model placing on the next-door
+ * lot) is NOT caught here — that needs parcel boundary data deferred
+ * to AI-Buildable Phase 2. Mitigation: tight `maxDistanceFromGeocodeFt`
+ * per fixture (~80ft urban, 200ft suburban, 500ft rural) absorbs most
+ * of the issue.
+ */
+export interface AcceptableRegion {
+  /** Max distance from the entry's (lat, lng). Caps "anywhere on the property". */
+  maxDistanceFromGeocodeFt: number
+  /** When true, placement inside any OSM building polygon fails. */
+  notInOsmBuilding?: boolean
+  /** Minimum distance from any OSM road centerline (~30 ft = "off the road"). */
+  minDistanceFromOsmRoadFt?: number
+}
+
 export interface ExpectedPlacement {
   /** Matches CorpusElement.key. */
   key: string
-  /** Acceptable zones — placement passes if inside ANY. Multi-modal so
-   *  a model that picks "east clearing" on one run and "west clearing"
-   *  on the next passes both runs. Preferred over expectedX/Y. */
+  /** F-PLAC-02 Path 2: implicit polygon scoring (preferred). Captures
+   *  "on the property AND not on the building AND not on the road"
+   *  as three cheap point-checks evaluated at score time via OSM. */
+  acceptableRegion?: AcceptableRegion
+  /** F-PLAC-01 Phase B: discrete circular zones (legacy after Phase 2,
+   *  kept for fixtures where region scoring is too permissive). */
   acceptableZones?: AcceptableZone[]
   /** Forbidden checks evaluated at score time via OSM lookup. A placement
    *  fails if ANY of these return true. Common: `['on_osm_building']`. */
   forbidden?: ForbiddenCheck[]
   // Legacy point + tolerance kept for placeholder + bad-address fixtures.
-  // The harness prefers zones when present; falls back here otherwise.
+  // The harness prefers region > zones > legacy.
   expectedX?: number
   expectedY?: number
   toleranceFt?: number
@@ -160,16 +192,20 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'edging', elementType: 'edging', name: 'Garden Bed Edging', lengthFt: null, widthFt: null, linearFt: 60 },
     ],
     expected: [
-      // Phase B zones from clustered runs 5/6 (temp:0). Tight cluster.
+      // F-PLAC-02 Path 2: implicit-polygon scoring.
       {
         key: 'patio',
-        acceptableZones: [{ centerX: -177, centerY: 210, radiusFt: 100, label: 'backyard north of geocode' }],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: {
+          maxDistanceFromGeocodeFt: 300,
+          notInOsmBuilding: true,
+        },
       },
       {
         key: 'edging',
-        acceptableZones: [{ centerX: 0, centerY: 0, radiusFt: 50, label: 'around geocode point' }],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: {
+          maxDistanceFromGeocodeFt: 300,
+          notInOsmBuilding: true,
+        },
       },
     ],
   },
@@ -191,11 +227,17 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'bed', elementType: 'garden_bed', name: 'Side garden bed', lengthFt: 6, widthFt: 2, linearFt: null },
     ],
     expected: [
-      // Heuristic — model returns imageryPoor on this fixture so coords
-      // are unreliable. Wide zones until Charlie hand-authors. Skip
-      // forbidden check since it'd flag the (0,0) center placement.
-      { key: 'patio', acceptableZones: [{ centerX: 0, centerY: 15, radiusFt: URBAN_TOLERANCE }] },
-      { key: 'bed', acceptableZones: [{ centerX: -8, centerY: 12, radiusFt: URBAN_TOLERANCE }] },
+      // Urban rowhouse — small lot, tight 60 ft radius. Model often
+      // returns imageryPoor=true here and falls back to (0,0); region
+      // accepts that since (0,0) is at the geocode (street level).
+      {
+        key: 'patio',
+        acceptableRegion: { maxDistanceFromGeocodeFt: 60, notInOsmBuilding: true },
+      },
+      {
+        key: 'bed',
+        acceptableRegion: { maxDistanceFromGeocodeFt: 60, notInOsmBuilding: true },
+      },
     ],
   },
   {
@@ -223,20 +265,16 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'walkway', elementType: 'walkway', name: 'Front walkway', lengthFt: 30, widthFt: 4, linearFt: null },
     ],
     expected: [
-      // With temp:0 the model converged to (0, -272) for patio + (0, -748)
-      // for walkway across runs 5/6. Tight zones at those coords.
+      // Rural multi-acre — geocode lands on a road, house is far away.
+      // Wide 1200 ft radius covers the model walking out to find the
+      // structure. notInOsmBuilding catches "on the rooftop."
       {
         key: 'patio',
-        acceptableZones: [{ centerX: 0, centerY: -272, radiusFt: 80, label: 'south of geocode' }],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 1200, notInOsmBuilding: true },
       },
       {
         key: 'walkway',
-        acceptableZones: [
-          { centerX: 0, centerY: -748, radiusFt: 100, label: 'far south frontage' },
-          { centerX: 0, centerY: -1020, radiusFt: 120, label: 'further south' },
-        ],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 1200, notInOsmBuilding: true },
       },
     ],
   },
@@ -264,25 +302,17 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'tree-row', elementType: 'tree_planting', name: 'Frontage tree row', lengthFt: 80, widthFt: 6, linearFt: null },
     ],
     expected: [
-      // Two-modal: model picks different parking-lot bays each run.
-      // Two zones cover both observed clusters.
+      // Commercial — large parcel with multiple bays. 700 ft radius
+      // covers the model's far-corner placements (observed up to 605 ft
+      // in F-PLAC-02 verify run); notInOsmBuilding catches placements
+      // on the actual structures.
       {
         key: 'island',
-        acceptableZones: [
-          { centerX: -428, centerY: 428, radiusFt: 100, label: 'west bay' },
-          { centerX: -156, centerY: 428, radiusFt: 100, label: 'central bay' },
-          { centerX: 39, centerY: 350, radiusFt: 100, label: 'east bay' },
-        ],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 700, notInOsmBuilding: true },
       },
       {
         key: 'tree-row',
-        acceptableZones: [
-          { centerX: 0, centerY: 234, radiusFt: 120, label: 'north frontage' },
-          { centerX: 0, centerY: -428, radiusFt: 120, label: 'south frontage' },
-          { centerX: 0, centerY: -292, radiusFt: 100, label: 'mid-south frontage' },
-        ],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 700, notInOsmBuilding: true },
       },
     ],
   },
@@ -324,23 +354,15 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'firepit', elementType: 'fire_pit', name: 'Fire pit', lengthFt: 5, widthFt: 5, linearFt: null },
     ],
     expected: [
-      // Tight cluster across runs 5/6 — model converged on a clearing
-      // south of geocode. Modest 100 ft zone.
+      // Heavily-treed Doylestown — model picks any clearing within
+      // 350 ft. Region accepts as long as not on roof.
       {
         key: 'patio',
-        acceptableZones: [
-          { centerX: -58, centerY: 224, radiusFt: 100, label: 'south clearing' },
-          { centerX: -197, centerY: 18, radiusFt: 100, label: 'west clearing' },
-        ],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 350, notInOsmBuilding: true },
       },
       {
         key: 'firepit',
-        acceptableZones: [
-          { centerX: 31, centerY: 269, radiusFt: 80, label: 'near south patio' },
-          { centerX: -72, centerY: 72, radiusFt: 80, label: 'near west patio' },
-        ],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 350, notInOsmBuilding: true },
       },
     ],
   },
@@ -404,11 +426,11 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'bed', elementType: 'garden_bed', name: 'Front foundation bed', lengthFt: 25, widthFt: 4, linearFt: null },
     ],
     expected: [
-      // Tight cluster (37 ft delta across runs). 75 ft zone.
+      // Los Altos suburban — geocode lands on road; house is ~200 ft
+      // away. 280 ft radius + notInOsmBuilding.
       {
         key: 'bed',
-        acceptableZones: [{ centerX: 0, centerY: -187, radiusFt: 75, label: 'front of house' }],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 280, notInOsmBuilding: true },
       },
     ],
   },
@@ -434,14 +456,11 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'patio', elementType: 'patio', name: 'Lakeside patio', lengthFt: 18, widthFt: 14, linearFt: null },
     ],
     expected: [
-      // Two-modal: model picks east OR west of cluster across runs.
+      // Big Sur coastal cluster — 500 ft radius covers the resort
+      // grounds. notInOsmBuilding catches "on the roof / in the pool."
       {
         key: 'patio',
-        acceptableZones: [
-          { centerX: 227, centerY: 340, radiusFt: 100, label: 'east of cluster' },
-          { centerX: -151, centerY: 340, radiusFt: 100, label: 'west of cluster' },
-        ],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 500, notInOsmBuilding: true },
       },
     ],
   },
@@ -468,15 +487,11 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'patio', elementType: 'patio', name: 'Backyard patio', lengthFt: 14, widthFt: 12, linearFt: null },
     ],
     expected: [
-      // Tract uncertainty — model picks 2 different yards. 2 zones.
+      // Mountain View tract — 300 ft radius covers a typical SV lot
+      // plus the model's tendency to drift between yards.
       {
         key: 'patio',
-        acceptableZones: [
-          { centerX: -47, centerY: 140, radiusFt: 80, label: 'yard north' },
-          { centerX: 47, centerY: -75, radiusFt: 80, label: 'yard south' },
-          { centerX: 19, centerY: 19, radiusFt: 60, label: 'yard center' },
-        ],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 300, notInOsmBuilding: true },
       },
     ],
   },
@@ -536,20 +551,14 @@ export const CORPUS: CorpusEntry[] = [
       { key: 'walkway', elementType: 'walkway', name: 'Front walkway', lengthFt: 20, widthFt: 4, linearFt: null },
     ],
     expected: [
-      // Single cluster but with placement noise. Run 5/6 patio at
-      // (-131, ~110) within ~130 ft band.
+      // Evanston — generic suburban grid. 400 ft covers the lot scale.
       {
         key: 'patio',
-        acceptableZones: [
-          { centerX: -131, centerY: 110, radiusFt: 100, label: 'west backyard' },
-          { centerX: 44, centerY: 175, radiusFt: 80, label: 'east backyard' },
-        ],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 400, notInOsmBuilding: true },
       },
       {
         key: 'walkway',
-        acceptableZones: [{ centerX: -188, centerY: -249, radiusFt: 100, label: 'front frontage' }],
-        forbidden: ['on_osm_building'],
+        acceptableRegion: { maxDistanceFromGeocodeFt: 400, notInOsmBuilding: true },
       },
     ],
   },
@@ -648,4 +657,84 @@ export function pointInPolygon(
     if (intersect) inside = !inside
   }
   return inside
+}
+
+/**
+ * Distance from a point to a line segment (a → b). Used by the harness
+ * to evaluate "not within X ft of any OSM road centerline."
+ */
+export function pointToSegmentFt(
+  pt: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lenSq = dx * dx + dy * dy
+  if (lenSq < 1e-9) {
+    // Degenerate — segment is a point.
+    const ex = pt.x - a.x, ey = pt.y - a.y
+    return Math.sqrt(ex * ex + ey * ey)
+  }
+  let t = ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / lenSq
+  if (t < 0) t = 0
+  else if (t > 1) t = 1
+  const projx = a.x + t * dx
+  const projy = a.y + t * dy
+  const ex = pt.x - projx, ey = pt.y - projy
+  return Math.sqrt(ex * ex + ey * ey)
+}
+
+/**
+ * F-PLAC-02 Path 2: score a placement against an `acceptableRegion`.
+ *
+ * Returns a `{ pass, fail }` tuple with diagnostic info on miss so the
+ * harness can surface which constraint blocked the score (the
+ * contractor wants to know "patio was 27 ft inside the building" not
+ * just "failed").
+ */
+export interface OsmContext {
+  buildings: Array<Array<{ x: number; y: number }>>
+  /** Each road is a polyline (list of plan-feet vertices). */
+  roads: Array<Array<{ x: number; y: number }>>
+}
+
+export function scoreAcceptableRegion(
+  pt: { x: number; y: number },
+  region: AcceptableRegion,
+  osm: OsmContext,
+): { pass: boolean; reason?: string } {
+  // Constraint 1: within property scale
+  const distFromOrigin = Math.sqrt(pt.x * pt.x + pt.y * pt.y)
+  if (distFromOrigin > region.maxDistanceFromGeocodeFt) {
+    return {
+      pass: false,
+      reason: `${distFromOrigin.toFixed(0)} ft from geocode (max ${region.maxDistanceFromGeocodeFt} ft)`,
+    }
+  }
+  // Constraint 2: not inside any OSM building
+  if (region.notInOsmBuilding) {
+    for (const b of osm.buildings) {
+      if (pointInPolygon(pt, b)) {
+        return { pass: false, reason: 'inside OSM building footprint' }
+      }
+    }
+  }
+  // Constraint 3: away from road centerlines
+  if (region.minDistanceFromOsmRoadFt !== undefined && osm.roads.length > 0) {
+    let minDist = Infinity
+    for (const road of osm.roads) {
+      for (let i = 0; i < road.length - 1; i++) {
+        const d = pointToSegmentFt(pt, road[i], road[i + 1])
+        if (d < minDist) minDist = d
+      }
+    }
+    if (minDist < region.minDistanceFromOsmRoadFt) {
+      return {
+        pass: false,
+        reason: `${minDist.toFixed(0)} ft from road centerline (min ${region.minDistanceFromOsmRoadFt} ft)`,
+      }
+    }
+  }
+  return { pass: true }
 }

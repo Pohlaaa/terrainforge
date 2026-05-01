@@ -54,16 +54,21 @@ describe('AI placement corpus shape', () => {
     }
   })
 
-  it('every expected has either acceptableZones with positive radii OR a legacy point + tolerance', () => {
+  it('every expected has acceptableRegion OR acceptableZones OR legacy point+tolerance', () => {
     for (const e of CORPUS) {
       for (const exp of e.expected) {
+        const hasRegion =
+          typeof exp.acceptableRegion === 'object' &&
+          exp.acceptableRegion !== null &&
+          typeof exp.acceptableRegion.maxDistanceFromGeocodeFt === 'number' &&
+          exp.acceptableRegion.maxDistanceFromGeocodeFt > 0
         const hasZones = Array.isArray(exp.acceptableZones) && exp.acceptableZones.length > 0
         const hasLegacy =
           typeof exp.expectedX === 'number' &&
           typeof exp.expectedY === 'number' &&
           typeof exp.toleranceFt === 'number' &&
           exp.toleranceFt > 0
-        expect(hasZones || hasLegacy).toBe(true)
+        expect(hasRegion || hasZones || hasLegacy).toBe(true)
         if (hasZones) {
           for (const z of exp.acceptableZones!) {
             expect(z.radiusFt).toBeGreaterThan(0)

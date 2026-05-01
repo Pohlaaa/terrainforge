@@ -3,7 +3,14 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { CORPUS, scorePlacement, nearestZone, pointInPolygon } from './corpus'
+import {
+  CORPUS,
+  scorePlacement,
+  nearestZone,
+  pointInPolygon,
+  scoreAcceptableRegion,
+  type OsmContext,
+} from './corpus'
 
 import {
   buildPlacementPrompt,
@@ -33,15 +40,24 @@ function llToPlanFeet(lat: number, lng: number, lat0: number, lng0: number): { x
   }
 }
 
-async function fetchClosestOsmBuilding(
+/**
+ * F-PLAC-02 Path 2: fetch BOTH buildings + roads in a single Overpass
+ * call. Returns OsmContext for scoring against `acceptableRegion`.
+ * Single roundtrip to avoid hammering Overpass.
+ */
+async function fetchOsmContext(
   lat: number,
   lng: number,
-): Promise<Array<{ x: number; y: number }> | null> {
-  const query = `[out:json][timeout:8];(way["building"](around:120,${lat},${lng}););(._; >;);out body;`
+  searchRadiusM: number,
+): Promise<OsmContext | null> {
+  const query = `[out:json][timeout:10];(
+    way["building"](around:${searchRadiusM},${lat},${lng});
+    way["highway"](around:${searchRadiusM},${lat},${lng});
+  );(._; >;);out body;`
   let resp: Response
   try {
     const ctrl = new AbortController()
-    const t = setTimeout(() => ctrl.abort(), 12000)
+    const t = setTimeout(() => ctrl.abort(), 15000)
     resp = await fetch(OVERPASS_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -57,26 +73,29 @@ async function fetchClosestOsmBuilding(
   if (!json?.elements) return null
   const nodeMap = new Map<number, { lat: number; lon: number }>()
   for (const el of json.elements) if (el.type === 'node') nodeMap.set(el.id, { lat: el.lat, lon: el.lon })
-  const polygons: Array<{ centroid: { x: number; y: number }; polygon: Array<{ x: number; y: number }> }> = []
+  const buildings: Array<Array<{ x: number; y: number }>> = []
+  const roads: Array<Array<{ x: number; y: number }>> = []
   for (const el of json.elements) {
-    if (el.type !== 'way' || !el.nodes || el.nodes.length < 4) continue
-    const ids = el.nodes[0] === el.nodes[el.nodes.length - 1] ? el.nodes.slice(0, -1) : el.nodes
-    const polygon: Array<{ x: number; y: number }> = []
+    if (el.type !== 'way' || !el.nodes || el.nodes.length < 2) continue
+    const isBuilding = !!el.tags?.building
+    const isRoad = !!el.tags?.highway
+    if (!isBuilding && !isRoad) continue
+    // Strip closing duplicate node for polygons; keep raw for polylines.
+    const ids = isBuilding && el.nodes[0] === el.nodes[el.nodes.length - 1]
+      ? el.nodes.slice(0, -1)
+      : el.nodes
+    const verts: Array<{ x: number; y: number }> = []
     let valid = true
     for (const nid of ids) {
       const n = nodeMap.get(nid)
       if (!n) { valid = false; break }
-      polygon.push(llToPlanFeet(n.lat, n.lon, lat, lng))
+      verts.push(llToPlanFeet(n.lat, n.lon, lat, lng))
     }
-    if (!valid || polygon.length < 3) continue
-    const cx = polygon.reduce((a, p) => a + p.x, 0) / polygon.length
-    const cy = polygon.reduce((a, p) => a + p.y, 0) / polygon.length
-    polygons.push({ centroid: { x: cx, y: cy }, polygon })
+    if (!valid) continue
+    if (isBuilding && verts.length >= 3) buildings.push(verts)
+    if (isRoad && verts.length >= 2) roads.push(verts)
   }
-  if (!polygons.length) return null
-  // Closest building (centroid distance from origin)
-  polygons.sort((a, b) => (a.centroid.x ** 2 + a.centroid.y ** 2) - (b.centroid.x ** 2 + b.centroid.y ** 2))
-  return polygons[0].polygon
+  return { buildings, roads }
 }
 
 /**
@@ -438,17 +457,33 @@ test.describe('AI placement accuracy', () => {
         }
       }
 
-      // F-PLAC-01 Phase B: fetch the OSM building polygon ONCE per
-      // entry so the `on_osm_building` forbidden check is cheap. Free
-      // (Overpass), small ~120m radius. Null = no nearby building =
-      // skip the check.
-      const needsForbidden = entry.expected.some((e) => (e.forbidden ?? []).includes('on_osm_building'))
+      // F-PLAC-02 Path 2: fetch OSM buildings + roads ONCE per entry.
+      // Used by both the legacy `forbidden: on_osm_building` short-circuit
+      // and the new `acceptableRegion` scoring path. 200m radius keeps
+      // rural fixtures (where the geocode is on the road and the house
+      // is hundreds of feet away) covered.
+      const needsOsm =
+        entry.expected.some((e) => (e.forbidden ?? []).includes('on_osm_building')) ||
+        entry.expected.some((e) => !!e.acceptableRegion)
+      const osm: OsmContext | null = needsOsm
+        ? await fetchOsmContext(entry.lat, entry.lng, 200).catch(() => null)
+        : null
+      // Pick the closest building polygon (by centroid distance from
+      // origin) for the legacy forbidden short-circuit.
       let osmBuilding: Array<{ x: number; y: number }> | null = null
-      if (needsForbidden) {
-        osmBuilding = await fetchClosestOsmBuilding(entry.lat, entry.lng).catch(() => null)
+      if (osm && osm.buildings.length > 0) {
+        let best: { polygon: Array<{ x: number; y: number }>; distSq: number } | null = null
+        for (const poly of osm.buildings) {
+          const cx = poly.reduce((a, p) => a + p.x, 0) / poly.length
+          const cy = poly.reduce((a, p) => a + p.y, 0) / poly.length
+          const distSq = cx * cx + cy * cy
+          if (!best || distSq < best.distSq) best = { polygon: poly, distSq }
+        }
+        osmBuilding = best?.polygon ?? null
       }
 
-      // Score each expected placement against zones + forbidden checks.
+      // Score each expected placement.
+      // Priority: acceptableRegion > acceptableZones > legacy point.
       for (const exp of entry.expected) {
         const place = placements.find((p) => p.key === exp.key)
         if (!place) {
@@ -457,11 +492,22 @@ test.describe('AI placement accuracy', () => {
         }
         const planFt = normalizedToPlanFeet(place.norm, entry.lat, entry.zoom, entry.tilePxWide)
 
-        // Forbidden short-circuit: if model placed inside the OSM
-        // building polygon, fail unconditionally regardless of zones.
+        // Forbidden short-circuit (legacy single-check).
         const blocksOnBuilding = (exp.forbidden ?? []).includes('on_osm_building')
         if (blocksOnBuilding && osmBuilding && pointInPolygon(planFt, osmBuilding)) {
           failures.push({ key: exp.key, reason: 'placement is inside OSM building footprint (forbidden)' })
+          continue
+        }
+
+        // F-PLAC-02 Path 2: prefer region scoring when present.
+        if (exp.acceptableRegion) {
+          const ctx: OsmContext = osm ?? { buildings: [], roads: [] }
+          const result = scoreAcceptableRegion(planFt, exp.acceptableRegion, ctx)
+          if (result.pass) {
+            matched += 1
+          } else {
+            failures.push({ key: exp.key, reason: result.reason ?? 'failed acceptableRegion check' })
+          }
           continue
         }
 
