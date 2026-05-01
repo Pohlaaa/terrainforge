@@ -73,6 +73,13 @@ interface Props {
    * elements here." Empty array = no obstacles.
    */
   obstacles?: Array<Array<{ x: number; y: number }>>
+  /**
+   * Parallel-index labels for `obstacles` ("house roof", "driveway",
+   * "pool", …). Used by the soft-clip warning tooltip (P2 #11) to say
+   * "On house roof" instead of the generic "On obstacle (rooftop /
+   * road / driveway)". Empty / missing entry = generic copy.
+   */
+  obstacleLabels?: string[]
 }
 
 /** Snap feet to the nearest integer — keeps dragged elements on 1-ft grid. */
@@ -214,6 +221,7 @@ export const PlanView2D: React.FC<Props> = ({
   onDrawingExit,
   buildableArea = null,
   obstacles = [],
+  obstacleLabels = [],
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
@@ -1135,12 +1143,15 @@ export const PlanView2D: React.FC<Props> = ({
             if (!item) return null
             const c = elementCenter(item.geometry)
             let kind: 'obstacle' | 'outside-buildable' | null = null
+            let hitObstacleIndex = -1
+            if (obstacles.length > 0) {
+              hitObstacleIndex = obstacles.findIndex((poly) =>
+                pointInPolygon(c.x, c.y, poly),
+              )
+              if (hitObstacleIndex >= 0) kind = 'obstacle'
+            }
             if (
-              obstacles.length > 0 &&
-              obstacles.some((poly) => pointInPolygon(c.x, c.y, poly))
-            ) {
-              kind = 'obstacle'
-            } else if (
+              kind === null &&
               buildableArea &&
               buildableArea.length >= 3 &&
               !pointInPolygon(c.x, c.y, buildableArea)
@@ -1148,9 +1159,18 @@ export const PlanView2D: React.FC<Props> = ({
               kind = 'outside-buildable'
             }
             if (!kind) return null
+            // P2 #11: use the AI-provided obstacle label when available,
+            // fall back to the generic "On obstacle (rooftop / road /
+            // driveway)" copy if the model omitted the label.
+            const obstacleLabel =
+              hitObstacleIndex >= 0 && obstacleLabels[hitObstacleIndex]
+                ? obstacleLabels[hitObstacleIndex]
+                : null
             const msg =
               kind === 'obstacle'
-                ? 'On obstacle (rooftop / road / driveway)'
+                ? obstacleLabel
+                  ? `On ${obstacleLabel}`
+                  : 'On obstacle (rooftop / road / driveway)'
                 : 'Outside buildable area'
             const tipFontFt = Math.max(ftPerPx * 11, 1.2)
             const padX = ftPerPx * 5

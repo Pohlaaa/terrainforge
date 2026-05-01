@@ -146,6 +146,10 @@ export interface WizardData {
   // (lot_geometry is Phase 2 — parcel-data lookup).
   buildableArea: Array<{ x: number; y: number }> | null;
   obstacles: Array<Array<{ x: number; y: number }>>;
+  /** P2 #11: AI-returned obstacle labels (parallel index to `obstacles`).
+   *  Used by PlanView2D's soft-clip warning tooltip to say "On house roof"
+   *  vs the generic "On obstacle". Not persisted. */
+  obstacleLabels: string[];
 
   // Step 4b: Materials
   materialSelections: WizardMaterial[];
@@ -206,6 +210,7 @@ const INITIAL_DATA: WizardData = {
   elements: [],
   buildableArea: null,
   obstacles: [],
+  obstacleLabels: [],
   materialSelections: [],
   startDate: null,
   targetDate: null,
@@ -449,6 +454,7 @@ export default function ProjectWizard() {
       const obstaclesPlanFt = result.obstacles.map((poly) =>
         poly.map((p) => normalizedToPlanFeet(p, coords!.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX)),
       );
+      const obstacleLabels = result.obstacleLabels;
       const rationales: Record<string, string> = {};
       setData((prev) => {
         let placedCount = 0;
@@ -499,6 +505,7 @@ export default function ProjectWizard() {
           elements: nudgedElements,
           buildableArea: buildablePlanFt,
           obstacles: obstaclesPlanFt,
+          obstacleLabels,
         };
       });
       setPlacementRationales((prev) => ({ ...prev, ...rationales }));
@@ -726,6 +733,7 @@ export default function ProjectWizard() {
                       normalizedToPlanFeet(p, coords.lat, BACKDROP_ZOOM, BACKDROP_IMAGE_PX),
                     ),
                   );
+                  const obstacleLabels = result.obstacleLabels;
 
                   if (result.imageryPoor || result.placements.size === 0) {
                     // Imagery too poor or no valid coords — keep the
@@ -737,6 +745,7 @@ export default function ProjectWizard() {
                       ...prev,
                       buildableArea: buildablePlanFt,
                       obstacles: obstaclesPlanFt,
+                      obstacleLabels,
                     }));
                     return;
                   }
@@ -815,6 +824,7 @@ export default function ProjectWizard() {
                       elements: nudgedElements,
                       buildableArea: buildablePlanFt,
                       obstacles: obstaclesPlanFt,
+                      obstacleLabels,
                     };
                   });
                   setPlacementRationales((prev) => ({ ...prev, ...rationales }));
