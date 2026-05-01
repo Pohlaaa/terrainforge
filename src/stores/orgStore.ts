@@ -13,7 +13,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/services/supabase';
 import * as db from '@/services/supabaseData';
-import type { Organization, SubscriptionStatus, SubscriptionTier } from '@/types';
+import type { Organization, SubscriptionStatus, SubscriptionTier, MaterialDefaults } from '@/types';
+
+const EMPTY_MATERIAL_DEFAULTS: MaterialDefaults = { categoryRates: [], disposalRates: [] };
 
 // ── Store interface ───────────────────────────────────────────────────────────
 
@@ -31,6 +33,8 @@ interface OrgStore {
     defaultEquipmentRate?: number | null;
     disposalRates?: Record<string, number>;
   }) => Promise<void>;
+  /** Sprint Materials Settings: persist the org's category-rate + disposal-rate defaults. */
+  updateMaterialDefaults: (defaults: MaterialDefaults) => Promise<void>;
   /** Clear org data on sign-out. */
   clearOrg: () => void;
   /** Insert sample data for the current org. */
@@ -53,11 +57,19 @@ interface OrgRow {
   default_labor_rate: number | null;
   default_equipment_rate: number | null;
   disposal_rates: Record<string, number> | null;
+  material_defaults: MaterialDefaults | null;
 }
 
 // ── Mapping helper ────────────────────────────────────────────────────────────
 
 function mapOrgRow(row: OrgRow): Organization {
+  // material_defaults JSONB defaults to {categoryRates:[],disposalRates:[]}
+  // server-side (mig 037), but a fresh org or pre-mig row could be null.
+  const md = row.material_defaults;
+  const materialDefaults: MaterialDefaults = {
+    categoryRates: Array.isArray(md?.categoryRates) ? md!.categoryRates : [],
+    disposalRates: Array.isArray(md?.disposalRates) ? md!.disposalRates : [],
+  };
   return {
     id: row.id,
     name: row.name ?? '',
@@ -70,6 +82,7 @@ function mapOrgRow(row: OrgRow): Organization {
     defaultLaborRate: row.default_labor_rate ?? null,
     defaultEquipmentRate: row.default_equipment_rate ?? null,
     disposalRates: row.disposal_rates ?? {},
+    materialDefaults,
   };
 }
 
@@ -91,6 +104,7 @@ function makeDefaultOrg(orgId: string): Organization {
     defaultLaborRate: null,
     defaultEquipmentRate: null,
     disposalRates: {},
+    materialDefaults: EMPTY_MATERIAL_DEFAULTS,
   };
 }
 
@@ -111,7 +125,7 @@ export const useOrgStore = create<OrgStore>()(
           const { data, error } = await supabase
             .from('organizations')
             .select(
-              'id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates'
+              'id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates, material_defaults'
             )
             .eq('id', orgId)
             .single();
@@ -144,7 +158,7 @@ export const useOrgStore = create<OrgStore>()(
                   subscription_tier: 'starter',
                   trial_ends_at: trialEndsAt,
                 }])
-                .select('id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates')
+                .select('id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates, material_defaults')
                 .single()
 
               if (insertError) {
@@ -152,7 +166,7 @@ export const useOrgStore = create<OrgStore>()(
                 console.warn('fetchOrg: org INSERT conflict (likely race), re-fetching', insertError.code)
                 const { data: existingOrg } = await supabase
                   .from('organizations')
-                  .select('id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates')
+                  .select('id, name, shortcode, subscription_status, subscription_tier, trial_ends_at, subscription_ends_at, stripe_customer_id, default_labor_rate, default_equipment_rate, disposal_rates, material_defaults')
                   .eq('id', orgId)
                   .single()
                 if (existingOrg) {
@@ -223,6 +237,23 @@ export const useOrgStore = create<OrgStore>()(
         if (error) {
           console.error('updateOrgSettings failed', error)
           set({ org: previous })
+        }
+      },
+
+      updateMaterialDefaults: async (defaults: MaterialDefaults) => {
+        const org = useOrgStore.getState().org;
+        if (!org) return;
+        const previous = org.materialDefaults;
+        // Optimistic
+        set({ org: { ...org, materialDefaults: defaults } });
+        const { error } = await supabase
+          .from('organizations')
+          .update({ material_defaults: defaults })
+          .eq('id', org.id);
+        if (error) {
+          console.error('updateMaterialDefaults failed', error);
+          set({ org: { ...org, materialDefaults: previous } });
+          throw error;
         }
       },
 

@@ -19,20 +19,17 @@ Most of the historical 🔴 entries below are now ✅. This section is the actua
 
 ### P1 — High-value contractor features (each its own sprint)
 
-1. **Sprint Schedule** — pull crew assignments + start/end dates + project filters into a single editable Schedule page (jbluhm V6: "schedule should be its own defined page that can be edited & changed at any given moment"). Today's UI is scattered across Work Orders / Resources tab / Crew + Equipment Hub.
-2. **Sprint Materials Settings** — fixed-rate defaults panel (jbluhm V6: "I only use Class 5 base from supplier X at $Y/yard"). New `organizations.material_defaults` JSONB. UI for category-rate defaults + disposal-rate categories (Brush, Concrete, Soil, Fill, Rock). AI prompt updated to inject org defaults into budget generation.
-3. **Sprint Provider Catalog** — supplier search returning the big-name suppliers (Gertens, Site One, Frador, Bachmans, Rock Hard) instead of small landscape services. Needs operator decision on which providers have public APIs + credentials. Pair with live-pricing follow-up.
-4. **Sprint AI-Buildable Phase 2** — parcel-boundary lookup via OSM `landuse=residential` / Regrid / county GIS. Clips AI placements to the actual lot so we stop "placing on the neighbor's lawn." Needs licensing decision (OSM free / Regrid paid).
-5. **AI placement corpus authoring** — the 15-property test corpus skeleton is live (`e2e/ai-placement/corpus.ts`) but most entries have placeholder lat/lng. Charlie hand-authoring `expected[]` per `.claude/TESTING/AI_PLACEMENT_NOTES.md` unblocks the harness as a real CI gate.
-6. **Sprint AI-Resource-Reinference** — re-run tasks/crew/equipment AI inference at the END of Step 2 (Design) so the recommendations are grounded in the now-known element list + dimensions, not the description-only initial pass. Stronger crew estimate, fewer 0-cost surprises.
+1. **Sprint Materials Settings** — fixed-rate defaults panel (jbluhm V6: "I only use Class 5 base from supplier X at $Y/yard"). New `organizations.material_defaults` JSONB. UI for category-rate defaults + disposal-rate categories (Brush, Concrete, Soil, Fill, Rock). AI prompt updated to inject org defaults into budget generation.
+2. **Sprint Provider Catalog** — supplier search returning the big-name suppliers (Gertens, Site One, Frador, Bachmans, Rock Hard) instead of small landscape services. Needs operator decision on which providers have public APIs + credentials. Pair with live-pricing follow-up.
+3. **Sprint AI-Buildable Phase 2** — parcel-boundary lookup via OSM `landuse=residential` / Regrid / county GIS. Clips AI placements to the actual lot so we stop "placing on the neighbor's lawn." Needs licensing decision (OSM free / Regrid paid).
+4. **AI placement corpus authoring** — the 15-property test corpus skeleton is live (`e2e/ai-placement/corpus.ts`) but most entries have placeholder lat/lng. Charlie hand-authoring `expected[]` per `.claude/TESTING/AI_PLACEMENT_NOTES.md` unblocks the harness as a real CI gate.
+5. **Sprint AI-Resource-Reinference** — re-run tasks/crew/equipment AI inference at the END of Step 2 (Design) so the recommendations are grounded in the now-known element list + dimensions, not the description-only initial pass. Stronger crew estimate, fewer 0-cost surprises.
 
 ### P2 — Engineering hardening
 
 7. `package.json` declares `@rollup/rollup-linux-x64-gnu` as a hard dep — Linux-only, breaks `npm install` on Windows without `--force`. Demote to optionalDependencies.
 8. **Provider catalog ID prefix follow-through** — supplier short_code shipped (mig 036), but engine + AI suggestions don't yet read it. Round-trip: when AI suggests a material, check if the org has a preferred supplier for that category and surface their price.
 9. **Vision-call cost monitoring** — add daily spend rollup + alert per org. ~$0.05 per project create now; want eyes on aggregate before scaling to real contractors.
-10. **CSV import 50-row → 5000-row stress test** — RFC 4180 parser fixed the silent-fail; verify the bulk insert chunked retry (`BULK_CHUNK_SIZE = 100`) actually finishes a 5000-row import without gaps.
-11. **Soft-clip drag warning labels** — current halo says "On obstacle" generically; AI returns labels (rooftop / road / driveway) but they're discarded in `aiPlacement.ts`. Plumb labels through wizard state + render in tooltip.
 
 ### P3 — Documentation / dev experience
 
@@ -40,8 +37,13 @@ Most of the historical 🔴 entries below are now ✅. This section is the actua
 13. **Worktree pattern guide** — add a 1-pager on when to create a fresh `.claude/worktrees/<name>/` for a feature branch, when to just `git checkout -b`, and how to clean up after merge.
 14. **Trim FINDINGS.md** — currently 156K; the F-CW + LIVE + sweep entries from Apr could move to `archive/FINDINGS_pre_v6.md` to reduce the working file.
 
-### Closed since the last roadmap update (2026-04-29 → 2026-04-30)
+### Closed since the last roadmap update (2026-04-29 → 2026-05-01)
 
+- ✅ **Sprint Materials Settings** — fixed-rate defaults panel in Settings (mig 037 `organizations.material_defaults` JSONB; CRUD UI for category rates + named disposal categories; AI prompt + cost fallback in `validateAndEnrich` consume the defaults). Closes jbluhm V6 P1 ask. PR #123, deploy `69f432ee`.
+- ✅ **AI placement probe script** (`npm run placement:probe`) — single-fixture iteration loop at ~$0.05 vs the full corpus's ~$0.75. Soft sanity checks + raw response dump to `.claude/TESTING/AI_PLACE_PROBE.md`. Doesn't unblock the corpus authoring (still gated on Charlie) but cuts the prompt-iteration cycle 15×.
+- ✅ **P2 #11 — Soft-clip drag warning labels** — AI-returned obstacle labels (`house roof`, `driveway`, `pool`) now plumbed through `aiPlacement.ts → ProjectWizard.WizardData → PlanView2D` and surfaced in the drag tooltip ("On house roof" instead of generic "On obstacle"). Storage shape unchanged.
+- ✅ **P2 #10 — CSV import stress test** — 4 vitest cases covering 5000-row chunked import (50 chunks × 100 rows, no gaps), non-multiple chunk size, transient retry, and chunk failure-after-3-attempts. 181 → 185 passing tests.
+- ✅ **Sprint Schedule** — dedicated `/schedule` Gantt-lite page (rows = projects, columns = days, drag bar to reschedule, click to edit status/dates inline; status pills + date-range presets + crew filter). Schedule is now its own primary nav tab. CrewEquipmentHub weekly-grid title now links to `/schedule` for discoverability. Closes jbluhm V6 P1 ask.
 - ✅ **F-3D-MESH-01** — element meshes invisible at parcel-scale framing (commit `e2a539b`)
 - ✅ **Sprint AI-Place** — vision-grounded element placement (commits `13073ca` + `5bb0b54`)
 - ✅ **Sprint AI-Buildable Phase 1** — buildable + obstacle polygon overlays in 2D + 3D (commits `4b75ad0` + `bad421b`)

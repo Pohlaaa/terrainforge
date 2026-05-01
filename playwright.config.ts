@@ -101,5 +101,19 @@ export default defineConfig({
       timeout: 15 * 60_000,
       retries: 0,
     },
+    {
+      // Single-fixture probe — for prompt iteration. Runs ONE entry
+      // (default 01-suburban-asheville, override with PLACEMENT_PROBE_ID
+      // env). Costs ~$0.05 vs the full corpus's ~$0.75. Dumps the
+      // model's raw response + a digest to .claude/TESTING/AI_PLACE_PROBE.md.
+      // Invoke via `npm run placement:probe`.
+      name: 'ai-placement-probe',
+      testMatch: /ai-placement\/probe\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      timeout: 2 * 60_000,
+      retries: 0,
+    },
   ],
 })

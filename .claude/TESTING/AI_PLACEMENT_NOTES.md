@@ -149,7 +149,8 @@ Tolerance bands by property type (already set per entry):
 |---|---|---|
 | Single project wizard transition | ~$0.05 (Haiku vision, ~700 KB tile + ~2 KB prompt + ~800 token response) | Per project create |
 | `npm run placement:score` (full corpus) | ~$0.75 (15 entries × $0.05) | Pre-merge gate, daily CI |
-| Prompt iteration cycle | ~$0.75 per pass × ~20 passes = ~$15 | One-time during prompt tuning |
+| `npm run placement:probe` (one fixture) | ~$0.05 | **Use for prompt iteration.** Default fixture is `01-suburban-asheville`; override via `PLACEMENT_PROBE_ID=06-heavily-treed npm run placement:probe`. Dumps response + soft sanity checks to `.claude/TESTING/AI_PLACE_PROBE.md`. |
+| Prompt iteration cycle (probe-based) | ~$0.05 per pass × N passes | Running tally |
 | Operator-tuning sessions | ~$5 per session | Weekly during early iterations |
 
 Threshold: ≥ 70% mean accuracy across the 15 entries to merge new
