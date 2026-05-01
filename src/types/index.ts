@@ -883,7 +883,55 @@ export interface Organization {
   stripeCustomerId: string | null;
   defaultLaborRate: number | null;
   defaultEquipmentRate: number | null;
+  /** Legacy disposal rate map keyed by category name. Migration 037 adds the richer `materialDefaults.disposalRates`. */
   disposalRates: Record<string, number>;
+  /** Sprint Materials Settings (mig 037): per-category default rates + named disposal categories. */
+  materialDefaults: MaterialDefaults;
+}
+
+/**
+ * Sprint Materials Settings — fixed-rate defaults a contractor sets once
+ * and the AI/engine reuses every project. Closes jbluhm V6:
+ *  > "I only use Class 5 base from this one Supplier & it costs this much.
+ *  > Stuff like that to help streamline the Material calculating."
+ *
+ * Two independent sections:
+ *   - categoryRates: "for this material category I always use this supplier
+ *     at this price." Engine + AI prompt consume.
+ *   - disposalRates: named disposal-fee categories (Brush, Concrete, Soil,
+ *     Fill, Rock, …). Replaces the legacy `disposalRates` map keyed by
+ *     freeform category names.
+ */
+export interface MaterialDefaults {
+  categoryRates: CategoryRate[];
+  disposalRates: DisposalRateRule[];
+}
+
+export interface CategoryRate {
+  /** Stable client-generated UUID so React lists are stable across rerenders. */
+  id: string;
+  /** Contractor-facing label, e.g. "Class 5 base". */
+  label: string;
+  /** MaterialCategory match — engine fallback uses this. */
+  category: MaterialCategory;
+  /** Optional supplier preference; null when contractor doesn't care. */
+  supplierId: string | null;
+  /** Default unit cost ($) per `unit`. */
+  unitCost: number;
+  /** Purchase unit (cuyd, ton, bag, each, etc.). */
+  unit: string;
+  /** Optional contractor note. */
+  notes?: string;
+}
+
+export interface DisposalRateRule {
+  id: string;
+  /** Contractor-facing type name: Brush, Concrete, Soil, Fill, Rock, … */
+  type: string;
+  unitCost: number;
+  /** Disposal unit — typically cuyd or ton. */
+  unit: string;
+  notes?: string;
 }
 
 export const EQUIPMENT_TYPES = [

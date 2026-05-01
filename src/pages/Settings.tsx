@@ -3,18 +3,20 @@ import { useOrgStore } from '@/stores/orgStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ProfileSection } from '@/components/settings/ProfileSection'
 import { CompanySection } from '@/components/settings/CompanySection'
+import { MaterialDefaultsSection } from '@/components/settings/MaterialDefaultsSection'
 import { PreferencesSection } from '@/components/settings/PreferencesSection'
 import { NotificationSection } from '@/components/settings/NotificationSection'
 import { BillingSection } from '@/components/settings/BillingSection'
 import { DangerZoneSection } from '@/components/settings/DangerZoneSection'
 
-type SettingsSection = 'profile' | 'company' | 'preferences' | 'notifications' | 'billing' | 'danger'
+type SettingsSection = 'profile' | 'company' | 'material-defaults' | 'preferences' | 'notifications' | 'billing' | 'danger'
 
 interface NavItem { id: SettingsSection; icon: string; label: string }
 
 const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'profile', icon: '\uD83D\uDC64', label: 'Profile' },
   { id: 'company', icon: '\uD83C\uDFE2', label: 'Company' },
+  { id: 'material-defaults', icon: '\uD83E\uDDF1', label: 'Material Defaults' },
   { id: 'preferences', icon: '\u2699\uFE0F', label: 'Preferences' },
   { id: 'notifications', icon: '\uD83D\uDD14', label: 'Notifications' },
   { id: 'billing', icon: '\uD83D\uDCB3', label: 'Billing' },
@@ -23,12 +25,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
 
 // Role-based visibility: which sections each role can see
 const SECTION_ACCESS: Record<SettingsSection, { roles: string[]; readOnly?: string[] }> = {
-  profile:       { roles: ['admin', 'designer', 'foreman', 'client'] },
-  company:       { roles: ['admin', 'designer'], readOnly: ['designer'] },
-  preferences:   { roles: ['admin', 'designer', 'foreman', 'client'] },
-  notifications: { roles: ['admin', 'designer', 'foreman', 'client'] },
-  billing:       { roles: ['admin'] },
-  danger:        { roles: ['admin'] },
+  profile:            { roles: ['admin', 'designer', 'foreman', 'client'] },
+  company:            { roles: ['admin', 'designer'], readOnly: ['designer'] },
+  'material-defaults': { roles: ['admin', 'designer'], readOnly: ['designer'] },
+  preferences:        { roles: ['admin', 'designer', 'foreman', 'client'] },
+  notifications:      { roles: ['admin', 'designer', 'foreman', 'client'] },
+  billing:            { roles: ['admin'] },
+  danger:             { roles: ['admin'] },
 }
 
 export const Settings: React.FC = () => {
@@ -86,6 +89,7 @@ export const Settings: React.FC = () => {
         <div className="flex-1 overflow-y-auto px-6 py-6 max-w-[640px]">
           {activeSection === 'profile' && <ProfileSection readOnly={isReadOnly} />}
           {activeSection === 'company' && <CompanySection readOnly={isReadOnly} />}
+          {activeSection === 'material-defaults' && <MaterialDefaultsSection readOnly={isReadOnly} />}
           {activeSection === 'preferences' && <PreferencesSection />}
           {activeSection === 'notifications' && <NotificationSection />}
           {activeSection === 'billing' && <BillingSection />}
