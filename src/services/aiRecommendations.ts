@@ -25,6 +25,8 @@ import type {
   ScheduleEntry,
   ProjectListItem,
   ElementType,
+  MaterialDefaults,
+  MaterialCategory,
 } from '@/types';
 
 export interface RecommendationContext {
@@ -48,9 +50,54 @@ export interface RecommendationContext {
   orgMaterials: Material[];
   defaultLaborRate: number;
   defaultEquipmentRate: number;
+  /**
+   * Sprint Materials Settings — contractor's per-category default rates +
+   * named disposal rates. AI prompt is told to use these for matching
+   * material categories; validateAndEnrich also fills in $0 unitCosts
+   * with the matching category rate as a belt-and-suspenders fallback.
+   * Optional so existing call sites don't break before they're updated.
+   */
+  materialDefaults?: MaterialDefaults;
   existingAssignments: ProjectCrewAssignment[];
   existingScheduleEntries: ScheduleEntry[];
   existingProjects: ProjectListItem[];
+}
+
+// Sprint Materials Settings: render the org's category-rate + disposal-rate
+// defaults as a markdown block the AI can use when filling in unitCost /
+// disposalCost. AI is told these are the contractor's preferred rates —
+// match by category and reuse, do NOT invent local market prices on top.
+function formatMaterialDefaults(md: MaterialDefaults | undefined): string {
+  if (!md || (md.categoryRates.length === 0 && md.disposalRates.length === 0)) {
+    return '';
+  }
+  const lines: string[] = ['', '## Contractor Material Defaults (use these, do not override)'];
+  if (md.categoryRates.length) {
+    lines.push('Category rates (per-category default unit cost — use for any matching material):');
+    for (const r of md.categoryRates) {
+      const supplier = r.supplierId ? ` from supplier ${r.supplierId}` : '';
+      lines.push(`  - ${r.label} (${r.category}): $${r.unitCost}/${r.unit}${supplier}`);
+    }
+  }
+  if (md.disposalRates.length) {
+    lines.push('Disposal rates (use for the budget.disposalCost calc when relevant):');
+    for (const r of md.disposalRates) {
+      lines.push(`  - ${r.type}: $${r.unitCost}/${r.unit}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+// Helper consumed by validateAndEnrich to backfill a 0/missing unitCost.
+function findCategoryRate(
+  defaults: MaterialDefaults | undefined,
+  category: string | null | undefined,
+): { unitCost: number; unit: string } | null {
+  if (!defaults || !category) return null;
+  const match = defaults.categoryRates.find((r) => r.category === (category as MaterialCategory));
+  if (!match) return null;
+  if (!Number.isFinite(match.unitCost) || match.unitCost <= 0) return null;
+  return { unitCost: match.unitCost, unit: match.unit };
 }
 
 function buildPrompt(ctx: RecommendationContext): string {
@@ -121,6 +168,7 @@ ${JSON.stringify(materialLibrary, null, 2)}
 ## Rates
 - Default labor rate: $${ctx.defaultLaborRate}/hr
 - Default equipment rate: $${ctx.defaultEquipmentRate}/day
+${formatMaterialDefaults(ctx.materialDefaults)}
 
 Return JSON matching this schema EXACTLY (no markdown fencing):
 {
@@ -316,18 +364,32 @@ function validateAndEnrich(
     const match = byId || byName;
 
     if (match) {
+      // Sprint Materials Settings: when the library entry has $0 cost AND
+      // the org has a default for this category, fall back to the org rate
+      // so the budget rollup doesn't show $0. Library cost still wins when
+      // it's set; defaults are a safety net, not an override.
+      const libCost = Number.isFinite(match.cost) && match.cost > 0
+        ? match.cost
+        : (findCategoryRate(ctx.materialDefaults, match.category)?.unitCost ?? match.cost);
       return {
         ...m,
         materialId: match.id,
         // Prefer the library entry's unit + cost over AI's guess.
         unit: match.unit || coercedUnit,
-        unitCost: match.cost,
+        unitCost: libCost,
         estimatedQuantity: coercedQuantity,
         reason: scrubbedReason,
         inLibrary: true,
       };
     }
-    return { ...m, materialId: null, unit: coercedUnit, estimatedQuantity: coercedQuantity, reason: scrubbedReason, inLibrary: false };
+    // Unknown material: try category-rate fallback for the unitCost when
+    // AI returned $0 / NaN. Don't override AI's price if it gave us one.
+    let unitCost = m.unitCost;
+    if (!Number.isFinite(unitCost) || unitCost <= 0) {
+      const fallback = findCategoryRate(ctx.materialDefaults, m.category);
+      if (fallback) unitCost = fallback.unitCost;
+    }
+    return { ...m, materialId: null, unit: coercedUnit, unitCost, estimatedQuantity: coercedQuantity, reason: scrubbedReason, inLibrary: false };
   });
 
   // Validate tasks

@@ -581,6 +581,10 @@ export default function ProjectWizard() {
         orgMaterials: materialStore.materials,
         defaultLaborRate: org?.defaultLaborRate ?? 35,
         defaultEquipmentRate: org?.defaultEquipmentRate ?? 0,
+        // Sprint Materials Settings: pass org defaults so the AI prompt sees
+        // the contractor's preferred per-category rates + named disposal
+        // categories, and validateAndEnrich can backfill $0 unitCosts.
+        materialDefaults: org?.materialDefaults,
         existingAssignments: scheduleStore.assignments,
         existingScheduleEntries: scheduleStore.entries,
         existingProjects: projectStore.projects,

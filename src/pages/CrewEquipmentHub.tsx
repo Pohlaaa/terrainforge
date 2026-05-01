@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCrewStore } from '@/stores/crewStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
@@ -56,6 +57,7 @@ function formatWeekRange(mondayStr: string): string {
 // ── Component ────────────────────────────────────────────────────────────────
 
 const CrewEquipmentHub: React.FC = () => {
+  const navigate = useNavigate();
   const crew = useCrewStore((s) => s.crew);
   const crewLoading = useCrewStore((s) => s.isLoading);
   const addCrewMember = useCrewStore((s) => s.addCrewMember);
@@ -246,7 +248,15 @@ const CrewEquipmentHub: React.FC = () => {
           style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
         >
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Weekly Schedule</h2>
+            <button
+              onClick={() => navigate('/schedule')}
+              className="text-sm font-semibold cursor-pointer border-none bg-transparent flex items-center gap-1 hover:underline"
+              style={{ color: 'var(--text-primary)' }}
+              title="Open full schedule"
+            >
+              Weekly Schedule
+              <NavIcon name="external-link" size={12} />
+            </button>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setWeekStart(addDays(weekStart, -7))}
