@@ -1,12 +1,57 @@
 # TerrainForge — Roadmap
 
 > **What this is.** Single prioritized source of "what's next." Consolidates all
-> contractor feedback (v2-v5), the Apr 5 audit report, Supabase advisor findings, and
+> contractor feedback (v2-v6), the Apr 5 audit report, Supabase advisor findings, and
 > internal stability work. Status on each item: ✅ done / 🟡 in-progress / 🔴 open.
 >
-> **Last updated:** 2026-04-29 (batches 15-28 shipped: zundo undo/redo, polygon shapes via mig 034, polygon vertex-edit + click-to-draw redraw, draw-new-polygon shortcut, right-click-edge vertex insert, Cmd-K quick-switcher, recently-used material chips, element copy/paste, dimension presets. Manual Chrome QA on staging confirms all surfaces healthy.).
+> **Last updated:** 2026-04-30 — Sprint AI-Place + AI-Buildable + V6 jbluhm batch + Bucket A all live in prod. See "Currently open work" below for the actual short list.
 >
 > **Audience.** Next session's default work picker. Read after `CLAUDE.md` + `CONTEXT.md`.
+
+---
+
+## Currently open work (post-2026-04-30 truth)
+
+Most of the historical 🔴 entries below are now ✅. This section is the actual prioritized "what's next" — read this first, the long history below is reference.
+
+### P0 — Real bugs / data-correctness
+*(none currently open — all P0s from V6 are shipped)*
+
+### P1 — High-value contractor features (each its own sprint)
+
+1. **Sprint Schedule** — pull crew assignments + start/end dates + project filters into a single editable Schedule page (jbluhm V6: "schedule should be its own defined page that can be edited & changed at any given moment"). Today's UI is scattered across Work Orders / Resources tab / Crew + Equipment Hub.
+2. **Sprint Materials Settings** — fixed-rate defaults panel (jbluhm V6: "I only use Class 5 base from supplier X at $Y/yard"). New `organizations.material_defaults` JSONB. UI for category-rate defaults + disposal-rate categories (Brush, Concrete, Soil, Fill, Rock). AI prompt updated to inject org defaults into budget generation.
+3. **Sprint Provider Catalog** — supplier search returning the big-name suppliers (Gertens, Site One, Frador, Bachmans, Rock Hard) instead of small landscape services. Needs operator decision on which providers have public APIs + credentials. Pair with live-pricing follow-up.
+4. **Sprint AI-Buildable Phase 2** — parcel-boundary lookup via OSM `landuse=residential` / Regrid / county GIS. Clips AI placements to the actual lot so we stop "placing on the neighbor's lawn." Needs licensing decision (OSM free / Regrid paid).
+5. **AI placement corpus authoring** — the 15-property test corpus skeleton is live (`e2e/ai-placement/corpus.ts`) but most entries have placeholder lat/lng. Charlie hand-authoring `expected[]` per `.claude/TESTING/AI_PLACEMENT_NOTES.md` unblocks the harness as a real CI gate.
+6. **Sprint AI-Resource-Reinference** — re-run tasks/crew/equipment AI inference at the END of Step 2 (Design) so the recommendations are grounded in the now-known element list + dimensions, not the description-only initial pass. Stronger crew estimate, fewer 0-cost surprises.
+
+### P2 — Engineering hardening
+
+7. `package.json` declares `@rollup/rollup-linux-x64-gnu` as a hard dep — Linux-only, breaks `npm install` on Windows without `--force`. Demote to optionalDependencies.
+8. **Provider catalog ID prefix follow-through** — supplier short_code shipped (mig 036), but engine + AI suggestions don't yet read it. Round-trip: when AI suggests a material, check if the org has a preferred supplier for that category and surface their price.
+9. **Vision-call cost monitoring** — add daily spend rollup + alert per org. ~$0.05 per project create now; want eyes on aggregate before scaling to real contractors.
+10. **CSV import 50-row → 5000-row stress test** — RFC 4180 parser fixed the silent-fail; verify the bulk insert chunked retry (`BULK_CHUNK_SIZE = 100`) actually finishes a 5000-row import without gaps.
+11. **Soft-clip drag warning labels** — current halo says "On obstacle" generically; AI returns labels (rooftop / road / driveway) but they're discarded in `aiPlacement.ts`. Plumb labels through wizard state + render in tooltip.
+
+### P3 — Documentation / dev experience
+
+12. **Documentation refresh** — this pass; ROADMAP / CONTEXT / ERD just updated 2026-04-30.
+13. **Worktree pattern guide** — add a 1-pager on when to create a fresh `.claude/worktrees/<name>/` for a feature branch, when to just `git checkout -b`, and how to clean up after merge.
+14. **Trim FINDINGS.md** — currently 156K; the F-CW + LIVE + sweep entries from Apr could move to `archive/FINDINGS_pre_v6.md` to reduce the working file.
+
+### Closed since the last roadmap update (2026-04-29 → 2026-04-30)
+
+- ✅ **F-3D-MESH-01** — element meshes invisible at parcel-scale framing (commit `e2a539b`)
+- ✅ **Sprint AI-Place** — vision-grounded element placement (commits `13073ca` + `5bb0b54`)
+- ✅ **Sprint AI-Buildable Phase 1** — buildable + obstacle polygon overlays in 2D + 3D (commits `4b75ad0` + `bad421b`)
+- ✅ **V6 jbluhm batch** — scale, remove element, AI-placement-when-typed-address, hourly rate 0, materials tab reorder, materials qty live-scale, Enter advances wizard (commits `62956ec` + `ad20075`)
+- ✅ **Bucket A** — RFC 4180 CSV parser, supplier short_code prefix, per-supplier CSV pricing, engine consumables (edging spikes etc.), Engine Math debug view (commit `e31474e`)
+- ✅ **F-V6-PROD-01** — `/projects` + `/projects/new` 404 routing fix (commit `5600201`)
+- ✅ **BudgetTab falsy-coerce sweep** — same class as V6 hourly rate (commit `6e081f3`)
+- ✅ **Worktree cleanup** — `claude/quirky-ishizaka` removed; 17 merged local branches deleted; parent FF'd to current main
+
+---
 
 ---
 
@@ -54,7 +99,7 @@ to reflect what landed; what's marked 🔴 is what was *not* done in this run.
 
 These are actively breaking Charlie's partner's ability to use the app.
 
-### 🔴 3D viewer doesn't render element meshes (2026-04-29)
+### ✅ 3D viewer doesn't render element meshes (closed `e2a539b`, 2026-04-29)
 > Charlie's manual test: 3D toggle on existing projects shows the satellite
 > ground tile rendering correctly but **zero element meshes appear in the
 > scene**. The 2D view shows the same elements without issue. Reproduced on
@@ -69,7 +114,7 @@ These are actively breaking Charlie's partner's ability to use the app.
 > `scale`, identify the actual cause before fixing. See
 > `.claude/TESTING/FINDINGS.md#F-3D-MESH-01` for the bug log.
 
-### 🔴 Element placement on map ignores property structure (2026-04-29)
+### ✅ Element placement on map ignores property structure (closed `13073ca`+`5bb0b54`, 2026-04-30 — Sprint AI-Place shipped)
 > Same manual test as above: a 16×12 paver patio is positioned squarely on
 > a building's roof; a 60 LF garden-bed edging slices through both lanes
 > of a 4-lane road plus the building wall. The current `autoLayout` 25-ft
@@ -79,7 +124,7 @@ These are actively breaking Charlie's partner's ability to use the app.
 > inputs, not just suburban backyards. Until that ships, the only path
 > to sensible placement is contractor manual drag in Step 2 of the wizard.
 
-### 🔴 CSV material import fails after ~50 rows *(V3)*
+### ✅ CSV material import fails after ~50 rows *(V3)* (closed `e31474e`, 2026-04-30 — RFC 4180 parser)
 > "Failed to save Material" error when importing a larger catalog.
 Likely a Supabase rate-limit or batched-insert missing. **Investigation starts at**
 `src/pages/MaterialLibrary.tsx` CSV handler + `src/services/supabaseMaterials.ts`
@@ -120,7 +165,7 @@ dropdown components. Audit every picker: native selects with `onChange` should w
 custom popover components need explicit keyboard handlers. Likely offenders:
 SuggestionPanel, MaterialPicker, address autocomplete, supplier search.
 
-### 🔴 Zero doesn't clear on numeric inputs *(V4, V5)*
+### ✅ Zero doesn't clear on numeric inputs *(V4, V5)* (closed `ad20075` + `6e081f3`, 2026-04-30 — fixed in CompanySetupStep + AddEquipmentStep + BudgetTab; NumberInput got an `allowZero` opt-in prop for rate/cost fields)
 > "The Zero in each box doesn't disappear when I click to enter in amounts used.
 I can't delete the zero first thing I have to enter in my number then use arrow
 keys to shift over to the Zero to delete it." — `<input type="number" value={0}>`
@@ -381,7 +426,7 @@ they touch overlapping files (PlanView3D, OverviewTab, aiRecommendations).
 
 ---
 
-### 🆕 Sprint AI-Place — Vision-grounded element placement on property satellite (highest priority, post-2026-04-29)
+### ✅ Sprint AI-Place — Vision-grounded element placement on property satellite (shipped 2026-04-30 — `13073ca` plumbing + `5bb0b54` wizard wiring; post-deploy hardening in `62956ec` covers typed-address geocode fallback)
 
 **Why this exists**: auto-layout has zero awareness of what's road / roof /
 lawn / driveway in the satellite tile. Charlie verified the failure live
@@ -535,7 +580,17 @@ outputs; PR diffs to either move the bar or the test.
 
 ---
 
-### 🆕 Sprint AI-Buildable — Buildable-area overlay + parcel clipping (follow-up to Sprint AI-Place)
+### 🟡 Sprint AI-Buildable — Phase 1 shipped; Phase 2 (parcel clipping) deferred (2026-04-30 — `4b75ad0` + `bad421b`)
+
+Phase 1 shipped:
+- mig 035 added `lot_geometry`, `buildable_area_geometry`, `obstacles_geometry` JSONB columns on projects
+- PlanView2D + PlanView3D render the AI-identified buildable polygon as a translucent green overlay + obstacles as faint red dashed outlines
+- Soft-clip drag warning: red halo + "On obstacle" / "Outside buildable area" tooltip when contractor drags an element across the boundary (doesn't block — drop wins, contractor authority)
+- Element-element collision auto-nudge post-AI-placement (greedy AABB push along minimum-displacement axis, anchor-stable, 20-iter cap)
+
+Phase 2 still open: parcel boundary lookup via OSM `landuse=residential` / Regrid / county GIS, with clipping of AI placements to the actual lot. Needs licensing + provider decision.
+
+### Original Sprint AI-Buildable spec (preserved)
 
 **Why this exists**: Sprint AI-Place ships with the model identifying
 a buildable polygon but not visualizing it. This sprint surfaces that

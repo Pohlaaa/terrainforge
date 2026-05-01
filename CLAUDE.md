@@ -3,9 +3,52 @@
 ## Product Identity
 TerrainForge is a SaaS platform for landscaping contractors. It replaces spreadsheets, WhatsApp threads, and paper tickets with a single tool for project management, material manifests, crew coordination, equipment tracking, and AI-assisted pricing. Target customer: owner-operators and small landscaping companies (2-25 employees).
 
-## Current Status (2026-04-26) — Materials engine end-to-end working, contractor walkthrough complete
+## Current Status (2026-04-30) — Sprint AI-Place + AI-Buildable + V6 + Bucket A all live in prod
 
-**Active work**: ~50 distinct contractor-walkthrough findings closed across 18 commits over the F-CW series. The materials engine — TerrainForge's central value prop — went from completely broken to producing accurate, contractor-ready material rows with sensible quantities, verified live on staging.
+**Active work**: V6 contractor feedback loop with jbluhm closed at the architectural level. The wizard now does **vision-grounded element placement** on the satellite tile (Sprint AI-Place: Claude Haiku 4.5 vision call inside `proxy-claude` Edge Fn → normalized tile coords → plan-feet via Web Mercator), surfaces the AI-identified buildable polygon + obstacle polygons as overlays in 2D + 3D (Sprint AI-Buildable Phase 1), and survives every contractor pain point from jbluhm's V6 notes (scale, remove element, materials qty live-scale, Enter advances, hourly rates accept 0, materials tab reorder, Engine Math debug view, robust CSV parser, supplier-prefixed SKUs, edging consumables, draft persistence).
+
+**Latest commits on `main`** (production = `terrainforge-staging.netlify.app`, drag-deployed via Netlify CLI):
+- `6e081f3` fix(budget): preserve user-typed 0 in budget edit save (sweep)
+- `5600201` fix(routing): F-V6-PROD-01 — eliminate /projects + /projects/new 404s
+- `e31474e` feat(materials): jbluhm V6 — Bucket A (csv + suppliers + engine debug)
+- `ad20075` fix(v6): jbluhm V6 feedback batch — P0/P1 wizard + onboarding
+- `54d85d5` feat(wizard): Recompute button + localStorage draft persistence
+- `bad421b` feat(ai-buildable-2): soft-clip drag warning + element collision nudge
+- `4b75ad0` feat(ai-buildable): mig 035 + buildable + obstacle overlays in 2D/3D
+- `5bb0b54` feat(ai-place): wizard wiring + harness — PR2 of 2
+- `13073ca` feat(ai-place): plumbing PR — vision-grounded element placement
+- `e2a539b` fix(3d): F-3D-MESH-01 element meshes invisible at parcel-scale framing
+
+**What's in production now (verified live via Chrome MCP, 2026-04-30):**
+- ✅ Wizard: 5-step (Job → Design → Plan → Numbers → Review), Enter advances, draft persists in localStorage scoped per org, Cancel routes to `/dashboard` (was 404)
+- ✅ AI element inference + AI vision placement + per-element rationale tooltips + Recompute + Hide/Show overlay toggles
+- ✅ Materials qty live-scales when contractor edits dimensions (no more "go forward, go back" workaround)
+- ✅ 3D viewer: F-3D-MESH-01 fix landed — element-priority camera framing, 0.05 ft ground offset, hardscape thickness defaults (paver 0.4 ft, edging 0.3 ft, etc.). Polygon overlays in 2D + 3D for buildable area + obstacles
+- ✅ Materials hub: tabs reordered (Library → Suppliers → Inventory On Hand), default landing on Library, ⚙ Engine Math debug view shows live unit conversions per material with test dimensions
+- ✅ CSV import: RFC 4180 parser handles quoted commas, escaped quotes, embedded newlines, CRLF; survives the historical 50-row failure mode
+- ✅ Supplier short_code (mig 036) → SKU prefix at CSV import (RH-PAVER-12) → supplier_prices junction rows for per-supplier pricing
+- ✅ Engine consumables: edging spikes, paver-edge restraint + spikes, landscape staples (5 new starter-catalog entries)
+- ✅ Onboarding: hourly rates accept "0" explicitly (the F-V6 falsy-coerce was nuking 0); BudgetTab edit save same-class sweep also done
+- ✅ Cmd-K quick switcher (59 results: pages + projects with status badges)
+
+**Materials engine (still rock-solid)**: 6 computation models, 89.6% mean accuracy across 30-scenario harness, 0 forbidden hits, junction count consistent across cascade (10/7).
+
+**Infrastructure live in prod**:
+- 7 Edge Functions deployed including `proxy-claude` v7 with vision support (server-side base64-fetch of Mapbox tiles so the token never reaches Anthropic)
+- 36 migrations applied (001-036)
+- Email delivery via Resend (real inbox, 2.3s round-trip)
+- Cmd-Z / Cmd-Shift-Z global undo via zundo temporal middleware
+
+**Test posture**: 181 vitest unit tests (engine, supabase mapping with arrays-of-arrays regression, mapTileMath, polygonGeom, elementOverlap, scaleAIQuantity, csvParse, aiPlacement). Playwright walkthrough green (28s, 23/23). Materials accuracy harness + AI placement corpus harness available via `npm run materials:score` and `npm run placement:score` (corpus expected[] still pending Charlie's authoring per `.claude/TESTING/AI_PLACEMENT_NOTES.md`).
+
+**Repo state**: single working tree on `main` at `6e081f3` (parent worktree). The historical `claude/quirky-ishizaka` worktree was removed after the merge — fresh feature branches go in fresh worktrees as needed. 17 already-merged old branches deleted; only `main` and `sprint-23-crew-pin-auth` (abandoned 2026-03-30) remain locally.
+
+---
+
+## Earlier status — kept for context
+
+### Materials engine cascade journey (closed Apr 26)
+~50 distinct contractor-walkthrough findings closed across 18 commits over the F-CW series. The materials engine — TerrainForge's central value prop — went from completely broken to producing accurate, contractor-ready material rows with sensible quantities, verified live on staging.
 
 **Materials engine cascade journey** (5 deploys on staging, junction-row count is the headline metric):
 - Pre-fix: **1 of 8** materials linked to elements (silent unit-CHECK rejection)
@@ -60,7 +103,7 @@ See `.claude/TESTING/FINDINGS.md` for per-finding detail and `.claude/TESTING/PU
 
 **Dev escape hatches** (DEV-only, stripped from prod builds): `VITE_DEV_AUTO_SIGNIN_EMAIL/PASSWORD` auto-signs in, `VITE_DEV_BYPASS_BILLING=true` skips trial gate. Enables fast local iteration without login friction.
 
-**Database**: 34 tables, 130+ RLS policies, 117+ indexes, **30 migrations applied** (001-030). Production project: `axasujjoywqadzuisvaj` "Terrain Forge" (us-east-1, Postgres 17). Test fixture data still disposable; no real clients.
+**Database**: 34+ tables, 130+ RLS policies, **36 migrations applied** (001-036). Production project: `axasujjoywqadzuisvaj` "Terrain Forge" (us-east-1, Postgres 17). Test fixture data still disposable; no real clients.
 
 ## Tech Stack
 React 18 + Vite + TypeScript | Zustand 7 stores (Supabase-primary, localStorage for UI only) | Supabase Auth + PostgreSQL | Tailwind CSS + CSS custom properties | Netlify (frontend) | Stripe (billing) | Claude API (AI features) | Dev server: localhost:3000 (set in vite.config.ts)

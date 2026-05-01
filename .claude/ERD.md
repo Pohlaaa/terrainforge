@@ -1,9 +1,27 @@
 # TerrainForge — Entity Relationship Diagram
 
-> **Generated:** 2026-04-17 from live Supabase (`axasujjoywqadzuisvaj`) after migration 027.
-> **Schema state:** 34 tables, 130 RLS policies, 117 indexes, 27 migrations applied.
+> **Generated:** 2026-04-17 from live Supabase, header-refreshed 2026-04-30 after migration 036.
+> **Schema state:** 36+ tables (added share_tokens, project_design_versions, manifests since gen), 36 migrations applied (001-036).
 > **Source of truth:** the live Supabase schema. This doc mirrors it; do not hand-edit
 > without regenerating from `information_schema`.
+>
+> **Migrations 028-036 added since this doc was generated** (not yet reflected in the
+> diagrams below — query live for the current state):
+> - **028** — `project_elements.geometry` JSONB, `projects.site_geometry` JSONB,
+>   `project_share_tokens` table + RLS + anon policies, `bump_share_token_view` RPC
+> - **029** — `project_share_tokens.client_response/responded_at/note` +
+>   `respond_to_share_token` RPC (client approve/reject)
+> - **030** — `materials.texture_albedo_url / normal_url / roughness_url`
+>   (PBR textures for 3D viewer)
+> - **031** — Phase C v0 client-design RPCs (SECURITY DEFINER, token-scoped UPDATE)
+> - **032** — `project_design_versions` table (client-submitted design snapshots)
+> - **033** — `project_elements.shape` (`rectangle | circle | polygon | polyline`)
+>   + `radius_ft` for circles
+> - **034** — extends shape CHECK to allow `polygon` (Shoelace area, segment perimeter)
+> - **035** — `projects.lot_geometry / buildable_area_geometry / obstacles_geometry`
+>   JSONB (Sprint AI-Buildable polygons)
+> - **036** — `suppliers.short_code` (org-scoped unique TEXT, 2-6 chars,
+>   prefixes SKUs at CSV import)
 
 ---
 

@@ -4,7 +4,7 @@
 >
 > **Audience.** Future-Claude (and future-Charlie after another VSCode session wipe). Read this alongside CLAUDE.md at the start of every session.
 >
-> **Last synced:** 2026-04-21 (after the stabilization sweep). Edit freely when context shifts.
+> **Last synced:** 2026-04-30 (post-V6 + Sprint AI-Place + Sprint AI-Buildable Phase 1 + Bucket A). Edit freely when context shifts.
 
 ---
 
@@ -76,9 +76,12 @@ Observed over the Apr 16-21 sessions; update as they shift.
   subselects, 12 FK indexes added, 28 unused indexes dropped, 10 functions pinned with
   `search_path`, `audit_log` INSERT tightened. Re-run the Supabase advisors via MCP
   before assuming anything is slow or broken.
-- **6-step wizard is canonical.** The old 9-step WizardStep1-7 flow is gone. The new
-  steps are Job → Measurements → Plan → Materials → Numbers → Summary. `WizardStep3.tsx`
-  orphan was deleted.
+- **5-step wizard is canonical** (post 2026-04-29 3D-in-Wizard pivot). Steps:
+  Job → Design (3D/2D canvas + per-element materials) → Plan/Crew → Numbers → Review.
+  Old 9-step + 6-step flows are gone.
+- **Wizard state persists per-org in localStorage.** Contractor can refresh / close
+  the tab mid-wizard and resume; cleared on successful create + on Cancel + via the
+  "Discard + start fresh" button on the restored-banner.
 - **Materials engine is the manifest source of truth.** `src/lib/manifest.ts` wraps
   `computeElementMaterial()` from `src/materials-engine/` and falls back to legacy
   zone quantities only when `computationModel` is unset. Six models: AREA_COVERAGE,
@@ -96,17 +99,24 @@ Observed over the Apr 16-21 sessions; update as they shift.
 - **Zone legacy tables** (`zones`, `zone_materials`, `zone_equipment`) still referenced
   by `src/lib/workorders.ts` `generateSteps()`. Can't drop them until that function is
   ported to elements.
-- **`manifests` table exists but nothing writes to it.** Snapshots feature scaffolded
-  by migration 026, never wired. Opportunity: status-transition hook writes a
-  snapshot on `approved` → `scheduled`.
+- **`manifests` table is wired (no longer a known quirk).** Status-transition from
+  `approved` → `scheduled` writes a JSONB snapshot of line items + purchase list +
+  summary. Manual "Snapshot now" button on OverviewTab also fires it. Per-snapshot
+  PDF export via `@react-pdf/renderer` (lazy-loaded chunk).
 - **`dependent_material_ids` column on materials is empty everywhere.** Feature
   scaffolded, catalog populated with `[]` for everything. Low priority to populate.
 - **`src/pages/Schedule.tsx`, `CrewManager.tsx`, `EquipmentManager.tsx` are gone.** Any
   future work that references them is outdated. The schedule UI lives in
   `CrewEquipmentHub.tsx` and project-dashboard Tasks/Resources tabs.
-- **The Anthropic API key is browser-side** (`VITE_ANTHROPIC_API_KEY` with
-  `anthropic-dangerous-direct-browser-access: true`). Fine for partner-test, not for
-  real contractors. Trigger: before first real contractor signs up, proxy through a
+- **The Anthropic API key is server-side** (Sprint S, closed 2026-04-28). All AI
+  calls route through the `proxy-claude` Edge Function — browser invokes it via
+  `supabase.functions.invoke('proxy-claude')`. JWT-auth, 30 req/min/org rate limit,
+  audit-logged. As of v7 (2026-04-30) it also accepts `images: string[]` for the
+  Sprint AI-Place vision call — the proxy fetches each URL with 8s timeout,
+  base64-encodes server-side, and builds the multi-block Anthropic message so the
+  Mapbox token never reaches Anthropic. Old `VITE_ANTHROPIC_API_KEY` removed.
+
+  Pre-Sprint-S note (kept for archaeology): the key used to be browser-side via
   Supabase Edge Function.
 - **`src/index.ts` barrel export exists but nothing imports from it.** Kept for
   possible future library mode. Don't add exports to it without a consumer.
