@@ -10,6 +10,29 @@ Running log of bugs, friction points, and observations found during testing. Eac
 
 ---
 
+## Sprint Schedule — Live staging verification (2026-04-30)
+
+Deployed `4422cae` to `terrainforge-staging.netlify.app`, drove the new `/schedule` page through Chrome MCP. Page renders, primary nav tab works, edit panel + filter pills + status save + drag-to-reschedule all functional. Six bugs surfaced — IDs prefixed `F-SCH-*`. P1s fixed inline + redeployed; P2/P3 logged for follow-up sweep.
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F-SCH-01 | P1 | **Auto-scroll-to-today never fires.** `scrollLeft` stays 0 on mount even when today is offscreen — `useEffect([days])` runs before timeline content has its computed width, so `scrollLeft = todayIdx*36 - 120` silently caps at 0. Fix: defer with `requestAnimationFrame` or use `useLayoutEffect` + measure `scrollWidth` first. | Fixed in follow-up commit |
+| F-SCH-02 | P1 | **Today-column highlight never visible.** Caused by F-SCH-04 (UTC timezone bug): `isToday()` compares against `isoDate(new Date())` which is UTC-based, so on Central US time after ~7pm local the comparison shifts forward a day. Highlight applied to wrong column or off-range. | Fixed via F-SCH-04 fix |
+| F-SCH-03 | P3 | **Bar text label gets too truncated at 1-day-wide bars.** Single-day bar (36px after padding) renders text as e.g. "E…". Acceptable for ultra-short bars; consider hiding the label when bar < ~80px and only show on hover. | Logged for sweep |
+| F-SCH-04 | P1 | **Timezone bug — `isoDate()` uses UTC, not local time.** `new Date().toISOString().split('T')[0]` returns the UTC date string. For users west of UTC (e.g. US Central in evening hours), local 4/30 reads as 5/1. Affects `presetRange()` ("Next 30" starts on the wrong day), `isToday()` (today highlight wrong column), and default custom-range bounds. **Repro:** Charlie's machine is US Central; on 4/30 evening "Next 30" preset rendered with first column as FRI 5/1 instead of THU 4/30. Fix: build a local-TZ formatter (`d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())`). | Fixed in follow-up commit |
+| F-SCH-05 | P1 | **Click event fires after drag, opening edit panel unintentionally.** Drag a bar → mouseup commits the date update + clears drag state → the trailing `click` event still bubbles → `Math.abs(0) === 0` guard passes → panel opens with the new dates. Annoying UX (panel pops every drag), not data-breaking. Fix: track `dragHappened` ref, set to true if any mousemove during drag, check + reset in click handler. | Fixed in follow-up commit |
+| F-SCH-06 | P3 | **Project list re-orders after `updateProject`.** The project I just edited jumped from row 1 to row 8 after save. `fetchProjects()` re-fetches and Supabase returns whatever default order. Acceptable but disorienting on the schedule view. Future: sort schedule view by `start_date` ascending (so timeline reads top-down chronologically). | Logged for sweep |
+
+**Verified working on staging (2026-04-30 deploy 69f42ca8):**
+- Schedule appears as primary nav tab (between Projects and Budget); active state correct
+- Edit panel: status select, start/target date inputs, "Open project →" link, Save/Cancel — all functional, toast confirms persistence
+- Bar renders, color matches `ProjectStatus` (verified Approved → blue)
+- Drag math correct (212px drag at 36px/day = 6 days; new dates landed at start+6, target+6)
+- Status filter pills toggle correctly (default selection: approved/scheduled/in_progress)
+- Empty state ("+ Set dates" pseudo-bar) when project has no dates
+
+---
+
 ## Sprint 1 Findings (resolved)
 
 | ID | Severity | Finding | Resolution |

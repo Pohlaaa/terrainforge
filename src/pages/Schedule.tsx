@@ -51,8 +51,16 @@ type DateRangePreset = 'this_week' | 'this_month' | 'next_30' | 'next_90' | 'cus
 
 // ── Date helpers ────────────────────────────────────────────────────────────
 
+// F-SCH-04: build the YYYY-MM-DD string from local-TZ getters. Was using
+// `d.toISOString().split('T')[0]` which reads as UTC — for users west of
+// UTC, evening hours flip "today" forward a day (4/30 evening → 5/1 UTC),
+// breaking the today highlight, the Next-30 preset, and any "is today"
+// comparison against project dates that were stored as local YYYY-MM-DD.
 function isoDate(d: Date): string {
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function parseDate(iso: string): Date {
@@ -206,10 +214,17 @@ const Schedule: React.FC = () => {
     deltaDays: number;
   } | null>(null);
 
+  // F-SCH-05: track whether the mouse moved during the press so the trailing
+  // click event can be suppressed after a drag. Without this, every drag
+  // pops the edit panel because click fires after mouseup with deltaDays
+  // already reset to 0.
+  const dragHappenedRef = useRef(false);
+
   function handleBarMouseDown(e: React.MouseEvent, project: ProjectListItem) {
     if (readOnly) return;
     if (!project.startDate || !project.targetDate) return;
     e.preventDefault();
+    dragHappenedRef.current = false;
     setDrag({
       projectId: project.id,
       startX: e.clientX,
@@ -223,6 +238,8 @@ const Schedule: React.FC = () => {
     if (!drag) return;
     const onMove = (ev: MouseEvent) => {
       const dx = ev.clientX - drag.startX;
+      // 4px movement counts as drag-not-click for click suppression.
+      if (Math.abs(dx) > 4) dragHappenedRef.current = true;
       const days = Math.round(dx / DAY_PX);
       if (days !== drag.deltaDays) {
         setDrag((d) => (d ? { ...d, deltaDays: days } : d));
@@ -402,7 +419,13 @@ const Schedule: React.FC = () => {
             entriesByProject={entriesByProject}
             crew={crew}
             onBarMouseDown={handleBarMouseDown}
-            onBarClick={(id) => setEditingId(id)}
+            onBarClick={(id) => {
+              if (dragHappenedRef.current) {
+                dragHappenedRef.current = false;
+                return;
+              }
+              setEditingId(id);
+            }}
             drag={drag}
             totalWidth={totalWidth}
           />
@@ -444,13 +467,20 @@ const GanttGrid: React.FC<GanttGridProps> = ({
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to today on mount
+  // Auto-scroll to today on mount.
+  // F-SCH-01: original `useEffect` ran before the inner timeline content
+  // had its computed width laid out, so `scrollLeft` silently capped at 0.
+  // Defer one frame so layout is committed before we set scrollLeft.
   useEffect(() => {
-    if (!scrollRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
     const todayIdx = days.findIndex(isToday);
-    if (todayIdx >= 0) {
-      scrollRef.current.scrollLeft = Math.max(0, todayIdx * DAY_PX - 120);
-    }
+    if (todayIdx < 0) return;
+    const target = Math.max(0, todayIdx * DAY_PX - 120);
+    const id = requestAnimationFrame(() => {
+      if (scrollRef.current) scrollRef.current.scrollLeft = target;
+    });
+    return () => cancelAnimationFrame(id);
   }, [days]);
 
   return (
