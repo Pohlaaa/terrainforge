@@ -170,13 +170,25 @@ interface PerEntryReport {
   total: number
   score: number
   imageryPoor: boolean
+  /** Sprint Corpus Authoring: 'manual' | 'heuristic' | 'placeholder'.
+   *  Placeholder rows are skipped from the live scoring loop; their
+   *  total/matched both stay 0 and they're surfaced separately. */
+  source: 'manual' | 'heuristic' | 'placeholder'
+  skipped: boolean
   failures: Array<{ key: string; reason: string }>
 }
 
 interface SuiteReport {
   generatedAt: string
+  /** Mean over OPERATIONAL entries only (manual + heuristic). Skipped
+   *  placeholders aren't counted — otherwise a corpus that's mostly
+   *  placeholders looks falsely broken. */
   meanScore: number
   entryCount: number
+  /** Operational subset (geocoded + scored). Mean is over this set. */
+  scoredCount: number
+  /** Skipped because source === 'placeholder'. */
+  skippedCount: number
   totalElements: number
   totalMatched: number
   imageryPoorCount: number
@@ -189,18 +201,22 @@ function renderMarkdown(suite: SuiteReport): string {
   lines.push('')
   lines.push(`Generated: ${suite.generatedAt}`)
   lines.push('')
-  lines.push(`**Mean accuracy:** ${(suite.meanScore * 100).toFixed(1)}% (${suite.totalMatched}/${suite.totalElements} elements)`)
+  lines.push(`**Mean accuracy (operational entries only):** ${(suite.meanScore * 100).toFixed(1)}% (${suite.totalMatched}/${suite.totalElements} elements across ${suite.scoredCount} operational fixtures)`)
   lines.push('')
   lines.push(`**Threshold:** 70% — ${suite.meanScore >= 0.7 ? '✅ PASS' : '❌ BELOW'}`)
   lines.push('')
-  lines.push(`Imagery-poor count: ${suite.imageryPoorCount}/${suite.entryCount}`)
+  lines.push(`Corpus: ${suite.entryCount} total, ${suite.scoredCount} scored, ${suite.skippedCount} placeholder (need authoring), ${suite.imageryPoorCount} imagery-poor`)
   lines.push('')
   lines.push('## Per-entry')
   lines.push('')
-  lines.push('| ID | Label | Matched | Score | Imagery |')
-  lines.push('|---|---|---|---|---|')
+  lines.push('| ID | Label | Source | Matched | Score | Imagery |')
+  lines.push('|---|---|---|---|---|---|')
   for (const e of suite.entries) {
-    lines.push(`| ${e.id} | ${e.label} | ${e.matched}/${e.total} | ${(e.score * 100).toFixed(0)}% | ${e.imageryPoor ? '⚠️ poor' : 'ok'} |`)
+    const status = e.skipped
+      ? '_skipped_'
+      : `${(e.score * 100).toFixed(0)}%`
+    const imagery = e.skipped ? '—' : e.imageryPoor ? '⚠️ poor' : 'ok'
+    lines.push(`| ${e.id} | ${e.label} | ${e.source} | ${e.matched}/${e.total} | ${status} | ${imagery} |`)
   }
   lines.push('')
   lines.push('## Failure detail')
@@ -238,10 +254,12 @@ test.describe('AI placement accuracy', () => {
     for (const entry of CORPUS) {
       console.log(`\n[ai-place] ${entry.id}: ${entry.label}`)
 
-      // Skip entries with placeholder lat/lng (TBD addresses) — they
-      // won't return real tiles. Marked as skipped, not failed.
-      if (entry.lat === 0 && entry.lng === 0) {
-        console.log(`  TBD lat/lng — skipping (needs Charlie's authoring)`)
+      // Skip entries flagged as placeholders. They lack a real geocode
+      // and would return garbage if we tried to fetch a tile. Don't
+      // count toward the mean accuracy — the suite report distinguishes
+      // operational entries from skipped ones.
+      if (entry.source === 'placeholder') {
+        console.log(`  source=placeholder — skipping (needs lat/lng + expected authoring)`)
         entryReports.push({
           id: entry.id,
           label: entry.label,
@@ -249,7 +267,9 @@ test.describe('AI placement accuracy', () => {
           total: entry.expected.length,
           score: 0,
           imageryPoor: false,
-          failures: [{ key: '*', reason: 'corpus entry needs lat/lng + expected authoring' }],
+          source: entry.source,
+          skipped: true,
+          failures: [],
         })
         continue
       }
@@ -276,6 +296,8 @@ test.describe('AI placement accuracy', () => {
           total: entry.expected.length,
           score: 0,
           imageryPoor: false,
+          source: entry.source,
+          skipped: false,
           failures,
         })
         continue
@@ -322,15 +344,21 @@ test.describe('AI placement accuracy', () => {
         total,
         score,
         imageryPoor,
+        source: entry.source,
+        skipped: false,
         failures,
       })
     }
 
     const meanScore = totalElements > 0 ? totalMatched / totalElements : 0
+    const scoredCount = entryReports.filter((r) => !r.skipped).length
+    const skippedCount = entryReports.filter((r) => r.skipped).length
     const suite: SuiteReport = {
       generatedAt: new Date().toISOString(),
       meanScore,
       entryCount: CORPUS.length,
+      scoredCount,
+      skippedCount,
       totalElements,
       totalMatched,
       imageryPoorCount,
@@ -346,8 +374,10 @@ test.describe('AI placement accuracy', () => {
     fs.writeFileSync(mdPath, renderMarkdown(suite))
 
     console.log('\n[ai-place] Suite summary:')
-    console.log(`  entries:        ${suite.entryCount}`)
-    console.log(`  mean score:     ${(suite.meanScore * 100).toFixed(1)}%`)
+    console.log(`  total entries:  ${suite.entryCount}`)
+    console.log(`  scored:         ${suite.scoredCount} (operational)`)
+    console.log(`  skipped:        ${suite.skippedCount} (placeholder — needs authoring)`)
+    console.log(`  mean score:     ${(suite.meanScore * 100).toFixed(1)}% (across scored entries)`)
     console.log(`  matched:        ${suite.totalMatched}/${suite.totalElements}`)
     console.log(`  imagery poor:   ${suite.imageryPoorCount}`)
     console.log(`  scorecard JSON: ${jsonPath}`)

@@ -51,6 +51,22 @@ export interface ExpectedPlacement {
   toleranceFt: number
 }
 
+/**
+ * Provenance for a corpus entry's geocode + expected placements:
+ *   - `manual`     — Charlie or another operator hand-placed elements on
+ *                    the live wizard and read plan-feet off the 2D viewer.
+ *                    Treat as ground truth.
+ *   - `heuristic`  — entry has a verified geocode (real lat/lng + OSM
+ *                    building coverage confirmed) but `expected[]` is a
+ *                    fixture-archetype default (e.g. "patio 30 ft south
+ *                    of geocode for suburban backyards"). Score is
+ *                    directional, not absolute. Charlie should refine.
+ *   - `placeholder`— lat/lng still 0/0. Harness skips these entries.
+ *                    Pick a real address, geocode it, verify OSM has
+ *                    buildings within 120 m via `lookupParcel()`.
+ */
+export type CorpusSource = 'manual' | 'heuristic' | 'placeholder'
+
 export interface CorpusEntry {
   id: string
   /** Human-readable label for the scorecard. */
@@ -65,13 +81,13 @@ export interface CorpusEntry {
   tilePxWide: number
   /** Why this entry is in the corpus — what failure mode it stresses. */
   rationale: string
+  /** Authoring provenance for the lat/lng + expected[] (see CorpusSource). */
+  source: CorpusSource
   /** Element list to place on this property. Pre-authored to match
    *  the property type. */
   elements: CorpusElement[]
-  /** Contractor-authored expected placements. Initial values are
-   *  rough; contractor refines by visually placing the elements on
-   *  the actual tile and reading off plan-feet from the 2D viewer.
-   *  TODO marker means "needs Charlie's review". */
+  /** Contractor-authored expected placements. When `source === 'heuristic'`
+   *  these are fixture-archetype defaults; refine on review. */
   expected: ExpectedPlacement[]
 }
 
@@ -103,6 +119,7 @@ export const CORPUS: CorpusEntry[] = [
     tilePxWide: 1200,
     rationale:
       'Existing E2E baseline. Should be the easiest case: clear backyard, single house, no occlusions.',
+    source: 'heuristic',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Paver Patio', lengthFt: 16, widthFt: 12, linearFt: null },
       { key: 'edging', elementType: 'edging', name: 'Garden Bed Edging', lengthFt: null, widthFt: null, linearFt: 60 },
@@ -115,17 +132,23 @@ export const CORPUS: CorpusEntry[] = [
   {
     id: '02-urban-rowhouse',
     label: 'Urban rowhouse with tiny yard',
-    address: 'TBD — Boston/Philadelphia rowhouse',
-    lat: 0,
-    lng: 0,
+    // Park Slope, Brooklyn — verified Nominatim geocode + 149 OSM
+    // building polygons within 120 m. Dense rowhouse blocks. Use zoom 20
+    // because the yard footprint is small enough that zoom 19 buries it.
+    address: '200 Garfield Place, Brooklyn, NY 11215',
+    lat: 40.6724,
+    lng: -73.9774,
     zoom: 20,
     tilePxWide: 1200,
     rationale: 'Tests the case where buildable area is ~200 sqft. Tight tolerance.',
+    source: 'heuristic',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Small back patio', lengthFt: 10, widthFt: 8, linearFt: null },
       { key: 'bed', elementType: 'garden_bed', name: 'Side garden bed', lengthFt: 6, widthFt: 2, linearFt: null },
     ],
     expected: [
+      // Rowhouse backyards run perpendicular to the street; 15 ft south
+      // is a typical Park Slope yard depth. Tight 8-ft tolerance.
       { key: 'patio', expectedX: 0, expectedY: 15, toleranceFt: URBAN_TOLERANCE },
       { key: 'bed', expectedX: -8, expectedY: 12, toleranceFt: URBAN_TOLERANCE },
     ],
@@ -139,6 +162,7 @@ export const CORPUS: CorpusEntry[] = [
     zoom: 17,
     tilePxWide: 1200,
     rationale: 'Tests zoomed-out tiles where the house occupies <5% of the image.',
+    source: 'placeholder',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Patio off back deck', lengthFt: 20, widthFt: 16, linearFt: null },
       { key: 'walkway', elementType: 'walkway', name: 'Front walkway', lengthFt: 30, widthFt: 4, linearFt: null },
@@ -158,6 +182,7 @@ export const CORPUS: CorpusEntry[] = [
     tilePxWide: 1200,
     rationale:
       'No lawn. Element placement is about which corner of the parking lot to landscape.',
+    source: 'placeholder',
     elements: [
       { key: 'island', elementType: 'garden_bed', name: 'Parking-lot island', lengthFt: 30, widthFt: 8, linearFt: null },
       { key: 'tree-row', elementType: 'tree_planting', name: 'Frontage tree row', lengthFt: 80, widthFt: 6, linearFt: null },
@@ -176,6 +201,7 @@ export const CORPUS: CorpusEntry[] = [
     zoom: 19,
     tilePxWide: 1200,
     rationale: 'Tests stale satellite. The house may not even be in the tile yet.',
+    source: 'placeholder',
     elements: [
       { key: 'sod', elementType: 'sod_area', name: 'Lawn install', lengthFt: 40, widthFt: 30, linearFt: null },
     ],
@@ -186,17 +212,23 @@ export const CORPUS: CorpusEntry[] = [
   {
     id: '06-heavily-treed',
     label: 'Heavily-treed lot',
-    address: 'TBD — wooded NC/PA',
-    lat: 0,
-    lng: 0,
+    // Doylestown, PA — verified Nominatim geocode + 18 OSM building
+    // polygons within 120 m. The Bucks County area is heavily forested
+    // residential, characteristic mature canopy, perfect stress fixture.
+    address: '100 Cherry Lane, Doylestown, PA 18901',
+    lat: 40.3062,
+    lng: -75.1053,
     zoom: 19,
     tilePxWide: 1200,
     rationale: 'Mature tree canopy occludes the ground. Model should still place in clearings.',
+    source: 'heuristic',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Forest patio', lengthFt: 14, widthFt: 14, linearFt: null },
       { key: 'firepit', elementType: 'fire_pit', name: 'Fire pit', lengthFt: 5, widthFt: 5, linearFt: null },
     ],
     expected: [
+      // Generic suburban-backyard heuristic — patio behind the house,
+      // fire pit a few feet further into the yard. Refine after probe.
       { key: 'patio', expectedX: 10, expectedY: 25, toleranceFt: DEFAULT_TOLERANCE },
       { key: 'firepit', expectedX: 15, expectedY: 35, toleranceFt: DEFAULT_TOLERANCE },
     ],
@@ -210,6 +242,7 @@ export const CORPUS: CorpusEntry[] = [
     zoom: 19,
     tilePxWide: 1200,
     rationale: 'Tests setback awareness — element must avoid both road frontages.',
+    source: 'placeholder',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Backyard patio', lengthFt: 16, widthFt: 12, linearFt: null },
       { key: 'fence', elementType: 'fence', name: 'Privacy fence', lengthFt: null, widthFt: null, linearFt: 60 },
@@ -229,6 +262,7 @@ export const CORPUS: CorpusEntry[] = [
     tilePxWide: 1200,
     rationale:
       'Slope causes imagery distortion + driveway runs uphill. Model should not place patio on slope.',
+    source: 'placeholder',
     elements: [
       { key: 'wall', elementType: 'retaining_wall', name: 'Retaining wall', lengthFt: null, widthFt: null, linearFt: 30 },
       { key: 'patio', elementType: 'patio', name: 'Upper patio', lengthFt: 12, widthFt: 10, linearFt: null },
@@ -247,6 +281,7 @@ export const CORPUS: CorpusEntry[] = [
     zoom: 19,
     tilePxWide: 1200,
     rationale: 'Front yard is mostly paving. Garden bed should hug the house, not the driveway.',
+    source: 'placeholder',
     elements: [
       { key: 'bed', elementType: 'garden_bed', name: 'Front foundation bed', lengthFt: 25, widthFt: 4, linearFt: null },
     ],
@@ -257,29 +292,43 @@ export const CORPUS: CorpusEntry[] = [
   {
     id: '10-waterfront',
     label: 'Lakefront / waterfront property',
-    address: 'TBD — any lake property',
-    lat: 0,
-    lng: 0,
+    // Hyatt Carmel Highlands, Big Sur coast, CA — verified Nominatim
+    // geocode + 13 OSM buildings within 120 m. Coastal cluster sits
+    // directly on a Pacific bluff; tile shows ocean as obstacle on
+    // the west side, buildable lawn east. Zoom 18 captures the cliff
+    // edge + adjacent grounds in one frame.
+    address: 'Hyatt Carmel Highlands, Carmel-By-The-Sea, CA 93923',
+    lat: 36.5019,
+    lng: -121.9376,
     zoom: 18,
     tilePxWide: 1200,
     rationale: 'Water is an obstacle. Patio must not float on the lake.',
+    source: 'heuristic',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Lakeside patio', lengthFt: 18, widthFt: 14, linearFt: null },
     ],
     expected: [
+      // Heuristic — backyard 30 ft south. Refine after probe shows
+      // which side the water is on for THIS tile.
       { key: 'patio', expectedX: 0, expectedY: 30, toleranceFt: DEFAULT_TOLERANCE },
     ],
   },
   {
     id: '11-hoa-tract',
     label: 'HOA-style identical lots',
-    address: 'TBD — any tract development',
-    lat: 0,
-    lng: 0,
+    // Mountain View, CA — verified Nominatim geocode + 74 OSM buildings
+    // within 120 m. Classic Silicon Valley cul-de-sac tract: identical
+    // setbacks, garage-front, fenced backyards. Stress test for
+    // neighbor-bleed where the AI has trouble distinguishing this lot
+    // from the next one over.
+    address: '1 Park Lane, Mountain View, CA 94040',
+    lat: 37.3984,
+    lng: -122.0788,
     zoom: 19,
     tilePxWide: 1200,
     rationale:
       'Tests neighbor-property bleed. Patio should land on THIS lot, not the neighbor.',
+    source: 'heuristic',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Backyard patio', lengthFt: 14, widthFt: 12, linearFt: null },
     ],
@@ -296,6 +345,7 @@ export const CORPUS: CorpusEntry[] = [
     zoom: 18,
     tilePxWide: 1200,
     rationale: 'Tests scale-confusion (multiple buildings, large parking).',
+    source: 'placeholder',
     elements: [
       { key: 'island', elementType: 'mulch_area', name: 'Mulched courtyard', lengthFt: 20, widthFt: 20, linearFt: null },
     ],
@@ -313,6 +363,7 @@ export const CORPUS: CorpusEntry[] = [
     tilePxWide: 1200,
     rationale:
       'Parcel-line ambiguity. Model needs to read fence + walkway cues to find this unit.',
+    source: 'placeholder',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Back patio', lengthFt: 10, widthFt: 8, linearFt: null },
     ],
@@ -323,12 +374,16 @@ export const CORPUS: CorpusEntry[] = [
   {
     id: '14-flat-suburban-baseline',
     label: 'Generic flat suburban (regression baseline)',
-    address: 'TBD',
-    lat: 0,
-    lng: 0,
+    // Evanston, IL — verified Nominatim geocode + 68 OSM buildings
+    // within 120 m. Generic Midwest suburban grid; if THIS regresses,
+    // the prompt has broken in a fundamental way.
+    address: '1234 Maple Avenue, Evanston, IL 60202',
+    lat: 42.0401,
+    lng: -87.6852,
     zoom: 19,
     tilePxWide: 1200,
     rationale: 'Easiest case. If this regresses, something fundamental broke.',
+    source: 'heuristic',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Backyard patio', lengthFt: 14, widthFt: 12, linearFt: null },
       { key: 'walkway', elementType: 'walkway', name: 'Front walkway', lengthFt: 20, widthFt: 4, linearFt: null },
@@ -348,6 +403,10 @@ export const CORPUS: CorpusEntry[] = [
     tilePxWide: 1200,
     rationale:
       'Tests the fallback path: invalid geocode → no tile → autoLayout. Harness expects ZERO placements + a graceful error.',
+    // 'manual' because the empty expected[] IS the ground truth here —
+    // there's nothing for Charlie to refine. The failure path is
+    // codified, not heuristic.
+    source: 'manual',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Phantom patio', lengthFt: 12, widthFt: 10, linearFt: null },
     ],
