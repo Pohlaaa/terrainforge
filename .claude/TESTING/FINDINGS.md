@@ -10,6 +10,27 @@ Running log of bugs, friction points, and observations found during testing. Eac
 
 ---
 
+## Sprint Corpus Authoring — variance discovery (2026-05-01)
+
+Spent ~$1.65 across 4 placement-harness runs to establish a real baseline + capture model coords as ground truth + verify. Key finding worth its own log entry.
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F-PLAC-01 | P2 | **Vision placement model has high run-to-run variance per address.** Three independent runs at the same 10 properties produced placements with delta 29–831 ft per element (median ~140ft). Same-property variance is wider than the entire backyard for most fixtures. Implications: the harness can't be a tight regression gate without multi-shot averaging or region-based scoring. The current corpus uses run2/run3 midpoints + per-element tolerances of 50-400 ft, which gets 4/15 elements to 100% match (driveway-front, waterfront, hoa-tract, bad-address); the other 6 still drift further than tolerance on a 4th run. Probable causes: (1) Anthropic API non-deterministic temperature, (2) model genuinely uncertain between multiple correct answers (e.g., "patio could be NE or SE of the house"). Mitigations to evaluate in a future sprint: (a) set `temperature: 0` in `proxy-claude` vision call, (b) multi-shot — run vision call 3× per property, take centroid of cluster, (c) region-based scoring — replace `expectedX/Y + tolerance` with `expectedRegion: Polygon` and check `pointInPolygon`. Immediate workaround: keep current corpus, treat 4/15 baseline as the regression signal. | Logged for follow-up sprint |
+
+**Spend log this sprint:**
+- Run 1 (baseline): $0.30 — 7 entries × $0.05; 0% score (heuristic defaults way off)
+- Run 2 (after step-2 promotions, captured model coords): $0.45 — 9 entries; 0%
+- Run 3 (verified run-2 coords as expected[]): $0.45 — 0% (variance was the problem, not coords)
+- Run 4 (verified midpoint+tolerance approach): $0.45 — **26.7% mean**, 4/15 elements stable
+- **Total: $1.65** (well under the $10 ceiling)
+
+**Operational vs placeholder mix after this sprint:**
+- 9 operational (1 baseline + 8 promoted heuristic→manual + 1 codified bad-address)
+- 5 placeholder (entries 05, 07, 08, 12, 13)
+
+---
+
 ## Sprint 1 Findings (resolved)
 
 | ID | Severity | Finding | Resolution |

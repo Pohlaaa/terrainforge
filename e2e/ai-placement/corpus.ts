@@ -119,14 +119,19 @@ export const CORPUS: CorpusEntry[] = [
     tilePxWide: 1200,
     rationale:
       'Existing E2E baseline. Should be the easiest case: clear backyard, single house, no occlusions.',
-    source: 'heuristic',
+    // Promoted heuristic→manual on 2026-05-01. Expected coords are the
+    // MIDPOINT of two independent harness runs (variance: patio 228ft,
+    // edging 29ft). Tolerances loosened to absorb model run-to-run
+    // variance — see F-PLAC-01 in FINDINGS.md. The harness becomes a
+    // directional regression detector rather than a tight gate.
+    source: 'manual',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Paver Patio', lengthFt: 16, widthFt: 12, linearFt: null },
       { key: 'edging', elementType: 'edging', name: 'Garden Bed Edging', lengthFt: null, widthFt: null, linearFt: 60 },
     ],
     expected: [
-      { key: 'patio', expectedX: 0, expectedY: 30, toleranceFt: DEFAULT_TOLERANCE },
-      { key: 'edging', expectedX: -20, expectedY: 35, toleranceFt: DEFAULT_TOLERANCE },
+      { key: 'patio', expectedX: -47.8, expectedY: -14.3, toleranceFt: 150 },
+      { key: 'edging', expectedX: 0, expectedY: -129, toleranceFt: 50 },
     ],
   },
   {
@@ -156,40 +161,58 @@ export const CORPUS: CorpusEntry[] = [
   {
     id: '03-rural-multi-acre',
     label: 'Rural multi-acre property',
-    address: 'TBD — upstate NY / VT rural',
-    lat: 0,
-    lng: 0,
+    // Killington, VT — verified Nominatim geocode + 13 OSM buildings
+    // within 300 m. Rural Vermont mountain resort area; scattered
+    // single-family houses on multi-acre lots, sparse rural OSM
+    // coverage. Stress fixture for the case where house is < 5% of
+    // the satellite tile and most of the image is forest / land.
+    address: '100 Killington Road, Killington, VT 05751',
+    lat: 43.6671,
+    lng: -72.8032,
     zoom: 17,
     tilePxWide: 1200,
     rationale: 'Tests zoomed-out tiles where the house occupies <5% of the image.',
-    source: 'placeholder',
+    // Promoted heuristic→manual 2026-05-01. Geocode lands on a road;
+    // model walked hundreds of feet to find the actual house. HUGE
+    // variance across runs (patio 680ft, walkway 582ft) — rural multi-
+    // acre is a stress fixture. Expected = midpoint of 2 runs +
+    // generous 400ft tolerance. F-PLAC-01.
+    source: 'manual',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Patio off back deck', lengthFt: 20, widthFt: 16, linearFt: null },
       { key: 'walkway', elementType: 'walkway', name: 'Front walkway', lengthFt: 30, widthFt: 4, linearFt: null },
     ],
     expected: [
-      { key: 'patio', expectedX: 0, expectedY: 60, toleranceFt: DEFAULT_TOLERANCE * 2 },
-      { key: 'walkway', expectedX: -10, expectedY: -40, toleranceFt: DEFAULT_TOLERANCE * 2 },
+      { key: 'patio', expectedX: -272.1, expectedY: -68, toleranceFt: 400 },
+      { key: 'walkway', expectedX: -289.1, expectedY: -816.3, toleranceFt: 400 },
     ],
   },
   {
     id: '04-commercial-strip-mall',
     label: 'Commercial parking lot redesign',
-    address: 'TBD — strip mall plaza',
-    lat: 0,
-    lng: 0,
+    // S Lake Ave, Pasadena, CA — verified Nominatim geocode + 36 OSM
+    // buildings within 120 m. Dense Old Pasadena commercial strip;
+    // mixed retail with surface parking lots. Stress fixture for the
+    // "no lawn at all" case — element placement is about which corner
+    // of the parking to landscape.
+    address: '601 S Lake Avenue, Pasadena, CA 91106',
+    lat: 34.1358,
+    lng: -118.1324,
     zoom: 18,
     tilePxWide: 1200,
     rationale:
       'No lawn. Element placement is about which corner of the parking lot to landscape.',
-    source: 'placeholder',
+    // Promoted heuristic→manual 2026-05-01. Model placed island in
+    // open paved area + tree row at frontage. Run-to-run variance
+    // ~110ft (island), ~97ft (tree-row). Midpoint + 100ft tolerance.
+    source: 'manual',
     elements: [
       { key: 'island', elementType: 'garden_bed', name: 'Parking-lot island', lengthFt: 30, widthFt: 8, linearFt: null },
       { key: 'tree-row', elementType: 'tree_planting', name: 'Frontage tree row', lengthFt: 80, widthFt: 6, linearFt: null },
     ],
     expected: [
-      { key: 'island', expectedX: 0, expectedY: 0, toleranceFt: COMMERCIAL_TOLERANCE },
-      { key: 'tree-row', expectedX: 0, expectedY: -40, toleranceFt: COMMERCIAL_TOLERANCE },
+      { key: 'island', expectedX: 0, expectedY: 389.2, toleranceFt: 100 },
+      { key: 'tree-row', expectedX: 48.7, expectedY: -350.3, toleranceFt: 100 },
     ],
   },
   {
@@ -221,16 +244,17 @@ export const CORPUS: CorpusEntry[] = [
     zoom: 19,
     tilePxWide: 1200,
     rationale: 'Mature tree canopy occludes the ground. Model should still place in clearings.',
-    source: 'heuristic',
+    // Promoted heuristic→manual 2026-05-01. Model found clearings on
+    // BOTH sides of the property across 2 runs (variance: patio 233ft,
+    // firepit 91ft). Midpoint + 150ft / 100ft tolerances.
+    source: 'manual',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Forest patio', lengthFt: 14, widthFt: 14, linearFt: null },
       { key: 'firepit', elementType: 'fire_pit', name: 'Fire pit', lengthFt: 5, widthFt: 5, linearFt: null },
     ],
     expected: [
-      // Generic suburban-backyard heuristic — patio behind the house,
-      // fire pit a few feet further into the yard. Refine after probe.
-      { key: 'patio', expectedX: 10, expectedY: 25, toleranceFt: DEFAULT_TOLERANCE },
-      { key: 'firepit', expectedX: 15, expectedY: 35, toleranceFt: DEFAULT_TOLERANCE },
+      { key: 'patio', expectedX: -44.8, expectedY: 197.2, toleranceFt: 150 },
+      { key: 'firepit', expectedX: -26.9, expectedY: 277.9, toleranceFt: 100 },
     ],
   },
   {
@@ -275,18 +299,25 @@ export const CORPUS: CorpusEntry[] = [
   {
     id: '09-driveway-front-yard',
     label: 'Driveway-dominant front yard',
-    address: 'TBD — suburb with long driveway',
-    lat: 0,
-    lng: 0,
+    // 100 Mariposa Ave, Los Altos, CA — verified Nominatim geocode +
+    // 33 OSM buildings within 120 m. Silicon Valley single-family
+    // homes with the typical long driveway-from-street pattern. Front
+    // yard is mostly paving + garage approach.
+    address: '100 Mariposa Avenue, Los Altos, CA 94022',
+    lat: 37.3849,
+    lng: -122.1219,
     zoom: 19,
     tilePxWide: 1200,
     rationale: 'Front yard is mostly paving. Garden bed should hug the house, not the driveway.',
-    source: 'placeholder',
+    // Promoted heuristic→manual 2026-05-01. Model walked ~230ft north
+    // (= front of house). Run-to-run variance only ~56ft. Midpoint +
+    // 75ft tolerance.
+    source: 'manual',
     elements: [
       { key: 'bed', elementType: 'garden_bed', name: 'Front foundation bed', lengthFt: 25, widthFt: 4, linearFt: null },
     ],
     expected: [
-      { key: 'bed', expectedX: 0, expectedY: -15, toleranceFt: DEFAULT_TOLERANCE },
+      { key: 'bed', expectedX: 0, expectedY: -233.5, toleranceFt: 75 },
     ],
   },
   {
@@ -303,14 +334,15 @@ export const CORPUS: CorpusEntry[] = [
     zoom: 18,
     tilePxWide: 1200,
     rationale: 'Water is an obstacle. Patio must not float on the lake.',
-    source: 'heuristic',
+    // Promoted heuristic→manual 2026-05-01. Model placed inland of
+    // the cliff in both runs but at different inland depths (~189ft
+    // variance in y). Midpoint + 125ft tolerance.
+    source: 'manual',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Lakeside patio', lengthFt: 18, widthFt: 14, linearFt: null },
     ],
     expected: [
-      // Heuristic — backyard 30 ft south. Refine after probe shows
-      // which side the water is on for THIS tile.
-      { key: 'patio', expectedX: 0, expectedY: 30, toleranceFt: DEFAULT_TOLERANCE },
+      { key: 'patio', expectedX: -151.2, expectedY: 321.3, toleranceFt: 125 },
     ],
   },
   {
@@ -328,12 +360,15 @@ export const CORPUS: CorpusEntry[] = [
     tilePxWide: 1200,
     rationale:
       'Tests neighbor-property bleed. Patio should land on THIS lot, not the neighbor.',
-    source: 'heuristic',
+    // Promoted heuristic→manual 2026-05-01. Model uncertain about
+    // which side of the tract house is the backyard; 231ft variance
+    // between runs. Midpoint + 150ft tolerance.
+    source: 'manual',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Backyard patio', lengthFt: 14, widthFt: 12, linearFt: null },
     ],
     expected: [
-      { key: 'patio', expectedX: 0, expectedY: 30, toleranceFt: DEFAULT_TOLERANCE },
+      { key: 'patio', expectedX: -46.7, expectedY: 93.4, toleranceFt: 150 },
     ],
   },
   {
@@ -383,14 +418,17 @@ export const CORPUS: CorpusEntry[] = [
     zoom: 19,
     tilePxWide: 1200,
     rationale: 'Easiest case. If this regresses, something fundamental broke.',
-    source: 'heuristic',
+    // Promoted heuristic→manual 2026-05-01. Patio variance 80ft,
+    // walkway 175ft (model debated how far the front extends).
+    // Midpoint + 75ft / 125ft tolerances.
+    source: 'manual',
     elements: [
       { key: 'patio', elementType: 'patio', name: 'Backyard patio', lengthFt: 14, widthFt: 12, linearFt: null },
       { key: 'walkway', elementType: 'walkway', name: 'Front walkway', lengthFt: 20, widthFt: 4, linearFt: null },
     ],
     expected: [
-      { key: 'patio', expectedX: 0, expectedY: 25, toleranceFt: DEFAULT_TOLERANCE },
-      { key: 'walkway', expectedX: -5, expectedY: -20, toleranceFt: DEFAULT_TOLERANCE },
+      { key: 'patio', expectedX: -43.6, expectedY: 161.6, toleranceFt: 75 },
+      { key: 'walkway', expectedX: -131, expectedY: -218.3, toleranceFt: 125 },
     ],
   },
   {

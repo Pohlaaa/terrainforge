@@ -175,6 +175,10 @@ interface PerEntryReport {
    *  total/matched both stay 0 and they're surfaced separately. */
   source: 'manual' | 'heuristic' | 'placeholder'
   skipped: boolean
+  /** Sprint Corpus Authoring: model's actual plan-feet placements per
+   *  element key. Lets the operator review the JSON scorecard and
+   *  promote heuristic→manual by accepting these coords as expected. */
+  modelPlacements: Record<string, { x: number; y: number; rationale: string }>
   failures: Array<{ key: string; reason: string }>
 }
 
@@ -269,6 +273,7 @@ test.describe('AI placement accuracy', () => {
           imageryPoor: false,
           source: entry.source,
           skipped: true,
+          modelPlacements: {},
           failures: [],
         })
         continue
@@ -298,6 +303,7 @@ test.describe('AI placement accuracy', () => {
           imageryPoor: false,
           source: entry.source,
           skipped: false,
+          modelPlacements: {},
           failures,
         })
         continue
@@ -306,6 +312,20 @@ test.describe('AI placement accuracy', () => {
       const { imageryPoor: poor, placements } = parseModelResponse(raw)
       imageryPoor = poor
       if (poor) imageryPoorCount += 1
+
+      // Capture every model placement (regardless of whether it matched
+      // an expected) so the scorecard JSON shows the full model output.
+      // Lets the operator review + promote heuristic → manual by
+      // accepting these coords as ground truth.
+      const modelPlacements: Record<string, { x: number; y: number; rationale: string }> = {}
+      for (const place of placements) {
+        const planFt = normalizedToPlanFeet(place.norm, entry.lat, entry.zoom, entry.tilePxWide)
+        modelPlacements[place.key] = {
+          x: Math.round(planFt.x * 10) / 10,
+          y: Math.round(planFt.y * 10) / 10,
+          rationale: place.rationale,
+        }
+      }
 
       // Score each expected placement against model's returned coords.
       for (const exp of entry.expected) {
@@ -346,6 +366,7 @@ test.describe('AI placement accuracy', () => {
         imageryPoor,
         source: entry.source,
         skipped: false,
+        modelPlacements,
         failures,
       })
     }
