@@ -17,7 +17,7 @@ import { generateProjectRecommendations, inferElements } from '@/services/aiReco
 import { inferElementPlacements, type ElementToPlace } from '@/services/aiPlacement';
 import { buildMapboxStaticUrl, BACKDROP_ZOOM, BACKDROP_IMAGE_PX } from '@/lib/mapboxStatic';
 import { normalizedToPlanFeet } from '@/lib/mapTileMath';
-import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
+import { fallbackDimensions, placementBucket, aiCenterToTopLeft } from '@/lib/planLayout';
 import { nudgeOverlaps, type ElementBox } from '@/lib/elementOverlap';
 import type { Project, ProjectTask, ProjectMaterial, AIRecommendationSet, ElementType, ElementGeometry, Material, Zone, SiteConditionType } from '@/types';
 import { getWeekdaysBetween } from '@/utils/dates';
@@ -457,9 +457,17 @@ export default function ProjectWizard() {
           if (!place || !el.geometry) return el;
           placedCount += 1;
           if (place.rationale) rationales[el.tempId] = place.rationale;
+          // Rotation pivots around the visual center per PlanView2D's
+          // elementTransform. Setting position via aiCenterToTopLeft
+          // keeps the visual center on place.position, so rotating
+          // around it stays anchored regardless of angle.
           return {
             ...el,
-            geometry: { ...el.geometry, position: place.position },
+            geometry: {
+              ...el.geometry,
+              position: aiCenterToTopLeft(place.position, el.geometry),
+              rotation: place.rotationDeg,
+            },
           };
         });
         setPlacementCount(placedCount);
@@ -747,11 +755,15 @@ export default function ProjectWizard() {
                       if (!place || !el.geometry) return el;
                       placedCount += 1;
                       if (place.rationale) rationales[el.tempId] = place.rationale;
+                      // Same as the initial-placement path: aiCenterToTopLeft
+                      // anchors visual center on the AI's intended spot, then
+                      // rotation pivots around that center.
                       return {
                         ...el,
                         geometry: {
                           ...el.geometry,
-                          position: place.position,
+                          position: aiCenterToTopLeft(place.position, el.geometry),
+                          rotation: place.rotationDeg,
                         },
                       };
                     });

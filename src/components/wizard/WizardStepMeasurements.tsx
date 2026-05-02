@@ -21,12 +21,13 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ELEMENT_TYPE_LABELS, getElementTypesForMaterial, ELEMENT_PRESETS, applyElementPreset } from '@/lib/elements';
-import { fallbackDimensions, placementBucket } from '@/lib/planLayout';
+import { fallbackDimensions, placementBucket, applyDimensionEditToGeometry } from '@/lib/planLayout';
 import { normalizeCategory, getCategoryLabel } from '@/lib/categories';
 import { useMaterialStore } from '@/stores/materialStore';
 import { NumberInput } from '@/components/ui/NumberInput';
 import PlanView2D from '@/components/plan/PlanView2D';
 import PlanView3D from '@/components/plan/PlanView3D';
+import WizardElementEditSheet from '@/components/wizard/WizardElementEditSheet';
 import { inferMaterialsForElement } from '@/services/aiRecommendations';
 import { scaleAIQuantityForDimensions } from '@/lib/scaleAIQuantity';
 import type { WizardData, WizardElement, WizardMaterial } from '@/pages/ProjectWizard';
@@ -328,9 +329,26 @@ export const WizardStepMeasurements: React.FC<Props> = ({
   const perElementEntry = selected ? perElementMaterials[selected.tempId] : undefined;
 
   // ── Element CRUD on wizard data ─────────────────────────────────────────
+  // F-PLAC-04: dimension edits via the sidebar / sheet propagate to
+  // geometry.shape via applyDimensionEditToGeometry — re-anchored at
+  // the visual center so resizing doesn't make the element drift SE.
+  // Skipped when the update already carries a geometry (canvas drag
+  // owns geometry in that case).
   const updateElement = (tempId: string, updates: Partial<WizardElement>) => {
     onChange({
-      elements: elements.map((el) => (el.tempId === tempId ? { ...el, ...updates } : el)),
+      elements: elements.map((el) => {
+        if (el.tempId !== tempId) return el;
+        const merged: WizardElement = { ...el, ...updates };
+        if (!('geometry' in updates)) {
+          const recentered = applyDimensionEditToGeometry(
+            el.geometry,
+            { lengthFt: el.lengthFt, widthFt: el.widthFt, linearFt: el.linearFt, radiusFt: el.radiusFt },
+            updates,
+          );
+          if (recentered) merged.geometry = recentered;
+        }
+        return merged;
+      }),
     });
   };
 
@@ -868,28 +886,47 @@ export const WizardStepMeasurements: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Per-element sidebar */}
+          {/* Per-element sidebar — kept for the AI material accept/dismiss
+              flow on lg+ viewports. Below lg, the touch-first
+              ElementEditSheet (rendered below) is the editor. */}
           {selected && (
-            <ElementSidebar
-              element={selected}
-              data={data}
-              onChange={onChange}
-              onUpdate={(updates) => updateElement(selected.tempId, updates)}
-              onRemove={() => removeElement(selected.tempId)}
-              onDuplicate={() => {
-                const newId = duplicateElement(selected.tempId);
-                if (newId) setSelectedTempId(newId);
-              }}
-              onStartRedraw={() => setDrawingPolygonForTempId(selected.tempId)}
-              recommendations={recommendations}
-              materialAccepted={materialAccepted}
-              materialDismissed={materialDismissed}
-              onAcceptMaterial={onAcceptMaterial}
-              onDismissMaterial={onDismissMaterial}
-              perElementEntry={perElementEntry}
-              placementRationale={placementRationales[selected.tempId]}
-            />
+            <div className="hidden lg:block">
+              <ElementSidebar
+                element={selected}
+                data={data}
+                onChange={onChange}
+                onUpdate={(updates) => updateElement(selected.tempId, updates)}
+                onRemove={() => removeElement(selected.tempId)}
+                onDuplicate={() => {
+                  const newId = duplicateElement(selected.tempId);
+                  if (newId) setSelectedTempId(newId);
+                }}
+                onStartRedraw={() => setDrawingPolygonForTempId(selected.tempId)}
+                recommendations={recommendations}
+                materialAccepted={materialAccepted}
+                materialDismissed={materialDismissed}
+                onAcceptMaterial={onAcceptMaterial}
+                onDismissMaterial={onDismissMaterial}
+                perElementEntry={perElementEntry}
+                placementRationale={placementRationales[selected.tempId]}
+              />
+            </div>
           )}
+
+          {/* Mobile bottom-sheet element editor — same selected element +
+              callbacks as the sidebar; renders only on viewports below
+              the md breakpoint via the sheet's own md:hidden wrapper. */}
+          <WizardElementEditSheet
+            selected={selected}
+            data={data}
+            onClose={() => setSelectedTempId(null)}
+            onUpdate={(updates) => selected && updateElement(selected.tempId, updates)}
+            onRemove={() => selected && removeElement(selected.tempId)}
+            perElementRecs={
+              perElementEntry?.status === 'ready' ? perElementEntry.recs : null
+            }
+            onChange={onChange}
+          />
         </div>
       )}
 

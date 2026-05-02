@@ -361,6 +361,175 @@ const PLACEMENT_BUCKETS: Record<PlacementHint, PlacementSlot> = {
 }
 
 /**
+ * Visual center of an element in plan-feet (world space). Mirrors the
+ * private `elementCenter()` in PlanView2D so non-render code (the
+ * wizard's dimension-edit re-anchor, the harness, etc.) can reason
+ * about visual centers without duplicating the math.
+ *
+ * For all four shape kinds, returns `position + localCenter`.
+ */
+export function elementVisualCenter(geometry: ElementGeometry): { x: number; y: number } {
+  const { position, shape } = geometry;
+  if (shape.kind === 'rectangle') {
+    return { x: position.x + shape.width / 2, y: position.y + shape.height / 2 };
+  }
+  if (shape.kind === 'circle') {
+    return { x: position.x + shape.radius, y: position.y + shape.radius };
+  }
+  if (shape.kind === 'line') {
+    return { x: position.x + shape.length / 2, y: position.y + 0.5 };
+  }
+  // polygon — bbox midpoint + position offset
+  if (shape.points.length === 0) return { x: position.x, y: position.y };
+  let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
+  for (const p of shape.points) {
+    if (p.x < mnx) mnx = p.x;
+    if (p.y < mny) mny = p.y;
+    if (p.x > mxx) mxx = p.x;
+    if (p.y > mxy) mxy = p.y;
+  }
+  return { x: position.x + (mnx + mxx) / 2, y: position.y + (mny + mxy) / 2 };
+}
+
+/**
+ * F-PLAC-03: convert an AI-returned center coord (the visual placement
+ * point — "put the patio HERE") to the top-left position used by
+ * `ElementGeometry.position`. Mirrors the local-space center math in
+ * `elementCenter()` (PlanView2D) so the rendered visual center lands
+ * exactly on the AI's intended spot, regardless of shape kind.
+ *
+ * Bug history: Sprint AI-Place originally wrote the AI center coord
+ * directly into geometry.position, which the renderer then treated as
+ * top-left. Every AI-placed element rendered south-east of where the
+ * rationale said. Charlie caught this in the 2026-05-01 staging test
+ * ("element drifts from rationale"). The harness's region-based 100%
+ * score didn't catch it because the harness compares model output
+ * (centers) to expected (also centers) — both in plan-feet directly,
+ * never going through the wizard's top-left misinterpretation.
+ */
+export function aiCenterToTopLeft(
+  center: { x: number; y: number },
+  geometry: ElementGeometry,
+): { x: number; y: number } {
+  const shape = geometry.shape;
+  let localCx = 0;
+  let localCy = 0;
+  if (shape.kind === 'rectangle') {
+    localCx = shape.width / 2;
+    localCy = shape.height / 2;
+  } else if (shape.kind === 'circle') {
+    localCx = shape.radius;
+    localCy = shape.radius;
+  } else if (shape.kind === 'polygon' && shape.points.length >= 3) {
+    let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
+    for (const p of shape.points) {
+      if (p.x < mnx) mnx = p.x;
+      if (p.y < mny) mny = p.y;
+      if (p.x > mxx) mxx = p.x;
+      if (p.y > mxy) mxy = p.y;
+    }
+    localCx = (mnx + mxx) / 2;
+    localCy = (mny + mxy) / 2;
+  } else if (shape.kind === 'line') {
+    localCx = shape.length / 2;
+    localCy = 0.5;
+  }
+  return {
+    x: Math.round(center.x - localCx),
+    y: Math.round(center.y - localCy),
+  };
+}
+
+/**
+ * F-PLAC-04: rebuild geometry when contractor edits dimensions in the
+ * sheet/sidebar so the canvas re-renders at the new size, anchored at
+ * the same visual center. Without this, dimension edits silently
+ * desynchronize the canvas from the form fields — the materials
+ * engine recomputes against the new lengthFt × widthFt while the
+ * canvas keeps showing the old patio rectangle.
+ *
+ * Returns the updated geometry, or null when:
+ *   - geometry is null/undefined (nothing to update)
+ *   - no relevant dim field changed
+ *   - shape kind is polygon/line (those have their own edit primitives)
+ *
+ * For 'rectangle' shapes prefers explicit lengthFt+widthFt; falls back
+ * to linearFt + the longer-axis preserved for elements that only carry
+ * a single linear measurement (edging, fence, drainage). For 'circle'
+ * uses radiusFt. Polygons are preserved as-is — vertex drag is the
+ * right primitive there.
+ */
+export function applyDimensionEditToGeometry(
+  geometry: ElementGeometry | null | undefined,
+  oldDims: {
+    lengthFt: number | null;
+    widthFt: number | null;
+    linearFt: number | null;
+    radiusFt?: number | null;
+  },
+  newDims: {
+    lengthFt?: number | null;
+    widthFt?: number | null;
+    linearFt?: number | null;
+    radiusFt?: number | null;
+  },
+): ElementGeometry | null {
+  if (!geometry) return null;
+
+  const len = newDims.lengthFt ?? oldDims.lengthFt;
+  const wid = newDims.widthFt ?? oldDims.widthFt;
+  const lin = newDims.linearFt ?? oldDims.linearFt;
+  const rad = newDims.radiusFt ?? oldDims.radiusFt ?? null;
+
+  const lenChanged = 'lengthFt' in newDims && newDims.lengthFt !== oldDims.lengthFt;
+  const widChanged = 'widthFt' in newDims && newDims.widthFt !== oldDims.widthFt;
+  const linChanged = 'linearFt' in newDims && newDims.linearFt !== oldDims.linearFt;
+  const radChanged = 'radiusFt' in newDims && newDims.radiusFt !== (oldDims.radiusFt ?? null);
+  if (!(lenChanged || widChanged || linChanged || radChanged)) return null;
+
+  const oldCenter = elementVisualCenter(geometry);
+  let nextShape = geometry.shape;
+
+  if (geometry.shape.kind === 'rectangle') {
+    if (len && wid) {
+      nextShape = {
+        kind: 'rectangle',
+        width: Math.max(len, 1),
+        height: Math.max(wid, 1),
+      };
+    } else if (lin) {
+      const longerIsWidth = geometry.shape.width >= geometry.shape.height;
+      nextShape = longerIsWidth
+        ? { kind: 'rectangle', width: Math.max(lin, 1), height: geometry.shape.height }
+        : { kind: 'rectangle', width: geometry.shape.width, height: Math.max(lin, 1) };
+    } else {
+      return null;
+    }
+  } else if (geometry.shape.kind === 'circle' && rad) {
+    nextShape = { kind: 'circle', radius: Math.max(rad, 0.5) };
+  } else {
+    // polygon / line — leave geometry alone, vertex/length-drag is the
+    // right primitive for those.
+    return null;
+  }
+
+  let nextPos = geometry.position;
+  if (nextShape.kind === 'rectangle') {
+    nextPos = {
+      x: Math.round(oldCenter.x - nextShape.width / 2),
+      y: Math.round(oldCenter.y - nextShape.height / 2),
+    };
+  } else if (nextShape.kind === 'circle') {
+    nextPos = {
+      x: Math.round(oldCenter.x - nextShape.radius),
+      y: Math.round(oldCenter.y - nextShape.radius),
+    };
+  }
+
+  return { ...geometry, position: nextPos, shape: nextShape };
+}
+
+/**
  * Computes the top-left position (in plan feet) for an element with the
  * given hint, dimensions, and stack index. The stack index lets multiple
  * elements with the same hint spread along an arc inside the bucket

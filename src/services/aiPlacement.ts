@@ -46,6 +46,14 @@ export interface ElementToPlace {
 export interface PlacementResult {
   /** Plan-feet, origin = tile center. Same coordinate space as ProjectElement.geometry.position */
   position: { x: number; y: number }
+  /**
+   * Element rotation in degrees, clockwise from north. 0 means the
+   * element's long axis points east-west (matches the wizard's
+   * default orientation). The wizard applies this to
+   * `ElementGeometry.rotation` AFTER `aiCenterToTopLeft` so the
+   * pivot stays on the AI's intended center.
+   */
+  rotationDeg: number
   /** 1-sentence justification from the model — surfaced to the contractor as a hint */
   rationale: string
 }
@@ -103,6 +111,15 @@ ${elementBriefs}
 ## Your task
 Return JSON with placement coordinates for each element. Coordinates are NORMALIZED to the satellite image: x = 0 is the LEFT edge, x = 1 is the RIGHT edge, y = 0 is the TOP edge (north), y = 1 is the BOTTOM edge (south). The property is centered in the image.
 
+The (x, y) you return for each element is the **CENTER** of where the element should sit (NOT a corner). You know each element's dimensions; pick the center such that the element's full footprint fits within real ground. For example, a 24×12 patio at (0.5, 0.7) means the patio is centered at that point — its footprint extends roughly 12 ft west and east, 6 ft north and south.
+
+Also return a **rotationDeg** per element — the angle (in degrees, clockwise) the element should be rotated so its long axis aligns with what's on the ground. The default reference is: 0° means the element's long axis runs east-west (left-right in the image). Use rotationDeg when:
+- A long edging strip should hug a property edge that runs north-south (use 90°) or at an angle (use the actual angle)
+- A retaining wall should follow a slope's contour
+- A rectangular pool deck should be oriented with its pool
+
+For square / circular / small elements (patio < 16 ft on the long side, fire pits, trees, shrubs), set rotationDeg = 0 — orientation doesn't matter visually. Range is [-180, 180]. Round to the nearest 15° for stability.
+
 ## Rules
 1. Place each element on REAL GROUND. Avoid placing on:
    - Building rooftops (dark uniform rectangles, often with HVAC units / shadows)
@@ -131,7 +148,7 @@ Return JSON with placement coordinates for each element. Coordinates are NORMALI
     {"label": "driveway", "polygon": [...]}
   ],
   "placements": [
-    {"key": "<key from input>", "x": 0.5, "y": 0.7, "rationale": "Backyard, behind house, away from pool."}
+    {"key": "<key from input>", "x": 0.5, "y": 0.7, "rotationDeg": 0, "rationale": "Backyard, behind house, away from pool."}
   ],
   "reasoning": "1-2 sentences describing what you see in the image and how you placed elements"
 }
@@ -148,6 +165,7 @@ interface RawPlacementResponse {
     key?: unknown
     x?: unknown
     y?: unknown
+    rotationDeg?: unknown
     rationale?: unknown
   }>
   reasoning?: unknown
@@ -256,8 +274,18 @@ export async function inferElementPlacements(
       const norm = { x: p.x, y: p.y }
       if (!isNormalizedInTile(norm)) continue
       const planFt = normalizedToPlanFeet(norm, ctx.lat, ctx.zoom, ctx.tilePxWide)
+      // Validate + clamp rotation. Default 0 when missing/invalid.
+      // Snap to 15° to match the 2D rotate gizmo's snap step.
+      let rotationDeg = 0
+      if (typeof p.rotationDeg === 'number' && Number.isFinite(p.rotationDeg)) {
+        let r = p.rotationDeg
+        while (r > 180) r -= 360
+        while (r < -180) r += 360
+        rotationDeg = Math.round(r / 15) * 15
+      }
       placements.set(p.key, {
         position: planFt,
+        rotationDeg,
         rationale: typeof p.rationale === 'string' ? p.rationale : '',
       })
     }

@@ -201,6 +201,19 @@ type DragState =
       vertexIndex: number
       live: ElementGeometry
     }
+  | {
+      // Pinch-to-scale (touch): two fingers on the same element, scale
+      // its width/height (rectangle) or radius (circle) by the ratio of
+      // current finger distance to initial distance. Element center
+      // stays anchored at the start centroid so the gesture feels
+      // pinned. Snaps to 1ft, min 2ft.
+      mode: 'pinch'
+      elementId: string
+      initialDistanceFt: number
+      baseGeometry: ElementGeometry
+      centerWorld: { x: number; y: number }
+      live: ElementGeometry
+    }
 
 export const PlanView2D: React.FC<Props> = ({
   elements,
@@ -217,6 +230,12 @@ export const PlanView2D: React.FC<Props> = ({
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
+  // Pinch-to-scale: track active pointers (id → cursor in plan-feet +
+  // which element they started on) so a 2nd finger landing on the
+  // same element promotes the gesture into pinch mode.
+  const activePointers = useRef<
+    Map<number, { x: number; y: number; elementId: string }>
+  >(new Map())
   const [, setDragTick] = useState(0)
   // Batch 24: click-to-draw polygon state.
   const [drawingPoints, setDrawingPoints] = useState<Array<{ x: number; y: number }>>([])
@@ -251,7 +270,7 @@ export const PlanView2D: React.FC<Props> = ({
           } as ElementGeometry,
         }
       }
-      // resize / rotate / vertex
+      // resize / rotate / vertex / pinch all carry a `live` geometry
       return { ...item, geometry: d.live }
     })
   }, [baseLaid])
@@ -360,6 +379,36 @@ export const PlanView2D: React.FC<Props> = ({
       }
       const cursorFt = clientToFeet(e.clientX, e.clientY)
       if (!cursorFt) return
+
+      // Pinch-to-scale: register this pointer. If a 2nd finger has
+      // already landed on the same element, transition to pinch mode
+      // instead of starting a move. Touch only — mouse never has 2
+      // simultaneous pointers so this is a no-op for desktop.
+      activePointers.current.set(e.pointerId, {
+        x: cursorFt.x,
+        y: cursorFt.y,
+        elementId: element.id,
+      })
+      const sameElement = Array.from(activePointers.current.values()).filter(
+        (p) => p.elementId === element.id,
+      )
+      if (sameElement.length >= 2) {
+        const [a, b] = sameElement
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const initialDistanceFt = Math.max(0.1, Math.sqrt(dx * dx + dy * dy))
+        dragRef.current = {
+          mode: 'pinch',
+          elementId: element.id,
+          initialDistanceFt,
+          baseGeometry: geometry,
+          centerWorld: elementCenter(geometry),
+          live: geometry,
+        }
+        setDragTick((t) => t + 1)
+        return
+      }
+
       dragRef.current = {
         mode: 'move',
         elementId: element.id,
@@ -550,9 +599,61 @@ export const PlanView2D: React.FC<Props> = ({
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
       const d = dragRef.current
-      if (!d) return
       const cursorFt = clientToFeet(e.clientX, e.clientY)
       if (!cursorFt) return
+
+      // Always update active-pointer tracking — needed for pinch math
+      // even when the gesture hasn't been promoted yet.
+      const tracked = activePointers.current.get(e.pointerId)
+      if (tracked) {
+        tracked.x = cursorFt.x
+        tracked.y = cursorFt.y
+      }
+
+      if (!d) return
+
+      // Pinch-to-scale: compute current finger distance, scale the
+      // element's shape by ratio vs initial. Center stays fixed at
+      // pinch-start centroid so the element doesn't drift.
+      if (d.mode === 'pinch') {
+        const same = Array.from(activePointers.current.values()).filter(
+          (p) => p.elementId === d.elementId,
+        )
+        if (same.length < 2) return // a finger lifted — wait for pointerup
+        const [a, b] = same
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const currentDistance = Math.max(0.1, Math.sqrt(dx * dx + dy * dy))
+        const rawScale = currentDistance / d.initialDistanceFt
+        // Clamp so frantic pinches don't blow up / collapse the element.
+        const scale = Math.min(8, Math.max(0.1, rawScale))
+        const baseShape = d.baseGeometry.shape
+        let nextLive: ElementGeometry = d.live
+        if (baseShape.kind === 'rectangle') {
+          let w = snapFt(baseShape.width * scale)
+          let h = snapFt(baseShape.height * scale)
+          if (w < MIN_SIZE_FT) w = MIN_SIZE_FT
+          if (h < MIN_SIZE_FT) h = MIN_SIZE_FT
+          nextLive = {
+            ...d.live,
+            position: { x: d.centerWorld.x - w / 2, y: d.centerWorld.y - h / 2 },
+            shape: { kind: 'rectangle', width: w, height: h },
+          }
+        } else if (baseShape.kind === 'circle') {
+          let r = snapFt(baseShape.radius * scale)
+          if (r < MIN_SIZE_FT / 2) r = MIN_SIZE_FT / 2
+          nextLive = {
+            ...d.live,
+            position: { x: d.centerWorld.x - r, y: d.centerWorld.y - r },
+            shape: { kind: 'circle', radius: r },
+          }
+        }
+        // Polygon + line shapes are skipped — vertex drag is the right
+        // primitive for those. Pinch on a polygon is a no-op.
+        d.live = nextLive
+        setDragTick((t) => t + 1)
+        return
+      }
 
       if (d.mode === 'move') {
         const nextX = snapFt(cursorFt.x - d.offsetFt.x)
@@ -661,12 +762,19 @@ export const PlanView2D: React.FC<Props> = ({
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent) => {
+      // Always remove from active-pointer tracking, even if not currently
+      // mid-drag. Stale pointers in the map would falsely promote later
+      // single-finger drags into pinch.
+      activePointers.current.delete(e.pointerId)
       if (!dragRef.current) return
       try {
         ;(e.target as Element).releasePointerCapture(e.pointerId)
       } catch {
         /* already released */
       }
+      // Pinch-specific: if a finger lifted but the gesture isn't done
+      // yet (the other finger may still be down), end the gesture
+      // cleanly rather than waiting. Touch UX is "let go = commit."
       commit()
     },
     [commit],

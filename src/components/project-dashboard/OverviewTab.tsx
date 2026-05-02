@@ -9,11 +9,13 @@ import { ELEMENT_TYPE_LABELS } from '@/lib/elements';
 import { computeProjectProgress } from '@/lib/projectProgress';
 import { ElementVisual } from '@/components/shared/ElementVisual';
 import { MaterialPicker } from '@/components/shared/MaterialPicker';
+import ProjectElementEditSheet from '@/components/project-dashboard/ProjectElementEditSheet';
 import PlanView2D from '@/components/plan/PlanView2D';
 import PlanView3D from '@/components/plan/PlanView3D';
 import { createShareToken, fetchShareTokensForProject, revokeShareToken, buildShareUrl, sendProposalEmail, fetchDesignVersionsForProject } from '@/services/supabaseShareTokens';
 import type { ProjectDesignVersion } from '@/types';
 import { computeProjectCost } from '@/lib/projectCost';
+import { applyDimensionEditToGeometry } from '@/lib/planLayout';
 import { toast } from '@/hooks/useToast';
 import { fetchManifestsForProject, snapshotManifestForProject, type ManifestRow } from '@/services/supabaseManifests';
 
@@ -75,6 +77,11 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
   const [editingElements, setEditingElements] = useState(false);
   const [pickerElementId, setPickerElementId] = useState<string | null>(null);
   const pickerElement = elements.find(el => el.id === pickerElementId) ?? null;
+  // Touch-first per-element edit sheet (mobile only). Tap an element on
+  // the canvas to open. Same selected element is editable on desktop via
+  // the inline editor below the canvas.
+  const [sheetElementId, setSheetElementId] = useState<string | null>(null);
+  const sheetElement = elements.find(el => el.id === sheetElementId) ?? null;
   const projectStoreRef = useProjectStore();
 
   // ── Client share link (migration 028) ─────────────────────────────────
@@ -802,6 +809,7 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                   : null
               }
               editable={editingLayout}
+              onElementClick={(el) => setSheetElementId(el.id)}
               onElementGeometryChange={handleElementGeometryChange}
               buildableArea={project.buildableAreaGeometry ?? null}
               obstacles={project.obstaclesGeometry ?? []}
@@ -849,11 +857,40 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
                       <span className="text-[10px] text-[var(--text-4)] shrink-0">{ELEMENT_TYPE_LABELS[el.elementType]}</span>
                       <input className="bg-transparent border border-[var(--border)] rounded-[4px] px-[4px] py-[3px] text-[11px] text-[var(--text)] w-[50px] text-right focus:outline-none focus:border-[var(--green)]"
                         type="number" min="0" defaultValue={el.lengthFt ?? ''} placeholder="L"
-                        onBlur={(e) => { const v = parseFloat(e.target.value) || null; projectStoreRef.updateElement(el.id, { lengthFt: v, computedAreaSqft: v && el.widthFt ? v * el.widthFt : el.computedAreaSqft }); }} />
+                        onBlur={(e) => {
+                          const v = parseFloat(e.target.value) || null;
+                          // F-PLAC-04: also recenter the canvas geometry
+                          // when dimensions change inline so the rendered
+                          // patio matches the form input.
+                          const geom = applyDimensionEditToGeometry(
+                            el.geometry,
+                            { lengthFt: el.lengthFt, widthFt: el.widthFt, linearFt: el.linearFt },
+                            { lengthFt: v },
+                          );
+                          const upd: Partial<ProjectElement> = {
+                            lengthFt: v,
+                            computedAreaSqft: v && el.widthFt ? v * el.widthFt : el.computedAreaSqft,
+                          };
+                          if (geom) upd.geometry = geom;
+                          projectStoreRef.updateElement(el.id, upd);
+                        }} />
                       <span className="text-[var(--text-4)]">×</span>
                       <input className="bg-transparent border border-[var(--border)] rounded-[4px] px-[4px] py-[3px] text-[11px] text-[var(--text)] w-[50px] text-right focus:outline-none focus:border-[var(--green)]"
                         type="number" min="0" defaultValue={el.widthFt ?? ''} placeholder="W"
-                        onBlur={(e) => { const v = parseFloat(e.target.value) || null; projectStoreRef.updateElement(el.id, { widthFt: v, computedAreaSqft: el.lengthFt && v ? el.lengthFt * v : el.computedAreaSqft }); }} />
+                        onBlur={(e) => {
+                          const v = parseFloat(e.target.value) || null;
+                          const geom = applyDimensionEditToGeometry(
+                            el.geometry,
+                            { lengthFt: el.lengthFt, widthFt: el.widthFt, linearFt: el.linearFt },
+                            { widthFt: v },
+                          );
+                          const upd: Partial<ProjectElement> = {
+                            widthFt: v,
+                            computedAreaSqft: el.lengthFt && v ? el.lengthFt * v : el.computedAreaSqft,
+                          };
+                          if (geom) upd.geometry = geom;
+                          projectStoreRef.updateElement(el.id, upd);
+                        }} />
                       <span className="text-[var(--text-4)] text-[10px]">ft</span>
                       <span className="text-[var(--text-4)] ml-auto tabular-nums text-[11px]">{area > 0 ? `${area} sqft` : ''}</span>
                       <button type="button" onClick={() => projectStoreRef.deleteElement(el.id)}
@@ -999,6 +1036,14 @@ export const ProjectDashboardOverview: React.FC<Props> = ({
           onClose={() => setPickerElementId(null)}
         />
       )}
+
+      {/* Touch-first per-element edit sheet (mobile bottom sheet). */}
+      <ProjectElementEditSheet
+        element={sheetElement}
+        orgId={useOrgStore.getState().org?.id ?? ''}
+        onClose={() => setSheetElementId(null)}
+      />
+
 
       {/* Email-to-client modal (Phase 2a) */}
       {emailModalOpen && activeToken && (
