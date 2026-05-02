@@ -457,11 +457,16 @@ export default function ProjectWizard() {
           if (!place || !el.geometry) return el;
           placedCount += 1;
           if (place.rationale) rationales[el.tempId] = place.rationale;
+          // Rotation pivots around the visual center per PlanView2D's
+          // elementTransform. Setting position via aiCenterToTopLeft
+          // keeps the visual center on place.position, so rotating
+          // around it stays anchored regardless of angle.
           return {
             ...el,
             geometry: {
               ...el.geometry,
               position: aiCenterToTopLeft(place.position, el.geometry),
+              rotation: place.rotationDeg,
             },
           };
         });
@@ -750,11 +755,15 @@ export default function ProjectWizard() {
                       if (!place || !el.geometry) return el;
                       placedCount += 1;
                       if (place.rationale) rationales[el.tempId] = place.rationale;
+                      // Same as the initial-placement path: aiCenterToTopLeft
+                      // anchors visual center on the AI's intended spot, then
+                      // rotation pivots around that center.
                       return {
                         ...el,
                         geometry: {
                           ...el.geometry,
                           position: aiCenterToTopLeft(place.position, el.geometry),
+                          rotation: place.rotationDeg,
                         },
                       };
                     });

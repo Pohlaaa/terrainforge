@@ -199,9 +199,9 @@ which is checked separately in the scoring harness.)
 
 | Iter | Date | Commit | Score | Change |
 |---|---|---|---|---|
-| v0 | TBD | TBD | TBD | Initial prompt — see `buildPlacementPrompt` in `aiPlacement.ts`. |
-
-(Future iters log here as they happen.)
+| v0 | 2026-04-30 | `5bb0b54` | (region-baseline) | Initial prompt — see `buildPlacementPrompt` in `aiPlacement.ts`. Region-based scoring landed in `26d05bf` hits 100% mean across 22 operational fixtures. |
+| v1 | 2026-05-01 | `045b5f8` | 100% (unchanged) | F-PLAC-03 defense in depth: prompt explicitly states (x, y) is the element CENTER, not a corner. Region-based scoring isn't sensitive to corner-vs-center so the harness number is unchanged; the wizard now correctly converts. |
+| v2 | 2026-05-01 | (this commit) | TBD | Added `rotationDeg` per-element placement. Model returns degrees clockwise from east-west long-axis baseline; wizard applies after `aiCenterToTopLeft` so rotation pivots around the AI's intended center. Defaults to 0 for square/circular elements. Region scoring won't reflect rotation quality directly — visual proof is the proof. |
 
 ---
 

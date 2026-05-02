@@ -98,6 +98,16 @@ describe('buildPlacementPrompt', () => {
     expect(p).toMatch(/CENTER/)
     expect(p).toMatch(/NOT a corner/)
   })
+
+  it('asks for rotationDeg per element with the long-axis convention', () => {
+    // F-PLAC-rotation: model should return a rotation per element so
+    // long edging strips orient along property edges instead of always
+    // east-west. Default 0 = long axis runs east-west.
+    const p = buildPlacementPrompt(PATIO_AND_EDGING)
+    expect(p).toMatch(/rotationDeg/)
+    expect(p).toMatch(/long axis/)
+    expect(p).toMatch(/0°/)
+  })
 })
 
 describe('inferElementPlacements / happy path', () => {
@@ -290,6 +300,69 @@ describe('inferElementPlacements / error + sanitization paths', () => {
     })
     expect(result.placements.size).toBe(0)
     expect(mockCall).not.toHaveBeenCalled()
+  })
+})
+
+describe('inferElementPlacements / rotation', () => {
+  it('parses a valid rotationDeg, snaps to 15°', async () => {
+    mockCall.mockResolvedValue(
+      JSON.stringify({
+        placements: [
+          { key: 'patio-1', x: 0.5, y: 0.5, rotationDeg: 47, rationale: '' },
+        ],
+      }),
+    )
+    const result = await inferElementPlacements(ctx())
+    expect(result.placements.get('patio-1')!.rotationDeg).toBe(45)
+  })
+
+  it('defaults rotationDeg to 0 when missing', async () => {
+    mockCall.mockResolvedValue(
+      JSON.stringify({
+        placements: [
+          { key: 'patio-1', x: 0.5, y: 0.5, rationale: '' },
+        ],
+      }),
+    )
+    const result = await inferElementPlacements(ctx())
+    expect(result.placements.get('patio-1')!.rotationDeg).toBe(0)
+  })
+
+  it('defaults rotationDeg to 0 when non-finite', async () => {
+    mockCall.mockResolvedValue(
+      JSON.stringify({
+        placements: [
+          { key: 'patio-1', x: 0.5, y: 0.5, rotationDeg: 'horizontal', rationale: '' },
+        ],
+      }),
+    )
+    const result = await inferElementPlacements(ctx())
+    expect(result.placements.get('patio-1')!.rotationDeg).toBe(0)
+  })
+
+  it('normalizes rotationDeg outside [-180, 180] before snapping', async () => {
+    mockCall.mockResolvedValue(
+      JSON.stringify({
+        placements: [
+          { key: 'patio-1', x: 0.5, y: 0.5, rotationDeg: 270, rationale: '' },
+        ],
+      }),
+    )
+    const result = await inferElementPlacements(ctx())
+    // 270 → -90 after normalize; already on a 15° boundary
+    expect(result.placements.get('patio-1')!.rotationDeg).toBe(-90)
+  })
+
+  it('preserves negative rotation values', async () => {
+    mockCall.mockResolvedValue(
+      JSON.stringify({
+        placements: [
+          { key: 'patio-1', x: 0.5, y: 0.5, rotationDeg: -45, rationale: '' },
+        ],
+      }),
+    )
+    const result = await inferElementPlacements(ctx())
+    expect(result.placements.get('patio-1')!.rotationDeg).toBe(-45)
   })
 })
 
