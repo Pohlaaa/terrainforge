@@ -193,6 +193,15 @@ function App() {
                         </React.Suspense>
                       </ErrorBoundary>
                     } />
+                    {/* F-V6-PROD-02: '/projects/new' is a natural URL a contractor
+                        (or an old bookmark / external link) might hit to start a
+                        project. Without this it falls through to '/projects/:id'
+                        with id="new", and ProjectDashboard fires ~8 Supabase
+                        SELECTs using "new" as a UUID → "invalid input syntax for
+                        type uuid" error cascade + a permanent "Loading project
+                        data..." hang. Redirect it to the real wizard route.
+                        Must precede '/projects/:id' so the static segment wins. */}
+                    <Route path="/projects/new" element={<Navigate to="/projects/wizard" replace />} />
                     <Route path="/projects/:id" element={
                       <ErrorBoundary>
                         <React.Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading project...</div>}>
